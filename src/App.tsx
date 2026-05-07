@@ -37,7 +37,7 @@ import {
   generateDependenciesEstimation
 } from "./lib/ai-pipeline";
 import { buildDiagnosticPrompt } from "./lib/constants"; // if not already
-import { useStore } from './store';
+import { useStore, STORAGE_PREFIX, META_KEY } from './store';
 import { useShallow } from 'zustand/react/shallow';
 
 const DEFAULT_INTERPOLATION_PROMPT = `Act as a Logician. Analyze this document structure. Define rigorous specifications and goals for every section. Ensure logical coherence and argumentative depth.`;
@@ -384,7 +384,7 @@ export const App = () => {
         setTestSuite(newTestSuite);
         setHiddenSectionIds([]);
         activeLineIndexRef.current = null;
-        if (activeProjectId) saveCurrentState(activeProjectId, targetName, markdown);
+        if (activeProjectId) saveCurrentState();
     });
   };
 
@@ -418,12 +418,13 @@ export const App = () => {
             wordCount
          };
          
-         setProjectList(prev => {
-            const others = prev.filter(p => p.id !== newId);
+         {
+            const s = useStore.getState();
+            const others = s.projectList.filter(p => p.id !== newId);
             const updated = [metaEntry, ...others];
+            s.setProjectList(updated);
             set(META_KEY, updated).catch(console.error);
-            return updated;
-         });
+         }
          
          // 3. Load via `loadProject` to ensure all fields and UI are correctly hydrated sequentially
          await loadProject(newId);
@@ -435,7 +436,20 @@ export const App = () => {
   };
 
   const handleExportProject = () => {
-    const data = getStorageData();
+    const s = useStore.getState();
+    const data = {
+      projectName: s.projectName,
+      markdown: s.markdown,
+      localDraft: s.localContent,
+      testSuite: s.testSuite,
+      hiddenSectionIds: s.hiddenSectionIds,
+      activePersonaId: s.activePersonaId,
+      customPersonas: s.customPersonas,
+      promptsConfig: s.promptsConfig,
+      cachedCoachAdvice: s.cachedCoachAdvice,
+      revisions: s.revisions,
+      lastModified: Date.now(),
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -903,7 +917,7 @@ export const App = () => {
               setPromptsConfig(snapshot.interpolationConfig);
             }
             if (activeProjectId) {
-              saveCurrentState(activeProjectId, projectName, snapshot.markdown, revisions);
+              saveCurrentState();
             }
           }}
         />

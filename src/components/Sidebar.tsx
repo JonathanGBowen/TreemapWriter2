@@ -1,7 +1,9 @@
 import React, { useRef } from "react";
-import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson } from "lucide-react";
+import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson, Archive } from "lucide-react";
+import { toast } from "sonner";
 import { Treemap } from "./Treemap";
 import { Section, TestSuite } from "../types";
+import { exportAllProjects } from "../lib/exportBackup";
 
 interface SidebarProps {
   isDarkMode: boolean;
@@ -93,6 +95,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
     reader.readAsText(file);
     event.target.value = '';
+  };
+
+  const handleBackupAll = async () => {
+    try {
+      await exportAllProjects();
+      toast.success('Backup downloaded. Keep it somewhere safe.');
+    } catch (err) {
+      toast.error('Backup failed. See console.');
+      console.error(err);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -261,12 +273,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <FileJson size={14} />
           </button>
-          <button 
+          <button
             onClick={() => mdInputRef.current?.click()}
             className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
             title="Import Markdown"
           >
             <FilePlus size={14} />
+          </button>
+          <button
+            onClick={handleBackupAll}
+            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-amber-500 dark:hover:text-hld-yellow transition-colors"
+            title="Backup ALL projects (one-time migration insurance)"
+          >
+            <Archive size={14} />
           </button>
         </div>
 

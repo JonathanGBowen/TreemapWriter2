@@ -8,8 +8,8 @@ import {
   Dependency, PromptsConfig, SectionSpec, DiagnosticResult
 } from '../types';
 
-const STORAGE_PREFIX = 'socratic_p_';
-const META_KEY = 'socratic_meta_v1';
+export const STORAGE_PREFIX = 'socratic_p_';
+export const META_KEY = 'socratic_meta_v1';
 
 export interface AppState {
   // Project Management
