@@ -14,6 +14,7 @@ interface SidebarProps {
   onLoadProject: (content: string) => void;
   onSaveProject: () => void;
   onExportMarkdown: () => void;
+  onExportSpecs: () => void;
   onResetProject: () => void;
   onLoadDefaultProject: () => void;
   onOpenProjectManager: () => void;
@@ -46,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLoadProject,
   onSaveProject,
   onExportMarkdown,
+  onExportSpecs,
   onResetProject,
   onLoadDefaultProject,
   onOpenProjectManager,
@@ -251,6 +253,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title="Export Markdown File (.md)"
           >
             <FileDown size={14} />
+          </button>
+          <button 
+            onClick={onExportSpecs}
+            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
+            title="Export Specs JSON"
+          >
+            <FileJson size={14} />
           </button>
           <button 
             onClick={() => mdInputRef.current?.click()}

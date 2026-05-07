@@ -88,7 +88,7 @@ export async function generateStructuredSpecs(
   thinkingBudget: number,
   callbacks: SpecGenerationCallbacks
 ): Promise<void> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("API Key missing");
   const ai = new GoogleGenAI({ apiKey });
  
@@ -238,7 +238,7 @@ export async function runDiagnosticEvaluation(params: {
   config: PromptsConfig;
   findSection: (nodes: Section[], id: string) => Section | null;
 }): Promise<DiagnosticResult> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("API Key missing");
   const ai = new GoogleGenAI({ apiKey });
  
@@ -342,7 +342,7 @@ export async function generateDependenciesEstimation(
   thinkingBudget: number,
   config: PromptsConfig
 ): Promise<Record<string, Dependency[]>> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("API Key missing");
   const ai = new GoogleGenAI({ apiKey });
 

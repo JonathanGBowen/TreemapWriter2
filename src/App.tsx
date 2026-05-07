@@ -37,11 +37,8 @@ import {
   generateDependenciesEstimation
 } from "./lib/ai-pipeline";
 import { buildDiagnosticPrompt } from "./lib/constants"; // if not already
-
-
-const STORAGE_PREFIX = 'socratic_p_';
-const META_KEY = 'socratic_meta_v1';
-const LEGACY_KEY = 'socratic_project_v1';
+import { useStore } from './store';
+import { useShallow } from 'zustand/react/shallow';
 
 const DEFAULT_INTERPOLATION_PROMPT = `Act as a Logician. Analyze this document structure. Define rigorous specifications and goals for every section. Ensure logical coherence and argumentative depth.`;
 
@@ -89,27 +86,113 @@ const DEFAULT_PERSONAS: Persona[] = [
 ];
 
 export const App = () => {
-  // --- PROJECT MANAGEMENT STATE ---
-  const [projectList, setProjectList] = useState<ProjectMeta[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [showProjectModal, setShowProjectModal] = useState(false);
+  const {
+    projectList, activeProjectId, markdown, projectName, testSuite, hiddenSectionIds,
+    localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
+    focusMode, selectedId, activeLineIndex, runTutorial, isDarkMode, showProjectModal,
+    showRunModal, showPersonaModal, showSpecModal, showSuggestionsModal, showInterpolationModal,
+    showPromptsGraphModal, showSectionMapModal, showProjectFileModal, showGoalSprintModal,
+    showContentSprintModal, showHistoryModal, showGraphModal, showCoachModal, isProcessing,
+    isInterpolating, activePersonaId, customPersonas, promptsConfig, cachedCoachAdvice,
+    
+    setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite, setHiddenSectionIds,
+    setSelectedId, setActiveLineIndex, setRunTutorial, setIsDarkMode, setSidebarWidth,
+    setTestsPanelWidth, setFocusMode, setShowProjectModal, setShowRunModal, setShowPersonaModal,
+    setShowSpecModal, setShowSuggestionsModal, setShowInterpolationModal, setShowPromptsGraphModal,
+    setShowSectionMapModal, setShowProjectFileModal, setShowGoalSprintModal, setShowContentSprintModal,
+    setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing, setIsInterpolating,
+    setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
+    
+    loadInitialState, createDemoProject, createNewProject, loadProject, deleteProject,
+    saveCurrentState, createSnapshot, setRevisions
+  } = useStore(useShallow(state => ({
+    projectList: state.projectList,
+    activeProjectId: state.activeProjectId,
+    markdown: state.markdown,
+    projectName: state.projectName,
+    testSuite: state.testSuite,
+    hiddenSectionIds: state.hiddenSectionIds,
+    localContent: state.localContent,
+    lastAutoSave: state.lastAutoSave,
+    revisions: state.revisions,
+    sections: state.sections,
+    sidebarWidth: state.sidebarWidth,
+    testsPanelWidth: state.testsPanelWidth,
+    focusMode: state.focusMode,
+    selectedId: state.selectedId,
+    activeLineIndex: state.activeLineIndex,
+    runTutorial: state.runTutorial,
+    isDarkMode: state.isDarkMode,
+    showProjectModal: state.showProjectModal,
+    showRunModal: state.showRunModal,
+    showPersonaModal: state.showPersonaModal,
+    showSpecModal: state.showSpecModal,
+    showSuggestionsModal: state.showSuggestionsModal,
+    showInterpolationModal: state.showInterpolationModal,
+    showPromptsGraphModal: state.showPromptsGraphModal,
+    showSectionMapModal: state.showSectionMapModal,
+    showProjectFileModal: state.showProjectFileModal,
+    showGoalSprintModal: state.showGoalSprintModal,
+    showContentSprintModal: state.showContentSprintModal,
+    showHistoryModal: state.showHistoryModal,
+    showGraphModal: state.showGraphModal,
+    showCoachModal: state.showCoachModal,
+    isProcessing: state.isProcessing,
+    isInterpolating: state.isInterpolating,
+    activePersonaId: state.activePersonaId,
+    customPersonas: state.customPersonas,
+    promptsConfig: state.promptsConfig,
+    cachedCoachAdvice: state.cachedCoachAdvice,
+    
+    setLocalContent: state.setLocalContent,
+    setSections: state.setSections,
+    setMarkdown: state.setMarkdown,
+    setProjectName: state.setProjectName,
+    setTestSuite: state.setTestSuite,
+    setHiddenSectionIds: state.setHiddenSectionIds,
+    setRevisions: state.setRevisions,
+    setSelectedId: state.setSelectedId,
+    setActiveLineIndex: state.setActiveLineIndex,
+    setRunTutorial: state.setRunTutorial,
+    setIsDarkMode: state.setIsDarkMode,
+    setSidebarWidth: state.setSidebarWidth,
+    setTestsPanelWidth: state.setTestsPanelWidth,
+    setFocusMode: state.setFocusMode,
+    setShowProjectModal: state.setShowProjectModal,
+    setShowRunModal: state.setShowRunModal,
+    setShowPersonaModal: state.setShowPersonaModal,
+    setShowSpecModal: state.setShowSpecModal,
+    setShowSuggestionsModal: state.setShowSuggestionsModal,
+    setShowInterpolationModal: state.setShowInterpolationModal,
+    setShowPromptsGraphModal: state.setShowPromptsGraphModal,
+    setShowSectionMapModal: state.setShowSectionMapModal,
+    setShowProjectFileModal: state.setShowProjectFileModal,
+    setShowGoalSprintModal: state.setShowGoalSprintModal,
+    setShowContentSprintModal: state.setShowContentSprintModal,
+    setShowHistoryModal: state.setShowHistoryModal,
+    setShowGraphModal: state.setShowGraphModal,
+    setShowCoachModal: state.setShowCoachModal,
+    setIsProcessing: state.setIsProcessing,
+    setIsInterpolating: state.setIsInterpolating,
+    setActivePersonaId: state.setActivePersonaId,
+    setCustomPersonas: state.setCustomPersonas,
+    setPromptsConfig: state.setPromptsConfig,
+    setCachedCoachAdvice: state.setCachedCoachAdvice,
+    
+    loadInitialState: state.loadInitialState,
+    createDemoProject: state.createDemoProject,
+    createNewProject: state.createNewProject,
+    loadProject: state.loadProject,
+    deleteProject: state.deleteProject,
+    saveCurrentState: state.saveCurrentState,
+    createSnapshot: state.createSnapshot
+  })));
 
-  // --- EDITOR STATE ---
-  const [markdown, setMarkdown] = useState<string>("");
-  const [projectName, setProjectName] = useState<string>("Untitled Project");
-  const [testSuite, setTestSuite] = useState<TestSuite>({});
-  const [hiddenSectionIds, setHiddenSectionIds] = useState<string[]>([]);
-  const [localContent, setLocalContent] = useState<string>("");
-  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
-  const [revisions, setRevisions] = useState<Snapshot[]>([]);
+  const activeLineIndexRef = useRef<number | null>(activeLineIndex);
   
-  // UI State
-  const [sidebarWidth, setSidebarWidth] = useState(320);
-  const [testsPanelWidth, setTestsPanelWidth] = useState(350);
-  const [focusMode, setFocusMode] = useState(true);
-  const activeLineIndexRef = useRef<number | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [runTutorial, setRunTutorial] = useState(false);
+  useEffect(() => {
+    activeLineIndexRef.current = activeLineIndex;
+  }, [activeLineIndex]);
 
   useEffect(() => {
     get('treemap_writer_tutorial_seen').then(hasSeenTutorial => {
@@ -123,22 +206,6 @@ export const App = () => {
     setRunTutorial(false);
     set('treemap_writer_tutorial_seen', true);
   };
-
-  // Advanced State
-  const [activePersonaId, setActivePersonaId] = useState<string>('default');
-  const [customPersonas, setCustomPersonas] = useState<Persona[]>([]);
-  const [promptsConfig, setPromptsConfig] = useState<PromptsConfig>(DEFAULT_PROMPTS_CONFIG);
-  const [cachedCoachAdvice, setCachedCoachAdvice] = useState<{inputHash: string, advice: string} | null>(null);
-
-  // Modals & Async
-  const [showRunModal, setShowRunModal] = useState(false);
-  const [showPersonaModal, setShowPersonaModal] = useState(false);
-  const [showSpecModal, setShowSpecModal] = useState(false);
-  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
-  const [showInterpolationModal, setShowInterpolationModal] = useState(false);
-  const [showPromptsGraphModal, setShowPromptsGraphModal] = useState(false);
-  const [showSectionMapModal, setShowSectionMapModal] = useState(false);
-  const [showProjectFileModal, setShowProjectFileModal] = useState(false);
   
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});
 
@@ -152,14 +219,7 @@ export const App = () => {
       }
     });
   };
-  const [showGoalSprintModal, setShowGoalSprintModal] = useState(false);
-  const [showContentSprintModal, setShowContentSprintModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showGraphModal, setShowGraphModal] = useState(false);
-  const [showCoachModal, setShowCoachModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isInterpolating, setIsInterpolating] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -167,311 +227,10 @@ export const App = () => {
 
   // --- INITIALIZATION & MIGRATION ---
   useEffect(() => {
-    (async () => {
-      // 1. Load Meta
-      let meta: ProjectMeta[] = [];
-      try {
-        let savedMeta = await get(META_KEY);
-        if (!savedMeta) {
-           const lsMeta = localStorage.getItem(META_KEY);
-           if (lsMeta) {
-              savedMeta = JSON.parse(lsMeta);
-              await set(META_KEY, savedMeta);
-           }
-        }
-        if (savedMeta) {
-          meta = typeof savedMeta === 'string' ? JSON.parse(savedMeta) : savedMeta;
-        }
-      } catch (e) { console.warn("Meta load fail", e); }
-
-      // 2. Check for Legacy Migration
-      const legacy = localStorage.getItem(LEGACY_KEY);
-      if (legacy && meta.length === 0) {
-         try {
-           const legacyData = JSON.parse(legacy);
-           const newId = `proj_${Date.now()}`;
-           const migratedName = legacyData.projectName || "Migrated Project";
-           
-           // Save as new format
-           await set(STORAGE_PREFIX + newId, legacyData);
-           
-           const newMeta: ProjectMeta = {
-              id: newId,
-              name: migratedName,
-              lastModified: legacyData.lastModified || Date.now(),
-              wordCount: (legacyData.localDraft || "").trim().split(/\s+/).length
-           };
-           meta.push(newMeta);
-           await set(META_KEY, meta);
-         } catch (e) { console.error("Migration failed", e); }
-      }
-
-      setProjectList(meta);
-
-      // 3. Determine Active Project
-      if (meta.length > 0) {
-         // Load most recently modified
-         const sorted = [...meta].sort((a, b) => b.lastModified - a.lastModified);
-         let loaded = false;
-         for (const projMeta of sorted) {
-             loaded = await loadProject(projMeta.id);
-             if (loaded) break;
-             
-             // If failed to load, remove from meta to avoid repeated failures
-             meta = meta.filter(p => p.id !== projMeta.id);
-             setProjectList(meta);
-             await set(META_KEY, meta);
-         }
-         if (!loaded) {
-             await createDemoProject();
-         }
-      } else {
-         // Create fresh DEMO project for first run
-         await createDemoProject();
-      }
-      
-      // Allow UI to settle
-      isFirstRender.current = false;
-    })();
+    loadInitialState().then(() => {
+       isFirstRender.current = false;
+    });
   }, []);
-
-  // --- PROJECT ACTIONS ---
-
-  const createDemoProject = async () => {
-    const newId = `proj_${Date.now()}`;
-    const newName = defaultProjectData.projectName || "Socratic Demo";
-    
-    setProjectName(newName);
-    setMarkdown(defaultProjectData.markdown || "");
-    setLocalContent(defaultProjectData.localDraft || defaultProjectData.markdown || "");
-    setTestSuite(defaultProjectData.testSuite || {});
-    setHiddenSectionIds(defaultProjectData.hiddenSectionIds || []);
-    setActivePersonaId(defaultProjectData.activePersonaId || 'default');
-    setCustomPersonas(defaultProjectData.customPersonas || []);
-    setPromptsConfig(defaultProjectData.promptsConfig || DEFAULT_PROMPTS_CONFIG);
-    setCachedCoachAdvice(defaultProjectData.cachedCoachAdvice || null);
-    setSelectedId(null);
-    activeLineIndexRef.current = null;
-    setActiveProjectId(newId);
-    setLastAutoSave(null);
-    setRevisions(defaultProjectData.revisions || []);
-
-    // Load UI State if present
-    const uiState: any = (defaultProjectData as any).uiState;
-    if (uiState) {
-        if (uiState.sidebarWidth) setSidebarWidth(uiState.sidebarWidth);
-        if (uiState.testsPanelWidth) setTestsPanelWidth(uiState.testsPanelWidth);
-        if (uiState.focusMode !== undefined) setFocusMode(uiState.focusMode);
-        if (uiState.selectedSectionId) setSelectedId(uiState.selectedSectionId);
-    }
-
-    await saveCurrentState(newId, newName, defaultProjectData.localDraft || defaultProjectData.markdown || "", defaultProjectData.revisions || []);
-  };
-
-  const createNewProject = async () => {
-    const newId = `proj_${Date.now()}`;
-    const newName = "Untitled Project";
-    
-    // Reset State to EMPTY to trigger splash screen
-    setProjectName(newName);
-    setMarkdown("");
-    setLocalContent("");
-    setTestSuite({});
-    setHiddenSectionIds([]);
-    setActivePersonaId('default');
-    setCustomPersonas([]);
-    setPromptsConfig(DEFAULT_PROMPTS_CONFIG);
-    setCachedCoachAdvice(null);
-    setSelectedId(null);
-    activeLineIndexRef.current = null;
-    setActiveProjectId(newId);
-    setLastAutoSave(null);
-    setRevisions([]);
-
-    // Add to meta
-    await saveCurrentState(newId, newName, "", []);
-  };
-
-  const loadProject = async (id: string): Promise<boolean> => {
-    try {
-      let data: any = await get(STORAGE_PREFIX + id);
-      if (!data) {
-        // Fallback to LS
-        const raw = localStorage.getItem(STORAGE_PREFIX + id);
-        if (raw) {
-           data = JSON.parse(raw);
-           await set(STORAGE_PREFIX + id, data); // Migrate to IDB immediately
-        }
-      }
-      if (!data) throw new Error("Project data not found");
-      
-      // If data is a string (rare case from weird migrations), parse it
-      if (typeof data === 'string') data = JSON.parse(data);
-
-      setActiveProjectId(id);
-      setProjectName(data.projectName || "Untitled");
-      setMarkdown(data.markdown || "");
-      setLocalContent(data.localDraft !== undefined ? data.localDraft : (data.markdown || ""));
-      
-      const loadedTestSuite = data.testSuite || {};
-      // Migrate legacy string[] dependencies to Dependency[]
-      Object.keys(loadedTestSuite).forEach(key => {
-        const entry = loadedTestSuite[key];
-        if (entry.dependencies && entry.dependencies.length > 0 && typeof entry.dependencies[0] === 'string') {
-          entry.dependencies = entry.dependencies.map((depId: string) => ({
-            id: depId,
-            type: 'prerequisite'
-          }));
-        }
-      });
-      setTestSuite(loadedTestSuite);
-      
-      setHiddenSectionIds(data.hiddenSectionIds || []);
-      setLastAutoSave(data.lastModified ? new Date(data.lastModified) : null);
-      setRevisions((data.revisions || []).map((r: any) => ({
-         ...r,
-         markdown: r.markdown || r.content || "",
-         testSuite: r.testSuite || {},
-      })));
-      
-      if (data.activePersonaId) setActivePersonaId(data.activePersonaId);
-      if (data.customPersonas) setCustomPersonas(data.customPersonas);
-      if (data.promptsConfig) setPromptsConfig({...DEFAULT_PROMPTS_CONFIG, ...data.promptsConfig});
-      else if (data.interpolationConfig) setPromptsConfig({...DEFAULT_PROMPTS_CONFIG, ...data.interpolationConfig});
-      
-      setCachedCoachAdvice(data.cachedCoachAdvice || null);
-      
-      if (data.uiState) {
-        if (data.uiState.sidebarWidth) setSidebarWidth(data.uiState.sidebarWidth);
-        if (data.uiState.testsPanelWidth) setTestsPanelWidth(data.uiState.testsPanelWidth);
-        if (data.uiState.focusMode !== undefined) setFocusMode(data.uiState.focusMode);
-        if (data.uiState.selectedSectionId) setSelectedId(data.uiState.selectedSectionId);
-        if (data.uiState.activeLineIndex !== undefined) activeLineIndexRef.current = data.uiState.activeLineIndex;
-      }
-      
-      return true;
-    } catch (e) {
-      console.warn("Failed to load project", e);
-      // Suppress toast during initialization but can log it.
-      return false;
-    }
-  };
-
-  const deleteProject = async (id: string) => {
-    requestConfirm("Are you sure you want to delete this project?", async () => {
-      // Remove data
-      await del(STORAGE_PREFIX + id);
-      localStorage.removeItem(STORAGE_PREFIX + id); // cleanup fallback
-      
-      // Remove meta
-      const updatedMeta = projectList.filter(p => p.id !== id);
-      setProjectList(updatedMeta);
-      await set(META_KEY, updatedMeta);
-
-      // If active was deleted, switch to another or create new demo
-      if (activeProjectId === id) {
-         if (updatedMeta.length > 0) {
-           let loaded = false;
-           for (const p of updatedMeta) {
-               loaded = await loadProject(p.id);
-               if (loaded) break;
-           }
-           if (!loaded) await createDemoProject();
-         } else {
-           await createDemoProject(); // Fallback to demo if all deleted
-         }
-      }
-    });
-  };
-
-  // --- DATA PERSISTENCE ---
-
-  const getStorageData = (currentRevisions: Snapshot[] = revisions) => ({
-    projectName,
-    markdown,
-    localDraft: localContent,
-    testSuite,
-    hiddenSectionIds,
-    activePersonaId,
-    customPersonas,
-    promptsConfig,
-    cachedCoachAdvice,
-    revisions: currentRevisions,
-    lastModified: Date.now(),
-    uiState: {
-      sidebarWidth,
-      testsPanelWidth,
-      focusMode,
-      selectedSectionId: selectedId,
-      activeLineIndex: activeLineIndexRef.current
-    }
-  });
-
-  const saveCurrentState = async (id: string, name: string, content: string, currentRevisions: Snapshot[] = revisions) => {
-     if (!id) return;
-     const data = getStorageData(currentRevisions);
-     // Override with current args to ensure sync
-     data.projectName = name;
-     data.localDraft = content;
-     
-     await set(STORAGE_PREFIX + id, data);
-     
-     // Update Meta
-     const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).length;
-     const metaEntry: ProjectMeta = {
-       id,
-       name,
-       lastModified: Date.now(),
-       wordCount
-     };
-     
-     setProjectList(prev => {
-        const others = prev.filter(p => p.id !== id);
-        const updated = [metaEntry, ...others];
-        // We shouldn't use await directly inside a state setter
-        set(META_KEY, updated).catch(console.error);
-        return updated;
-     });
-     
-     setLastAutoSave(new Date());
-  };
-
-  // --- SNAPSHOTS (PREVIOUSLY REVISIONS) ---
-  const hashString = async (str: string) => {
-    const msgUint8 = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  };
-
-  const createSnapshot = async (trigger: Snapshot['trigger'], affectedScope: Snapshot['affectedScope'] = 'all', configOverride?: PromptsConfig) => {
-    if (!activeProjectId) return;
-    
-    // Hash state for deduplication
-    const stateString = JSON.stringify({ markdown: localContent, testSuite, interpolationConfig: configOverride || promptsConfig });
-    const contentHash = await hashString(stateString);
-    
-    setRevisions(prev => {
-       const last = prev.length > 0 ? prev[0] : null;
-       if (last && last.contentHash === contentHash) {
-          return prev; // Dedupe
-       }
-       
-       const newSnapshot: Snapshot = {
-          id: `snap_${Date.now()}`,
-          timestamp: Date.now(),
-          trigger,
-          affectedScope,
-          contentHash,
-          markdown: localContent,
-          testSuite: JSON.parse(JSON.stringify(testSuite)),
-          interpolationConfig: configOverride || promptsConfig
-       };
-       const newRevisions = [newSnapshot, ...prev].slice(0, 50); // Keep last 50
-       saveCurrentState(activeProjectId, projectName, localContent, newRevisions);
-       return newRevisions;
-    });
-  };
 
   const autoSaveRefs = useRef({
     saveCurrentState,
@@ -496,9 +255,7 @@ export const App = () => {
     const intervalId = setInterval(() => {
        const refs = autoSaveRefs.current;
        if (!refs.activeProjectId) return;
-       // We save state and snapshot "at regular intervals of time" as requested.
-       // createSnapshot already hashes and deduplicates identical states so project files won't grow infinitely.
-       refs.saveCurrentState(refs.activeProjectId, refs.projectName, refs.localContent);
+       refs.saveCurrentState();
        refs.createSnapshot('autosave');
     }, 60 * 1000); // Save every 60 seconds
 
@@ -513,18 +270,12 @@ export const App = () => {
     }
   };
 
-  // --- PARSING & COMPUTED ---
-
-  // Initialize with correct content based on whether we are loading or new
-  const [sections, setSections] = useState<Section[]>(() => parseMarkdown(localContent));
-
   // --- HELPERS ---
 
   // Sync sections with content
   useEffect(() => {
     const handler = setTimeout(() => {
-      setSections(prevSections => {
-        const tree = parseMarkdown(localContent, prevSections);
+        const tree = parseMarkdown(localContent, sections);
         
         // Selection retention logic
         setSelectedId(prev => {
@@ -541,8 +292,7 @@ export const App = () => {
            return null;
         });
 
-        return tree;
-      });
+        setSections(tree);
     }, 300);
     return () => clearTimeout(handler);
   }, [localContent]);
@@ -710,6 +460,22 @@ export const App = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportSpecs = () => {
+    const specsData: Record<string, SectionSpec> = {};
+    for (const [id, entry] of Object.entries(testSuite)) {
+      if (entry.spec) specsData[id] = entry.spec;
+    }
+    const blob = new Blob([JSON.stringify(specsData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-specs.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleInterpolateTasks = async (
   modelId: string, 
   thinkingBudget: number, 
@@ -719,12 +485,12 @@ export const App = () => {
   setShowInterpolationModal(false);
   setIsInterpolating(true);
   
-  // Create snapshot before destructive AI action
-  await createSnapshot('pre-ai-write', 'all', config);
-  
-  setPromptsConfig(config);
-
   try {
+    // Create snapshot before destructive AI action
+    await createSnapshot('pre-ai-write', 'all', config);
+    
+    setPromptsConfig(config);
+
     await generateStructuredSpecs(
       sections,
       markdown,
@@ -763,9 +529,9 @@ export const App = () => {
         }
       }
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("Interpolation failed", e);
-    toast.error("Task interpolation failed. Check console/API Key.");
+    toast.error(`Task interpolation failed: ${e?.message || 'Check console/API Key.'}`);
   } finally {
     setIsInterpolating(false);
   }
@@ -782,32 +548,32 @@ export const App = () => {
   
   const testId = currentSection.id;
   
-  // Create snapshot before destructive AI action
-  await createSnapshot('pre-ai-write', { sectionIds: [testId] });
-  
-  const entry = testSuite[testId];
-  
-  // Build or retrieve the spec for this section
-  let spec = entry?.spec;
-  if (!spec) {
-    // Fallback: create a minimal spec from legacy goals
-    const goals = entry?.goals || "Is this section written clearly and does it advance the argument?";
-    spec = specFromLegacyGoals(goals, entry?.mainClaim);
-  }
- 
-  // If spec has no required moves, we can't run a useful diagnostic
-  if (spec.requiredMoves.length === 0) {
-    toast.error("This section has no required moves defined. Run 'Interpolate Tasks' first, or add moves manually.");
-    return;
-  }
- 
-  setTestSuite(prev => ({
-    ...prev,
-    [testId]: { ...prev[testId], goals: prev[testId]?.goals || '', status: 'running' }
-  }));
-  setIsProcessing(true);
- 
   try {
+    // Create snapshot before destructive AI action
+    await createSnapshot('pre-ai-write', { sectionIds: [testId] });
+    
+    const entry = testSuite[testId];
+    
+    // Build or retrieve the spec for this section
+    let spec = entry?.spec;
+    if (!spec) {
+      // Fallback: create a minimal spec from legacy goals
+      const goals = entry?.goals || "Is this section written clearly and does it advance the argument?";
+      spec = specFromLegacyGoals(goals, entry?.mainClaim);
+    }
+   
+    // If spec has no required moves, we can't run a useful diagnostic
+    if (spec.requiredMoves.length === 0) {
+      toast.error("This section has no required moves defined. Run 'Interpolate Tasks' first, or add moves manually.");
+      return;
+    }
+   
+    setTestSuite(prev => ({
+      ...prev,
+      [testId]: { ...prev[testId], goals: prev[testId]?.goals || '', status: 'running' }
+    }));
+    setIsProcessing(true);
+   
     const diagnostic = await runDiagnosticEvaluation({
       section: currentSection,
       spec,
@@ -821,9 +587,9 @@ export const App = () => {
       config: promptsConfig,
       findSection,
     });
- 
+   
     const derivedStatus = diagnosticToStatus(diagnostic);
- 
+   
     setTestSuite(prev => ({
       ...prev,
       [testId]: {
@@ -838,8 +604,9 @@ export const App = () => {
         }
       }
     }));
-  } catch (e) {
+  } catch (e: any) {
     console.error("Diagnostic evaluation failed:", e);
+    toast.error(`Analysis failed: ${e?.message || 'Check API key or try again'}`);
     setTestSuite(prev => ({
       ...prev,
       [testId]: { ...prev[testId], status: 'fail' }
@@ -1043,6 +810,7 @@ export const App = () => {
           onLoadProject={handleLoadFile}
           onSaveProject={handleExportProject}
           onExportMarkdown={handleExportMarkdown}
+          onExportSpecs={handleExportSpecs}
           onResetProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
           onOpenProjectManager={() => setShowProjectModal(true)}
