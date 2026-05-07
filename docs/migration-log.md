@@ -126,3 +126,58 @@ imports `idb-keyval` directly; it talks to a `Repository` interface.
 **Note.** `App.tsx` still imports `idb-keyval` directly in the project
 import/export handlers. That violation is scheduled for cleanup in
 Phase 1c, when the store is sliced and `App.tsx` decomposes.
+
+---
+
+## 2026-05-07 — Phase 1c entered
+
+**What changed.** The Zustand store, formerly a 482-line monolith mixing
+UI ephemera with domain data and persistence thunks, is now partitioned
+into five lifecycle slices.
+
+- `src/state/ui-state.ts` — sidebar/panel widths, focus mode, dark mode,
+  isProcessing, isInterpolating, 14 modal flags. ~110 lines.
+- `src/state/editor-state.ts` — localContent, selectedId, activeLineIndex.
+  ~40 lines.
+- `src/state/document-state.ts` — markdown, sections, testSuite,
+  hiddenSectionIds, revisions, lastAutoSave. ~55 lines.
+- `src/state/project-state.ts` — projectList, activeProjectId,
+  projectName, plus all persistence thunks (loadInitialState,
+  createDemoProject, createNewProject, loadProject, deleteProject,
+  saveCurrentState, createSnapshot). ~260 lines — the only slice that
+  knows the on-disk schema. Calls `browserRepository`.
+- `src/state/ai-state.ts` — activePersonaId, customPersonas,
+  promptsConfig, cachedCoachAdvice. ~45 lines.
+- `src/state/index.ts` — combines slices into `AppState`, exports
+  `useStore` with the same shape as before so component imports are
+  unchanged.
+- `src/store/index.ts` — was 482 lines, now an 11-line back-compat
+  re-export from `src/state`. Marked `@deprecated`.
+
+The `useStore` facade preserves its full surface area: every action and
+field that existed before still exists. No component code changed.
+
+**Why this partition.** Lifecycle, not feature. UI ephemera (modal
+flags, panel widths) lives separately from domain data (markdown,
+testSuite). Persistence thunks coordinate cross-slice writes via
+`get()`/`set()` typed against the full `AppState`.
+
+**Verify before Phase 1c follow-up.**
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+- `npm run lint`: down to 173 problems (from 225 in Phase 0). All
+  remaining violations are in pre-existing files; the god-store's
+  violations are gone with its file.
+- Optional manual: launch dev, exercise modals, save/load/delete
+  projects, edit and watch autosave fire.
+
+**Rollback.** `git revert <commit>` restores the monolithic store.
+
+**Still to do** (Phase 1c follow-up, deferred):
+- `App.tsx` still imports `idb-keyval` and uses `STORAGE_PREFIX` /
+  `META_KEY` directly in `handleLoadFile`. Should be migrated to call
+  `browserRepository`. Same for any other direct persistence calls.
+- Components destructure 60+ fields from `useStore`. They should
+  migrate to slice-scoped selectors. This is incremental — each
+  component PR can switch to slice imports without a flag day.
+- App.tsx is still 1,000+ lines. Decomposition into feature folders
+  is a separate, larger commit.

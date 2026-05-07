@@ -1,0 +1,110 @@
+import type { StateCreator } from 'zustand';
+import type { AppState } from '.';
+
+/**
+ * UI ephemera. Modal openness, panel widths, focus mode, and other state
+ * that only exists to drive the view. Lost on reload — and that is fine.
+ *
+ * Per AGENTS.md: never put domain data here. Per ADHD heuristics: never
+ * persist these between sessions; they should not affect a re-entered
+ * working state.
+ */
+export interface UIStateSlice {
+  // Layout
+  sidebarWidth: number;
+  testsPanelWidth: number;
+  focusMode: boolean;
+  isDarkMode: boolean;
+  runTutorial: boolean;
+
+  // In-flight indicators
+  isProcessing: boolean;
+  isInterpolating: boolean;
+
+  // Modal openness flags (one boolean per modal, like the original store)
+  showProjectModal: boolean;
+  showRunModal: boolean;
+  showPersonaModal: boolean;
+  showSpecModal: boolean;
+  showSuggestionsModal: boolean;
+  showInterpolationModal: boolean;
+  showPromptsGraphModal: boolean;
+  showSectionMapModal: boolean;
+  showProjectFileModal: boolean;
+  showGoalSprintModal: boolean;
+  showContentSprintModal: boolean;
+  showHistoryModal: boolean;
+  showGraphModal: boolean;
+  showCoachModal: boolean;
+
+  // Setters
+  setSidebarWidth: (w: number) => void;
+  setTestsPanelWidth: (w: number) => void;
+  setFocusMode: (mode: boolean) => void;
+  setIsDarkMode: (dark: boolean) => void;
+  setRunTutorial: (run: boolean) => void;
+  setIsProcessing: (proc: boolean) => void;
+  setIsInterpolating: (interp: boolean) => void;
+  setShowProjectModal: (show: boolean) => void;
+  setShowRunModal: (show: boolean) => void;
+  setShowPersonaModal: (show: boolean) => void;
+  setShowSpecModal: (show: boolean) => void;
+  setShowSuggestionsModal: (show: boolean) => void;
+  setShowInterpolationModal: (show: boolean) => void;
+  setShowPromptsGraphModal: (show: boolean) => void;
+  setShowSectionMapModal: (show: boolean) => void;
+  setShowProjectFileModal: (show: boolean) => void;
+  setShowGoalSprintModal: (show: boolean) => void;
+  setShowContentSprintModal: (show: boolean) => void;
+  setShowHistoryModal: (show: boolean) => void;
+  setShowGraphModal: (show: boolean) => void;
+  setShowCoachModal: (show: boolean) => void;
+}
+
+export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
+  sidebarWidth: 320,
+  testsPanelWidth: 350,
+  focusMode: true,
+  isDarkMode: true,
+  runTutorial: false,
+
+  isProcessing: false,
+  isInterpolating: false,
+
+  showProjectModal: false,
+  showRunModal: false,
+  showPersonaModal: false,
+  showSpecModal: false,
+  showSuggestionsModal: false,
+  showInterpolationModal: false,
+  showPromptsGraphModal: false,
+  showSectionMapModal: false,
+  showProjectFileModal: false,
+  showGoalSprintModal: false,
+  showContentSprintModal: false,
+  showHistoryModal: false,
+  showGraphModal: false,
+  showCoachModal: false,
+
+  setSidebarWidth: (w) => set({ sidebarWidth: w }),
+  setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
+  setFocusMode: (mode) => set({ focusMode: mode }),
+  setIsDarkMode: (dark) => set({ isDarkMode: dark }),
+  setRunTutorial: (run) => set({ runTutorial: run }),
+  setIsProcessing: (proc) => set({ isProcessing: proc }),
+  setIsInterpolating: (interp) => set({ isInterpolating: interp }),
+  setShowProjectModal: (show) => set({ showProjectModal: show }),
+  setShowRunModal: (show) => set({ showRunModal: show }),
+  setShowPersonaModal: (show) => set({ showPersonaModal: show }),
+  setShowSpecModal: (show) => set({ showSpecModal: show }),
+  setShowSuggestionsModal: (show) => set({ showSuggestionsModal: show }),
+  setShowInterpolationModal: (show) => set({ showInterpolationModal: show }),
+  setShowPromptsGraphModal: (show) => set({ showPromptsGraphModal: show }),
+  setShowSectionMapModal: (show) => set({ showSectionMapModal: show }),
+  setShowProjectFileModal: (show) => set({ showProjectFileModal: show }),
+  setShowGoalSprintModal: (show) => set({ showGoalSprintModal: show }),
+  setShowContentSprintModal: (show) => set({ showContentSprintModal: show }),
+  setShowHistoryModal: (show) => set({ showHistoryModal: show }),
+  setShowGraphModal: (show) => set({ showGraphModal: show }),
+  setShowCoachModal: (show) => set({ showCoachModal: show }),
+});
