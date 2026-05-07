@@ -142,6 +142,25 @@ The project is mid-migration along the plan in
 recorded in `docs/migration-log.md`. Do not skip ahead to a later phase
 without explicit instruction.
 
+## End-of-phase ritual (load-bearing)
+
+Whenever a phase from the refactor plan completes, before declaring it
+done, refresh the agent-facing instructions in the SAME commit (or the
+final commit of the phase):
+
+1. Update `docs/migration-log.md` with what changed, what to verify, and
+   the rollback procedure.
+2. Update `docs/ARCHITECTURE.md` if the target shape, target file layout,
+   or principles shifted.
+3. Update this file (`AGENTS.md`) if there are new rules, new "where to
+   put X" entries, new anti-patterns, or new commands.
+4. Verify a fresh agent reading these three files alone could pick up
+   the next phase without re-deriving design intent from the codebase.
+
+This is not optional. The point of these files is that the next session
+— whether the user's, yours, or another agent's — does not pay the
+re-derivation tax. If the docs drift from reality, the tax compounds.
+
 ## When you're stuck
 
 If a change is fighting you, the architecture is probably trying to tell
