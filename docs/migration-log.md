@@ -93,3 +93,36 @@ in place. Documentation: in place. Backup path: in place.
   (text content is identical).
 
 **Rollback.** `git revert <commit>` restores the inline prompts.
+
+---
+
+## 2026-05-07 — Phase 1b entered
+
+**What changed.** Persistence boundary established. The store no longer
+imports `idb-keyval` directly; it talks to a `Repository` interface.
+
+- `src/services/repository.ts` defines the `Repository` interface and the
+  `StoredProjectData` shape (loosely typed because real-world data has
+  accumulated under multiple schema versions).
+- `src/services/browser-repository.ts` implements `Repository` against
+  `idb-keyval` plus localStorage fallback. Owns its own copies of
+  `STORAGE_PREFIX`, `META_KEY`, `socratic_project_v1` legacy key.
+- `src/store/index.ts` thunks (`loadInitialState`, `loadProject`,
+  `deleteProject`, `saveCurrentState`) now call `repo.*`. The store no
+  longer imports `idb-keyval`. The legacy-localStorage migration block
+  moved into `repo.migrateVeryOldLegacy()`.
+- `STORAGE_PREFIX` and `META_KEY` remain exported from the store, marked
+  `@deprecated`, until Phase 1c removes their last consumer (`App.tsx`'s
+  `handleLoadFile` and `handleExportProject`).
+
+**Verify before Phase 1c.**
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+- Optional manual: launch dev server, confirm projects still load, save,
+  delete, and that a fresh install with no IndexedDB gracefully migrates
+  any legacy localStorage `socratic_project_v1` if present.
+
+**Rollback.** `git revert <commit>`.
+
+**Note.** `App.tsx` still imports `idb-keyval` directly in the project
+import/export handlers. That violation is scheduled for cleanup in
+Phase 1c, when the store is sliced and `App.tsx` decomposes.

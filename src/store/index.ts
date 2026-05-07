@@ -1,14 +1,22 @@
 import { create } from 'zustand';
-import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import { DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
 import defaultProjectData from '../lib/defaultProject.json';
 import { parseMarkdown } from '../lib/utils';
+import { browserRepository as repo } from '../services/browser-repository';
 import {
   Section, TestSuite, Persona, ProjectMeta, Snapshot,
   Dependency, PromptsConfig, SectionSpec, DiagnosticResult
 } from '../types';
 
+/**
+ * Legacy storage keys kept exported for back-compat with App.tsx, which still
+ * reaches into IndexedDB directly in a few code paths. Phase 1c removes those
+ * call sites; afterward these exports can be deleted.
+ *
+ * @deprecated Use `browserRepository` from `src/services/browser-repository.ts`.
+ */
 export const STORAGE_PREFIX = 'socratic_p_';
+/** @deprecated See STORAGE_PREFIX. */
 export const META_KEY = 'socratic_meta_v1';
 
 export interface AppState {
@@ -208,42 +216,20 @@ export const useStore = create<AppState>((set, get) => ({
 
   // Thunks
   loadInitialState: async () => {
-    let meta: ProjectMeta[] = [];
+    let meta: ProjectMeta[];
     try {
-      let savedMeta = await idbGet(META_KEY);
-      if (!savedMeta) {
-        const lsMeta = localStorage.getItem(META_KEY);
-        if (lsMeta) {
-          savedMeta = JSON.parse(lsMeta);
-          await idbSet(META_KEY, savedMeta);
-        }
-      }
-      if (savedMeta) {
-        meta = typeof savedMeta === 'string' ? JSON.parse(savedMeta) : savedMeta;
-      }
-      if (!Array.isArray(meta)) {
-        meta = [];
-      }
+      meta = await repo.getMeta();
     } catch (e) {
       console.warn("Meta load fail", e);
       meta = [];
     }
 
-    const legacy = localStorage.getItem('socratic_project_v1');
-    if (legacy && meta.length === 0) {
-      try {
-        const legacyData = JSON.parse(legacy);
-        const newId = `proj_${Date.now()}`;
-        const migratedName = legacyData.projectName || "Migrated Project";
-        await idbSet(STORAGE_PREFIX + newId, legacyData);
-        meta.push({
-          id: newId,
-          name: migratedName,
-          lastModified: legacyData.lastModified || Date.now(),
-          wordCount: (legacyData.localDraft || "").trim().split(/\s+/).length
-        });
-        await idbSet(META_KEY, meta);
-      } catch (e) { console.error("Migration failed", e); }
+    if (meta.length === 0) {
+      const migrated = await repo.migrateVeryOldLegacy();
+      if (migrated) {
+        meta.push(migrated.meta);
+        await repo.setMeta(meta);
+      }
     }
 
     set({ projectList: meta });
@@ -256,7 +242,7 @@ export const useStore = create<AppState>((set, get) => ({
         if (loaded) break;
         meta = meta.filter(p => p.id !== projMeta.id);
         set({ projectList: meta });
-        await idbSet(META_KEY, meta);
+        await repo.setMeta(meta);
       }
       if (!loaded) await get().createDemoProject();
     } else {
@@ -324,24 +310,18 @@ export const useStore = create<AppState>((set, get) => ({
 
   loadProject: async (id: string) => {
     try {
-      let data: any = await idbGet(STORAGE_PREFIX + id);
-      if (!data) {
-        const raw = localStorage.getItem(STORAGE_PREFIX + id);
-        if (raw) {
-          data = JSON.parse(raw);
-          await idbSet(STORAGE_PREFIX + id, data);
-        }
-      }
+      const data = await repo.getProject(id);
       if (!data) throw new Error("Project data not found");
-      if (typeof data === 'string') data = JSON.parse(data);
 
-      const loadedTestSuite = data.testSuite || {};
+      const loadedTestSuite: TestSuite = data.testSuite || {};
       Object.keys(loadedTestSuite).forEach(key => {
         const entry = loadedTestSuite[key];
-        if (entry.dependencies && entry.dependencies.length > 0 && typeof entry.dependencies[0] === 'string') {
-          entry.dependencies = entry.dependencies.map((depId: string) => ({
+        // Migrate legacy `dependencies: string[]` → `dependencies: Dependency[]`.
+        const legacyDeps = entry.dependencies as unknown as (string | Dependency)[] | undefined;
+        if (legacyDeps && legacyDeps.length > 0 && typeof legacyDeps[0] === 'string') {
+          entry.dependencies = (legacyDeps as string[]).map((depId): Dependency => ({
             id: depId,
-            type: 'prerequisite'
+            type: 'prerequisite',
           }));
         }
       });
@@ -381,13 +361,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteProject: async (id: string) => {
-    await idbDel(STORAGE_PREFIX + id);
-    localStorage.removeItem(STORAGE_PREFIX + id);
-    
+    await repo.deleteProject(id);
+
     const currentList = Array.isArray(get().projectList) ? get().projectList : [];
     const updatedMeta = currentList.filter(p => p.id !== id);
     set({ projectList: updatedMeta });
-    await idbSet(META_KEY, updatedMeta);
+    await repo.setMeta(updatedMeta);
 
     if (get().activeProjectId === id) {
       if (updatedMeta.length > 0) {
@@ -428,8 +407,8 @@ export const useStore = create<AppState>((set, get) => ({
       }
     };
      
-    await idbSet(STORAGE_PREFIX + state.activeProjectId, data);
-     
+    await repo.setProject(state.activeProjectId, data);
+
     const wordCount = state.localContent.trim() === '' ? 0 : state.localContent.trim().split(/\s+/).length;
     const metaEntry: ProjectMeta = {
       id: state.activeProjectId,
@@ -437,12 +416,12 @@ export const useStore = create<AppState>((set, get) => ({
       lastModified: Date.now(),
       wordCount
     };
-     
+
     const currentList = Array.isArray(state.projectList) ? state.projectList : [];
     const others = currentList.filter(p => p.id !== state.activeProjectId);
     const updated = [metaEntry, ...others];
     set({ projectList: updated, lastAutoSave: new Date() });
-    idbSet(META_KEY, updated).catch(console.error);
+    repo.setMeta(updated).catch(console.error);
   },
 
   createSnapshot: async (trigger, affectedScope = 'all', configOverride) => {
