@@ -60,3 +60,36 @@ touched; rollback is purely code.
 
 **Current state.** Storage: IndexedDB (unchanged). Tooling: ESLint + Vitest
 in place. Documentation: in place. Backup path: in place.
+
+---
+
+## 2026-05-07 — Phase 1a entered
+
+**What changed.** Prompt content moved out of TypeScript code into standalone
+`.md` files. No persistence, no behavior changes for the user.
+
+- Created `src/services/prompts/` containing one `.md` file per prompt:
+  `system-instruction.md`, `l1-task.md`, `sub-task.md`, `suggest-content.md`,
+  `coach.md`, `refine-spec.md`, `generate-personas.md`, `diagnostic.md`,
+  `dependencies.md`.
+- Created `src/services/prompts/index.ts` — imports each `.md` via Vite's
+  `?raw` query and assembles `DEFAULT_PROMPTS_CONFIG` from them.
+- Rewrote `src/lib/constants.ts`: re-exports `DEFAULT_PROMPTS_CONFIG` from the
+  new location; keeps `SECTION_FUNCTIONS`, `buildDiagnosticPrompt`, and
+  `DEFAULT_MARKDOWN`. Down from 547 to ~360 lines.
+- Added `src/vite-env.d.ts` with `/// <reference types="vite/client" />` to
+  make TypeScript aware of `?raw` imports.
+- Incidental: `DEFAULT_MARKDOWN` (the demo project fallback, unused — defined
+  but not imported anywhere) had `\Bigg` etc. in its template literal, which
+  JavaScript silently strips. The rewrite preserves the developer's evident
+  intent by writing `\\Bigg` so the runtime string contains `\Bigg`. This
+  affects no live code paths today.
+
+**Verify before Phase 1b.**
+- `npm test` passes (9/9).
+- `npm run typecheck` passes.
+- `npm run build` succeeds.
+- Optionally: `npm run dev` and confirm AI flows still call the same prompts
+  (text content is identical).
+
+**Rollback.** `git revert <commit>` restores the inline prompts.
