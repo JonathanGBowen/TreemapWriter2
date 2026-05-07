@@ -31,13 +31,3 @@ export const useStore = create<AppState>()((...args) => ({
   ...createProjectStateSlice(...args),
   ...createAIStateSlice(...args),
 }));
-
-/**
- * Legacy storage keys re-exported for back-compat with callers that haven't
- * been migrated to the Repository yet (App.tsx import/export handlers).
- *
- * @deprecated Use `browserRepository` from `src/services/browser-repository.ts`.
- */
-export const STORAGE_PREFIX = 'socratic_p_';
-/** @deprecated See STORAGE_PREFIX. */
-export const META_KEY = 'socratic_meta_v1';

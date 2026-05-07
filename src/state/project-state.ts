@@ -38,6 +38,13 @@ export interface ProjectStateSlice {
     affectedScope?: Snapshot['affectedScope'],
     configOverride?: PromptsConfig,
   ) => Promise<void>;
+
+  /**
+   * Restore a snapshot from the revisions list. Replaces working draft +
+   * committed markdown + testSuite, optionally restores promptsConfig, and
+   * triggers a save. Cross-slice, hence here.
+   */
+  restoreSnapshot: (snapshot: Snapshot) => Promise<void>;
 }
 
 const sha256Hex = async (str: string): Promise<string> => {
@@ -305,5 +312,19 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     const newRevisions = [newSnapshot, ...prev].slice(0, 50);
     set({ revisions: newRevisions });
     await get().saveCurrentState();
+  },
+
+  restoreSnapshot: async (snapshot) => {
+    set({
+      localContent: snapshot.markdown,
+      markdown: snapshot.markdown,
+      testSuite: snapshot.testSuite || {},
+    });
+    if (snapshot.interpolationConfig) {
+      set({ promptsConfig: snapshot.interpolationConfig });
+    }
+    if (get().activeProjectId) {
+      await get().saveCurrentState();
+    }
   },
 });

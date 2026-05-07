@@ -25,6 +25,12 @@ export interface DocumentStateSlice {
   setHiddenSectionIds: (ids: string[] | ((prev: string[]) => string[])) => void;
   setRevisions: (revs: Snapshot[] | ((prev: Snapshot[]) => Snapshot[])) => void;
   setLastAutoSave: (date: Date | null) => void;
+
+  /**
+   * Cache the AI's content suggestions for a given section. No-op if the
+   * section isn't present in the suite.
+   */
+  setCachedSuggestions: (sectionId: string, inputHash: string, suggestions: string) => void;
 }
 
 export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set) => ({
@@ -50,4 +56,18 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
       revisions: typeof revs === 'function' ? revs(state.revisions) : revs,
     })),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
+
+  setCachedSuggestions: (sectionId, inputHash, suggestions) =>
+    set((state) => {
+      if (!state.testSuite[sectionId]) return state;
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: {
+            ...state.testSuite[sectionId],
+            cachedSuggestions: { inputHash, suggestions },
+          },
+        },
+      };
+    }),
 });

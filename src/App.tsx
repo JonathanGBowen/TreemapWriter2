@@ -27,7 +27,8 @@ import { Section, TestSuite, Persona, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
   SectionSpec, DiagnosticResult 
 } from "./types";
-import { get, set, del } from 'idb-keyval';
+import { browserRepository as repo } from './services/browser-repository';
+import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 // Add new import:
 import { 
   generateStructuredSpecs, 
@@ -37,7 +38,7 @@ import {
   generateDependenciesEstimation
 } from "./lib/ai-pipeline";
 import { buildDiagnosticPrompt } from "./lib/constants"; // if not already
-import { useStore, STORAGE_PREFIX, META_KEY } from './store';
+import { useStore } from './store';
 import { useShallow } from 'zustand/react/shallow';
 
 const DEFAULT_INTERPOLATION_PROMPT = `Act as a Logician. Analyze this document structure. Define rigorous specifications and goals for every section. Ensure logical coherence and argumentative depth.`;
@@ -195,8 +196,8 @@ export const App = () => {
   }, [activeLineIndex]);
 
   useEffect(() => {
-    get('treemap_writer_tutorial_seen').then(hasSeenTutorial => {
-      if (!hasSeenTutorial) {
+    hasSeenTutorial().then(seen => {
+      if (!seen) {
         setTimeout(() => setRunTutorial(true), 1000);
       }
     });
@@ -204,7 +205,7 @@ export const App = () => {
 
   const handleTutorialFinish = () => {
     setRunTutorial(false);
-    set('treemap_writer_tutorial_seen', true);
+    markTutorialSeen();
   };
   
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});
@@ -404,8 +405,8 @@ export const App = () => {
            lastModified: Date.now()
          };
          
-         // 1. Save directly to DB to preserve all imported fields exactly as they were
-         await set(STORAGE_PREFIX + newId, projectData);
+         // 1. Save directly to preserve all imported fields exactly as they were
+         await repo.setProject(newId, projectData);
          
          // 2. Update Meta
          const contentForWordCount = projectData.localDraft || projectData.markdown || "";
@@ -423,7 +424,7 @@ export const App = () => {
             const others = s.projectList.filter(p => p.id !== newId);
             const updated = [metaEntry, ...others];
             s.setProjectList(updated);
-            set(META_KEY, updated).catch(console.error);
+            repo.setMeta(updated).catch(console.error);
          }
          
          // 3. Load via `loadProject` to ensure all fields and UI are correctly hydrated sequentially
