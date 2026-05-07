@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { FolderOpen, Plus, Trash2, Clock, FileText, CheckCircle2, Search } from "lucide-react";
 import { ProjectMeta } from "../../types";
+import { useStore } from "../../store";
 
 interface ProjectManagerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   projects: ProjectMeta[];
   activeProjectId: string;
   onLoadProject: (id: string) => void;
@@ -14,8 +13,6 @@ interface ProjectManagerModalProps {
 }
 
 export const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
-  isOpen,
-  onClose,
   projects,
   activeProjectId,
   onLoadProject,
@@ -23,6 +20,9 @@ export const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
   onLoadDefaultProject,
   onDeleteProject
 }) => {
+  const isOpen = useStore(s => s.showProjectModal);
+  const setShow = useStore(s => s.setShowProjectModal);
+  const onClose = () => setShow(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   if (!isOpen) return null;

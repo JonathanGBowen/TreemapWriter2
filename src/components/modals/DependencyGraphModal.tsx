@@ -21,10 +21,9 @@ import dagre from 'dagre';
 import { Section, TestSuite, Dependency } from '../../types';
 import { X, Network, RefreshCcw, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useStore } from '../../store';
 
 interface DependencyGraphModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   sections: Section[];
   testSuite: TestSuite;
   updateDependencies: (id: string, deps: Dependency[]) => void;
@@ -137,13 +136,14 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], forceDirection?: 'TB'
 };
 
 export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
-  isOpen,
-  onClose,
   sections,
   testSuite,
   updateDependencies,
   onEstimateDependencies
 }) => {
+  const isOpen = useStore(s => s.showGraphModal);
+  const setShow = useStore(s => s.setShowGraphModal);
+  const onClose = () => setShow(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [rfInstance, setRfInstance] = React.useState<any>(null);

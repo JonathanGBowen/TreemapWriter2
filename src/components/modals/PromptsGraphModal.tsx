@@ -3,20 +3,20 @@ import { PromptsConfig } from '../../types';
 import { X, Network, Save, RotateCcw } from 'lucide-react';
 import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { ConfirmModal } from './ConfirmModal';
+import { useStore } from '../../store';
 
 interface PromptsGraphModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   promptsConfig: PromptsConfig;
   setPromptsConfig: (config: PromptsConfig) => void;
 }
 
 export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
-  isOpen,
-  onClose,
   promptsConfig,
   setPromptsConfig
 }) => {
+  const isOpen = useStore(s => s.showPromptsGraphModal);
+  const setShow = useStore(s => s.setShowPromptsGraphModal);
+  const onClose = () => setShow(false);
   const [localConfig, setLocalConfig] = useState<PromptsConfig>(promptsConfig);
   const [selectedNode, setSelectedNode] = useState<keyof PromptsConfig | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});

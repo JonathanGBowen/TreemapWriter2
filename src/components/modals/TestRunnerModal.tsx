@@ -2,10 +2,9 @@ import React, { useState, useMemo } from "react";
 import { FileText, Layout, Book, BrainCircuit, Zap, Gauge, Check, Info, X, Play, Edit3, Clipboard } from "lucide-react";
 import { Section, Persona } from "../../types";
 import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
+import { useStore } from "../../store";
 
 interface TestRunnerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   onRun: (scope: 'segment' | 'parent' | 'full', modelId: string, thinkingBudget: number, instruction: string) => void;
   sectionTitle: string;
   currentSection: Section | null;
@@ -65,10 +64,8 @@ const SCOPES = [
   { id: 'full', label: 'Full Document', desc: 'Global consistency (Heavy)', icon: Book },
 ] as const;
 
-export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onRun, 
+export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
+  onRun,
   sectionTitle,
   currentSection,
   currentSpec,
@@ -77,6 +74,9 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   allSections,
   fullDocument
 }) => {
+  const isOpen = useStore(s => s.showRunModal);
+  const setShow = useStore(s => s.setShowRunModal);
+  const onClose = () => setShow(false);
   const [selectedScope, setSelectedScope] = useState<'segment' | 'parent' | 'full'>('segment');
   const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.1-flash-lite-preview');
   const [useThinking, setUseThinking] = useState(false);

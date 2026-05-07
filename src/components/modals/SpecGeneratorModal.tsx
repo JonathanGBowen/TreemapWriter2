@@ -5,10 +5,9 @@ import * as Diff from "diff";
 import { toast } from "sonner";
 import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
+import { useStore } from "../../store";
 
 interface SpecGeneratorModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   sectionTitle: string;
   currentGoals: string;
   onAccept: (newGoals: string, instruction?: string) => void;
@@ -18,8 +17,6 @@ interface SpecGeneratorModalProps {
 }
 
 export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
-  isOpen,
-  onClose,
   sectionTitle,
   currentGoals,
   onAccept,
@@ -27,6 +24,9 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
   parentGoals,
   promptsConfig = DEFAULT_PROMPTS_CONFIG
 }) => {
+  const isOpen = useStore(s => s.showSpecModal);
+  const setShow = useStore(s => s.setShowSpecModal);
+  const onClose = () => setShow(false);
   const [instruction, setInstruction] = useState("");
   const [draftGoals, setDraftGoals] = useState(currentGoals);
   const [proposedGoals, setProposedGoals] = useState<string | null>(null);

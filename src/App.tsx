@@ -892,9 +892,7 @@ export const App = () => {
         />
 
         {/* Modals */}
-        <TestRunnerModal 
-          isOpen={showRunModal} 
-          onClose={() => setShowRunModal(false)}
+        <TestRunnerModal
           onRun={handleRunTests}
           sectionTitle={currentSection?.title || 'Unknown'}
           currentSection={currentSection}
@@ -906,8 +904,6 @@ export const App = () => {
         />
 
         <VersionHistoryModal
-          isOpen={showHistoryModal}
-          onClose={() => setShowHistoryModal(false)}
           revisions={revisions}
           currentContent={localContent}
           onRestore={(snapshot) => {
@@ -923,9 +919,7 @@ export const App = () => {
           }}
         />
 
-        <PersonaSettingsModal 
-          isOpen={showPersonaModal}
-          onClose={() => setShowPersonaModal(false)}
+        <PersonaSettingsModal
           activePersonaId={activePersonaId}
           personas={allPersonas}
           onSelectPersona={setActivePersonaId}
@@ -938,9 +932,7 @@ export const App = () => {
           promptsConfig={promptsConfig}
         />
 
-        <SpecGeneratorModal 
-          isOpen={showSpecModal}
-          onClose={() => setShowSpecModal(false)}
+        <SpecGeneratorModal
           sectionTitle={currentSection?.title || ""}
           currentGoals={currentSection ? (testSuite[currentSection.id]?.goals || "") : ""}
           fullSectionContent={currentSection?.fullContent || ""}
@@ -953,17 +945,13 @@ export const App = () => {
           }}
         />
 
-        <InterpolationModal 
-          isOpen={showInterpolationModal}
-          onClose={() => setShowInterpolationModal(false)}
+        <InterpolationModal
           onConfirm={handleInterpolateTasks}
           documentStats={documentStats}
           initialConfig={promptsConfig}
         />
 
         <SprintModal
-          isOpen={showGoalSprintModal}
-          onClose={() => setShowGoalSprintModal(false)}
           sections={sections}
           testSuite={testSuite}
           mode="goal"
@@ -971,17 +959,13 @@ export const App = () => {
         />
 
         <SprintModal
-          isOpen={showContentSprintModal}
-          onClose={() => setShowContentSprintModal(false)}
           sections={sections}
           testSuite={testSuite}
           mode="content"
           onSaveContent={handleSaveContent}
         />
 
-        <ProjectManagerModal 
-          isOpen={showProjectModal}
-          onClose={() => setShowProjectModal(false)}
+        <ProjectManagerModal
           projects={projectList}
           activeProjectId={activeProjectId || ''}
           onLoadProject={async (id) => {
@@ -996,8 +980,6 @@ export const App = () => {
         />
 
         <ContentSuggestionsModal
-          isOpen={showSuggestionsModal}
-          onClose={() => setShowSuggestionsModal(false)}
           sectionTitle={currentSection?.title || ""}
           currentGoals={currentSection ? (testSuite[currentSection.id]?.goals || "") : ""}
           fullSectionContent={currentSection?.fullContent || ""}
@@ -1019,8 +1001,6 @@ export const App = () => {
         />
 
         <DependencyGraphModal
-          isOpen={showGraphModal}
-          onClose={() => setShowGraphModal(false)}
           sections={sections}
           testSuite={testSuite}
           updateDependencies={updateDependencies}
@@ -1028,8 +1008,6 @@ export const App = () => {
         />
 
         <ProjectFileModal
-          isOpen={showProjectFileModal}
-          onClose={() => setShowProjectFileModal(false)}
           sections={sections}
           testSuite={testSuite}
           projectName={projectName}
@@ -1043,8 +1021,6 @@ export const App = () => {
         />
 
         <CoachModal
-          isOpen={showCoachModal}
-          onClose={() => setShowCoachModal(false)}
           markdown={markdown}
           sections={sections}
           testSuite={testSuite}
@@ -1056,15 +1032,11 @@ export const App = () => {
         />
 
         <PromptsGraphModal
-          isOpen={showPromptsGraphModal}
-          onClose={() => setShowPromptsGraphModal(false)}
           promptsConfig={promptsConfig}
           setPromptsConfig={setPromptsConfig}
         />
 
         <SectionMapModal
-          isOpen={showSectionMapModal}
-          onClose={() => setShowSectionMapModal(false)}
           sections={sections}
           testSuite={testSuite}
           onUpdateGoals={(id, goals) => updateSectionGoals(id, goals, 'manual')}

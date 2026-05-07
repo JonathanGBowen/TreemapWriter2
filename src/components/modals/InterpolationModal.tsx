@@ -2,10 +2,9 @@ import React, { useState, useMemo } from "react";
 import { BrainCircuit, Zap, Gauge, Check, Info, X, Edit3 } from "lucide-react";
 
 import { PromptsConfig } from "../../types";
+import { useStore } from "../../store";
 
 interface InterpolationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   onConfirm: (modelId: string, thinkingBudget: number, config: PromptsConfig) => void;
   documentStats: {
     wordCount: number;
@@ -51,12 +50,13 @@ const MODELS = [
 ];
 
 export const InterpolationModal: React.FC<InterpolationModalProps> = ({
-  isOpen,
-  onClose,
   onConfirm,
   documentStats,
   initialConfig
 }) => {
+  const isOpen = useStore(s => s.showInterpolationModal);
+  const setShow = useStore(s => s.setShowInterpolationModal);
+  const onClose = () => setShow(false);
   const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3-flash-preview');
   const [config, setConfig] = useState<PromptsConfig>(initialConfig);
   const [copied, setCopied] = useState(false);

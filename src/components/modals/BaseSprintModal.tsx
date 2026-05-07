@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Check, Clock, FileText, Play } from 'lucide-react';
 import { Section, TestSuite } from '../../types';
+import { useStore } from '../../store';
 import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -50,8 +51,6 @@ function flattenSections(sections: Section[]): Section[] {
 }
 
 export interface SprintModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   sections: Section[];
   testSuite: TestSuite;
   mode: 'goal' | 'content';
@@ -59,7 +58,13 @@ export interface SprintModalProps {
   onSaveGoal?: (id: string, goal: string, type: 'manual') => void;
 }
 
-export function SprintModal({ isOpen, onClose, sections, testSuite, mode, onSaveContent, onSaveGoal }: SprintModalProps) {
+export function SprintModal({ sections, testSuite, mode, onSaveContent, onSaveGoal }: SprintModalProps) {
+  const showGoal = useStore(s => s.showGoalSprintModal);
+  const setShowGoal = useStore(s => s.setShowGoalSprintModal);
+  const showContent = useStore(s => s.showContentSprintModal);
+  const setShowContent = useStore(s => s.setShowContentSprintModal);
+  const isOpen = mode === 'goal' ? showGoal : showContent;
+  const onClose = () => (mode === 'goal' ? setShowGoal(false) : setShowContent(false));
   const flattenedSections = flattenSections(sections);
   
   const [isStarted, setIsStarted] = useState(false);

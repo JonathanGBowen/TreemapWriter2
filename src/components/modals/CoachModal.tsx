@@ -5,10 +5,9 @@ import { GoogleGenAI } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import { computeHash } from '../../lib/utils';
 import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
+import { useStore } from '../../store';
 
 interface CoachModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   markdown: string;
   sections: Section[];
   testSuite: TestSuite;
@@ -18,8 +17,6 @@ interface CoachModalProps {
 }
 
 export const CoachModal: React.FC<CoachModalProps> = ({
-  isOpen,
-  onClose,
   markdown,
   sections,
   testSuite,
@@ -27,6 +24,9 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   onSaveCache,
   promptsConfig = DEFAULT_PROMPTS_CONFIG
 }) => {
+  const isOpen = useStore(s => s.showCoachModal);
+  const setShow = useStore(s => s.setShowCoachModal);
+  const onClose = () => setShow(false);
   const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3-flash-preview');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);

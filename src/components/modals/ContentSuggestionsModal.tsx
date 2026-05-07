@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { computeHash } from "../../lib/utils";
 import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
+import { useStore } from "../../store";
 
 const MODELS = [
   {
@@ -27,8 +28,6 @@ const MODELS = [
 ];
 
 interface ContentSuggestionsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   sectionTitle: string;
   currentGoals: string;
   fullSectionContent: string;
@@ -40,8 +39,6 @@ interface ContentSuggestionsModalProps {
 }
 
 export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = ({
-  isOpen,
-  onClose,
   sectionTitle,
   currentGoals,
   fullSectionContent,
@@ -51,6 +48,9 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
   onSaveCache,
   promptsConfig = DEFAULT_PROMPTS_CONFIG
 }) => {
+  const isOpen = useStore(s => s.showSuggestionsModal);
+  const setShow = useStore(s => s.setShowSuggestionsModal);
+  const onClose = () => setShow(false);
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.1-flash-lite-preview');

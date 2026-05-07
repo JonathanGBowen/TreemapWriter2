@@ -1,6 +1,12 @@
 import type { StateCreator } from 'zustand';
-import type { Section, Snapshot, TestSuite } from '../types';
+import type { Dependency, Section, SectionSpec, Snapshot, TestSuite, TestSuiteEntry } from '../types';
 import type { AppState } from '.';
+
+const blankEntry = (): TestSuiteEntry => ({
+  goals: '',
+  status: 'idle',
+  history: [],
+});
 
 /**
  * The committed dissertation document. This is domain data — what the user
@@ -31,9 +37,25 @@ export interface DocumentStateSlice {
    * section isn't present in the suite.
    */
   setCachedSuggestions: (sectionId: string, inputHash: string, suggestions: string) => void;
+
+  /**
+   * Domain-level testSuite mutators. These were App.tsx-local helpers in
+   * the pre-Phase-1 codebase; they live here so modals can call them
+   * without prop drilling. Each preserves the legacy convention of
+   * marking the entry `stale` and appending a history record.
+   */
+  updateSpec: (sectionId: string, spec: SectionSpec) => void;
+  updateSectionGoals: (
+    sectionId: string,
+    newGoals: string,
+    changeType: 'manual' | 'ai-generate' | 'ai-refine',
+    instruction?: string,
+  ) => void;
+  updateDependencies: (sectionId: string, deps: Dependency[]) => void;
+  updateMainClaim: (sectionId: string, text: string) => void;
 }
 
-export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set) => ({
+export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set, get) => ({
   markdown: '',
   sections: [],
   testSuite: {},
@@ -67,6 +89,78 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
             ...state.testSuite[sectionId],
             cachedSuggestions: { inputHash, suggestions },
           },
+        },
+      };
+    }),
+
+  updateSpec: (sectionId, spec) =>
+    set((state) => {
+      const entry = state.testSuite[sectionId] ?? blankEntry();
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: {
+            ...entry,
+            spec,
+            mainClaim: spec.mainClaim,
+            goals: spec.requiredMoves.map((m) => m.description).join('\n'),
+            status: 'stale',
+            history: [
+              ...(entry.history || []),
+              { timestamp: Date.now(), goals: entry.goals, type: 'manual' as const },
+            ],
+          },
+        },
+      };
+    }),
+
+  updateSectionGoals: (sectionId, newGoals, changeType, instruction) => {
+    if (changeType.startsWith('ai-')) {
+      // Cross-slice: snapshot before AI writes.
+      void (get() as AppState).createSnapshot('pre-ai-write', { sectionIds: [sectionId] });
+    }
+    set((state) => {
+      const entry = state.testSuite[sectionId] ?? blankEntry();
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: {
+            ...entry,
+            goals: newGoals,
+            status: 'stale',
+            history: [
+              ...(entry.history || []),
+              {
+                timestamp: Date.now(),
+                goals: entry.goals,
+                instruction,
+                type: changeType,
+              },
+            ],
+          },
+        },
+      };
+    });
+  },
+
+  updateDependencies: (sectionId, deps) =>
+    set((state) => {
+      const entry = state.testSuite[sectionId] ?? blankEntry();
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...entry, dependencies: deps },
+        },
+      };
+    }),
+
+  updateMainClaim: (sectionId, text) =>
+    set((state) => {
+      const entry = state.testSuite[sectionId] ?? blankEntry();
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...entry, mainClaim: text },
         },
       };
     }),

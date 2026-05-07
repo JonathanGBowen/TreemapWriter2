@@ -4,10 +4,9 @@ import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload } from "l
 import { Persona, PromptsConfig } from "../../types";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
+import { useStore } from "../../store";
 
 interface PersonaSettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   activePersonaId: string;
   personas: Persona[];
   onSelectPersona: (id: string) => void;
@@ -18,8 +17,6 @@ interface PersonaSettingsModalProps {
 }
 
 export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
-  isOpen,
-  onClose,
   activePersonaId,
   personas,
   onSelectPersona,
@@ -28,6 +25,9 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   documentContext,
   promptsConfig = DEFAULT_PROMPTS_CONFIG
 }) => {
+  const isOpen = useStore(s => s.showPersonaModal);
+  const setShow = useStore(s => s.setShowPersonaModal);
+  const onClose = () => setShow(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [view, setView] = useState<'list' | 'create'>('list');
   const fileInputRef = useRef<HTMLInputElement>(null);

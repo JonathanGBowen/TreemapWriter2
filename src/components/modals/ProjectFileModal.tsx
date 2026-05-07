@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Code, FileText, CheckCircle, Save, Layers, Hash, AlertTriangle, FileJson } from 'lucide-react';
 import { Section, TestSuite, PromptsConfig, Persona } from '../../types';
 import { StructuredJsonEditor } from './StructuredJsonEditor';
+import { useStore } from '../../store';
 
 interface ProjectFileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   sections: Section[];
   testSuite: TestSuite;
   projectName: string;
@@ -16,8 +15,6 @@ interface ProjectFileModalProps {
 }
 
 export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
-  isOpen,
-  onClose,
   sections,
   testSuite,
   projectName,
@@ -26,6 +23,9 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
   customPersonas,
   onSaveData
 }) => {
+  const isOpen = useStore(s => s.showProjectFileModal);
+  const setShow = useStore(s => s.setShowProjectFileModal);
+  const onClose = () => setShow(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'section'>('overview');
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   

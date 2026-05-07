@@ -181,3 +181,68 @@ testSuite). Persistence thunks coordinate cross-slice writes via
   component PR can switch to slice imports without a flag day.
 - App.tsx is still 1,000+ lines. Decomposition into feature folders
   is a separate, larger commit.
+
+---
+
+## 2026-05-07 — Phase 1d entered
+
+**What changed.** App.tsx no longer imports `idb-keyval` and no longer
+treats the IndexedDB layer as something it can reach into directly.
+
+- `src/services/preferences.ts`: tiny new module wrapping the
+  app-level "tutorial seen" flag. Separate from the Repository
+  because preferences are global, not project-scoped.
+- App.tsx: drops `import { get, set, del } from 'idb-keyval'`,
+  uses `browserRepository` for project import/export and the
+  `preferences` module for the tutorial flag.
+- `src/state/document-state.ts`: new `setCachedSuggestions` action
+  and `restoreSnapshot` (cross-slice, in `project-state`) action,
+  so modals can avoid composing actions ad hoc.
+- `src/state/index.ts` and `src/store/index.ts`: drop the orphaned
+  `STORAGE_PREFIX`/`META_KEY` re-exports — last consumer is gone.
+
+**Verify.** `npm test` (9/9), `npm run typecheck` (clean),
+`npm run build` (ok).
+
+**Rollback.** `git revert <commit>`.
+
+---
+
+## 2026-05-07 — Phase 1e entered
+
+**What changed.** All 13 modals now self-mount via the store. They no
+longer accept `isOpen` or `onClose` from a parent. They subscribe to
+their own openness flag and call the store setter on close. Domain-level
+testSuite mutators (previously `useCallback`s defined in App.tsx)
+became proper actions on the document slice.
+
+- `src/state/document-state.ts`: added `updateSpec`,
+  `updateSectionGoals`, `updateDependencies`, `updateMainClaim`. The
+  AI-write snapshot trigger is now cross-slice (calls
+  `get().createSnapshot('pre-ai-write', ...)`).
+- 13 modal files: dropped `isOpen` / `onClose` from props; subscribe
+  to `useStore(s => s.showXModal)`. `BaseSprintModal` is special-cased
+  because it's mounted twice with different `mode` props — subscribes
+  to both flags and selects by mode.
+- `src/App.tsx`: dropped `isOpen` / `onClose` props from every modal
+  mount site (13 sites). `<ConfirmModal>` mount unchanged because it's
+  driven by local state, not the store.
+
+App.tsx is 1062 → 1048 lines (modest; the heavy shrink lands in 1f
+when panel components subscribe directly).
+
+**Verify before Phase 1f.**
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+- Lint: 187 problems (up from 173 — mostly unused-var warnings from
+  the destructuring tweaks, all in pre-existing files; will burn down
+  in 1f when those files lose their prop deluges).
+- Optional manual: open every modal once; confirm it opens, displays
+  data, and closes correctly.
+
+**Rollback.** `git revert <commit>`.
+
+**Pattern for new modals going forward.**
+Subscribe to the openness flag and setter from `useStore`. Only
+orchestration handlers (e.g. `onRun={handleRunTests}`) should be
+props. Data and openness flags come from the store. See
+`AGENTS.md` "Where to put X" for the rule.

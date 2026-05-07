@@ -3,22 +3,22 @@ import { X, Clock, RotateCcw } from 'lucide-react';
 import { Snapshot } from '../../types';
 import { diffLines } from 'diff';
 import { ConfirmModal } from './ConfirmModal';
+import { useStore } from '../../store';
 
 interface VersionHistoryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   revisions: Snapshot[];
   currentContent: string;
   onRestore: (snapshot: Snapshot) => void;
 }
 
 export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
-  isOpen,
-  onClose,
   revisions,
   currentContent,
   onRestore
 }) => {
+  const isOpen = useStore(s => s.showHistoryModal);
+  const setShow = useStore(s => s.setShowHistoryModal);
+  const onClose = () => setShow(false);
   const [selectedRevId, setSelectedRevId] = useState<string | null>(null);
   const [compareTargetId, setCompareTargetId] = useState<string | 'current'>('current');
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});

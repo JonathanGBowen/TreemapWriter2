@@ -1,22 +1,22 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, LayoutTemplate, LayoutGrid, CheckCircle2, Circle, AlignJustify } from 'lucide-react';
 import { Section, TestSuite } from '../../types';
+import { useStore } from '../../store';
 
 interface SectionMapModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   sections: Section[];
   testSuite: TestSuite;
   onUpdateGoals: (sectionId: string, goals: string) => void;
 }
 
 export const SectionMapModal: React.FC<SectionMapModalProps> = ({
-  isOpen,
-  onClose,
   sections,
   testSuite,
   onUpdateGoals
 }) => {
+  const isOpen = useStore(s => s.showSectionMapModal);
+  const setShow = useStore(s => s.setShowSectionMapModal);
+  const onClose = () => setShow(false);
   const [layout, setLayout] = useState<'columns' | 'corkboard' | 'rows'>('rows');
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(400);

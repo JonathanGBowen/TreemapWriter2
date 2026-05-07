@@ -55,10 +55,11 @@ non-negotiable rules:
 
 | If you're adding... | It goes in... |
 |---|---|
-| A new modal | `src/features/modals/<name>/` — its own folder |
+| A new modal | `src/components/modals/<Name>Modal.tsx` (will move to `src/features/modals/<name>/` in Phase 1g). Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. |
 | A new editor command | `src/features/editor/commands/` |
 | A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider`, new wrapper in the relevant feature folder |
-| A new persisted field | Update `Repository` interface first, then both implementations, then the domain slice |
+| A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`) |
+| A new domain mutation (testSuite, document, etc.) | Action on the appropriate state slice, NOT a `useCallback` in a component. Cross-slice mutations live in `project-state` and use `get().otherSliceAction()`. |
 | A new UI panel | New folder under `src/features/<panel-name>/` |
 | A new icon | `lucide-react`. Do not introduce a second icon library |
 | A new dependency | Ask the user. Default answer is "we don't need it" |
