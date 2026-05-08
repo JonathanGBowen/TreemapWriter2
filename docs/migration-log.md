@@ -246,3 +246,61 @@ Subscribe to the openness flag and setter from `useStore`. Only
 orchestration handlers (e.g. `onRun={handleRunTests}`) should be
 props. Data and openness flags come from the store. See
 `AGENTS.md` "Where to put X" for the rule.
+
+---
+
+## 2026-05-08 — Phase 1f entered
+
+**What changed.** The three big panel components — Sidebar, EditorPanel,
+TestsPanel — no longer take state-derived props from App.tsx. They
+subscribe to the Zustand store directly. App.tsx mount sites collapse
+from dozens of props each to under ten.
+
+| Component | Props before | Props after |
+|---|---|---|
+| Sidebar | 31 | 9 |
+| EditorPanel | 21 | 4 |
+| TestsPanel | 16 | 0 |
+
+App.tsx: 1048 → 919 lines.
+
+- `src/state/ui-state.ts`: `activeTab` / `setActiveTab` added (was a
+  local `useState` in App.tsx).
+- `src/state/document-state.ts`: `toggleSectionVisibility` added.
+- `src/lib/defaultPersonas.ts`: extracted `DEFAULT_PERSONAS` from
+  inline definition in App.tsx so panels can derive `activePersona`
+  themselves.
+- `src/components/Sidebar.tsx`: kept `onSelect`, file-handler props,
+  `onResetProject`, `onLoadDefaultProject`, `onStartTutorial`. Modal
+  openers became inline `() => setShowXModal(true)` calls.
+- `src/components/panels/EditorPanel.tsx`: kept `handleSave`,
+  `editorRef`, `onImportMarkdown`, `onLoadProject`. Everything else
+  via `useStore`. Computes `currentSection` from `selectedId` +
+  `sections` via local helper.
+- `src/components/panels/TestsPanel.tsx`: zero props. Computes
+  `currentSection` and `activePersona` itself. Translates
+  `updateGoals(text)` calls into
+  `updateSectionGoals(currentSection.id, text, 'manual')`.
+- `src/App.tsx`: removed inline `DEFAULT_PERSONAS`, removed
+  `[activeTab, setActiveTab]` `useState`, removed orphaned
+  `useCallback`s for `updateSpec`, `updateGoals`, `updateMainClaim`,
+  `toggleSectionVisibility` (all now in store; no remaining callers).
+  `updateSectionGoals` and `updateDependencies` `useCallback`s remain
+  for now — they're still referenced inside modal mounts. Slimming
+  those is a Phase-1g+ follow-up.
+
+**Verify before Phase 1g.**
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+- `npm run lint`: 209 problems (was 215). Minor — Phase 1g file moves
+  will further reduce as imports rewire.
+- Manual smoke: launch dev, edit a section, save, switch tabs in
+  EditorPanel, resize Sidebar / TestsPanel, open modals from Sidebar
+  buttons.
+
+**Rollback.** `git revert <commit>`.
+
+**Still to do for Phase 1 closure.**
+- Phase 1g: move components into `src/features/<name>/` folders to
+  match the target layout in `docs/ARCHITECTURE.md`.
+- Phase 1h: refresh agent-facing docs (already done incrementally,
+  but a final pass before declaring Phase 1 complete).

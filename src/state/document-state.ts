@@ -53,6 +53,9 @@ export interface DocumentStateSlice {
   ) => void;
   updateDependencies: (sectionId: string, deps: Dependency[]) => void;
   updateMainClaim: (sectionId: string, text: string) => void;
+
+  /** Toggle whether a section's text is visible in the focus-mode editor. */
+  toggleSectionVisibility: (sectionId: string) => void;
 }
 
 export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set, get) => ({
@@ -164,4 +167,11 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         },
       };
     }),
+
+  toggleSectionVisibility: (sectionId) =>
+    set((state) => ({
+      hiddenSectionIds: state.hiddenSectionIds.includes(sectionId)
+        ? state.hiddenSectionIds.filter((x) => x !== sectionId)
+        : [...state.hiddenSectionIds, sectionId],
+    })),
 });

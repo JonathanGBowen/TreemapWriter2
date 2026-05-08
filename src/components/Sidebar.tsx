@@ -2,15 +2,11 @@ import React, { useRef } from "react";
 import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { Treemap } from "./Treemap";
-import { Section, TestSuite } from "../types";
+import { Section } from "../types";
+import { useStore } from "../store";
 import { exportAllProjects } from "../lib/exportBackup";
 
 interface SidebarProps {
-  isDarkMode: boolean;
-  setIsDarkMode: (val: boolean) => void;
-  markdown: string;
-  sections: Section[];
-  selectedId: string | null;
   onSelect: (id: string) => void;
   onImportMarkdown: (content: string) => void;
   onLoadProject: (content: string) => void;
@@ -19,31 +15,10 @@ interface SidebarProps {
   onExportSpecs: () => void;
   onResetProject: () => void;
   onLoadDefaultProject: () => void;
-  onOpenProjectManager: () => void;
-  projectName: string;
-  setProjectName: (name: string) => void;
-  width: number;
-  setWidth: (w: number) => void;
-  hiddenSectionIds: string[];
-  testSuite: TestSuite;
-  onInterpolateTasks: () => void;
-  onSprintGoals: () => void;
-  onSprintContent: () => void;
-  isInterpolating: boolean;
-  onOpenDependencyGraph: () => void;
-  onOpenPromptsGraph: () => void;
-  onOpenSectionMap: () => void;
-  onOpenProjectFileEditor: () => void;
   onStartTutorial: () => void;
-  onOpenCoach: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  isDarkMode,
-  setIsDarkMode,
-  markdown,
-  sections,
-  selectedId,
   onSelect,
   onImportMarkdown,
   onLoadProject,
@@ -52,24 +27,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onExportSpecs,
   onResetProject,
   onLoadDefaultProject,
-  onOpenProjectManager,
-  projectName,
-  setProjectName,
-  width,
-  setWidth,
-  hiddenSectionIds,
-  testSuite,
-  onInterpolateTasks,
-  onSprintGoals,
-  onSprintContent,
-  isInterpolating,
-  onOpenDependencyGraph,
-  onOpenPromptsGraph,
-  onOpenSectionMap,
-  onOpenProjectFileEditor,
   onStartTutorial,
-  onOpenCoach
 }) => {
+  // Domain + UI state from store
+  const isDarkMode = useStore(s => s.isDarkMode);
+  const setIsDarkMode = useStore(s => s.setIsDarkMode);
+  const markdown = useStore(s => s.markdown);
+  const sections = useStore(s => s.sections);
+  const selectedId = useStore(s => s.selectedId);
+  const projectName = useStore(s => s.projectName);
+  const setProjectName = useStore(s => s.setProjectName);
+  const width = useStore(s => s.sidebarWidth);
+  const setWidth = useStore(s => s.setSidebarWidth);
+  const hiddenSectionIds = useStore(s => s.hiddenSectionIds);
+  const testSuite = useStore(s => s.testSuite);
+  const isInterpolating = useStore(s => s.isInterpolating);
+
+  // Modal openers — store is the source of truth, no parent prop drilling
+  const setShowProjectModal = useStore(s => s.setShowProjectModal);
+  const setShowInterpolationModal = useStore(s => s.setShowInterpolationModal);
+  const setShowGoalSprintModal = useStore(s => s.setShowGoalSprintModal);
+  const setShowContentSprintModal = useStore(s => s.setShowContentSprintModal);
+  const setShowGraphModal = useStore(s => s.setShowGraphModal);
+  const setShowPromptsGraphModal = useStore(s => s.setShowPromptsGraphModal);
+  const setShowSectionMapModal = useStore(s => s.setShowSectionMapModal);
+  const setShowProjectFileModal = useStore(s => s.setShowProjectFileModal);
+  const setShowCoachModal = useStore(s => s.setShowCoachModal);
+
+  const onOpenProjectManager = () => setShowProjectModal(true);
+  const onInterpolateTasks = () => setShowInterpolationModal(true);
+  const onSprintGoals = () => setShowGoalSprintModal(true);
+  const onSprintContent = () => setShowContentSprintModal(true);
+  const onOpenDependencyGraph = () => setShowGraphModal(true);
+  const onOpenPromptsGraph = () => setShowPromptsGraphModal(true);
+  const onOpenSectionMap = () => setShowSectionMapModal(true);
+  const onOpenProjectFileEditor = () => setShowProjectFileModal(true);
+  const onOpenCoach = () => setShowCoachModal(true);
+
   const mdInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
 

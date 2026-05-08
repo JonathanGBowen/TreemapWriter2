@@ -1,33 +1,25 @@
 import React, { useMemo, useState } from "react";
-import { 
-  CheckCircle, AlertCircle, Settings, Play, Layout, Bot, Sparkles, 
-  History, X, ChevronDown, ChevronRight, Link as LinkIcon, 
+import {
+  CheckCircle, AlertCircle, Settings, Play, Layout, Bot, Sparkles,
+  History, X, ChevronDown, ChevronRight, Link as LinkIcon,
   MessageSquareQuote, Lightbulb, Target, ArrowRight, ArrowDown,
   Zap, Circle, AlertTriangle, HelpCircle, Crosshair
 } from "lucide-react";
-import { 
-  Section, TestSuite, Persona, Dependency, SectionSpec, 
-  SectionFunction, DiagnosticResult, MoveResult, MoveStatus, ReadinessLevel
+import {
+  Section, SectionFunction, MoveResult, MoveStatus, ReadinessLevel
 } from "../../types";
 import { SECTION_FUNCTIONS } from "../../lib/constants";
+import { DEFAULT_PERSONAS } from "../../lib/defaultPersonas";
+import { useStore } from "../../store";
 
-interface TestsPanelProps {
-  currentSection: Section | null;
-  testSuite: TestSuite;
-  updateGoals: (text: string) => void;
-  updateDependencies: (id: string, deps: Dependency[]) => void;
-  updateMainClaim: (id: string, text: string) => void;
-  updateSpec: (id: string, spec: SectionSpec) => void;
-  allSections: Section[];
-  onRunTests: () => void;
-  isProcessing: boolean;
-  width: number;
-  setWidth: (w: number) => void;
-  activePersona: Persona;
-  onOpenSettings: () => void;
-  onOpenSpecRefinement: () => void;
-  onOpenSuggestions: () => void;
-}
+const findSectionById = (nodes: Section[], id: string): Section | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findSectionById(node.children, id);
+    if (found) return found;
+  }
+  return null;
+};
 
 // --- Status UI Helpers ---
 
@@ -124,23 +116,47 @@ const MoveResultCard: React.FC<{ result: MoveResult; index: number }> = ({ resul
   );
 };
 
-export const TestsPanel: React.FC<TestsPanelProps> = ({
-  currentSection,
-  testSuite,
-  updateGoals,
-  updateDependencies,
-  updateMainClaim,
-  updateSpec,
-  allSections,
-  onRunTests,
-  isProcessing,
-  width,
-  setWidth,
-  activePersona,
-  onOpenSettings,
-  onOpenSpecRefinement,
-  onOpenSuggestions
-}) => {
+export const TestsPanel: React.FC = () => {
+  // Subscribe to all needed state from the store
+  const sections = useStore(s => s.sections);
+  const selectedId = useStore(s => s.selectedId);
+  const testSuite = useStore(s => s.testSuite);
+  const updateSectionGoals = useStore(s => s.updateSectionGoals);
+  const updateDependencies = useStore(s => s.updateDependencies);
+  const updateMainClaim = useStore(s => s.updateMainClaim);
+  const updateSpec = useStore(s => s.updateSpec);
+  const isProcessing = useStore(s => s.isProcessing);
+  const width = useStore(s => s.testsPanelWidth);
+  const setWidth = useStore(s => s.setTestsPanelWidth);
+  const activePersonaId = useStore(s => s.activePersonaId);
+  const customPersonas = useStore(s => s.customPersonas);
+  const setShowRunModal = useStore(s => s.setShowRunModal);
+  const setShowPersonaModal = useStore(s => s.setShowPersonaModal);
+  const setShowSpecModal = useStore(s => s.setShowSpecModal);
+  const setShowSuggestionsModal = useStore(s => s.setShowSuggestionsModal);
+
+  // Derive currentSection from selectedId + sections
+  const currentSection = useMemo(
+    () => (selectedId ? findSectionById(sections, selectedId) : null),
+    [selectedId, sections],
+  );
+
+  // Derive active persona
+  const activePersona = useMemo(() => {
+    const all = [...DEFAULT_PERSONAS, ...customPersonas];
+    return all.find(p => p.id === activePersonaId) || DEFAULT_PERSONAS[0];
+  }, [activePersonaId, customPersonas]);
+
+  // Local aliases that match the original prop names used in the JSX body
+  const allSections = sections;
+  const updateGoals = (text: string) => {
+    if (!currentSection) return;
+    updateSectionGoals(currentSection.id, text, 'manual');
+  };
+  const onRunTests = () => setShowRunModal(true);
+  const onOpenSettings = () => setShowPersonaModal(true);
+  const onOpenSpecRefinement = () => setShowSpecModal(true);
+  const onOpenSuggestions = () => setShowSuggestionsModal(true);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

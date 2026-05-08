@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useState, useRef, useLayoutEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import { Eye, Save, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History } from "lucide-react";
-import { Section, TestSuite } from "../../types";
+import { Section } from "../../types";
+import { useStore } from "../../store";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -39,27 +40,11 @@ const manualBasicSetup = [
 ];
 
 interface EditorPanelProps {
-  currentSection: Section | null;
-  testSuite: TestSuite;
-  localContent: string;
-  setLocalContent: (val: string) => void;
   handleSave: () => void;
-  lastAutoSave: Date | null;
-  activeTab: 'editor' | 'preview';
-  setActiveTab: (val: 'editor' | 'preview') => void;
-  editorRef: any; 
-  hiddenSectionIds: string[];
-  toggleSectionVisibility: (id: string) => void;
+  // The editor view ref is forwarded from App.tsx for cursor focus from outside.
+  editorRef: any;
   onImportMarkdown: (content: string) => void;
   onLoadProject: (content: string) => void;
-  focusMode: boolean;
-  toggleFocusMode: () => void;
-  onLineFocus: (index: number | null) => void;
-  initialLineIndex: number | null;
-  sections: Section[];
-  onSectionChange: (id: string) => void;
-  onOpenHistory: () => void;
-  projectName: string;
 }
 
 // Recursive helper to find the deepest section containing the line
@@ -74,29 +59,47 @@ const findSectionForLine = (nodes: Section[], line: number): Section | null => {
   return null;
 };
 
+const findSectionById = (nodes: Section[], id: string): Section | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findSectionById(node.children, id);
+    if (found) return found;
+  }
+  return null;
+};
+
 export const EditorPanel: React.FC<EditorPanelProps> = ({
-  currentSection,
-  testSuite,
-  localContent,
-  setLocalContent,
   handleSave,
-  lastAutoSave,
-  activeTab,
-  setActiveTab,
   editorRef,
-  hiddenSectionIds = [],
-  toggleSectionVisibility,
   onImportMarkdown,
   onLoadProject,
-  focusMode,
-  toggleFocusMode,
-  onLineFocus,
-  initialLineIndex,
-  sections,
-  onSectionChange,
-  onOpenHistory,
-  projectName
 }) => {
+  // Domain + UI state from store
+  const testSuite = useStore(s => s.testSuite);
+  const localContent = useStore(s => s.localContent);
+  const setLocalContent = useStore(s => s.setLocalContent);
+  const lastAutoSave = useStore(s => s.lastAutoSave);
+  const activeTab = useStore(s => s.activeTab);
+  const setActiveTab = useStore(s => s.setActiveTab);
+  const hiddenSectionIds = useStore(s => s.hiddenSectionIds);
+  const toggleSectionVisibility = useStore(s => s.toggleSectionVisibility);
+  const focusMode = useStore(s => s.focusMode);
+  const setFocusMode = useStore(s => s.setFocusMode);
+  const initialLineIndex = useStore(s => s.activeLineIndex);
+  const onLineFocus = useStore(s => s.setActiveLineIndex);
+  const sections = useStore(s => s.sections);
+  const selectedId = useStore(s => s.selectedId);
+  const onSectionChange = useStore(s => s.setSelectedId);
+  const projectName = useStore(s => s.projectName);
+  const setShowHistoryModal = useStore(s => s.setShowHistoryModal);
+
+  const toggleFocusMode = () => setFocusMode(!focusMode);
+  const onOpenHistory = () => setShowHistoryModal(true);
+
+  const currentSection = useMemo(
+    () => (selectedId ? findSectionById(sections, selectedId) : null),
+    [selectedId, sections],
+  );
   
   const [titleInput, setTitleInput] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);

@@ -16,6 +16,7 @@ export interface UIStateSlice {
   focusMode: boolean;
   isDarkMode: boolean;
   runTutorial: boolean;
+  activeTab: 'editor' | 'preview';
 
   // In-flight indicators
   isProcessing: boolean;
@@ -43,6 +44,7 @@ export interface UIStateSlice {
   setFocusMode: (mode: boolean) => void;
   setIsDarkMode: (dark: boolean) => void;
   setRunTutorial: (run: boolean) => void;
+  setActiveTab: (tab: 'editor' | 'preview') => void;
   setIsProcessing: (proc: boolean) => void;
   setIsInterpolating: (interp: boolean) => void;
   setShowProjectModal: (show: boolean) => void;
@@ -67,6 +69,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   focusMode: true,
   isDarkMode: true,
   runTutorial: false,
+  activeTab: 'editor',
 
   isProcessing: false,
   isInterpolating: false,
@@ -91,6 +94,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setFocusMode: (mode) => set({ focusMode: mode }),
   setIsDarkMode: (dark) => set({ isDarkMode: dark }),
   setRunTutorial: (run) => set({ runTutorial: run }),
+  setActiveTab: (tab) => set({ activeTab: tab }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
   setIsInterpolating: (interp) => set({ isInterpolating: interp }),
   setShowProjectModal: (show) => set({ showProjectModal: show }),

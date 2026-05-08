@@ -23,12 +23,13 @@ import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { DEFAULT_PROMPTS_CONFIG } from "./lib/constants";
 import defaultProjectData from "./lib/defaultProject.json";
-import { Section, TestSuite, Persona, ProjectMeta, Snapshot, 
+import { Section, TestSuite, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
-  SectionSpec, DiagnosticResult 
+  SectionSpec, DiagnosticResult
 } from "./types";
 import { browserRepository as repo } from './services/browser-repository';
 import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
+import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 // Add new import:
 import { 
   generateStructuredSpecs, 
@@ -64,27 +65,6 @@ const findSectionByLine = (nodes: Section[], line: number): Section | null => {
   }
   return null;
 };
-
-const DEFAULT_PERSONAS: Persona[] = [
-  {
-    id: 'default',
-    name: 'Socratic Co-Writer',
-    role: 'Academic Editor',
-    instruction: 'You are Socratic Co-Writer, a rigorous academic editor. You value clarity, logical flow, and intellectual honesty. Your feedback should be constructive, specific, and aimed at elevating the argumentation.'
-  },
-  {
-    id: 'skeptic',
-    name: 'The Skeptic',
-    role: 'Devil\'s Advocate',
-    instruction: 'You are a highly skeptical reader who questions every premise. You actively look for logical fallacies, unsupported claims, and weak evidence. Be ruthless but fair in your critique.'
-  },
-  {
-    id: 'simplifier',
-    name: 'The Explainer',
-    role: 'Science Communicator',
-    instruction: 'You are an expert science communicator. Your goal is to ensure the text is accessible to a general educated audience without losing accuracy. Flag jargon, convoluted sentences, and unnecessary complexity.'
-  }
-];
 
 export const App = () => {
   const {
@@ -221,8 +201,6 @@ export const App = () => {
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
-  
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
 
@@ -631,44 +609,8 @@ export const App = () => {
   }
 };
 
-  const updateSpec = useCallback((id: string, spec: SectionSpec) => {
-    setTestSuite(prev => {
-      const entry = prev[id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [id]: {
-          ...entry,
-          spec,
-          // Keep mainClaim in sync
-          mainClaim: spec.mainClaim,
-          // Serialize spec to goals for backward compat
-          goals: spec.requiredMoves.map(m => m.description).join('\n'),
-          status: 'stale',
-          history: [
-            ...(entry.history || []),
-            { timestamp: Date.now(), goals: entry.goals, type: 'manual' as const }
-          ]
-        }
-      };
-    });
-  }, []);
- 
-
-  const updateGoals = useCallback((text: string) => {
-    if (!currentSection) return;
-    setTestSuite(prev => {
-      const entry = prev[currentSection.id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [currentSection.id]: {
-          ...entry,
-          goals: text,
-          status: 'stale',
-          history: [...(entry.history || []), { timestamp: Date.now(), goals: entry.goals, type: 'manual' }]
-        }
-      };
-    });
-  }, [currentSection]);
+  // updateSpec, updateGoals — moved to document-state slice in Phase 1e.
+  // Modals/panels call them via useStore directly.
 
   const updateSectionGoals = useCallback((id: string, newGoals: string, type: 'manual' | 'ai-generate' | 'ai-refine', instruction?: string) => {
     if (type.startsWith('ai-')) {
@@ -741,31 +683,14 @@ export const App = () => {
     }
   }, [sections, testSuite]);
 
-  const updateMainClaim = useCallback((id: string, text: string) => {
-    setTestSuite(prev => {
-      const entry = prev[id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [id]: {
-          ...entry,
-          mainClaim: text
-        }
-      };
-    });
-  }, []);
+  // updateMainClaim — moved to document-state slice in Phase 1e.
 
   const getParentGoals = () => {
     if (!currentSection || !currentSection.parentId) return undefined;
     return testSuite[currentSection.parentId]?.goals;
   };
 
-  const toggleSectionVisibility = (id: string) => {
-    setHiddenSectionIds(prev => 
-      prev.includes(id) 
-        ? prev.filter(x => x !== id) 
-        : [...prev, id]
-    );
-  };
+  // toggleSectionVisibility — moved to document-state slice in Phase 1e.
 
   const handleSaveContent = (sectionId: string, newContent: string) => {
     setLocalContent(prev => {
@@ -814,12 +739,7 @@ export const App = () => {
       />
       <Tutorial isDarkMode={isDarkMode} run={runTutorial} onFinish={handleTutorialFinish} />
       <div className="flex h-screen w-full bg-slate-50 dark:bg-hld-bg text-slate-800 dark:text-hld-text overflow-hidden transition-colors duration-200 font-sans">
-        <Sidebar 
-          isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
-          markdown={markdown}
-          sections={sections}
-          selectedId={selectedId}
+        <Sidebar
           onSelect={setSelectedId}
           onImportMarkdown={handleImportMarkdown}
           onLoadProject={handleLoadFile}
@@ -828,68 +748,19 @@ export const App = () => {
           onExportSpecs={handleExportSpecs}
           onResetProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
-          onOpenProjectManager={() => setShowProjectModal(true)}
-          projectName={projectName}
-          setProjectName={setProjectName}
-          width={sidebarWidth}
-          setWidth={setSidebarWidth}
-          hiddenSectionIds={hiddenSectionIds}
-          testSuite={testSuite}
-          onInterpolateTasks={() => setShowInterpolationModal(true)}
-          onSprintGoals={() => setShowGoalSprintModal(true)}
-          onSprintContent={() => setShowContentSprintModal(true)}
-          isInterpolating={isInterpolating}
-          onOpenDependencyGraph={() => setShowGraphModal(true)}
-          onOpenPromptsGraph={() => setShowPromptsGraphModal(true)}
-          onOpenSectionMap={() => setShowSectionMapModal(true)}
-          onOpenProjectFileEditor={() => setShowProjectFileModal(true)}
           onStartTutorial={() => setRunTutorial(true)}
-          onOpenCoach={() => setShowCoachModal(true)}
         />
 
         <div className="flex-1 min-w-0 flex flex-col h-full bg-white dark:bg-hld-bg relative">
-          <EditorPanel 
-            currentSection={currentSection}
-            testSuite={testSuite}
-            localContent={localContent}
-            setLocalContent={setLocalContent}
+          <EditorPanel
             handleSave={handleManualSave}
-            lastAutoSave={lastAutoSave}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
             editorRef={editorRef}
-            hiddenSectionIds={hiddenSectionIds}
-            toggleSectionVisibility={toggleSectionVisibility}
             onImportMarkdown={handleImportMarkdown}
             onLoadProject={handleLoadFile}
-            focusMode={focusMode}
-            toggleFocusMode={() => setFocusMode(!focusMode)}
-            onLineFocus={handleLineFocus}
-            initialLineIndex={activeLineIndexRef.current}
-            sections={sections}
-            onSectionChange={setSelectedId}
-            onOpenHistory={() => setShowHistoryModal(true)}
-            projectName={projectName}
           />
         </div>
 
-        <TestsPanel 
-          currentSection={currentSection}
-          testSuite={testSuite}
-          updateGoals={updateGoals}
-          updateDependencies={updateDependencies}
-          updateMainClaim={updateMainClaim}
-          updateSpec={updateSpec}              // <-- ADD THIS
-          allSections={sections}
-          onRunTests={() => setShowRunModal(true)}
-          isProcessing={isProcessing}
-          width={testsPanelWidth}
-          setWidth={setTestsPanelWidth}
-          activePersona={activePersona}
-          onOpenSettings={() => setShowPersonaModal(true)}
-          onOpenSpecRefinement={() => setShowSpecModal(true)}
-          onOpenSuggestions={() => setShowSuggestionsModal(true)}
-        />
+        <TestsPanel />
 
         {/* Modals */}
         <TestRunnerModal
