@@ -342,3 +342,47 @@ renames in git so the history is preserved.
 **AGENTS.md updated.** Source-tree map now reflects the actual
 layout. The "where to put X" modal entry no longer says "will move
 in Phase 1g" — it points at the real location.
+
+---
+
+## 2026-05-08 — Phase 1 complete (1h: doc closeout)
+
+**What changed.** Final agent-doc refresh. No code changes.
+
+- `docs/ARCHITECTURE.md`: target layout updated to match the actual
+  source tree. Phases table now has a Status column; Phase 0 and
+  Phase 1 are marked ✅ done; Phase 2 is ⏳ next.
+
+**Phase 1 net effect (across commits 8d2e9c8…c590303):**
+
+| Aspect | Before Phase 1 | After Phase 1 |
+|---|---|---|
+| Store file | one 482-line god-store | five lifecycle slices (~40–260 lines each) |
+| Persistence | components import `idb-keyval` directly | `Repository` interface; only `browser-repository.ts` and `preferences.ts` touch IDB |
+| Prompts | 547-line `constants.ts` | 9 standalone `.md` files; 360-line `constants.ts` |
+| Modal mounting | App.tsx mounts 14 modals with 5–10 props each | self-mounted; App.tsx passes 0–1 props per modal |
+| Sidebar / EditorPanel / TestsPanel | 31 / 21 / 16 props | 9 / 4 / 0 props |
+| App.tsx | 1062 lines | 919 lines |
+| Source tree | mixed `src/components/` + `src/components/panels/` + `src/components/modals/` | unified under `src/features/<name>/` |
+| Cross-cutting helpers in App.tsx | `updateSpec`, `updateGoals`, `updateMainClaim`, `toggleSectionVisibility`, `DEFAULT_PERSONAS`, `[activeTab, setActiveTab]` | all moved to slices or `src/lib/defaultPersonas.ts` |
+| Tests | none | 9 passing (parseMarkdown round-trip + edge cases) |
+| Lint | 225 problems on entry | 209 problems |
+| Latent bugs caught | — | 6 in App.tsx surfaced by typecheck (Phase 0) |
+
+**Verify Phase 1 end-state.**
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+- The dev server should launch without errors.
+- Click through every modal once; confirm they open, render, and
+  close. Edit a section, save, reload — content persists.
+- Open the Backup button (Sidebar archive icon) and save the JSON
+  somewhere safe. The Phase 3 importer will round-trip from this
+  format.
+
+**Ready for Phase 2** — Tauri shell. Plan in
+`/root/.claude/plans/act-as-a-senior-toasty-teacup.md` Part IV.
+
+**Standing rule (from AGENTS.md "End-of-phase ritual"):** every
+future phase commit must include refreshed AGENTS.md /
+ARCHITECTURE.md / migration-log.md if reality drifted. The point of
+these files is that no fresh agent — including you, after a week
+away — should pay the re-derivation tax. They're load-bearing.

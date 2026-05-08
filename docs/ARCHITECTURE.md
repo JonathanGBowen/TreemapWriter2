@@ -91,18 +91,16 @@ same way: one source of truth, everything else is a projection.
 │   │       ├── generate-specs.md
 │   │       └── ...
 │   ├── features/
-│   │   ├── editor/
-│   │   ├── treemap/
-│   │   ├── tests-panel/
-│   │   ├── modals/<name>/
-│   │   ├── ai-coach/
-│   │   ├── version-history/
-│   │   ├── project-manager/
+│   │   ├── sidebar/Sidebar.tsx        ← chrome + project tree
+│   │   ├── treemap/Treemap.tsx        ← Plotly hierarchical view
+│   │   ├── editor/EditorPanel.tsx     ← CodeMirror surface + focus mode
+│   │   ├── tests-panel/TestsPanel.tsx ← spec / diagnostic / dependency UI
+│   │   ├── tutorial/Tutorial.tsx      ← onboarding (react-joyride)
+│   │   ├── modals/*.tsx               ← 14 self-mounting modals (flat)
 │   │   ├── migration/             ← Phase 3
 │   │   └── sync/                  ← Phase 4
-│   ├── lib/                       ← pure utilities
-│   ├── types/
-│   └── components/                ← shrinks across Phase 1; eventually empty
+│   ├── lib/                       ← pure utilities (parser, hash, defaults)
+│   └── types/
 ├── src-tauri/                     ← Phase 2+
 │   └── src/
 │       ├── commands.rs
@@ -199,14 +197,14 @@ git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
 
 ## Phases
 
-| Phase | Goal | Storage at end |
-|---|---|---|
-| 0 | Foundations: AGENTS.md, ESLint, Vitest, backup export button | IndexedDB (unchanged) |
-| 1 | Decompose: split store, extract features, prompts to .md | IndexedDB (unchanged) |
-| 2 | Tauri shell wraps existing UI; verify desktop build | IndexedDB (unchanged) |
-| 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git |
-| 4 | Sync: git pull/push wired into chrome | Disk + SQLite + git + remote |
-| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI | — |
+| Phase | Goal | Storage at end | Status |
+|---|---|---|---|
+| 0 | Foundations: AGENTS.md, ESLint, Vitest, backup export button | IndexedDB (unchanged) | ✅ done |
+| 1 | Decompose: split store, extract features, prompts to .md | IndexedDB (unchanged) | ✅ done |
+| 2 | Tauri shell wraps existing UI; verify desktop build | IndexedDB (unchanged) | ⏳ next |
+| 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | |
+| 4 | Sync: git pull/push wired into chrome | Disk + SQLite + git + remote | |
+| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI | — | |
 
 Current phase is recorded in `docs/migration-log.md`.
 
