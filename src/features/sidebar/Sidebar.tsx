@@ -1,10 +1,10 @@
 import React, { useRef } from "react";
 import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson, Archive } from "lucide-react";
 import { toast } from "sonner";
-import { Treemap } from "./Treemap";
-import { Section } from "../types";
-import { useStore } from "../store";
-import { exportAllProjects } from "../lib/exportBackup";
+import { Treemap } from "../treemap/Treemap";
+import { Section } from "../../types";
+import { useStore } from "../../store";
+import { exportAllProjects } from "../../lib/exportBackup";
 
 interface SidebarProps {
   onSelect: (id: string) => void;

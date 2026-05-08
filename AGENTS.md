@@ -55,7 +55,7 @@ non-negotiable rules:
 
 | If you're adding... | It goes in... |
 |---|---|
-| A new modal | `src/components/modals/<Name>Modal.tsx` (will move to `src/features/modals/<name>/` in Phase 1g). Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. |
+| A new modal | `src/features/modals/<Name>Modal.tsx`. Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. |
 | A new editor command | `src/features/editor/commands/` |
 | A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider`, new wrapper in the relevant feature folder |
 | A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`) |
@@ -63,6 +63,38 @@ non-negotiable rules:
 | A new UI panel | New folder under `src/features/<panel-name>/` |
 | A new icon | `lucide-react`. Do not introduce a second icon library |
 | A new dependency | Ask the user. Default answer is "we don't need it" |
+
+## Source-tree map
+
+```
+src/
+├── App.tsx                    layout shell + remaining handlers (shrinking)
+├── index.tsx                  React entry point
+├── state/                     5 lifecycle slices + combined useStore
+│   ├── ui-state.ts            modal flags, panel widths, focus mode (ephemeral)
+│   ├── editor-state.ts        localContent, cursor (ephemeral)
+│   ├── document-state.ts      markdown, sections, testSuite, history (domain)
+│   ├── project-state.ts       projectList, activeProjectId, persistence thunks
+│   ├── ai-state.ts            personas, prompts config, coach cache
+│   └── index.ts               combines slices, exports useStore + AppState
+├── store/index.ts             @deprecated re-export of state/ for back-compat
+├── services/                  persistence + external APIs
+│   ├── repository.ts          interface
+│   ├── browser-repository.ts  IndexedDB impl (Phase 3 will add tauri-repository)
+│   ├── preferences.ts         global app prefs (tutorial flag etc.)
+│   └── prompts/               .md prompts + index.ts that assembles DEFAULT_PROMPTS_CONFIG
+├── features/
+│   ├── sidebar/Sidebar.tsx
+│   ├── treemap/Treemap.tsx
+│   ├── editor/EditorPanel.tsx
+│   ├── tests-panel/TestsPanel.tsx
+│   ├── tutorial/Tutorial.tsx
+│   └── modals/<Name>Modal.tsx (one file per modal; flat — sub-feature folders
+│                                may emerge in Phase 2+ as features mature)
+├── lib/                       pure utilities — parseMarkdown, exportBackup,
+│                              defaultPersonas, etc. No React, no store.
+└── types/index.ts             domain types (Section, SectionSpec, Snapshot, …)
+```
 
 ## Aesthetic
 

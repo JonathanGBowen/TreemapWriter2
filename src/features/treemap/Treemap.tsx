@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo } from "react";
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponent from 'react-plotly.js/factory';
-import { Section, TestSuite } from "../types";
-import { flattenTree } from "../lib/utils";
+import { Section, TestSuite } from "../../types";
+import { flattenTree } from "../../lib/utils";
 
 const Plot = createPlotlyComponent(Plotly);
 

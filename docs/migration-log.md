@@ -304,3 +304,41 @@ App.tsx: 1048 → 919 lines.
   match the target layout in `docs/ARCHITECTURE.md`.
 - Phase 1h: refresh agent-facing docs (already done incrementally,
   but a final pass before declaring Phase 1 complete).
+
+---
+
+## 2026-05-08 — Phase 1g entered
+
+**What changed.** All UI components moved out of `src/components/`
+into feature folders under `src/features/`. The directory
+`src/components/` is gone.
+
+| From | To |
+|---|---|
+| `src/components/Sidebar.tsx` | `src/features/sidebar/Sidebar.tsx` |
+| `src/components/Treemap.tsx` | `src/features/treemap/Treemap.tsx` |
+| `src/components/Tutorial.tsx` | `src/features/tutorial/Tutorial.tsx` |
+| `src/components/panels/EditorPanel.tsx` | `src/features/editor/EditorPanel.tsx` |
+| `src/components/panels/TestsPanel.tsx` | `src/features/tests-panel/TestsPanel.tsx` |
+| `src/components/modals/*.tsx` (14 files) | `src/features/modals/*.tsx` |
+
+Imports updated:
+- `src/App.tsx`: 18 component import paths.
+- `src/features/sidebar/Sidebar.tsx`: `../types` → `../../types`,
+  `../store` → `../../store`, `../lib/exportBackup` →
+  `../../lib/exportBackup`, `./Treemap` → `../treemap/Treemap`.
+- `src/features/treemap/Treemap.tsx`: same depth-shift fixes.
+- All other moved files were at depth 3 before and remain at depth
+  3 after, so their `../../` imports are unchanged.
+
+**Verify before declaring Phase 1 complete.**
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+- Manual smoke: app launches; existing projects load; modals open;
+  panels render correctly.
+
+**Rollback.** `git revert <commit>`. The moves are tracked as
+renames in git so the history is preserved.
+
+**AGENTS.md updated.** Source-tree map now reflects the actual
+layout. The "where to put X" modal entry no longer says "will move
+in Phase 1g" — it points at the real location.
