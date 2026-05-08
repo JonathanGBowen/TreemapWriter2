@@ -386,3 +386,69 @@ future phase commit must include refreshed AGENTS.md /
 ARCHITECTURE.md / migration-log.md if reality drifted. The point of
 these files is that no fresh agent — including you, after a week
 away — should pay the re-derivation tax. They're load-bearing.
+
+---
+
+## 2026-05-08 — Phase 2 entered
+
+**What changed.** Tauri 2 desktop shell wraps the existing React UI.
+Storage is still IndexedDB; no domain code changed. The app can now
+launch as a native desktop window (given system deps installed).
+
+- `src-tauri/` — Rust crate, scaffolded by `tauri init --ci`
+  - `Cargo.toml`: package `treemap-writer`, lib `treemap_writer_lib`
+  - `tauri.conf.json`: identifier `com.treemapwriter.app`, 1400×900
+    default window, 900×600 minimum, `theme: "Dark"` to match HLD
+  - `src/main.rs`: desktop entry → `treemap_writer_lib::run()`
+  - `src/lib.rs`: builder + the first IPC command, `app_info`, which
+    returns name/version/tauri version. Sanity probe; future
+    persistence commands register on the same `invoke_handler`.
+- `src/services/tauri-environment.ts`: `isTauri()` detects the
+  runtime; `appInfo()` is the typed JS wrapper around the IPC
+  command. Components never call `invoke()` directly.
+- `package.json` scripts: `tauri`, `tauri:dev`, `tauri:build`.
+- `package.json` deps: `@tauri-apps/api@^2`,
+  `@tauri-apps/plugin-dialog@^2`, `@tauri-apps/plugin-fs@^2`,
+  dev: `@tauri-apps/cli@^2`.
+
+**Why Tauri over Electron** (reaffirmed): smaller bundle (~10MB vs
+~150MB), capability-based security, native API key storage path
+opens up via `keyring` crate in Phase 3, Rust ecosystem has
+`rusqlite` + `git2` ready to drop in.
+
+**Verify before Phase 3.**
+
+JS side (works in this sandbox):
+- `npm test` (9/9), `npm run typecheck` (clean), `npm run build` (ok).
+
+Desktop side (requires the user's machine, NOT this sandbox):
+- Linux: `sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev
+  libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+  libayatana-appindicator3-dev librsvg2-dev`
+- macOS: Xcode Command Line Tools.
+- Windows: Microsoft C++ Build Tools + WebView2 runtime.
+- Then: `npm run tauri:dev`. A native window should open showing the
+  same UI the browser does. In the dev console, run
+  `(await import('./services/tauri-environment')).appInfo()` — should
+  return `{ name: "treemap-writer", version: "0.1.0", tauri_version: "..." }`.
+- `npm run tauri:build` produces an installer in
+  `src-tauri/target/release/bundle/`.
+
+**Sandbox note.** This commit's Rust code was NOT compiled here —
+the sandbox lacks `webkit2gtk-4.1` / `gtk-3.0` / `gdk-3.0`. The code
+is the standard Tauri 2 init template plus a one-fn modification
+(`app_info`). When the user runs `cargo check` on a machine with the
+system deps, it should pass. If it doesn't, the failure is in
+`src-tauri/src/lib.rs` and is small enough to triage by inspection.
+
+**Rollback.** `git revert <commit>`. The src-tauri/ directory is new;
+nothing in src/ depends on it at runtime yet (the JS still uses
+`browserRepository`). Reverting cleanly returns to the browser-only
+build.
+
+**Still to do for Phase 2 closure (optional).**
+- A startup probe that calls `appInfo()` from `App.tsx` when
+  `isTauri()` and console-logs the version. Useful for end-to-end
+  verification but not needed for Phase 3.
+- Replace placeholder icons (`src-tauri/icons/`) with HLD-themed
+  ones. Cosmetic; can wait.

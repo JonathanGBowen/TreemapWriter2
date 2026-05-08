@@ -57,6 +57,7 @@ non-negotiable rules:
 |---|---|
 | A new modal | `src/features/modals/<Name>Modal.tsx`. Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. |
 | A new editor command | `src/features/editor/commands/` |
+| A new Tauri IPC command | Add `#[tauri::command]` fn in `src-tauri/src/lib.rs`, register in `tauri::generate_handler![...]`, expose a typed wrapper from `src/services/<area>.ts` calling `invoke()`. Components never call `invoke()` directly. |
 | A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider`, new wrapper in the relevant feature folder |
 | A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`) |
 | A new domain mutation (testSuite, document, etc.) | Action on the appropriate state slice, NOT a `useCallback` in a component. Cross-slice mutations live in `project-state` and use `get().otherSliceAction()`. |
@@ -94,6 +95,18 @@ src/
 ├── lib/                       pure utilities — parseMarkdown, exportBackup,
 │                              defaultPersonas, etc. No React, no store.
 └── types/index.ts             domain types (Section, SectionSpec, Snapshot, …)
+```
+
+```
+src-tauri/                     Rust crate, Phase 2+ desktop shell
+├── Cargo.toml                 crate name `treemap-writer`, lib `treemap_writer_lib`
+├── tauri.conf.json            window config, build hooks, identifier
+├── build.rs                   tauri-build hook
+├── capabilities/default.json  capability set granted to the main window
+├── icons/                     bundle icons (default placeholders for now)
+└── src/
+    ├── main.rs                desktop entry — calls treemap_writer_lib::run()
+    └── lib.rs                 builder + invoke_handler. New IPC commands go here.
 ```
 
 ## Aesthetic
@@ -159,14 +172,34 @@ After any change:
 
 ```
 npm install          # first time
-npm run dev          # start the dev server (Vite + Tauri once Phase 2 lands)
+npm run dev          # Vite browser dev server (port 5173)
 npm test             # Vitest, must pass
 npm run typecheck    # tsc --noEmit, must pass
 npm run lint         # ESLint, must pass (max-lines: 300 enforced)
-npm run build        # production build
-npm run tauri:dev    # desktop app dev (post-Phase 2)
-npm run tauri:build  # desktop installer (post-Phase 2)
+npm run build        # browser production build (./dist)
+npm run tauri:dev    # desktop app dev — spawns Vite + opens native window
+npm run tauri:build  # desktop installer (.app/.dmg/.exe/.deb/.AppImage)
 ```
+
+### Tauri 2 desktop shell (Phase 2+)
+
+The `src-tauri/` directory is a Rust crate. `tauri:dev` runs the Vite
+server and opens a native webview pointing at it; the React UI is
+unchanged. Storage stays IndexedDB until Phase 3, when SQLite +
+markdown-on-disk + git replace the IndexedDB blob via a Tauri
+`Repository` implementation.
+
+**Linux system deps for desktop builds:**
+```
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev \
+  libjavascriptcoregtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+```
+macOS needs Xcode CLT; Windows needs the Microsoft C++ Build Tools and
+WebView2 runtime (preinstalled on Win10/11).
+
+**Detect runtime:** `import { isTauri } from 'src/services/tauri-environment'`.
+This is the branch point for `browserRepository` vs the future
+`tauriRepository`.
 
 ## Refactor status
 
