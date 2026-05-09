@@ -452,3 +452,210 @@ build.
   verification but not needed for Phase 3.
 - Replace placeholder icons (`src-tauri/icons/`) with HLD-themed
   ones. Cosmetic; can wait.
+
+---
+
+## 2026-05-08 — Phase 3 entered
+
+The architectural heart of the refactor: the dissertation moves out of
+the IndexedDB blob and into a real folder on disk, with git as its
+history and SQLite as a query cache. Phase 3 lands across 8 commits
+(3a–3h), 1 test commit (3j), and this closeout (3k). Phase 3i is
+absorbed because the eager-fetch in TauriRepository.getProject (last
+20 commits → in-memory revisions) makes VersionHistoryModal work
+unchanged.
+
+### Phase 3a — Rust foundations
+
+`src-tauri/` gains the module skeleton: `commands/{project, document,
+snapshot, migration}.rs`, `project/{mod, layout}.rs`, `db/{mod.rs,
+schema.sql}`, `git/mod.rs`, `fs_io/{mod, yaml}.rs`, plus `error.rs` and
+`types.rs`. Cargo deps: `rusqlite` (bundled + FTS5), `git2`
+(vendored-libgit2), `serde_yaml`, `dirs`, `anyhow`, `thiserror`,
+`chrono`, `tauri-plugin-dialog`. `lib.rs` registers all commands and
+manages an `AppState` holding the global recent-projects DB plus the
+optional currently-open `ProjectHandle`. Empty stubs at this phase;
+later phases fill them in.
+
+### Phase 3b — Project lifecycle
+
+`project_create(path, name)` validates the target is empty/absent,
+writes `project.md` + `.twriter/settings.json` + `.gitignore`, runs
+`git init` + initial commit, opens the per-project SQLite cache, and
+inserts a row into the global recent-projects DB. `project_open(path)`
+validates the folder shape (`project.md` + `.twriter/`), opens
+git+cache, upserts/refreshes the recent row. `project_close` drops the
+handle. `project_list_recent` returns metadata sorted by
+`last_opened DESC`, hiding rows whose folder no longer exists.
+`project_delete_recent` removes the row but does NOT delete the folder.
+
+`git/mod.rs` gains `init`, `ensure_initial_commit`, `commit_all`
+(no-op on empty diff so autosaves don't pile up empty commits). Author
+is hardcoded `TreemapWriter <noreply@treemapwriter.local>`.
+
+### Phase 3c — Document read/write
+
+`project_read` walks the project folder and assembles a
+`StoredProjectData`: `project.md`, the `.twriter/*.json` sidecars, and
+every `.twriter/specs/*.spec.yaml`. `project_write` does the inverse,
+atomically (temp file + fsync + rename per file). Per-section YAML uses
+a new `PersistedTestEntry` type that strips ephemeral fields (`status`,
+`lastDiagnostic`, `lastResult`, `cachedSuggestions`) — those belong in
+the SQLite cache, not in git history. Orphan policy: spec YAMLs whose
+section IDs vanish from the current testSuite are LEFT on disk.
+
+### Phase 3d — Snapshots = git commits
+
+`snapshot_commit(message, trigger, affectedScope)` stages the working
+tree and creates a commit with a structured message:
+```
+<trigger>: <message>
+
+Scope: all   (or)   Scope: section-1,section-2
+```
+`snapshot_list(limit)` walks `git log` and returns lightweight
+`SnapshotMeta`. `snapshot_read(commitId)` walks a commit's tree without
+checking out, returning a full `Snapshot` (markdown + testSuite
+reconstructed from blobs). The commit-message parser is robust to
+user-edited messages (e.g. via `git commit --amend`); trigger defaults
+to `'manual'`, scope to `'all'`.
+
+### Phase 3e — TauriRepository
+
+`src/services/tauri-repository.ts` wraps the Tauri IPC commands behind
+the existing `Repository` interface. Components don't notice the
+storage swap. `getProject(id)` looks up a path from a cached
+id→path map, calls `project_open` → `project_read`, then eager-fetches
+the last 20 git commits via `snapshot_list` + `snapshot_read` and
+populates `revisions` so the VersionHistoryModal works without code
+changes. `setMeta` is a no-op (the Rust DB updates implicitly).
+`migrateVeryOldLegacy` is null (Tauri's webview doesn't share storage
+origin with browser localStorage).
+
+### Phase 3f — Repository registry / DI
+
+`src/services/repository-registry.ts` picks the active repository at
+module load: `tauriRepository` under Tauri, `browserRepository` in the
+browser. Frozen for the session. The store's `project-state.ts`
+imports `repository as repo` from the registry; `App.tsx` likewise.
+
+`Repository` interface gains `commitSnapshot(message, trigger, scope)`.
+BrowserRepository's impl is a no-op (returns null); TauriRepository
+calls `snapshot_commit`. `createSnapshot` thunk now calls
+`repo.commitSnapshot` after `saveCurrentState`, replacing the synthetic
+in-memory id with the real commit OID.
+
+### Phase 3g — Importer
+
+`src/features/migration/importer.ts` is a pure planning function +
+executor. `plan(backup, targetDir)` walks every `socratic_p_*` entry,
+slugifies project names into subfolders (collisions → numeric suffix),
+and emits a flat `ImportCommand[]`: `project_create` → for each
+revision chronologically (`project_write` + `snapshot_commit`) →
+final (`project_write` + `snapshot_commit "Imported from legacy
+backup"`). `executePlan(plan, onProgress)` runs the commands via Tauri
+IPC. Legacy `interpolationConfig` normalizes to `promptsConfig`.
+
+### Phase 3h — Migration UI
+
+`src/features/migration/use-legacy-migration.ts` detects on Tauri
+launch whether to prompt: only if state is `'pending'` AND the Rust
+recent-projects DB is empty. Stores `'done' | 'skipped'` in
+`localStorage` after the user's choice. Three flows in
+`MigrationModal.tsx`: import-from-backup-file (Tauri dialog file
+picker → `readTextFile` → `plan` → folder picker → `executePlan`),
+import-from-this-device-cache (`snapshotLocalIdbAsBackup` → same
+import flow; relevant only for users who ran an early Tauri build
+before Phase 3 swapped the repository), or skip. Auto-opened from
+`App.tsx`'s `legacyDetection.shouldPrompt`.
+
+Rust additions for the file read: `tauri-plugin-fs` crate +
+`fs:allow-read-text-file` capability. The dialog plugin was already
+present from Phase 3a.
+
+### Phase 3i — VersionHistoryModal (no changes needed)
+
+The existing modal reads from in-memory `revisions[]`.
+TauriRepository.getProject populates `revisions` from the last 20
+commits during project open. The modal works unchanged. A future
+enhancement (Phase 5) can lazy-fetch older commits via
+`snapshot_list/snapshot_read` on demand.
+
+### Phase 3j — Tests
+
+`src/features/migration/__tests__/importer.test.ts`: 9 tests covering
+command count per project, slug + collision suffix, chronological
+revision ordering, `interpolationConfig` → `promptsConfig`
+normalization, non-project entry skipping, unknown-trigger fallback to
+`'manual'`. Plus 3 `slugify` tests. Suite: 9/9 → 18/18.
+
+### Phase 3k — Doc closeout (this entry)
+
+- AGENTS.md: "Where to put X" gains rows for new Tauri IPC commands,
+  on-disk files, and git operations. Source-tree map adds the
+  `src-tauri/src/{commands,project,db,git,fs_io}` subdirs and the
+  on-disk project layout.
+- ARCHITECTURE.md: Phases table marks Phase 3 ✅, Phase 4 ⏳.
+- This file: full Phase 3 entry.
+
+### Phase 3 net effect
+
+| Aspect | Before | After |
+|---|---|---|
+| Source of truth | IndexedDB blob (per project) | `project.md` on disk + `.twriter/specs/*.yaml` |
+| Snapshots | Full deep copies in `revisions[]` array, capped at 50 | Real git commits, unbounded |
+| Storage growth | `O(history × document)` | content-addressed via git; `O(diff)` per commit |
+| Cross-machine | impossible (browser-local) | git push/pull (Phase 4 wires the UI) |
+| Recovery paths | one (the IndexedDB blob) | three (markdown files, SQLite cache, git history) |
+| Tauri Rust LOC | ~50 (Phase 2) | ~1000 |
+| Tests | 9 (parseMarkdown) | 18 (parseMarkdown + importer) |
+
+### Verify Phase 3 end-state (user, on their machine)
+
+JS side (verifiable in any sandbox):
+- `npm test` (18/18)
+- `npm run typecheck` (clean)
+- `npm run build` (ok)
+
+Rust side (requires libwebkit2gtk-4.1-dev + libgtk-3-dev + libsoup-3.0-dev
++ libjavascriptcoregtk-4.1-dev + libayatana-appindicator3-dev +
+librsvg2-dev on Linux; equivalent on macOS / Windows):
+- `cd src-tauri && cargo check` — must succeed
+- `npm run tauri:dev` — desktop window opens
+
+End-to-end migration smoke test:
+1. In the browser version, click the Backup icon (Sidebar archive button).
+   Save the JSON somewhere safe.
+2. Launch `npm run tauri:dev`. The MigrationModal should auto-open.
+3. Pick "Import from backup file", choose the JSON.
+4. Pick a destination folder (e.g. `~/Dissertation`).
+5. Watch the progress bar; the modal reports per-project folders on
+   completion.
+6. Open one of the imported folders in a plain text editor. Confirm
+   `project.md` carries your prose. Confirm `.twriter/specs/*.spec.yaml`
+   files are human-readable.
+7. Edit a section in the app. Watch `git log` in the project folder —
+   a new commit should land within 60s (autosave) or immediately on
+   manual save.
+8. Open VersionHistoryModal in the app. Confirm recent commits are
+   listed. Restore an older one. Content rolls back.
+
+### Rollback procedures
+
+- 3a–3d: `git revert` removes the Rust code. JS uses none of it yet.
+- 3e: `git revert` restores `browserRepository` imports.
+- 3f: revert removes the registry. **Revert 3e + 3f together** —
+  reverting only 3f leaves Tauri builds with no persistence.
+- 3g–3h: `git revert` removes the importer + UI. Already-migrated
+  projects on disk still work because 3e + 3f remain.
+
+### What is explicitly NOT in Phase 3
+
+- No git remote (Phase 4).
+- No FTS5 search UI (Phase 5).
+- No streaming AI (Phase 5).
+- No conflict resolution UI (Phase 5).
+- No project-folder delete from within the app (user uses `rm -rf`).
+- No git config UI (author hardcoded for now).
+- VersionHistoryModal still loads only the last 20 commits eagerly.
+  Older history is in `.git/` but not reachable through the UI yet.

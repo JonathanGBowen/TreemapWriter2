@@ -202,8 +202,8 @@ git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
 | 0 | Foundations: AGENTS.md, ESLint, Vitest, backup export button | IndexedDB (unchanged) | ✅ done |
 | 1 | Decompose: split store, extract features, prompts to .md | IndexedDB (unchanged) | ✅ done |
 | 2 | Tauri shell wraps existing UI; verify desktop build | IndexedDB (unchanged) | ✅ done |
-| 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | ⏳ next |
-| 4 | Sync: git pull/push wired into chrome | Disk + SQLite + git + remote | |
+| 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | ✅ done |
+| 4 | Sync: git pull/push wired into chrome | Disk + SQLite + git + remote | ⏳ next |
 | 5 | Polish: streaming AI, FTS5 search, conflict resolution UI | — | |
 
 Current phase is recorded in `docs/migration-log.md`.

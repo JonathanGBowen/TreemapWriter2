@@ -57,7 +57,9 @@ non-negotiable rules:
 |---|---|
 | A new modal | `src/features/modals/<Name>Modal.tsx`. Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. |
 | A new editor command | `src/features/editor/commands/` |
-| A new Tauri IPC command | Add `#[tauri::command]` fn in `src-tauri/src/lib.rs`, register in `tauri::generate_handler![...]`, expose a typed wrapper from `src/services/<area>.ts` calling `invoke()`. Components never call `invoke()` directly. |
+| A new Tauri IPC command | Add `#[tauri::command]` fn in the right `src-tauri/src/commands/<area>.rs`, register in `lib.rs::run`'s `tauri::generate_handler![...]`, expose a typed wrapper as a method on `tauriRepository` (`src/services/tauri-repository.ts`) or in a sibling service module. Components never call `invoke()` directly. |
+| A new on-disk file in a project | Path goes in `src-tauri/src/project/layout.rs`. Read/write via `crate::fs_io::*` helpers (atomic write). If the file should be gitignored, update the `.gitignore` written by `project_create` in `src-tauri/src/commands/project.rs`. |
+| A new git operation | New function in `src-tauri/src/git/mod.rs`. Nothing outside that module touches `git2::*` directly. |
 | A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider`, new wrapper in the relevant feature folder |
 | A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`) |
 | A new domain mutation (testSuite, document, etc.) | Action on the appropriate state slice, NOT a `useCallback` in a component. Cross-slice mutations live in `project-state` and use `get().otherSliceAction()`. |
@@ -106,7 +108,39 @@ src-tauri/                     Rust crate, Phase 2+ desktop shell
 ├── icons/                     bundle icons (default placeholders for now)
 └── src/
     ├── main.rs                desktop entry — calls treemap_writer_lib::run()
-    └── lib.rs                 builder + invoke_handler. New IPC commands go here.
+    ├── lib.rs                 builder + AppState + invoke_handler registration
+    ├── error.rs               AppError + AppResult; serde glue for IPC
+    ├── types.rs               Rust mirrors of TS types (camelCase wire format)
+    ├── commands/              one file per concern; thin facades that dispatch
+    │   ├── project.rs         project_create / open / close / list_recent / delete_recent
+    │   ├── document.rs        project_read / project_write
+    │   ├── snapshot.rs        snapshot_commit / list / read
+    │   └── migration.rs       migration_import_legacy (currently a stub; logic lives JS-side)
+    ├── project/               handle, layout, state
+    │   ├── mod.rs             AppState (global recent DB + current ProjectHandle)
+    │   └── layout.rs          path helpers — only place that knows ".twriter/specs/..."
+    ├── db/                    SQLite cache + global recent-projects DB
+    │   ├── mod.rs             rusqlite Connection wrapper, schema bootstrap
+    │   └── schema.sql         per-project + global tables
+    ├── git/mod.rs             git2 wrappers — no other module touches git2 directly
+    └── fs_io/                 filesystem I/O helpers
+        ├── mod.rs             atomic_write_str + JSON helpers
+        └── yaml.rs            serde_yaml glue for per-section spec sidecars
+```
+
+```
+<user-picked-folder>/          A TreemapWriter project on disk (Phase 3+)
+├── .git/                      Real git repo (libgit2-managed; revisions = commits)
+├── .gitignore                 Excludes .twriter/index.sqlite + diagnostics
+├── project.md                 THE prose. Source of truth. Open in any text editor.
+└── .twriter/
+    ├── settings.json          { name, schemaVersion, activePersonaId }
+    ├── personas.json          custom personas
+    ├── prompts.json           per-project PromptsConfig override
+    ├── hidden.json            hiddenSectionIds (validated against parsed tree on load)
+    ├── uistate.json           per-project layout (sidebar/panel widths, focus mode)
+    ├── specs/<id>.spec.yaml   per-section SectionSpec + history + dependencies
+    └── index.sqlite           derived cache (gitignored; rebuildable any time)
 ```
 
 ## Aesthetic
@@ -198,8 +232,10 @@ macOS needs Xcode CLT; Windows needs the Microsoft C++ Build Tools and
 WebView2 runtime (preinstalled on Win10/11).
 
 **Detect runtime:** `import { isTauri } from 'src/services/tauri-environment'`.
-This is the branch point for `browserRepository` vs the future
-`tauriRepository`.
+This is the branch point for `browserRepository` vs `tauriRepository` —
+but consumers never need it; they import `repository` from
+`src/services/repository-registry.ts`, which picks the right
+implementation at module load.
 
 ## Refactor status
 
