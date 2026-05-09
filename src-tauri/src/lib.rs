@@ -1,12 +1,19 @@
-// Phase 2 — minimal Tauri shell. The app runs as a desktop window wrapping
-// the existing React UI. No persistence is delegated here yet (the JS side
-// continues to use IndexedDB via browserRepository); Phase 3 will add
-// SQLite + git + filesystem commands.
+// Phase 2 — Tauri shell. Phase 3 — repository commands wire the dissertation
+// to disk: SQLite cache + markdown + YAML sidecars + git history.
 //
-// `app_info` is exposed only as a sanity check that JS↔Rust IPC works end
-// to end. Once Phase 3 lands a real Repository in Rust, this command stays
-// useful as a "Tauri vs browser" environment probe — see
-// `src/services/tauri-environment.ts`.
+// AppState holds the global recent-projects DB and (when one is open) the
+// current project's git repo + per-project SQLite cache. All persistence
+// flows through `commands/`, never through plugins exposed to JS — the
+// architectural rule "components never call invoke() directly" is enforced
+// by giving the JS side typed wrappers in `src/services/tauri-repository.ts`.
+
+mod commands;
+mod db;
+mod error;
+mod fs_io;
+mod git;
+mod project;
+mod types;
 
 use serde::Serialize;
 
@@ -28,7 +35,12 @@ fn app_info() -> AppInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let app_state = project::AppState::new()
+        .expect("failed to initialize TreemapWriter AppState (recent-projects DB)");
+
     tauri::Builder::default()
+        .manage(app_state)
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -39,7 +51,24 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![app_info])
+        .invoke_handler(tauri::generate_handler![
+            app_info,
+            // commands/project.rs
+            commands::project::project_create,
+            commands::project::project_open,
+            commands::project::project_close,
+            commands::project::project_list_recent,
+            commands::project::project_delete_recent,
+            // commands/document.rs
+            commands::document::project_read,
+            commands::document::project_write,
+            // commands/snapshot.rs
+            commands::snapshot::snapshot_commit,
+            commands::snapshot::snapshot_list,
+            commands::snapshot::snapshot_read,
+            // commands/migration.rs
+            commands::migration::migration_import_legacy,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
