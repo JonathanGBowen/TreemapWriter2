@@ -59,10 +59,14 @@ impl AppState {
         }
     }
 
-    /// Open a project at `path`: creates the cache connection, opens git.
+    /// Open a project at `path`: opens (or initializes) git, opens the
+    /// per-project SQLite cache, and installs a fresh ProjectHandle as
+    /// the current handle.
     pub fn open_at(&self, path: PathBuf) -> AppResult<()> {
         let layout = Layout::new(&path);
-        let git = git2::Repository::open(&path)?;
+        // Route through the git module to honor the "no direct git2 access
+        // outside git::*" rule. `init` opens an existing repo or creates one.
+        let git = crate::git::init(&path)?;
         let cache = crate::db::open(&layout.cache_sqlite())?;
         self.set_current(Some(ProjectHandle { layout, git, cache }));
         Ok(())
