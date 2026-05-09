@@ -71,6 +71,14 @@ export const browserRepository: Repository = {
     localStorage.removeItem(STORAGE_PREFIX + id);
   },
 
+  async commitSnapshot(): Promise<null> {
+    // No-op in the browser. Snapshots live as plain entries on the
+    // in-memory `revisions` array (capped at 50) and are persisted via
+    // setProject. The TauriRepository overrides this to make a real
+    // git commit.
+    return null;
+  },
+
   async migrateVeryOldLegacy() {
     const raw = localStorage.getItem(VERY_OLD_LEGACY_KEY);
     if (!raw) return null;

@@ -104,6 +104,18 @@ export const tauriRepository: Repository = {
     // never be a one-click event.
   },
 
+  async commitSnapshot(
+    message: string,
+    trigger: 'manual' | 'autosave' | 'pre-ai-write',
+    affectedScope: 'all' | { sectionIds: string[] },
+  ): Promise<string> {
+    return invoke<string>('snapshot_commit', {
+      message,
+      trigger,
+      affectedScope,
+    });
+  },
+
   async migrateVeryOldLegacy(): Promise<null> {
     // The old `socratic_project_v1` key only ever existed in browser
     // localStorage. Tauri runs in a fresh webview with no shared storage
@@ -111,24 +123,3 @@ export const tauriRepository: Repository = {
     return null;
   },
 };
-
-/**
- * Phase 3 helper: commit a snapshot via git. The store's `createSnapshot`
- * thunk routes through this when running in Tauri.
- *
- * Not part of the Repository interface (yet) — added separately so the
- * BrowserRepository fallback can be a no-op without touching the
- * interface signature. Phase 4+ may promote this to the interface once
- * sync semantics are pinned down.
- */
-export async function tauriSnapshotCommit(
-  message: string,
-  trigger: 'manual' | 'autosave' | 'pre-ai-write',
-  affectedScope: 'all' | { sectionIds: string[] },
-): Promise<string> {
-  return invoke<string>('snapshot_commit', {
-    message,
-    trigger,
-    affectedScope,
-  });
-}

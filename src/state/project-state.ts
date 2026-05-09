@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import { DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
 import defaultProjectData from '../lib/defaultProject.json';
-import { browserRepository as repo } from '../services/browser-repository';
+import { repository as repo } from '../services/repository-registry';
 import type { Dependency, ProjectMeta, PromptsConfig, Snapshot, TestSuite } from '../types';
 import type { AppState } from '.';
 
@@ -312,6 +312,27 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     const newRevisions = [newSnapshot, ...prev].slice(0, 50);
     set({ revisions: newRevisions });
     await get().saveCurrentState();
+
+    // Under Tauri, mark the version as a real git commit. No-op in the
+    // browser. The message format mirrors the in-memory Snapshot's
+    // metadata so that snapshot_list can reconstruct it.
+    try {
+      const message = configOverride
+        ? `${trigger} with config override`
+        : `${trigger} @ ${new Date(newSnapshot.timestamp).toISOString()}`;
+      const commitId = await repo.commitSnapshot(message, trigger, affectedScope);
+      if (commitId) {
+        // Replace the synthetic id with the real commit OID so future
+        // restores resolve correctly under Tauri.
+        set((s) => ({
+          revisions: s.revisions.map((r) =>
+            r.id === newSnapshot.id ? { ...r, id: commitId, contentHash: commitId } : r,
+          ),
+        }));
+      }
+    } catch (e) {
+      console.warn('commitSnapshot failed (browser mode is no-op; this is a Tauri error):', e);
+    }
   },
 
   restoreSnapshot: async (snapshot) => {

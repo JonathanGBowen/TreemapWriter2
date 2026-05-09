@@ -60,4 +60,19 @@ export interface Repository {
     meta: ProjectMeta;
     data: StoredProjectData;
   } | null>;
+
+  /**
+   * Mark a meaningful version. Under Tauri, this becomes a git commit;
+   * under the browser, it's a no-op (snapshots live as plain entries on
+   * the in-memory `revisions` array, persisted by `setProject`). Returns
+   * the new commit OID under Tauri, null in the browser.
+   *
+   * Called from the store's `createSnapshot` thunk after `setProject`
+   * has written current state to disk.
+   */
+  commitSnapshot(
+    message: string,
+    trigger: 'manual' | 'autosave' | 'pre-ai-write',
+    affectedScope: 'all' | { sectionIds: string[] },
+  ): Promise<string | null>;
 }
