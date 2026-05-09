@@ -157,6 +157,12 @@ export interface ProjectMeta {
   name: string;
   lastModified: number;
   wordCount: number;
+  /**
+   * Absolute folder path on disk. Set by the Tauri repository (Phase 3+);
+   * always undefined under the browser repository. The JS layer caches
+   * `id → path` from `getMeta()` and uses it to drive `project_open`.
+   */
+  path?: string;
 }
  
 export interface PromptsConfig {
