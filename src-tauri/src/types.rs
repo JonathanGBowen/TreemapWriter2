@@ -130,6 +130,55 @@ fn default_status() -> String {
 
 pub type TestSuite = HashMap<String, TestSuiteEntry>;
 
+/// Subset of TestSuiteEntry that gets persisted to the YAML sidecar.
+/// Ephemeral fields (`status`, `lastDiagnostic`, `lastResult`,
+/// `cachedSuggestions`) deliberately do NOT appear here — they belong in
+/// the SQLite cache, not in git history. Round-trip:
+/// `TestSuiteEntry → PersistedTestEntry` on write, `PersistedTestEntry →
+/// TestSuiteEntry::default()-and-fill` on read.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PersistedTestEntry {
+    pub goals: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub spec: Option<SectionSpec>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub history: Option<Vec<SpecHistoryItem>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub dependencies: Option<Vec<Dependency>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub main_claim: Option<String>,
+}
+
+impl PersistedTestEntry {
+    pub fn from_entry(entry: &TestSuiteEntry) -> Self {
+        Self {
+            goals: entry.goals.clone(),
+            spec: entry.spec.clone(),
+            history: entry.history.clone(),
+            dependencies: entry.dependencies.clone(),
+            main_claim: entry.main_claim.clone(),
+        }
+    }
+
+    pub fn into_entry(self) -> TestSuiteEntry {
+        TestSuiteEntry {
+            goals: self.goals,
+            spec: self.spec,
+            // Ephemeral on read: status defaults to "stale" because we
+            // can't know whether a diagnostic still applies. Other fields
+            // start unset.
+            status: "stale".to_string(),
+            history: self.history,
+            dependencies: self.dependencies,
+            main_claim: self.main_claim,
+            cached_suggestions: None,
+            last_diagnostic: None,
+            last_result: None,
+        }
+    }
+}
+
 /// Snapshot ↔ git commit. The `id` is the commit OID; `contentHash` is the
 /// tree OID. `markdown` and `testSuite` are read on demand.
 #[derive(Debug, Clone, Serialize, Deserialize)]
