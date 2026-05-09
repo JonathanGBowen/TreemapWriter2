@@ -22,6 +22,7 @@ log = "0.4"
 tauri = { version = "2.11.1" }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 
 # Phase 3 — persistence backbone.
 # The dissertation lives as plain markdown + YAML sidecars + a real

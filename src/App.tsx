@@ -19,6 +19,8 @@ import { CoachModal } from "./features/modals/CoachModal";
 import { ProjectFileModal } from "./features/modals/ProjectFileModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
+import { MigrationModal } from "./features/migration/MigrationModal";
+import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { DEFAULT_PROMPTS_CONFIG } from "./lib/constants";
@@ -27,7 +29,7 @@ import { Section, TestSuite, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
   SectionSpec, DiagnosticResult
 } from "./types";
-import { browserRepository as repo } from './services/browser-repository';
+import { repository as repo } from './services/repository-registry';
 import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 // Add new import:
@@ -203,6 +205,15 @@ export const App = () => {
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
+
+  // Auto-open the migration modal on first Tauri launch when there are
+  // legacy projects to import. The hook does the detection; we just react
+  // to its `shouldPrompt` flag.
+  const legacyDetection = useLegacyMigration();
+  const setShowMigrationModal = useStore(s => s.setShowMigrationModal);
+  useEffect(() => {
+    if (legacyDetection.shouldPrompt) setShowMigrationModal(true);
+  }, [legacyDetection.shouldPrompt, setShowMigrationModal]);
 
   // --- INITIALIZATION & MIGRATION ---
   useEffect(() => {
@@ -912,6 +923,8 @@ export const App = () => {
           testSuite={testSuite}
           onUpdateGoals={(id, goals) => updateSectionGoals(id, goals, 'manual')}
         />
+
+        <MigrationModal />
 
         <Toaster position="bottom-right" richColors />
       </div>
