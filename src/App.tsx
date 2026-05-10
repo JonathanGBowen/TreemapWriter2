@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { Toaster, toast } from "sonner";
 import { Sidebar } from "./features/sidebar/Sidebar";
 import { EditorPanel } from "./features/editor/EditorPanel";
@@ -32,15 +31,8 @@ import { Section, TestSuite, ProjectMeta, Snapshot,
 import { repository as repo } from './services/repository-registry';
 import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
-// Add new import:
-import { 
-  generateStructuredSpecs, 
-  runDiagnosticEvaluation, 
-  diagnosticToStatus,
-  specFromLegacyGoals,
-  generateDependenciesEstimation
-} from "./lib/ai-pipeline";
-import { buildDiagnosticPrompt } from "./lib/constants"; // if not already
+import { aiProvider } from './services/ai-provider-registry';
+import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { useStore } from './store';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -495,44 +487,41 @@ export const App = () => {
     
     setPromptsConfig(config);
 
-    await generateStructuredSpecs(
+    await aiProvider.generateSpecs({
       sections,
       markdown,
       config,
       modelId,
       thinkingBudget,
-      {
-        onBatchComplete: (specs) => {
-          setTestSuite(prev => {
-            const next = { ...prev };
-            Object.entries(specs).forEach(([id, spec]) => {
-              const existing = next[id] || { goals: '', status: 'idle', history: [] };
-              next[id] = {
-                ...existing,
-                spec,
-                mainClaim: spec.mainClaim,
-                // Serialize moves to goals string for backward compat
-                goals: spec.requiredMoves.map(m => m.description).join('\n'),
-                status: 'stale',
-                history: [
-                  ...(existing.history || []),
-                  {
-                    timestamp: Date.now(),
-                    goals: existing.goals,
-                    instruction: `Structured spec (${modelId})`,
-                    type: 'ai-generate' as const
-                  }
-                ]
-              };
-            });
-            return next;
+      onBatchComplete: (specs) => {
+        setTestSuite(prev => {
+          const next = { ...prev };
+          Object.entries(specs).forEach(([id, spec]) => {
+            const existing = next[id] || { goals: '', status: 'idle', history: [] };
+            next[id] = {
+              ...existing,
+              spec,
+              mainClaim: spec.mainClaim,
+              goals: spec.requiredMoves.map(m => m.description).join('\n'),
+              status: 'stale',
+              history: [
+                ...(existing.history || []),
+                {
+                  timestamp: Date.now(),
+                  goals: existing.goals,
+                  instruction: `Structured spec (${modelId})`,
+                  type: 'ai-generate' as const
+                }
+              ]
+            };
           });
-        },
-        onError: (error) => {
-          console.error("Spec generation batch error:", error);
-        }
+          return next;
+        });
+      },
+      onError: (error) => {
+        console.error("Spec generation batch error:", error);
       }
-    );
+    });
   } catch (e: any) {
     console.error("Interpolation failed", e);
     toast.error(`Task interpolation failed: ${e?.message || 'Check console/API Key.'}`);
@@ -578,7 +567,7 @@ export const App = () => {
     }));
     setIsProcessing(true);
    
-    const diagnostic = await runDiagnosticEvaluation({
+    const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,
       spec,
       scope,
@@ -665,7 +654,13 @@ export const App = () => {
   const handleEstimateDependencies = useCallback(async () => {
     try {
       toast.info("Estimating dependencies...", { id: "est-deps" });
-      const depsMap = await generateDependenciesEstimation(sections, testSuite, 'gemini-3.1-pro-preview', 1024, promptsConfig);
+      const depsMap = await aiProvider.estimateDependencies({
+        sections,
+        testSuite,
+        modelId: 'gemini-3.1-pro-preview',
+        thinkingBudget: 1024,
+        config: promptsConfig,
+      });
       
       setTestSuite(prev => {
         const next = { ...prev };
