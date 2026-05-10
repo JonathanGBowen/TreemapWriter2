@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, BrainCircuit, Sparkles, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Section, TestSuite, PromptsConfig } from '../../types';
-import { GoogleGenAI } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import { computeHash } from '../../lib/utils';
 import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { useStore } from '../../store';
+import { aiProvider } from '../../services/ai-provider-registry';
 
 interface CoachModalProps {
   markdown: string;
@@ -70,39 +70,13 @@ export const CoachModal: React.FC<CoachModalProps> = ({
     setError(null);
 
     try {
-      const apiKey = process.env.API_KEY || '';
-      if (!apiKey) throw new Error("API Key missing");
-      const ai = new GoogleGenAI({ apiKey });
-
-      // Gather structure data without the raw text to save tokens, highlighting gaps.
-      const structureData = sections.map(sec => {
-        const tests = testSuite[sec.id];
-        return {
-          title: sec.title,
-          level: sec.level,
-          wordCount: sec.wordCount,
-          goals: tests?.goals,
-          status: tests?.status,
-          missingMoves: tests?.lastDiagnostic?.moveResults?.filter(m => m.status === 'missing' || m.status === 'unclear') || []
-        };
+      const text = await aiProvider.getCoachAdvice({
+        markdown,
+        sections,
+        testSuite,
+        config: promptsConfig,
+        modelId: selectedModelId,
       });
-
-      const prompt = `
-${promptsConfig.coachPrompt}
-
-Document Size: ${markdown.length} characters
-Total Sections: ${sections.length}
-
-CURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):
-${JSON.stringify(structureData, null, 2)}
-`;
-
-      const response = await ai.models.generateContent({
-        model: selectedModelId,
-        contents: prompt
-      });
-
-      const text = response.text || '';
       setActionPlan(text);
       if (onSaveCache && text) {
         onSaveCache(currentInputHash, text);

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { Sparkles, ArrowRight, X, Check, History, GitCompare } from "lucide-react";
 import * as Diff from "diff";
 import { toast } from "sonner";
 import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
+import { aiProvider } from "../../services/ai-provider-registry";
 
 interface SpecGeneratorModalProps {
   sectionTitle: string;
@@ -47,33 +47,16 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
 
   const handleGenerate = async () => {
     setIsThinking(true);
-    
+
     try {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) throw new Error("API Key missing");
-      const ai = new GoogleGenAI({ apiKey });
-
-      const prompt = `
-${promptsConfig.refineSpecPrompt}
-
-CONTEXT:
-Section Title: "${sectionTitle}"
-Parent Section Goals: "${parentGoals || 'N/A'}"
-Current Goals: "${draftGoals}"
-Section Content: "${fullSectionContent.slice(0, 3000)}..."
-
-USER INSTRUCTION: "${instruction.trim() || 'Improve and refine the goals for clarity, conciseness, and completeness.'}"
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: prompt,
-        config: {
-            thinkingConfig: { thinkingBudget: 16000 }
-        }
+      const newText = await aiProvider.refineSpec({
+        sectionTitle,
+        currentGoals: draftGoals,
+        fullSectionContent,
+        parentGoals,
+        instruction,
+        config: promptsConfig,
       });
-      
-      const newText = response.text?.trim();
       if (newText) {
         setProposedGoals(newText);
         setMode('diff');

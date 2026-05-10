@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { Sparkles, X, Lightbulb, MessageSquare, ArrowRight, RefreshCw, Settings, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -7,6 +6,7 @@ import { computeHash } from "../../lib/utils";
 import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
+import { aiProvider } from "../../services/ai-provider-registry";
 
 const MODELS = [
   {
@@ -77,29 +77,14 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
     setIsThinking(true);
     setIsStale(false);
     try {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) throw new Error("API Key missing");
-      const ai = new GoogleGenAI({ apiKey });
-
-      const prompt = `
-${promptsConfig.suggestContentPrompt}
-
-CONTEXT:
-Section Title: "${sectionTitle}"
-Parent Section Goals: "${parentGoals || 'N/A'}"
-Section Goals: "${currentGoals}"
-Current Content:
----
-${fullSectionContent.slice(0, 5000)}
----
-      `;
-
-      const response = await ai.models.generateContent({
-        model: selectedModelId,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      const text = await aiProvider.getContentSuggestions({
+        sectionTitle,
+        currentGoals,
+        fullSectionContent,
+        parentGoals,
+        config: promptsConfig,
+        modelId: selectedModelId,
       });
-      
-      const text = response.text;
       setSuggestions(text);
       if (onSaveCache && text) {
         onSaveCache(sectionId, currentInputHash, text);

@@ -1,10 +1,10 @@
 import React, { useState, useRef } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload } from "lucide-react";
 import { Persona, PromptsConfig } from "../../types";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
+import { aiProvider } from "../../services/ai-provider-registry";
 
 interface PersonaSettingsModalProps {
   activePersonaId: string;
@@ -42,39 +42,18 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   const handleGeneratePersonas = async () => {
     setIsGenerating(true);
     try {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) throw new Error("API Key missing");
-      const ai = new GoogleGenAI({ apiKey });
-
-      // Take a slice of the document if it's too large
-      const contextSample = documentContext.slice(0, 5000);
-
-      const prompt = `
-${promptsConfig.generatePersonasPrompt}
-
-TEXT SAMPLE:
----
-${contextSample}
----
-`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
+      const suggestions = await aiProvider.generatePersonas({
+        documentContext,
+        config: promptsConfig,
       });
-
-      const json = JSON.parse(response.text || '{}');
-      if (json.personas && Array.isArray(json.personas)) {
-        json.personas.forEach((p: any) => {
-           onAddPersona({
-             id: `gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-             name: p.name,
-             role: p.role,
-             instruction: p.instruction
-           });
+      suggestions.forEach(p => {
+        onAddPersona({
+          id: `gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: p.name,
+          role: p.role,
+          instruction: p.instruction,
         });
-      }
+      });
     } catch (e) {
       console.error("Failed to generate personas", e);
       toast.error("Could not generate personas. Please check your API configuration.");
