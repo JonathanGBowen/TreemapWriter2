@@ -69,6 +69,10 @@ pub fn run() {
             commands::snapshot::snapshot_read,
             // commands/migration.rs
             commands::migration::migration_import_legacy,
+            // commands/credentials.rs (Phase 4a)
+            commands::credentials::credentials_set,
+            commands::credentials::credentials_get,
+            commands::credentials::credentials_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

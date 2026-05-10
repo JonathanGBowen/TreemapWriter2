@@ -56,6 +56,12 @@ impl From<serde_yaml::Error> for AppError {
     }
 }
 
+impl From<keyring::Error> for AppError {
+    fn from(e: keyring::Error) -> Self {
+        AppError::Other(anyhow::anyhow!(e))
+    }
+}
+
 // For use in places where we want a quick error from a string.
 pub fn err<T>(msg: impl fmt::Display) -> AppResult<T> {
     Err(AppError::Other(anyhow::anyhow!("{}", msg)))
