@@ -1,20 +1,42 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# TreemapWriter2
 
-# Run and deploy your AI Studio app
+A single-user assistive-writing tool for a working philosopher with ADHD,
+finishing a dissertation. The treemap view surfaces document structure at a
+glance; AI provides _structural_ — not summary — analysis of academic
+argument. Hyper Light Drifter aesthetic: spare, glyph-driven, dark-themed.
 
-This contains everything you need to run your app locally.
+Originally scaffolded in Google AI Studio (May 2026). Now a Tauri 2 desktop
+app with markdown-on-disk + SQLite cache + git history as three independent
+recovery paths for the user's prose.
 
-View your app in AI Studio: https://ai.studio/apps/800a9613-c01a-4fad-bdfd-6ccae4710f1e
+## Run locally
 
-## Run Locally
+Prerequisites: Node.js 20+. Set `GEMINI_API_KEY` in `.env.local`.
 
-**Prerequisites:**  Node.js
+```
+npm install
+npm run dev          # Vite browser dev server
+npm test             # Vitest
+npm run typecheck    # tsc --noEmit
+npm run build        # production browser bundle
+```
 
+## Run as a desktop app
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Requires the Tauri 2 toolchain (Rust + platform-specific build tools — see
+[`AGENTS.md`](AGENTS.md) for the per-OS list).
+
+```
+npm run tauri:dev    # native window with Vite dev server
+npm run tauri:build  # installer (.app / .dmg / .exe / .deb / .AppImage)
+```
+
+## Architecture & contributing
+
+This codebase is co-developed with AI coding agents and is designed to be
+agent-legible. Before touching code, read:
+
+- [`AGENTS.md`](AGENTS.md) — operating guide; anti-patterns; where-to-put-X table.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, principles, target shape.
+- [`docs/refactor-plan.md`](docs/refactor-plan.md) — the multi-phase master plan.
+- [`docs/migration-log.md`](docs/migration-log.md) — what each phase changed.

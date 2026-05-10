@@ -83,7 +83,13 @@ src/
 ├── store/index.ts             @deprecated re-export of state/ for back-compat
 ├── services/                  persistence + external APIs
 │   ├── repository.ts          interface
-│   ├── browser-repository.ts  IndexedDB impl (Phase 3 will add tauri-repository)
+│   ├── browser-repository.ts  IndexedDB impl
+│   ├── tauri-repository.ts    Tauri impl (SQLite + markdown + git)
+│   ├── repository-registry.ts DI: picks impl at module load
+│   ├── ai-provider.ts         AI provider interface
+│   ├── gemini-provider.ts     Gemini impl (the ONE file that imports @google/genai)
+│   ├── ai-provider-registry.ts DI: picks impl at module load
+│   ├── tauri-environment.ts   isTauri() runtime detector
 │   ├── preferences.ts         global app prefs (tutorial flag etc.)
 │   └── prompts/               .md prompts + index.ts that assembles DEFAULT_PROMPTS_CONFIG
 ├── features/
@@ -239,10 +245,10 @@ implementation at module load.
 
 ## Refactor status
 
-The project is mid-migration along the plan in
-`/root/.claude/plans/act-as-a-senior-toasty-teacup.md`. Current phase is
-recorded in `docs/migration-log.md`. Do not skip ahead to a later phase
-without explicit instruction.
+The project is mid-migration along the master plan in
+[`docs/refactor-plan.md`](docs/refactor-plan.md). Current phase is recorded
+in [`docs/migration-log.md`](docs/migration-log.md). Do not skip ahead to a
+later phase without explicit instruction.
 
 ## End-of-phase ritual (load-bearing)
 

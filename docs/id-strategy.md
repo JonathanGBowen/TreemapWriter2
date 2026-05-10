@@ -1,7 +1,11 @@
 # Section ID Strategy
 
-> **Status:** placeholder. Phase 1 will replace `src/lib/utils.ts:4-6`'s
-> title-slug-based scheme with a stable strategy and document it here.
+> **Status:** **Deferred.** The master plan listed stable IDs as Phase 1
+> work, but Phase 1 closed without implementing them — production still
+> uses the title-slug + index scheme in `src/lib/utils.ts:4-6`. Revisit
+> during Phase 5 polish, or sooner if a rename / reorder bug surfaces.
+> Cost: ~1 day + a per-project migration. The sketch below remains the
+> intended approach when this is picked up.
 
 ## The problem
 

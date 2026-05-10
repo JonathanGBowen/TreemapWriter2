@@ -379,7 +379,8 @@ in Phase 1g" — it points at the real location.
   format.
 
 **Ready for Phase 2** — Tauri shell. Plan in
-`/root/.claude/plans/act-as-a-senior-toasty-teacup.md` Part IV.
+[`refactor-plan.md`](refactor-plan.md) Part IV (committed to the repo
+during Phase 3.5; previously referenced only as a sandbox path).
 
 **Standing rule (from AGENTS.md "End-of-phase ritual"):** every
 future phase commit must include refreshed AGENTS.md /
@@ -659,3 +660,158 @@ End-to-end migration smoke test:
 - No git config UI (author hardcoded for now).
 - VersionHistoryModal still loads only the last 20 commits eagerly.
   Older history is in `.git/` but not reachable through the UI yet.
+
+---
+
+## 2026-05-10 — Phase 3.5 (AI provider abstraction + master plan committed)
+
+**Honest framing.** This phase completes work that the master plan
+specified for Phase 1 but Phase 1 silently skipped. The plan's "Critical
+files — Phase 1 — Decompose" section lists, verbatim:
+
+> `src/lib/ai-pipeline.tsx:1-404` → refactor as the Gemini implementation
+> of `src/services/ai-provider.ts`
+
+Phase 1a extracted prompts to `.md` files but stopped there; the
+`AIProvider` interface and the Gemini implementation never landed. Phase
+1h closed Phase 1 without flagging the deferral. Through Phases 2 and 3,
+`@google/genai` continued to be imported directly in App.tsx, the AI
+pipeline file, and four React modals — exactly the anti-pattern
+AGENTS.md names. Phase 3.5 is the cleanup that should have been part of
+Phase 1, slotted at the seam between Phase 3 and Phase 4 because (a) the
+longer it festered the more places it spread to, and (b) Phase 5's
+streaming-AI polish needs the abstraction to exist.
+
+### What changed
+
+**AI provider abstraction.**
+
+- New: `src/services/ai-provider.ts` — interface modeled on
+  `repository.ts`. Seven methods: `generateSpecs`, `runDiagnostic`,
+  `estimateDependencies`, `getCoachAdvice`, `getContentSuggestions`,
+  `generatePersonas`, `refineSpec`. Each takes a typed input object and
+  returns a typed domain value. A one-line comment notes that Phase 5
+  will add sibling streaming methods (e.g. `streamCoachAdvice():
+  AsyncIterable<string>`) without disturbing existing callers.
+- New: `src/services/gemini-provider.ts` — the **one and only** file
+  that imports `@google/genai`. Owns prompt assembly, model defaults
+  (flash for personas, pro + 16k thinking for refineSpec), JSON parsing,
+  and response normalization. Client is lazy: `this.client` is a getter
+  that constructs the SDK only on first use, so an app launched without
+  an API key still boots and only fails when AI is invoked (matching
+  pre-3.5 behavior).
+- New: `src/services/ai-provider-registry.ts` — sibling DI registry
+  parallel to `repository-registry.ts`. Picks `API_KEY` from
+  `process.env` as the canonical name (Vite defines both `API_KEY` and
+  `GEMINI_API_KEY` from the same `.env` entry; harmless duplication).
+  When OS-keyring storage lands (originally a Phase 3 deliverable that
+  didn't ship; deferred to Phase 4 alongside sync credentials), only
+  this file changes.
+- New: `src/lib/diagnostic-helpers.ts` — pure (non-AI) helpers
+  `diagnosticToStatus` and `specFromLegacyGoals` extracted from the
+  retired `lib/ai-pipeline.tsx`.
+- Deleted: `src/lib/ai-pipeline.tsx`. Its AI calls live in
+  `gemini-provider.ts`; its pure helpers live in `diagnostic-helpers.ts`.
+
+**Six consumers refactored.** `CoachModal`, `ContentSuggestionsModal`,
+`PersonaSettingsModal`, `SpecGeneratorModal`, `App.tsx`, and the now-
+deleted `ai-pipeline.tsx` all stopped instantiating `GoogleGenAI`
+directly. Each call site shrank: a 30-line block of `apiKey` check +
+client construction + inline prompt assembly + `generateContent` becomes
+a single `aiProvider.someMethod({ ...inputs })` await.
+
+**Doc cleanup bundled in.**
+
+- `docs/refactor-plan.md` is new: the master plan committed to the repo
+  verbatim. Authored in a web Claude session under a sandbox path that
+  this Windows machine could never resolve; references from AGENTS.md,
+  ARCHITECTURE.md, and this log now point at the in-repo location. The
+  historical Phase 1h entry above still notes its original sandbox
+  authorship.
+- `README.md` rewritten: removed the AI Studio template (Gemini-key
+  setup, ai.studio link), added the actual project description (Tauri 2
+  desktop app, three recovery paths) and pointers to AGENTS.md /
+  ARCHITECTURE.md / refactor-plan.md / this log.
+- `docs/id-strategy.md` banner updated from "placeholder, Phase 1 will
+  fill it in" to "Deferred. Phase 1 did not implement stable IDs.
+  Revisit during Phase 5 polish or sooner if a rename/reorder bug
+  surfaces." The sketch of the intended ULID approach is preserved.
+- `AGENTS.md`: source-tree map gained the actual `services/` entries
+  (`tauri-repository.ts`, `repository-registry.ts`, `ai-provider.ts`,
+  `gemini-provider.ts`, `ai-provider-registry.ts`,
+  `tauri-environment.ts`). Refactor-status section now points at
+  `docs/refactor-plan.md`.
+- `docs/ARCHITECTURE.md` line 3 reference updated to
+  `[refactor-plan.md](refactor-plan.md)`.
+
+### Phase 3.5 net effect
+
+| Aspect | Before | After |
+|---|---|---|
+| `@google/genai` imports in `src/` | 6 (App.tsx + 4 modals + ai-pipeline.tsx) | 1 (gemini-provider.ts) |
+| AI provider abstraction | missing | `AIProvider` interface + `GeminiProvider` impl + registry |
+| `lib/ai-pipeline.tsx` | 405-line AI pipeline mixed with helpers | deleted; AI in services/, helpers in lib/diagnostic-helpers.ts |
+| Master plan canonical location | dangling sandbox path | `docs/refactor-plan.md` in-repo |
+| README | AI Studio template | Tauri-aware description + doc pointers |
+| `docs/id-strategy.md` status | "placeholder, Phase 1 will do it" (false) | "Deferred to Phase 5" (true) |
+| Tests | 18/18 | 18/18 (no regression) |
+| AGENTS.md "Where to put X" — New AI flow row | aspirational | load-bearing |
+
+### Verify Phase 3.5 end-state
+
+JS side (verified):
+
+- `npx tsc --noEmit` — clean.
+- `npx vitest run` — 18/18 passing.
+- `npm run build` — succeeds.
+- `Select-String -Path src\**\*.ts,src\**\*.tsx -Pattern '@google/genai' -SimpleMatch` — exactly one hit, in `gemini-provider.ts`.
+
+Manual smoke (requires running app on user's machine):
+
+1. Open Coach modal → request advice → response renders.
+2. Open Content Suggestions on a section → suggestions render.
+3. Open Persona Settings → "Auto-Generate" → new personas append to the list.
+4. Open Spec Generator on a section → run → diff appears.
+5. From treemap → run diagnostic on a section → result appears.
+6. From sidebar / button → estimate dependencies → edges appear.
+7. From the Interpolate Tasks modal → generate → tasks land on sections.
+
+If any of the above fail with "API Key missing", the registry's lazy
+client is doing its job — verify `.env.local` has `GEMINI_API_KEY` set.
+
+### Rollback procedures
+
+- Per-file: each consumer refactor (CoachModal, ContentSuggestionsModal,
+  PersonaSettingsModal, SpecGeneratorModal, App.tsx) is independently
+  revertable. `git checkout HEAD~ <file>` restores the inline
+  `GoogleGenAI` instantiation while the rest of the refactor stands.
+- Full revert: undo the closeout commit, then `git checkout HEAD~
+  src/services/ai-provider*.ts src/services/gemini-provider.ts
+  src/lib/diagnostic-helpers.ts` and `git checkout HEAD~~
+  src/lib/ai-pipeline.tsx` to restore it. Doc-cleanup commits revert
+  independently.
+
+### What is explicitly NOT in Phase 3.5 (still outstanding)
+
+- **App.tsx decomposition** — still 932 lines; target per master plan is
+  ~150. Domain logic (import/export, AI orchestration, snapshot
+  management) should be pulled into `useProjectActions` and slice
+  actions. Separate effort.
+- **300-line file-cap cleanup** — 13 other files exceed the cap
+  (TestsPanel 606, Sidebar 424, EditorPanel 422, 7 modals, constants.ts,
+  livePreview.ts, project-state.ts). Tackle opportunistically as their
+  features get touched.
+- **OS keyring secret storage** — originally a Phase 3 deliverable
+  (`keyring` crate, per master plan). Did not ship. Currently the
+  Gemini key flows through Vite env → `process.env.API_KEY` →
+  registry. Address in Phase 4 alongside sync's git-credential needs.
+- **Stable section IDs** — `docs/id-strategy.md` now correctly marked
+  deferred (rather than misleading-as-pending). Implementation is a
+  ~1-day chunk + a per-project migration; defer to Phase 5 unless a
+  rename/reorder bug surfaces.
+- **Streaming AI** — interface is shaped to accept Phase 5 streaming
+  sibling methods (`streamCoachAdvice`, etc.) but no streaming method
+  exists yet.
+
+**Ready for Phase 4** — git sync. See
+[`refactor-plan.md`](refactor-plan.md) Part IV "Phase 4 — Sync".

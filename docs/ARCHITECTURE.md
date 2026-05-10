@@ -1,8 +1,7 @@
 # TreemapWriter2 — Architecture
 
-> The full plan lives at `/root/.claude/plans/act-as-a-senior-toasty-teacup.md`.
-> This file is the in-repo, agent-readable summary. Update both when reality
-> drifts.
+> The full plan lives at [`refactor-plan.md`](refactor-plan.md). This file
+> is the in-repo, agent-readable summary. Update both when reality drifts.
 
 ## Vocabulary
 
@@ -203,10 +202,11 @@ git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
 | 1 | Decompose: split store, extract features, prompts to .md | IndexedDB (unchanged) | ✅ done |
 | 2 | Tauri shell wraps existing UI; verify desktop build | IndexedDB (unchanged) | ✅ done |
 | 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | ✅ done |
+| 3.5 | AI provider abstraction (deferred Phase 1 deliverable); commit master plan to repo | Disk + SQLite + git | ✅ done |
 | 4 | Sync: git pull/push wired into chrome | Disk + SQLite + git + remote | ⏳ next |
 | 5 | Polish: streaming AI, FTS5 search, conflict resolution UI | — | |
 
-Current phase is recorded in `docs/migration-log.md`.
+Current phase is recorded in [`docs/migration-log.md`](migration-log.md).
 
 ## Anti-patterns
 
