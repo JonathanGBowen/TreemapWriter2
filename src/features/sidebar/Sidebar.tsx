@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson, Archive } from "lucide-react";
+import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson, Archive, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { Treemap } from "../treemap/Treemap";
 import { Section } from "../../types";
@@ -280,6 +280,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title="Backup ALL projects (one-time migration insurance)"
           >
             <Archive size={14} />
+          </button>
+          <button
+            onClick={() => useStore.getState().setShowSyncConfigModal(true)}
+            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
+            title="Configure git sync (push to private GitHub)"
+          >
+            <GitBranch size={14} />
           </button>
         </div>
 

@@ -38,6 +38,7 @@ export interface UIStateSlice {
   showGraphModal: boolean;
   showCoachModal: boolean;
   showMigrationModal: boolean;
+  showSyncConfigModal: boolean;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -63,6 +64,7 @@ export interface UIStateSlice {
   setShowGraphModal: (show: boolean) => void;
   setShowCoachModal: (show: boolean) => void;
   setShowMigrationModal: (show: boolean) => void;
+  setShowSyncConfigModal: (show: boolean) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
@@ -91,6 +93,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showGraphModal: false,
   showCoachModal: false,
   showMigrationModal: false,
+  showSyncConfigModal: false,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -115,4 +118,5 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowGraphModal: (show) => set({ showGraphModal: show }),
   setShowCoachModal: (show) => set({ showCoachModal: show }),
   setShowMigrationModal: (show) => set({ showMigrationModal: show }),
+  setShowSyncConfigModal: (show) => set({ showSyncConfigModal: show }),
 });

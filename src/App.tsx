@@ -19,6 +19,7 @@ import { ProjectFileModal } from "./features/modals/ProjectFileModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { MigrationModal } from "./features/migration/MigrationModal";
+import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -920,6 +921,8 @@ export const App = () => {
         />
 
         <MigrationModal />
+
+        <SyncConfigModal />
 
         <Toaster position="bottom-right" richColors />
       </div>
