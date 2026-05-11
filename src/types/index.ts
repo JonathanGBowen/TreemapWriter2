@@ -176,3 +176,31 @@ export interface PromptsConfig {
   diagnosticInstruction: string;
   dependenciesPrompt: string;
 }
+
+// --- PHASE 4 SYNC TYPES ---
+// Wire-format mirrors of src-tauri/src/types.rs. Rust enums are externally
+// tagged with `tag = "kind"`; TS discriminated unions match.
+
+export type PullOutcome =
+  | { kind: 'upToDate' }
+  | { kind: 'fastForwarded'; commits: number }
+  | { kind: 'mergeRequired'; conflicts: string[] }
+  | { kind: 'workingTreeDirty' }
+  | { kind: 'noRemote' };
+
+export type PushOutcome =
+  | { kind: 'upToDate' }
+  | { kind: 'pushed'; commits: number }
+  | { kind: 'nonFastForward' }
+  | { kind: 'noRemote' };
+
+export interface SyncState {
+  hasRemote: boolean;
+  remoteUrl: string | null;
+  ahead: number;
+  behind: number;
+  /** True if tracked files have uncommitted edits. */
+  workingTreeDirty: boolean;
+  /** Current local branch name, e.g. "main". Null if HEAD detached or no commits. */
+  branch: string | null;
+}

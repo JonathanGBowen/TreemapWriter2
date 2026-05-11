@@ -2,7 +2,10 @@ import type {
   Persona,
   PromptsConfig,
   ProjectMeta,
+  PullOutcome,
+  PushOutcome,
   Snapshot,
+  SyncState,
   TestSuite,
 } from '../types';
 
@@ -75,4 +78,32 @@ export interface Repository {
     trigger: 'manual' | 'autosave' | 'pre-ai-write',
     affectedScope: 'all' | { sectionIds: string[] },
   ): Promise<string | null>;
+
+  // --- Phase 4: sync ---
+
+  /**
+   * Purely-local snapshot of the project's git state. No network. Used by
+   * the UI indicator on every project open and after every commit. Browser
+   * mode returns { hasRemote: false } and the sync UI hides.
+   */
+  syncState(): Promise<SyncState>;
+
+  /**
+   * Fetch + fast-forward from `origin`. Never destructive — divergence and
+   * dirty-working-tree cases are returned as outcome variants, not acted on.
+   * Browser mode returns `{ kind: 'noRemote' }`.
+   */
+  syncPull(): Promise<PullOutcome>;
+
+  /**
+   * Push the current branch to `origin`. Reports `nonFastForward` rather
+   * than erroring on divergence. Browser mode returns `{ kind: 'noRemote' }`.
+   */
+  syncPush(): Promise<PushOutcome>;
+
+  /**
+   * Set the `origin` remote URL for the currently-open project. Also writes
+   * the URL to .twriter/settings.json. Browser mode is a no-op.
+   */
+  configureRemote(url: string): Promise<void>;
 }

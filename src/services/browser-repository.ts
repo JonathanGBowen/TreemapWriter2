@@ -1,5 +1,10 @@
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
-import type { ProjectMeta } from '../types';
+import type {
+  ProjectMeta,
+  PullOutcome,
+  PushOutcome,
+  SyncState,
+} from '../types';
 import type { Repository, StoredProjectData } from './repository';
 
 const STORAGE_PREFIX = 'socratic_p_';
@@ -98,5 +103,30 @@ export const browserRepository: Repository = {
       console.error('Very-old legacy migration failed', e);
       return null;
     }
+  },
+
+  // --- Phase 4: sync (browser is a no-op) ---
+
+  async syncState(): Promise<SyncState> {
+    return {
+      hasRemote: false,
+      remoteUrl: null,
+      ahead: 0,
+      behind: 0,
+      workingTreeDirty: false,
+      branch: null,
+    };
+  },
+
+  async syncPull(): Promise<PullOutcome> {
+    return { kind: 'noRemote' };
+  },
+
+  async syncPush(): Promise<PushOutcome> {
+    return { kind: 'noRemote' };
+  },
+
+  async configureRemote(_url: string): Promise<void> {
+    // No remote storage in the browser repository.
   },
 };

@@ -73,6 +73,11 @@ pub fn run() {
             commands::credentials::credentials_set,
             commands::credentials::credentials_get,
             commands::credentials::credentials_delete,
+            // commands/sync.rs (Phase 4c)
+            commands::sync::sync_state,
+            commands::sync::sync_pull,
+            commands::sync::sync_push,
+            commands::sync::sync_configure_remote,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

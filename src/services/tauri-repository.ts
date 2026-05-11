@@ -10,7 +10,13 @@
 // JS-side speaker of the Tauri IPC vocabulary for persistence concerns.
 
 import { invoke } from '@tauri-apps/api/core';
-import type { ProjectMeta, Snapshot } from '../types';
+import type {
+  ProjectMeta,
+  PullOutcome,
+  PushOutcome,
+  Snapshot,
+  SyncState,
+} from '../types';
 import type { Repository, StoredProjectData } from './repository';
 
 /** Lightweight commit metadata returned by the Rust `snapshot_list` command. */
@@ -121,5 +127,23 @@ export const tauriRepository: Repository = {
     // localStorage. Tauri runs in a fresh webview with no shared storage
     // origin. Nothing to migrate from here.
     return null;
+  },
+
+  // --- Phase 4: sync ---
+
+  async syncState(): Promise<SyncState> {
+    return invoke<SyncState>('sync_state');
+  },
+
+  async syncPull(): Promise<PullOutcome> {
+    return invoke<PullOutcome>('sync_pull');
+  },
+
+  async syncPush(): Promise<PushOutcome> {
+    return invoke<PushOutcome>('sync_push');
+  },
+
+  async configureRemote(url: string): Promise<void> {
+    await invoke('sync_configure_remote', { url });
   },
 };

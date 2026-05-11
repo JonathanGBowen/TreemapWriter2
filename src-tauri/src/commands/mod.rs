@@ -11,3 +11,4 @@ pub mod document;
 pub mod migration;
 pub mod project;
 pub mod snapshot;
+pub mod sync;
