@@ -1,10 +1,12 @@
 import React, { useState, useRef } from "react";
-import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload } from "lucide-react";
+import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload, Key } from "lucide-react";
 import { Persona, PromptsConfig } from "../../types";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
-import { aiProvider } from "../../services/ai-provider-registry";
+import { aiProvider, refreshGeminiKey } from "../../services/ai-provider-registry";
+import { setSecret } from "../../services/credentials";
+import { isTauri } from "../../services/tauri-environment";
 
 interface PersonaSettingsModalProps {
   activePersonaId: string;
@@ -36,6 +38,31 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newInstruction, setNewInstruction] = useState("");
+
+  // API key field (Phase 4f). The actual stored value lives in the OS
+  // keyring; we never read it back into the UI. The user types a new value
+  // here only when changing or setting the key.
+  const [pendingApiKey, setPendingApiKey] = useState("");
+  const [savingApiKey, setSavingApiKey] = useState(false);
+
+  const handleSaveApiKey = async () => {
+    if (!pendingApiKey.trim()) return;
+    if (!isTauri()) {
+      toast.error("API key storage requires the desktop app.");
+      return;
+    }
+    setSavingApiKey(true);
+    try {
+      await setSecret('gemini', pendingApiKey.trim());
+      refreshGeminiKey(pendingApiKey.trim());
+      setPendingApiKey("");
+      toast.success("Gemini API key saved to OS keyring.");
+    } catch (e: any) {
+      toast.error(`Failed to save key: ${e?.message || e}`);
+    } finally {
+      setSavingApiKey(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -140,6 +167,37 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {view === 'list' ? (
             <div className="space-y-4">
+              {/* Gemini API Key (Phase 4f) */}
+              <div className="bg-slate-50 dark:bg-hld-surface2 border border-slate-200 dark:border-hld-border rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Key size={14} className="text-amber-500 dark:text-hld-yellow" />
+                  <h4 className="text-[10px] font-mono uppercase tracking-widest font-bold text-slate-700 dark:text-hld-text">
+                    Gemini API Key
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-hld-muted leading-relaxed mb-3 font-sans">
+                  Stored in your OS keyring (Windows Credential Manager / macOS
+                  Keychain / Linux Secret Service). Falls back to <code className="font-mono">.env.local</code> if unset.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={pendingApiKey}
+                    onChange={(e) => setPendingApiKey(e.target.value)}
+                    placeholder="Paste a new key to set or replace"
+                    disabled={savingApiKey}
+                    className="flex-1 p-2 text-[12px] font-mono border border-slate-300 dark:border-hld-border rounded bg-white dark:bg-hld-bg text-slate-700 dark:text-hld-text focus:outline-none focus:border-indigo-500 dark:focus:border-hld-cyan disabled:opacity-50"
+                  />
+                  <button
+                    onClick={handleSaveApiKey}
+                    disabled={!pendingApiKey.trim() || savingApiKey}
+                    className="px-3 py-2 bg-indigo-600 dark:bg-hld-cyan text-white dark:text-hld-bg rounded text-[10px] font-mono uppercase tracking-widest font-bold hover:bg-indigo-700 dark:hover:bg-hld-cyan/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {savingApiKey ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+
               {/* Generator Banner */}
               <div className="bg-indigo-50 dark:bg-hld-cyan/10 border border-indigo-100 dark:border-hld-cyan/30 rounded-lg p-4 flex items-center justify-between mb-6">
                  <div>

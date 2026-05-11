@@ -40,11 +40,22 @@ const VALID_MOVE_STATUSES = ['present', 'partial', 'missing', 'unclear'] as cons
 const VALID_READINESS = ['draft', 'developing', 'nearly-there', 'solid'];
 
 export class GeminiProvider implements AIProvider {
-  private readonly apiKey: string;
+  private apiKey: string;
   private clientCached: GoogleGenAI | null = null;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+  }
+
+  /**
+   * Phase 4f — let the registry swap the key after async-resolving from
+   * the OS keyring. Invalidates the cached SDK client so the next AI
+   * call uses the new key. Safe to call with the same key (no-op).
+   */
+  setApiKey(apiKey: string): void {
+    if (apiKey === this.apiKey) return;
+    this.apiKey = apiKey;
+    this.clientCached = null;
   }
 
   /**
