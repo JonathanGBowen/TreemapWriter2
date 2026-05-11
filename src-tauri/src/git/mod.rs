@@ -6,6 +6,8 @@
 // directly. This keeps the surface auditable and makes Phase 4 (sync)
 // a matter of adding pull/push without touching readers.
 
+pub mod remote;
+
 use crate::error::{AppError, AppResult};
 use chrono::{DateTime, Utc};
 use git2::{Repository, Signature};

@@ -245,6 +245,48 @@ pub struct StoredProjectData {
     pub ui_state: Option<UiState>,
 }
 
+// Phase 4 — sync (git pull/push) outcomes.
+//
+// Tagged unions, externally tagged. JS side reads `kind` and switches.
+// Hard rule from the Phase 4 plan: outcomes that would require destroying
+// local commits (MergeRequired, NonFastForward) are RETURNED, not acted on.
+// The user resolves out-of-band; we never run reset --hard or anything that
+// throws away history.
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum PullOutcome {
+    UpToDate,
+    FastForwarded { commits: u32 },
+    MergeRequired { conflicts: Vec<String> },
+    WorkingTreeDirty,
+    NoRemote,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum PushOutcome {
+    UpToDate,
+    Pushed { commits: u32 },
+    NonFastForward,
+    NoRemote,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncState {
+    pub has_remote: bool,
+    pub remote_url: Option<String>,
+    pub ahead: u32,
+    pub behind: u32,
+    /// True if tracked files have uncommitted edits. Untracked files do not
+    /// count — they're invisible to fast-forward checkouts.
+    pub working_tree_dirty: bool,
+    /// Current local branch (typically "main"). None if HEAD is detached
+    /// or there's no commits yet.
+    pub branch: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UiState {
