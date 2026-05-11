@@ -25,8 +25,7 @@ pub async fn snapshot_commit(
     state: State<'_, AppState>,
     message: String,
     trigger: String,
-    /// JS sends as `affectedScope`: a string ("all") or `{ sectionIds: [...] }`.
-    affected_scope: serde_json::Value,
+    affected_scope: serde_json::Value, // JS sends as `affectedScope`: a string ("all") or `{ sectionIds: [...] }`
 ) -> AppResult<String> {
     state.with_current(|h| {
         let full_message = format!(
