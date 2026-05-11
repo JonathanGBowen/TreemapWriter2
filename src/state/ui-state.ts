@@ -22,6 +22,10 @@ export interface UIStateSlice {
   isProcessing: boolean;
   isInterpolating: boolean;
 
+  // Sync status (Phase 4). 'no-remote' hides the indicator entirely.
+  syncStatus: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error';
+  syncError: string | null;
+
   // Modal openness flags (one boolean per modal, like the original store)
   showProjectModal: boolean;
   showRunModal: boolean;
@@ -49,6 +53,8 @@ export interface UIStateSlice {
   setActiveTab: (tab: 'editor' | 'preview') => void;
   setIsProcessing: (proc: boolean) => void;
   setIsInterpolating: (interp: boolean) => void;
+  setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error') => void;
+  setSyncError: (err: string | null) => void;
   setShowProjectModal: (show: boolean) => void;
   setShowRunModal: (show: boolean) => void;
   setShowPersonaModal: (show: boolean) => void;
@@ -78,6 +84,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   isProcessing: false,
   isInterpolating: false,
 
+  syncStatus: 'no-remote',
+  syncError: null,
+
   showProjectModal: false,
   showRunModal: false,
   showPersonaModal: false,
@@ -103,6 +112,8 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
   setIsInterpolating: (interp) => set({ isInterpolating: interp }),
+  setSyncStatus: (status) => set({ syncStatus: status }),
+  setSyncError: (err) => set({ syncError: err }),
   setShowProjectModal: (show) => set({ showProjectModal: show }),
   setShowRunModal: (show) => set({ showRunModal: show }),
   setShowPersonaModal: (show) => set({ showPersonaModal: show }),

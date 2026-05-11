@@ -32,6 +32,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Domain + UI state from store
   const isDarkMode = useStore(s => s.isDarkMode);
   const setIsDarkMode = useStore(s => s.setIsDarkMode);
+  const syncStatus = useStore(s => s.syncStatus);
+  const syncError = useStore(s => s.syncError);
   const markdown = useStore(s => s.markdown);
   const sections = useStore(s => s.sections);
   const selectedId = useStore(s => s.selectedId);
@@ -192,6 +194,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
              <div className="flex items-center gap-1.5 mt-0.5 text-[7px] text-slate-400 dark:text-hld-cyan font-mono uppercase tracking-[0.14em]">
                <span className="w-1 h-1 rounded-full bg-emerald-500 dark:bg-hld-green animate-pulse shadow-[0_0_6px_var(--tw-colors-hld-green)]"></span>
                autosaved
+               {syncStatus !== 'no-remote' && (
+                 <span
+                   className={`ml-2 w-1.5 h-1.5 rounded-full ${
+                     syncStatus === 'error'
+                       ? 'bg-rose-500 dark:bg-hld-magenta shadow-[0_0_6px_var(--tw-colors-hld-magenta)]'
+                       : 'bg-indigo-500 dark:bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]'
+                   } ${syncStatus === 'pulling' || syncStatus === 'pushing' ? 'animate-pulse' : ''}`}
+                   title={
+                     syncStatus === 'error'
+                       ? (syncError || 'sync error')
+                       : syncStatus === 'pulling'
+                         ? 'pulling from remote'
+                         : syncStatus === 'pushing'
+                           ? 'pushing to remote'
+                           : 'synced'
+                   }
+                 />
+               )}
              </div>
           </div>
         </div>

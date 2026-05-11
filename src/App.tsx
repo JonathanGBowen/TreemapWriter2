@@ -34,6 +34,7 @@ import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
+import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { useStore } from './store';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -207,6 +208,19 @@ export const App = () => {
   useEffect(() => {
     if (legacyDetection.shouldPrompt) setShowMigrationModal(true);
   }, [legacyDetection.shouldPrompt, setShowMigrationModal]);
+
+  // Phase 4e — bootstrap sync-policy when a project becomes active; tear
+  // down on switch/close so timers and event listeners don't leak.
+  useEffect(() => {
+    if (!activeProjectId) {
+      teardownSyncPolicy();
+      return;
+    }
+    void initSyncPolicy();
+    return () => {
+      teardownSyncPolicy();
+    };
+  }, [activeProjectId]);
 
   // --- INITIALIZATION & MIGRATION ---
   useEffect(() => {
