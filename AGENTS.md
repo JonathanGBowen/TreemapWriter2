@@ -59,8 +59,11 @@ non-negotiable rules:
 | A new editor command | `src/features/editor/commands/` |
 | A new Tauri IPC command | Add `#[tauri::command]` fn in the right `src-tauri/src/commands/<area>.rs`, register in `lib.rs::run`'s `tauri::generate_handler![...]`, expose a typed wrapper as a method on `tauriRepository` (`src/services/tauri-repository.ts`) or in a sibling service module. Components never call `invoke()` directly. |
 | A new on-disk file in a project | Path goes in `src-tauri/src/project/layout.rs`. Read/write via `crate::fs_io::*` helpers (atomic write). If the file should be gitignored, update the `.gitignore` written by `project_create` in `src-tauri/src/commands/project.rs`. |
-| A new git operation | New function in `src-tauri/src/git/mod.rs`. Nothing outside that module touches `git2::*` directly. |
-| A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider`, new wrapper in the relevant feature folder |
+| A new git local operation | New function in `src-tauri/src/git/mod.rs`. |
+| A new git remote operation | New function in `src-tauri/src/git/remote.rs`. Nothing outside `src-tauri/src/git/` touches `git2::*` directly. |
+| A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider` (`src/services/ai-provider.ts`), implementation in `gemini-provider.ts`, consumed via `aiProvider` from the registry |
+| A new OS-keyring secret | Add a `SecretService` literal in `src/services/credentials.ts`; the Rust side (`src-tauri/src/commands/credentials.rs`) is generic over the service name. |
+| A new sync trigger | Extend `src/services/sync-policy.ts`. Don't add network calls outside that module — sync-policy owns the debounce / throttle invariants. |
 | A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`) |
 | A new domain mutation (testSuite, document, etc.) | Action on the appropriate state slice, NOT a `useCallback` in a component. Cross-slice mutations live in `project-state` and use `get().otherSliceAction()`. |
 | A new UI panel | New folder under `src/features/<panel-name>/` |
@@ -83,12 +86,14 @@ src/
 ├── store/index.ts             @deprecated re-export of state/ for back-compat
 ├── services/                  persistence + external APIs
 │   ├── repository.ts          interface
-│   ├── browser-repository.ts  IndexedDB impl
-│   ├── tauri-repository.ts    Tauri impl (SQLite + markdown + git)
+│   ├── browser-repository.ts  IndexedDB impl (browser-only fallback)
+│   ├── tauri-repository.ts    Tauri impl (SQLite + markdown + git + sync)
 │   ├── repository-registry.ts DI: picks impl at module load
 │   ├── ai-provider.ts         AI provider interface
 │   ├── gemini-provider.ts     Gemini impl (the ONE file that imports @google/genai)
-│   ├── ai-provider-registry.ts DI: picks impl at module load
+│   ├── ai-provider-registry.ts DI for AI; also bg-loads Gemini key from keyring
+│   ├── credentials.ts         JS wrapper over OS-keyring Tauri commands
+│   ├── sync-policy.ts         debounced auto-push + focus-pull (Phase 4)
 │   ├── tauri-environment.ts   isTauri() runtime detector
 │   ├── preferences.ts         global app prefs (tutorial flag etc.)
 │   └── prompts/               .md prompts + index.ts that assembles DEFAULT_PROMPTS_CONFIG
@@ -121,14 +126,18 @@ src-tauri/                     Rust crate, Phase 2+ desktop shell
     │   ├── project.rs         project_create / open / close / list_recent / delete_recent
     │   ├── document.rs        project_read / project_write
     │   ├── snapshot.rs        snapshot_commit / list / read
-    │   └── migration.rs       migration_import_legacy (currently a stub; logic lives JS-side)
+    │   ├── migration.rs       migration_import_legacy (currently a stub; logic lives JS-side)
+    │   ├── credentials.rs     credentials_set / get / delete (OS keyring, Phase 4)
+    │   └── sync.rs            sync_state / sync_pull / sync_push / sync_configure_remote (Phase 4)
     ├── project/               handle, layout, state
     │   ├── mod.rs             AppState (global recent DB + current ProjectHandle)
     │   └── layout.rs          path helpers — only place that knows ".twriter/specs/..."
     ├── db/                    SQLite cache + global recent-projects DB
     │   ├── mod.rs             rusqlite Connection wrapper, schema bootstrap
     │   └── schema.sql         per-project + global tables
-    ├── git/mod.rs             git2 wrappers — no other module touches git2 directly
+    ├── git/                   git2 wrappers — no other module touches git2 directly
+    │   ├── mod.rs             local ops: init / commit_all / ensure_initial_commit
+    │   └── remote.rs          remote ops: configure_remote / pull / push / sync_state (Phase 4)
     └── fs_io/                 filesystem I/O helpers
         ├── mod.rs             atomic_write_str + JSON helpers
         └── yaml.rs            serde_yaml glue for per-section spec sidecars

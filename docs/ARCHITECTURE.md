@@ -184,10 +184,15 @@ project_list_recent() -> Vec<ProjectMeta>
 section_save(section_id, markdown, spec) -> ()
 snapshot_commit(message, trigger) -> CommitId
 snapshot_list(limit) -> Vec<CommitMeta>
-snapshot_diff(from, to) -> UnifiedDiff
-sync_pull() -> SyncReport
-sync_push() -> SyncReport
-search(query) -> Vec<SearchHit>
+snapshot_read(commit_id) -> Snapshot
+sync_state() -> SyncState                            // Phase 4
+sync_pull() -> PullOutcome                           // Phase 4
+sync_push() -> PushOutcome                           // Phase 4
+sync_configure_remote(url) -> ()                     // Phase 4
+credentials_set(service, value) -> ()                // Phase 4
+credentials_get(service) -> Option<String>           // Phase 4
+credentials_delete(service) -> ()                    // Phase 4
+search(query) -> Vec<SearchHit>                      // Phase 5
 ```
 
 Recommended crates: `rusqlite` (bundled feature, FTS5 included), `git2` for
@@ -203,8 +208,8 @@ git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
 | 2 | Tauri shell wraps existing UI; verify desktop build | IndexedDB (unchanged) | ✅ done |
 | 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | ✅ done |
 | 3.5 | AI provider abstraction (deferred Phase 1 deliverable); commit master plan to repo | Disk + SQLite + git | ✅ done |
-| 4 | Sync: git pull/push wired into chrome | Disk + SQLite + git + remote | ⏳ next |
-| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI | — | |
+| 4 | Sync: git pull/push wired into chrome; OS-keyring credentials for git PAT + Gemini key | Disk + SQLite + git + remote | ✅ done |
+| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI, optionally SSH auth | — | ⏳ next |
 
 Current phase is recorded in [`docs/migration-log.md`](migration-log.md).
 

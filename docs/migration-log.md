@@ -815,3 +815,251 @@ client is doing its job — verify `.env.local` has `GEMINI_API_KEY` set.
 
 **Ready for Phase 4** — git sync. See
 [`refactor-plan.md`](refactor-plan.md) Part IV "Phase 4 — Sync".
+
+---
+
+## 2026-05-11 — Phase 4 (git sync + OS keyring)
+
+**Scope.** The dissertation now syncs to a private GitHub remote.
+Every autosave commit auto-pushes; focusing the window auto-pulls. The
+master plan's Phase 4 ("sync_pull/sync_push wired into chrome") plus
+the Phase 3 keyring deliverable that didn't ship (now landed for both
+git PAT *and* Gemini API key).
+
+Seven sub-phases, each independently revertable, mirroring the Phase 3
+cadence (3a–3k). Auth method: HTTPS + fine-grained PAT. SSH support
+deferred to Phase 5.
+
+### 4a — Keyring foundation (Rust + JS shared infra)
+
+- `src-tauri/Cargo.toml`: added `keyring = "3"`.
+- New `src-tauri/src/commands/credentials.rs`: `credentials_set`,
+  `credentials_get` (returns Option), `credentials_delete`
+  (idempotent). All three use `keyring::Entry::new("treemap-writer",
+  &service)` so service names are namespaced.
+- `src-tauri/src/error.rs`: `From<keyring::Error>`.
+- `src-tauri/src/lib.rs`: registered the three commands.
+- New `src/services/credentials.ts`: typed JS wrapper. In browser
+  mode every call resolves to a no-op equivalent so callers don't
+  need to branch on `isTauri()`.
+
+Nothing in 4a calls these yet. The substrate lands first.
+
+### 4b — Git remote operations in Rust
+
+Split `src-tauri/src/git/mod.rs` into a folder with a sister module
+`remote.rs` (180 lines, under cap). `mod.rs` keeps local-commit ops;
+`remote.rs` handles everything network-facing.
+
+Functions in `git::remote`:
+- `configure_remote(repo, url)` — create-or-update the `origin` remote.
+- `remote_url(repo) -> Option<String>` — read current origin URL.
+- `pull(repo, token) -> PullOutcome` — fetch, fast-forward, refuse if
+  dirty or divergent. Never destructive.
+- `push(repo, token) -> PushOutcome` — push current branch (whatever
+  HEAD points to; not hardcoded), report `NonFastForward` rather than
+  erroring on divergence.
+- `sync_state(repo) -> SyncState` — purely-local ahead/behind/dirty
+  query, no network. Used by the UI indicator.
+
+Auth: `Cred::userpass_plaintext("x-access-token", &token)` (GitHub's
+HTTPS+PAT convention).
+
+Hard guardrails (load-bearing for Phase 4):
+- Never `reset --hard`, never force checkout. `MergeRequired` and
+  `NonFastForward` outcome variants are RETURNED, not acted on.
+- Refuses to pull if the working tree has tracked uncommitted edits
+  (`WorkingTreeDirty` variant). Phase 3 autosave commits ~60s after
+  edits, so this is rare in practice.
+- Branch name read from HEAD; not hardcoded to "main".
+
+`src-tauri/src/types.rs`: added `PullOutcome` / `PushOutcome` as
+externally-tagged enums + `SyncState` struct.
+
+### 4c — Sync Tauri commands + Repository extension + browser no-ops
+
+The bridge between Rust git-remote and the JS Repository.
+
+- New `src-tauri/src/commands/sync.rs`: `sync_state`, `sync_pull`,
+  `sync_push`, `sync_configure_remote`. Each reads the PAT from
+  keyring service "git"; `sync_configure_remote` also mirrors the URL
+  into `.twriter/settings.json` as `gitRemoteUrl` so the user's
+  intent travels with the project folder.
+- `src/types/index.ts`: mirrored `PullOutcome` / `PushOutcome` /
+  `SyncState` as discriminated unions (Rust `tag = "kind"` ↔ TS `kind`).
+- `src/services/repository.ts`: extended interface with `syncState`,
+  `syncPull`, `syncPush`, `configureRemote`.
+- `TauriRepository`: thin `invoke()` wrappers.
+- `BrowserRepository`: sentinel no-ops — `syncState` returns
+  `{ hasRemote: false, ... }`; pull/push return `{ kind: 'noRemote' }`;
+  `configureRemote` is a quiet no-op. Sync-policy can call these
+  unconditionally without branching on `isTauri()`.
+
+### 4d — SyncConfigModal (one-time setup UI)
+
+One file: `src/features/modals/SyncConfigModal.tsx` (~170 lines).
+Self-mounts via `showSyncConfigModal` flag. Two inputs (URL + PAT),
+one "Test & Save" button. Flow:
+
+1. `setSecret('git', token)` — stores PAT in OS keyring.
+2. `repository.configureRemote(url)` — sets origin + writes
+   settings.json.
+3. `repository.syncPush()` — validates auth by attempting the first
+   push.
+4. Success → toast + dismiss. Failure → modal stays open with
+   verbatim error; the user fixes the URL or token without re-typing.
+
+Sidebar gets a GitBranch icon next to Backup as the entry point.
+Modal copy steers users toward fine-grained PATs scoped to the
+single dissertation repo.
+
+### 4e — Sidebar sync indicator + sync-policy automation
+
+The ambient automation that keeps the dot accurate.
+
+`src/services/sync-policy.ts` (170 lines, under cap):
+- `initSyncPolicy()` on project load: if `syncState.hasRemote` is
+  false, sets `syncStatus='no-remote'` (dot stays hidden). Otherwise
+  pulls once and subscribes to:
+  - Store `revisions.length` increases → schedules a push debounced
+    5s. Coalesces autosave commits into one push.
+  - `document.visibilitychange` → pulls on focus, throttled to once
+    per 60s.
+- Outcome handlers: `MergeRequired` and `NonFastForward` flag the dot
+  as `error` with a verbatim message; `WorkingTreeDirty` fails silent
+  (autosave will commit soon and the next focus pull retries);
+  `NoRemote` resets to `no-remote`.
+- Transient error classifier (timeout / DNS / network unreachable /
+  connection refused / temporary failure substrings) → silent recover
+  to `idle`. Auth/config errors stay visible, then auto-clear after
+  30s so the indicator doesn't pin red.
+- `teardownSyncPolicy()` cancels timers + listeners; called from
+  `App.tsx` `useEffect` cleanup when `activeProjectId` changes.
+
+`src/state/ui-state.ts`: `syncStatus` + `syncError` + setters.
+
+`src/features/sidebar/Sidebar.tsx`: 6px dot next to the existing
+"autosaved" indicator. `hld-cyan` synced/in-flight (pulsing during
+in-flight), `hld-magenta` on error, hidden when `no-remote`.
+`title=` carries the verbatim error on hover.
+
+### 4f — Gemini API key in OS keyring (env fallback retained)
+
+Closes the keyring deliverable the master plan originally targeted
+for Phase 3 (which didn't ship). Additive design — existing
+`.env.local` users see zero behavior change.
+
+`src/services/ai-provider-registry.ts`:
+- Eager construction with `process.env.API_KEY` (sync registry).
+- Background `await getSecret('gemini')` — if the keyring has a key,
+  calls `setApiKey()` on the GeminiProvider, which invalidates the
+  cached SDK client. Next AI call uses the keyring key.
+- New `refreshGeminiKey()` helper for the UI to call after saving a
+  new key, so the running session picks it up without restart.
+
+`src/services/gemini-provider.ts`: adds `setApiKey()` method. Zero
+changes to the `AIProvider` interface or to any of the 6 AI
+consumers.
+
+`src/features/modals/PersonaSettingsModal.tsx`: small "Gemini API
+Key" section above the persona-generator banner. Password input + Save
+button. Calls `setSecret('gemini', value)` and `refreshGeminiKey()`.
+
+The `.env.local` path is NOT retired in 4. Removal waits until the
+user has verified the keyring path works on their machine.
+
+### 4g — Doc closeout
+
+This entry. Plus:
+- `AGENTS.md` "Where to put X" table gains rows for new keyring
+  secrets, sync triggers, git remote operations (now split from
+  local). Source-tree map gains `credentials.ts`, `sync-policy.ts`,
+  the new Rust modules.
+- `docs/ARCHITECTURE.md`: Phases table — Phase 4 ✅, Phase 5 ⏳.
+  Command surface block gains the sync_* + credentials_* commands.
+- `README.md`: new "Multi-machine sync" section with the 3-step
+  GitHub setup walkthrough.
+
+### Phase 4 net effect
+
+| Aspect | Before | After |
+|---|---|---|
+| Multi-machine sync | impossible (no remote) | git pull/push to private GitHub |
+| Auth | none | HTTPS + fine-grained PAT in OS keyring |
+| Gemini API key | env-only (`.env.local`) | OS keyring with env fallback |
+| Push cadence | manual `git push` from CLI | debounced 5s after each autosave commit |
+| Pull cadence | manual `git pull` from CLI | on launch + on window focus (throttled 60s) |
+| Conflict handling | undefined | detect + report; never destructive |
+| Sidebar chrome | "autosaved" green dot only | + sync dot (cyan synced / magenta error / hidden no-remote) |
+| Rust LOC in `src-tauri/` | ~1000 | ~1300 |
+| Files > 300 lines | 14 (per Phase 3.5 audit) | 14 (no regressions) |
+| Tests | 18/18 | 18/18 (no regression) |
+
+### Verify Phase 4 end-state
+
+JS side (verified on this machine):
+- `npx tsc --noEmit` clean.
+- `npx vitest run` — 18/18.
+- `npm run build` — succeeds.
+
+Rust side (requires user's machine):
+- `cd src-tauri && cargo check`.
+- `npm run tauri:dev` should launch with no errors.
+
+End-to-end smoke (requires GitHub repo + PAT):
+1. Create a private empty GitHub repo.
+2. Generate a fine-grained PAT scoped to that repo (Contents: read/write).
+3. Open a TreemapWriter2 project, click the GitBranch icon in the
+   sidebar, paste URL + PAT, Test & Save.
+4. Watch the sidebar header: cyan dot appears after the initial push.
+5. Edit a section. Wait ~60s for autosave commit. Dot pulses cyan
+   during the 5s push debounce, then settles cyan.
+6. Second machine: `git clone <url>`, open folder in TreemapWriter2,
+   Configure Sync.
+7. Edit on machine A → push → focus machine B → pull on focus →
+   content updates.
+8. Conflict path: edit the same section on both machines, push from
+   A, push from B — B's modal/dot shows `nonFastForward`. Resolve via
+   `git pull` + manual merge in a CLI; subsequent push succeeds.
+9. AI flow: clear `.env.local`'s API_KEY entry, set the key via
+   PersonaSettingsModal, restart, run a diagnostic — should work
+   from the keyring.
+
+### Rollback procedures
+
+Per sub-phase, in reverse order:
+- 4g: doc revert is harmless.
+- 4f: `git revert <commit>` restores the prior eager env-only key
+  flow; in-flight users lose the keyring path but keep `.env.local`.
+- 4e: revert removes the dot + automation; nothing in the
+  pull/push surface changes. Manual sync via DevTools still works.
+- 4d: revert removes the modal + sidebar entry; previously-configured
+  remotes keep working via DevTools.
+- 4c: **revert 4c, 4d, 4e together** — they form the working JS
+  surface. Reverting only 4c leaves 4d/4e dangling.
+- 4b: revert removes git remote ops; JS calls would error. Pair with
+  4c reversion.
+- 4a: revert removes keyring infra. Pair with 4f reversion.
+
+Full Phase 4 revert: undo commits 4a through 4g in reverse. App
+returns to Phase 3.5 state (local git only, no sync).
+
+### Explicitly NOT in Phase 4 (Phase 5 polish or later)
+
+- In-app conflict resolution UI — Phase 4 detects + reports; users
+  resolve via their preferred git client.
+- Multi-branch support — single branch (whatever HEAD points to;
+  typically `main`).
+- SSH key authentication — HTTPS+PAT only.
+- Clone-from-remote UX inside the app — second machine setup uses
+  `git clone` from CLI, then standard project-open flow.
+- Removing the `.env` Gemini key path — env fallback stays during 4
+  to avoid breaking existing setups. Full retirement is a Phase 5
+  cleanup once keyring is verified working.
+- App.tsx decomposition + the other 13 files >300 lines — still
+  outstanding from the Phase 3.5 audit; opportunistic future work.
+
+**Ready for Phase 5** — polish: streaming AI in a sidebar coach
+panel, FTS5-backed full-text search, conflict resolution UI, and
+(optionally) SSH auth. See [`refactor-plan.md`](refactor-plan.md)
+Part IV "Phase 5 — Polish".
