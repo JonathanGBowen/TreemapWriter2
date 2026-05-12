@@ -1,0 +1,3 @@
+# In .gitattributes at repo root
+*.toml  text eol=lf
+*.lock  text eol=lf
