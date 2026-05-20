@@ -1,5 +1,12 @@
 # TreemapWriter2 — Architectural Refactor Plan
 
+> **Status:** Phases 0–4 shipped. See [migration-log.md](migration-log.md)
+> for what each phase actually did. Phase 5 work (polish, streaming AI,
+> FTS5, conflict UI, deferred items) lives in
+> [phase-5.md](phase-5.md). This file is the design archive — read it to
+> understand *why* the architecture is shaped this way, not to find what's
+> next.
+
 > _For a working philosopher with ADHD, finishing a dissertation, who is also the developer._
 >
 > This is the master plan that informed Phases 0–3+ of the refactor. It was
@@ -353,7 +360,7 @@ CREATE TABLE projects (
 
 -- Sections are derived from parsing the markdown files; rebuildable.
 CREATE TABLE sections (
-  id TEXT PRIMARY KEY,                 -- stable id, see id-strategy.md
+  id TEXT PRIMARY KEY,                 -- stable id (see phase-5.md for the ULID/UUIDv7 plan; today: title-slug + index)
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   parent_id TEXT REFERENCES sections(id),
   title TEXT NOT NULL,
@@ -464,7 +471,7 @@ on project open if the cache is older than the `.git/HEAD` mtime.
 
 ### Documentation (Phase 0 + ongoing)
 - New: `/docs/ARCHITECTURE.md` — the full target architecture, kept in sync with reality
-- New: `/docs/id-strategy.md` — how section IDs are assigned and survive renames (replacing the fragile title-slug-based scheme in `src/lib/utils.ts:4-6`)
+- New: `/docs/phase-5.md` — deferred work tracker including the stable-ID ULID/UUIDv7 plan that replaces the fragile title-slug-based scheme in `src/lib/utils.ts:4-6` (originally proposed as a standalone `id-strategy.md` doc; folded into phase-5.md during the Phase 4 doc consolidation)
 - New: `/docs/migration-log.md` — append-only log of each migration applied, for forensic reconstruction if anything goes wrong
 
 ---

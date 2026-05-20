@@ -230,6 +230,8 @@ npm run tauri:dev    # desktop app dev — spawns Vite + opens native window
 npm run tauri:build  # desktop installer (.app/.dmg/.exe/.deb/.AppImage)
 ```
 
+Single test file: `npx vitest run path/to/file.test.ts`. Single test by name: `npx vitest run -t "name fragment"`.
+
 ### Tauri 2 desktop shell (Phase 2+)
 
 The `src-tauri/` directory is a Rust crate. `tauri:dev` runs the Vite
@@ -254,10 +256,12 @@ implementation at module load.
 
 ## Refactor status
 
-The project is mid-migration along the master plan in
-[`docs/refactor-plan.md`](docs/refactor-plan.md). Current phase is recorded
-in [`docs/migration-log.md`](docs/migration-log.md). Do not skip ahead to a
-later phase without explicit instruction.
+Phases 0–4 are shipped. The master design lives in
+[`docs/refactor-plan.md`](docs/refactor-plan.md) (design archive);
+[`docs/migration-log.md`](docs/migration-log.md) records what each phase
+actually shipped; [`docs/phase-5.md`](docs/phase-5.md) tracks Phase 5
+polish + every deferred item. Do not skip ahead to a later phase without
+explicit instruction.
 
 ## End-of-phase ritual (load-bearing)
 

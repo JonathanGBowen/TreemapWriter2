@@ -68,8 +68,9 @@ same way: one source of truth, everything else is a projection.
 ├── AGENTS.md
 ├── docs/
 │   ├── ARCHITECTURE.md            ← this file
-│   ├── id-strategy.md             ← stable section ID derivation
-│   └── migration-log.md           ← append-only phase log
+│   ├── refactor-plan.md           ← design archive (Phases 0–4)
+│   ├── migration-log.md           ← append-only phase log
+│   └── phase-5.md                 ← deferred + Phase 5 work tracker
 ├── src/
 │   ├── App.tsx                    ← target: ~150 lines, layout shell only
 │   ├── index.tsx
@@ -209,9 +210,10 @@ git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
 | 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | ✅ done |
 | 3.5 | AI provider abstraction (deferred Phase 1 deliverable); commit master plan to repo | Disk + SQLite + git | ✅ done |
 | 4 | Sync: git pull/push wired into chrome; OS-keyring credentials for git PAT + Gemini key | Disk + SQLite + git + remote | ✅ done |
-| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI, optionally SSH auth | — | ⏳ next |
+| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI, optionally SSH auth | — | ⏳ next — see [`phase-5.md`](phase-5.md) |
 
-Current phase is recorded in [`docs/migration-log.md`](migration-log.md).
+Current phase is recorded in [`docs/migration-log.md`](migration-log.md);
+next work is itemized in [`docs/phase-5.md`](phase-5.md).
 
 ## Anti-patterns
 
