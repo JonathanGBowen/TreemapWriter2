@@ -1,0 +1,40 @@
+[package]
+name = "treemap-writer"
+version = "0.1.0"
+description = "TreemapWriter desktop shell"
+authors = ["TreemapWriter contributors"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "treemap_writer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.1", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.1", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+# Phase 3 — persistence backbone.
+# The dissertation lives as plain markdown + YAML sidecars + a real
+# git repo on disk; SQLite is a derived cache for fast queries.
+rusqlite = { version = "0.32", features = ["bundled"] }
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+serde_yaml = "0.9"
+dirs = "5"
+anyhow = "1"
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Phase 4 — OS-level secret storage for git PAT + Gemini API key.
+# Uses Windows Credential Manager, macOS Keychain, Linux Secret Service.
+keyring = "3"

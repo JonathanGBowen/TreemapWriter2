@@ -157,6 +157,12 @@ export interface ProjectMeta {
   name: string;
   lastModified: number;
   wordCount: number;
+  /**
+   * Absolute folder path on disk. Set by the Tauri repository (Phase 3+);
+   * always undefined under the browser repository. The JS layer caches
+   * `id → path` from `getMeta()` and uses it to drive `project_open`.
+   */
+  path?: string;
 }
  
 export interface PromptsConfig {
@@ -169,4 +175,32 @@ export interface PromptsConfig {
   generatePersonasPrompt: string;
   diagnosticInstruction: string;
   dependenciesPrompt: string;
+}
+
+// --- PHASE 4 SYNC TYPES ---
+// Wire-format mirrors of src-tauri/src/types.rs. Rust enums are externally
+// tagged with `tag = "kind"`; TS discriminated unions match.
+
+export type PullOutcome =
+  | { kind: 'upToDate' }
+  | { kind: 'fastForwarded'; commits: number }
+  | { kind: 'mergeRequired'; conflicts: string[] }
+  | { kind: 'workingTreeDirty' }
+  | { kind: 'noRemote' };
+
+export type PushOutcome =
+  | { kind: 'upToDate' }
+  | { kind: 'pushed'; commits: number }
+  | { kind: 'nonFastForward' }
+  | { kind: 'noRemote' };
+
+export interface SyncState {
+  hasRemote: boolean;
+  remoteUrl: string | null;
+  ahead: number;
+  behind: number;
+  /** True if tracked files have uncommitted edits. */
+  workingTreeDirty: boolean;
+  /** Current local branch name, e.g. "main". Null if HEAD detached or no commits. */
+  branch: string | null;
 }

@@ -1,0 +1,25 @@
+import type { PromptsConfig } from '../../types';
+
+import systemInstruction from './system-instruction.md?raw';
+import l1TaskInstruction from './l1-task.md?raw';
+import subTaskInstruction from './sub-task.md?raw';
+import suggestContentPrompt from './suggest-content.md?raw';
+import coachPrompt from './coach.md?raw';
+import refineSpecPrompt from './refine-spec.md?raw';
+import generatePersonasPrompt from './generate-personas.md?raw';
+import diagnosticInstruction from './diagnostic.md?raw';
+import dependenciesPrompt from './dependencies.md?raw';
+
+const stripTrailingNewline = (s: string) => s.replace(/\n+$/, '');
+
+export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = {
+  systemInstruction: stripTrailingNewline(systemInstruction),
+  l1TaskInstruction: stripTrailingNewline(l1TaskInstruction),
+  subTaskInstruction: stripTrailingNewline(subTaskInstruction),
+  suggestContentPrompt: stripTrailingNewline(suggestContentPrompt),
+  coachPrompt: stripTrailingNewline(coachPrompt),
+  refineSpecPrompt: stripTrailingNewline(refineSpecPrompt),
+  generatePersonasPrompt: stripTrailingNewline(generatePersonasPrompt),
+  diagnosticInstruction: stripTrailingNewline(diagnosticInstruction),
+  dependenciesPrompt: stripTrailingNewline(dependenciesPrompt),
+};

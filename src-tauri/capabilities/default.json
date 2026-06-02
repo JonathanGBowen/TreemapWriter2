@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for the main window. Filesystem and git access happen through purpose-built Tauri commands in src-tauri/src/commands/, NOT through tauri-plugin-fs — the architectural rule 'components never call invoke() directly' is enforced by typed wrappers in src/services/tauri-repository.ts. The dialog permission is for the system folder picker used in project open/create flows.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "fs:allow-read-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "**/*" }]
+    }
+  ]
+}

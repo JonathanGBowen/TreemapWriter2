@@ -1,42 +1,40 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { Toaster, toast } from "sonner";
-import { Sidebar } from "./components/Sidebar";
-import { EditorPanel } from "./components/panels/EditorPanel";
-import { TestsPanel } from "./components/panels/TestsPanel";
-import { TestRunnerModal } from "./components/modals/TestRunnerModal";
-import { PersonaSettingsModal } from "./components/modals/PersonaSettingsModal";
-import { SpecGeneratorModal } from "./components/modals/SpecGeneratorModal";
-import { InterpolationModal } from "./components/modals/InterpolationModal";
-import { SprintModal } from "./components/modals/BaseSprintModal";
-import { ProjectManagerModal } from "./components/modals/ProjectManagerModal";
-import { VersionHistoryModal } from "./components/modals/VersionHistoryModal";
-import { ContentSuggestionsModal } from "./components/modals/ContentSuggestionsModal";
-import { DependencyGraphModal } from "./components/modals/DependencyGraphModal";
-import { PromptsGraphModal } from "./components/modals/PromptsGraphModal";
-import { SectionMapModal } from "./components/modals/SectionMapModal";
-import { CoachModal } from "./components/modals/CoachModal";
-import { ProjectFileModal } from "./components/modals/ProjectFileModal";
-import { ConfirmModal } from "./components/modals/ConfirmModal";
-import { Tutorial } from "./components/Tutorial";
+import { Sidebar } from "./features/sidebar/Sidebar";
+import { EditorPanel } from "./features/editor/EditorPanel";
+import { TestsPanel } from "./features/tests-panel/TestsPanel";
+import { TestRunnerModal } from "./features/modals/TestRunnerModal";
+import { PersonaSettingsModal } from "./features/modals/PersonaSettingsModal";
+import { SpecGeneratorModal } from "./features/modals/SpecGeneratorModal";
+import { InterpolationModal } from "./features/modals/InterpolationModal";
+import { SprintModal } from "./features/modals/BaseSprintModal";
+import { ProjectManagerModal } from "./features/modals/ProjectManagerModal";
+import { VersionHistoryModal } from "./features/modals/VersionHistoryModal";
+import { ContentSuggestionsModal } from "./features/modals/ContentSuggestionsModal";
+import { DependencyGraphModal } from "./features/modals/DependencyGraphModal";
+import { PromptsGraphModal } from "./features/modals/PromptsGraphModal";
+import { SectionMapModal } from "./features/modals/SectionMapModal";
+import { CoachModal } from "./features/modals/CoachModal";
+import { ProjectFileModal } from "./features/modals/ProjectFileModal";
+import { ConfirmModal } from "./features/modals/ConfirmModal";
+import { Tutorial } from "./features/tutorial/Tutorial";
+import { MigrationModal } from "./features/migration/MigrationModal";
+import { SyncConfigModal } from "./features/modals/SyncConfigModal";
+import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { DEFAULT_PROMPTS_CONFIG } from "./lib/constants";
 import defaultProjectData from "./lib/defaultProject.json";
-import { Section, TestSuite, Persona, ProjectMeta, Snapshot, 
+import { Section, TestSuite, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
-  SectionSpec, DiagnosticResult 
+  SectionSpec, DiagnosticResult
 } from "./types";
-import { get, set, del } from 'idb-keyval';
-// Add new import:
-import { 
-  generateStructuredSpecs, 
-  runDiagnosticEvaluation, 
-  diagnosticToStatus,
-  specFromLegacyGoals,
-  generateDependenciesEstimation
-} from "./lib/ai-pipeline";
-import { buildDiagnosticPrompt } from "./lib/constants"; // if not already
+import { repository as repo } from './services/repository-registry';
+import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
+import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
+import { aiProvider } from './services/ai-provider-registry';
+import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
+import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { useStore } from './store';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -63,27 +61,6 @@ const findSectionByLine = (nodes: Section[], line: number): Section | null => {
   }
   return null;
 };
-
-const DEFAULT_PERSONAS: Persona[] = [
-  {
-    id: 'default',
-    name: 'Socratic Co-Writer',
-    role: 'Academic Editor',
-    instruction: 'You are Socratic Co-Writer, a rigorous academic editor. You value clarity, logical flow, and intellectual honesty. Your feedback should be constructive, specific, and aimed at elevating the argumentation.'
-  },
-  {
-    id: 'skeptic',
-    name: 'The Skeptic',
-    role: 'Devil\'s Advocate',
-    instruction: 'You are a highly skeptical reader who questions every premise. You actively look for logical fallacies, unsupported claims, and weak evidence. Be ruthless but fair in your critique.'
-  },
-  {
-    id: 'simplifier',
-    name: 'The Explainer',
-    role: 'Science Communicator',
-    instruction: 'You are an expert science communicator. Your goal is to ensure the text is accessible to a general educated audience without losing accuracy. Flag jargon, convoluted sentences, and unnecessary complexity.'
-  }
-];
 
 export const App = () => {
   const {
@@ -195,8 +172,8 @@ export const App = () => {
   }, [activeLineIndex]);
 
   useEffect(() => {
-    get('treemap_writer_tutorial_seen').then(hasSeenTutorial => {
-      if (!hasSeenTutorial) {
+    hasSeenTutorial().then(seen => {
+      if (!seen) {
         setTimeout(() => setRunTutorial(true), 1000);
       }
     });
@@ -204,7 +181,7 @@ export const App = () => {
 
   const handleTutorialFinish = () => {
     setRunTutorial(false);
-    set('treemap_writer_tutorial_seen', true);
+    markTutorialSeen();
   };
   
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});
@@ -220,10 +197,30 @@ export const App = () => {
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
-  
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
+
+  // Auto-open the migration modal on first Tauri launch when there are
+  // legacy projects to import. The hook does the detection; we just react
+  // to its `shouldPrompt` flag.
+  const legacyDetection = useLegacyMigration();
+  const setShowMigrationModal = useStore(s => s.setShowMigrationModal);
+  useEffect(() => {
+    if (legacyDetection.shouldPrompt) setShowMigrationModal(true);
+  }, [legacyDetection.shouldPrompt, setShowMigrationModal]);
+
+  // Phase 4e — bootstrap sync-policy when a project becomes active; tear
+  // down on switch/close so timers and event listeners don't leak.
+  useEffect(() => {
+    if (!activeProjectId) {
+      teardownSyncPolicy();
+      return;
+    }
+    void initSyncPolicy();
+    return () => {
+      teardownSyncPolicy();
+    };
+  }, [activeProjectId]);
 
   // --- INITIALIZATION & MIGRATION ---
   useEffect(() => {
@@ -384,7 +381,7 @@ export const App = () => {
         setTestSuite(newTestSuite);
         setHiddenSectionIds([]);
         activeLineIndexRef.current = null;
-        if (activeProjectId) saveCurrentState(activeProjectId, targetName, markdown);
+        if (activeProjectId) saveCurrentState();
     });
   };
 
@@ -404,8 +401,8 @@ export const App = () => {
            lastModified: Date.now()
          };
          
-         // 1. Save directly to DB to preserve all imported fields exactly as they were
-         await set(STORAGE_PREFIX + newId, projectData);
+         // 1. Save directly to preserve all imported fields exactly as they were
+         await repo.setProject(newId, projectData);
          
          // 2. Update Meta
          const contentForWordCount = projectData.localDraft || projectData.markdown || "";
@@ -418,12 +415,13 @@ export const App = () => {
             wordCount
          };
          
-         setProjectList(prev => {
-            const others = prev.filter(p => p.id !== newId);
+         {
+            const s = useStore.getState();
+            const others = s.projectList.filter(p => p.id !== newId);
             const updated = [metaEntry, ...others];
-            set(META_KEY, updated).catch(console.error);
-            return updated;
-         });
+            s.setProjectList(updated);
+            repo.setMeta(updated).catch(console.error);
+         }
          
          // 3. Load via `loadProject` to ensure all fields and UI are correctly hydrated sequentially
          await loadProject(newId);
@@ -435,7 +433,20 @@ export const App = () => {
   };
 
   const handleExportProject = () => {
-    const data = getStorageData();
+    const s = useStore.getState();
+    const data = {
+      projectName: s.projectName,
+      markdown: s.markdown,
+      localDraft: s.localContent,
+      testSuite: s.testSuite,
+      hiddenSectionIds: s.hiddenSectionIds,
+      activePersonaId: s.activePersonaId,
+      customPersonas: s.customPersonas,
+      promptsConfig: s.promptsConfig,
+      cachedCoachAdvice: s.cachedCoachAdvice,
+      revisions: s.revisions,
+      lastModified: Date.now(),
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -491,44 +502,41 @@ export const App = () => {
     
     setPromptsConfig(config);
 
-    await generateStructuredSpecs(
+    await aiProvider.generateSpecs({
       sections,
       markdown,
       config,
       modelId,
       thinkingBudget,
-      {
-        onBatchComplete: (specs) => {
-          setTestSuite(prev => {
-            const next = { ...prev };
-            Object.entries(specs).forEach(([id, spec]) => {
-              const existing = next[id] || { goals: '', status: 'idle', history: [] };
-              next[id] = {
-                ...existing,
-                spec,
-                mainClaim: spec.mainClaim,
-                // Serialize moves to goals string for backward compat
-                goals: spec.requiredMoves.map(m => m.description).join('\n'),
-                status: 'stale',
-                history: [
-                  ...(existing.history || []),
-                  {
-                    timestamp: Date.now(),
-                    goals: existing.goals,
-                    instruction: `Structured spec (${modelId})`,
-                    type: 'ai-generate' as const
-                  }
-                ]
-              };
-            });
-            return next;
+      onBatchComplete: (specs) => {
+        setTestSuite(prev => {
+          const next = { ...prev };
+          Object.entries(specs).forEach(([id, spec]) => {
+            const existing = next[id] || { goals: '', status: 'idle', history: [] };
+            next[id] = {
+              ...existing,
+              spec,
+              mainClaim: spec.mainClaim,
+              goals: spec.requiredMoves.map(m => m.description).join('\n'),
+              status: 'stale',
+              history: [
+                ...(existing.history || []),
+                {
+                  timestamp: Date.now(),
+                  goals: existing.goals,
+                  instruction: `Structured spec (${modelId})`,
+                  type: 'ai-generate' as const
+                }
+              ]
+            };
           });
-        },
-        onError: (error) => {
-          console.error("Spec generation batch error:", error);
-        }
+          return next;
+        });
+      },
+      onError: (error) => {
+        console.error("Spec generation batch error:", error);
       }
-    );
+    });
   } catch (e: any) {
     console.error("Interpolation failed", e);
     toast.error(`Task interpolation failed: ${e?.message || 'Check console/API Key.'}`);
@@ -574,7 +582,7 @@ export const App = () => {
     }));
     setIsProcessing(true);
    
-    const diagnostic = await runDiagnosticEvaluation({
+    const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,
       spec,
       scope,
@@ -616,44 +624,8 @@ export const App = () => {
   }
 };
 
-  const updateSpec = useCallback((id: string, spec: SectionSpec) => {
-    setTestSuite(prev => {
-      const entry = prev[id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [id]: {
-          ...entry,
-          spec,
-          // Keep mainClaim in sync
-          mainClaim: spec.mainClaim,
-          // Serialize spec to goals for backward compat
-          goals: spec.requiredMoves.map(m => m.description).join('\n'),
-          status: 'stale',
-          history: [
-            ...(entry.history || []),
-            { timestamp: Date.now(), goals: entry.goals, type: 'manual' as const }
-          ]
-        }
-      };
-    });
-  }, []);
- 
-
-  const updateGoals = useCallback((text: string) => {
-    if (!currentSection) return;
-    setTestSuite(prev => {
-      const entry = prev[currentSection.id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [currentSection.id]: {
-          ...entry,
-          goals: text,
-          status: 'stale',
-          history: [...(entry.history || []), { timestamp: Date.now(), goals: entry.goals, type: 'manual' }]
-        }
-      };
-    });
-  }, [currentSection]);
+  // updateSpec, updateGoals — moved to document-state slice in Phase 1e.
+  // Modals/panels call them via useStore directly.
 
   const updateSectionGoals = useCallback((id: string, newGoals: string, type: 'manual' | 'ai-generate' | 'ai-refine', instruction?: string) => {
     if (type.startsWith('ai-')) {
@@ -697,7 +669,13 @@ export const App = () => {
   const handleEstimateDependencies = useCallback(async () => {
     try {
       toast.info("Estimating dependencies...", { id: "est-deps" });
-      const depsMap = await generateDependenciesEstimation(sections, testSuite, 'gemini-3.1-pro-preview', 1024, promptsConfig);
+      const depsMap = await aiProvider.estimateDependencies({
+        sections,
+        testSuite,
+        modelId: 'gemini-3.1-pro-preview',
+        thinkingBudget: 1024,
+        config: promptsConfig,
+      });
       
       setTestSuite(prev => {
         const next = { ...prev };
@@ -726,31 +704,14 @@ export const App = () => {
     }
   }, [sections, testSuite]);
 
-  const updateMainClaim = useCallback((id: string, text: string) => {
-    setTestSuite(prev => {
-      const entry = prev[id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [id]: {
-          ...entry,
-          mainClaim: text
-        }
-      };
-    });
-  }, []);
+  // updateMainClaim — moved to document-state slice in Phase 1e.
 
   const getParentGoals = () => {
     if (!currentSection || !currentSection.parentId) return undefined;
     return testSuite[currentSection.parentId]?.goals;
   };
 
-  const toggleSectionVisibility = (id: string) => {
-    setHiddenSectionIds(prev => 
-      prev.includes(id) 
-        ? prev.filter(x => x !== id) 
-        : [...prev, id]
-    );
-  };
+  // toggleSectionVisibility — moved to document-state slice in Phase 1e.
 
   const handleSaveContent = (sectionId: string, newContent: string) => {
     setLocalContent(prev => {
@@ -799,12 +760,7 @@ export const App = () => {
       />
       <Tutorial isDarkMode={isDarkMode} run={runTutorial} onFinish={handleTutorialFinish} />
       <div className="flex h-screen w-full bg-slate-50 dark:bg-hld-bg text-slate-800 dark:text-hld-text overflow-hidden transition-colors duration-200 font-sans">
-        <Sidebar 
-          isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
-          markdown={markdown}
-          sections={sections}
-          selectedId={selectedId}
+        <Sidebar
           onSelect={setSelectedId}
           onImportMarkdown={handleImportMarkdown}
           onLoadProject={handleLoadFile}
@@ -813,73 +769,22 @@ export const App = () => {
           onExportSpecs={handleExportSpecs}
           onResetProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
-          onOpenProjectManager={() => setShowProjectModal(true)}
-          projectName={projectName}
-          setProjectName={setProjectName}
-          width={sidebarWidth}
-          setWidth={setSidebarWidth}
-          hiddenSectionIds={hiddenSectionIds}
-          testSuite={testSuite}
-          onInterpolateTasks={() => setShowInterpolationModal(true)}
-          onSprintGoals={() => setShowGoalSprintModal(true)}
-          onSprintContent={() => setShowContentSprintModal(true)}
-          isInterpolating={isInterpolating}
-          onOpenDependencyGraph={() => setShowGraphModal(true)}
-          onOpenPromptsGraph={() => setShowPromptsGraphModal(true)}
-          onOpenSectionMap={() => setShowSectionMapModal(true)}
-          onOpenProjectFileEditor={() => setShowProjectFileModal(true)}
           onStartTutorial={() => setRunTutorial(true)}
-          onOpenCoach={() => setShowCoachModal(true)}
         />
 
         <div className="flex-1 min-w-0 flex flex-col h-full bg-white dark:bg-hld-bg relative">
-          <EditorPanel 
-            currentSection={currentSection}
-            testSuite={testSuite}
-            localContent={localContent}
-            setLocalContent={setLocalContent}
+          <EditorPanel
             handleSave={handleManualSave}
-            lastAutoSave={lastAutoSave}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
             editorRef={editorRef}
-            hiddenSectionIds={hiddenSectionIds}
-            toggleSectionVisibility={toggleSectionVisibility}
             onImportMarkdown={handleImportMarkdown}
             onLoadProject={handleLoadFile}
-            focusMode={focusMode}
-            toggleFocusMode={() => setFocusMode(!focusMode)}
-            onLineFocus={handleLineFocus}
-            initialLineIndex={activeLineIndexRef.current}
-            sections={sections}
-            onSectionChange={setSelectedId}
-            onOpenHistory={() => setShowHistoryModal(true)}
-            projectName={projectName}
           />
         </div>
 
-        <TestsPanel 
-          currentSection={currentSection}
-          testSuite={testSuite}
-          updateGoals={updateGoals}
-          updateDependencies={updateDependencies}
-          updateMainClaim={updateMainClaim}
-          updateSpec={updateSpec}              // <-- ADD THIS
-          allSections={sections}
-          onRunTests={() => setShowRunModal(true)}
-          isProcessing={isProcessing}
-          width={testsPanelWidth}
-          setWidth={setTestsPanelWidth}
-          activePersona={activePersona}
-          onOpenSettings={() => setShowPersonaModal(true)}
-          onOpenSpecRefinement={() => setShowSpecModal(true)}
-          onOpenSuggestions={() => setShowSuggestionsModal(true)}
-        />
+        <TestsPanel />
 
         {/* Modals */}
-        <TestRunnerModal 
-          isOpen={showRunModal} 
-          onClose={() => setShowRunModal(false)}
+        <TestRunnerModal
           onRun={handleRunTests}
           sectionTitle={currentSection?.title || 'Unknown'}
           currentSection={currentSection}
@@ -891,8 +796,6 @@ export const App = () => {
         />
 
         <VersionHistoryModal
-          isOpen={showHistoryModal}
-          onClose={() => setShowHistoryModal(false)}
           revisions={revisions}
           currentContent={localContent}
           onRestore={(snapshot) => {
@@ -903,14 +806,12 @@ export const App = () => {
               setPromptsConfig(snapshot.interpolationConfig);
             }
             if (activeProjectId) {
-              saveCurrentState(activeProjectId, projectName, snapshot.markdown, revisions);
+              saveCurrentState();
             }
           }}
         />
 
-        <PersonaSettingsModal 
-          isOpen={showPersonaModal}
-          onClose={() => setShowPersonaModal(false)}
+        <PersonaSettingsModal
           activePersonaId={activePersonaId}
           personas={allPersonas}
           onSelectPersona={setActivePersonaId}
@@ -923,9 +824,7 @@ export const App = () => {
           promptsConfig={promptsConfig}
         />
 
-        <SpecGeneratorModal 
-          isOpen={showSpecModal}
-          onClose={() => setShowSpecModal(false)}
+        <SpecGeneratorModal
           sectionTitle={currentSection?.title || ""}
           currentGoals={currentSection ? (testSuite[currentSection.id]?.goals || "") : ""}
           fullSectionContent={currentSection?.fullContent || ""}
@@ -938,17 +837,13 @@ export const App = () => {
           }}
         />
 
-        <InterpolationModal 
-          isOpen={showInterpolationModal}
-          onClose={() => setShowInterpolationModal(false)}
+        <InterpolationModal
           onConfirm={handleInterpolateTasks}
           documentStats={documentStats}
           initialConfig={promptsConfig}
         />
 
         <SprintModal
-          isOpen={showGoalSprintModal}
-          onClose={() => setShowGoalSprintModal(false)}
           sections={sections}
           testSuite={testSuite}
           mode="goal"
@@ -956,17 +851,13 @@ export const App = () => {
         />
 
         <SprintModal
-          isOpen={showContentSprintModal}
-          onClose={() => setShowContentSprintModal(false)}
           sections={sections}
           testSuite={testSuite}
           mode="content"
           onSaveContent={handleSaveContent}
         />
 
-        <ProjectManagerModal 
-          isOpen={showProjectModal}
-          onClose={() => setShowProjectModal(false)}
+        <ProjectManagerModal
           projects={projectList}
           activeProjectId={activeProjectId || ''}
           onLoadProject={async (id) => {
@@ -981,8 +872,6 @@ export const App = () => {
         />
 
         <ContentSuggestionsModal
-          isOpen={showSuggestionsModal}
-          onClose={() => setShowSuggestionsModal(false)}
           sectionTitle={currentSection?.title || ""}
           currentGoals={currentSection ? (testSuite[currentSection.id]?.goals || "") : ""}
           fullSectionContent={currentSection?.fullContent || ""}
@@ -1004,8 +893,6 @@ export const App = () => {
         />
 
         <DependencyGraphModal
-          isOpen={showGraphModal}
-          onClose={() => setShowGraphModal(false)}
           sections={sections}
           testSuite={testSuite}
           updateDependencies={updateDependencies}
@@ -1013,8 +900,6 @@ export const App = () => {
         />
 
         <ProjectFileModal
-          isOpen={showProjectFileModal}
-          onClose={() => setShowProjectFileModal(false)}
           sections={sections}
           testSuite={testSuite}
           projectName={projectName}
@@ -1028,8 +913,6 @@ export const App = () => {
         />
 
         <CoachModal
-          isOpen={showCoachModal}
-          onClose={() => setShowCoachModal(false)}
           markdown={markdown}
           sections={sections}
           testSuite={testSuite}
@@ -1041,19 +924,19 @@ export const App = () => {
         />
 
         <PromptsGraphModal
-          isOpen={showPromptsGraphModal}
-          onClose={() => setShowPromptsGraphModal(false)}
           promptsConfig={promptsConfig}
           setPromptsConfig={setPromptsConfig}
         />
 
         <SectionMapModal
-          isOpen={showSectionMapModal}
-          onClose={() => setShowSectionMapModal(false)}
           sections={sections}
           testSuite={testSuite}
           onUpdateGoals={(id, goals) => updateSectionGoals(id, goals, 'manual')}
         />
+
+        <MigrationModal />
+
+        <SyncConfigModal />
 
         <Toaster position="bottom-right" richColors />
       </div>
