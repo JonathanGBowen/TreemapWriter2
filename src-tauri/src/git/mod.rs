@@ -6,6 +6,7 @@
 // directly. This keeps the surface auditable and makes Phase 4 (sync)
 // a matter of adding pull/push without touching readers.
 
+pub mod merge;
 pub mod remote;
 
 use crate::error::{AppError, AppResult};
@@ -26,7 +27,34 @@ pub fn init(path: &Path) -> AppResult<Repository> {
     } else {
         Repository::init(path)?
     };
+    ensure_line_ending_policy(&repo, path)?;
     Ok(repo)
+}
+
+/// Pin a deterministic line-ending policy on the per-project repo so it does
+/// not inherit the user's global `core.autocrlf` (commonly `true` on Windows).
+///
+/// Why this is load-bearing for sync: the app writes `project.md` to disk as
+/// pure LF (see `fs_io::atomic_write_str`). If git is left to autocrlf, a
+/// checkout rewrites the working tree to CRLF, which then reads as permanently
+/// "dirty" (wedging every future pull) and makes the in-memory 3-way merge see
+/// LF-vs-CRLF — turning an ordinary divergence into a whole-file conflict. With
+/// autocrlf off and `* text=auto eol=lf`, the working tree and blobs match
+/// byte-for-byte and the entire CRLF failure class disappears.
+///
+/// Idempotent: safe to call on every open. Targets the project's own repo only.
+fn ensure_line_ending_policy(repo: &Repository, path: &Path) -> AppResult<()> {
+    let mut config = repo.config()?;
+    config.set_bool("core.autocrlf", false)?;
+    config.set_str("core.eol", "lf")?;
+
+    let attrs = path.join(".gitattributes");
+    if !attrs.exists() {
+        // Untracked until the next autosave commits it; harmless meanwhile
+        // (is_working_tree_dirty ignores untracked files).
+        std::fs::write(&attrs, "* text=auto eol=lf\n")?;
+    }
+    Ok(())
 }
 
 /// If the repository has no commits, create an initial commit from the

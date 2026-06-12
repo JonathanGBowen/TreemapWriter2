@@ -103,10 +103,11 @@ pub fn pull(repo: &Repository, token: &str) -> AppResult<PullOutcome> {
         return Ok(PullOutcome::FastForwarded { commits });
     }
 
-    // Otherwise: divergent. Return the conflict list (empty for now — full
-    // conflict detection would require running an actual merge). Phase 5
-    // polish brings in-app resolution.
-    Ok(PullOutcome::MergeRequired { conflicts: Vec::new() })
+    // Otherwise: divergent. Run an in-memory 3-way merge (git/merge.rs). A clean
+    // merge is finalized automatically; real conflicts come back as per-file
+    // data driving the in-app resolution modal — nothing is written to the
+    // working tree until the user resolves and we commit (Phase 5).
+    super::merge::detect(repo, fetch_commit.id())
 }
 
 /// Push the current branch to origin. Reports NonFastForward if the remote

@@ -3,6 +3,7 @@ import type {
   ProjectMeta,
   PullOutcome,
   PushOutcome,
+  ResolveOutcome,
   SyncState,
 } from '../types';
 import type { Repository, StoredProjectData } from './repository';
@@ -76,6 +77,14 @@ export const browserRepository: Repository = {
     localStorage.removeItem(STORAGE_PREFIX + id);
   },
 
+  async createProjectAt(): Promise<ProjectMeta> {
+    throw new Error('Folder-based projects require the desktop app.');
+  },
+
+  async openProjectAt(): Promise<ProjectMeta> {
+    throw new Error('Folder-based projects require the desktop app.');
+  },
+
   async commitSnapshot(): Promise<null> {
     // No-op in the browser. Snapshots live as plain entries on the
     // in-memory `revisions` array (capped at 50) and are persisted via
@@ -123,6 +132,10 @@ export const browserRepository: Repository = {
   },
 
   async syncPush(): Promise<PushOutcome> {
+    return { kind: 'noRemote' };
+  },
+
+  async syncResolveMerge(): Promise<ResolveOutcome> {
     return { kind: 'noRemote' };
   },
 

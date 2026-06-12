@@ -29,6 +29,10 @@ tauri-plugin-fs = "2"
 # git repo on disk; SQLite is a derived cache for fast queries.
 rusqlite = { version = "0.32", features = ["bundled"] }
 git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+# Phase 5 — pure-Rust 3-way text merge for in-app conflict resolution. git2 0.19
+# does not expose libgit2's merge-file; diffy produces the hunk-level
+# conflict-markered text the resolution modal renders.
+diffy = "0.4"
 serde_yaml = "0.9"
 dirs = "5"
 anyhow = "1"
@@ -38,3 +42,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # Phase 4 — OS-level secret storage for git PAT + Gemini API key.
 # Uses Windows Credential Manager, macOS Keychain, Linux Secret Service.
 keyring = "3"
+
+[dev-dependencies]
+# Phase 5 — throwaway git repos for the merge-engine integration tests.
+tempfile = "3"

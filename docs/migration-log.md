@@ -1122,3 +1122,89 @@ after 30s.
 subset. Reverting `sync-policy.ts` + `ui-state.ts` + `Sidebar.tsx` together
 restores the Phase 4 indicator (status-only, 30s auto-clear). The
 `remote.rs` and `tsconfig.json` changes are safe to keep in isolation.
+
+---
+
+## 2026-06-11 — Phase 5 (5C): in-app conflict resolution
+
+**Scope.** The highest-value remaining sync item from
+[phase-5.md](phase-5.md). `pull` used to return an empty conflict list on
+divergence and tell the user to "resolve via your git client"; it now runs a
+real in-memory 3-way merge, surfaces conflicts in a modal, and creates the
+merge commit in-app. Auth unchanged (HTTPS + PAT). Shipped as ordered,
+independently-revertable sub-steps (5C-0 … 5C-4).
+
+**Core invariant.** Never destroy a local commit *and* never silently alter
+prose. The merge runs entirely in memory (`merge_commits` → a detached
+`Index`): nothing on disk or in refs changes until the user resolves and we
+write the tree + commit + checkout. A cancelled resolution is a dropped index
+— no `cleanup_state`, no half-merged repo.
+
+**What changed.**
+
+1. **5C-0 — line-ending policy (prerequisite).**
+   [src-tauri/src/git/mod.rs](../src-tauri/src/git/mod.rs) `ensure_line_ending_policy`
+   sets repo-local `core.autocrlf=false` + `core.eol=lf` and writes a
+   project-local `.gitattributes` (`* text=auto eol=lf`) on every open. The
+   app already writes pure-LF `project.md`; without this, a checkout on
+   Windows rewrites the tree to CRLF, which reads as permanently "dirty"
+   (wedging all future pulls) and makes the 3-way merge see LF-vs-CRLF — a
+   whole-file conflict. The Rust tests prove the round-trip stays clean only
+   with this in place.
+2. **5C-1 — Rust merge engine.** New
+   [src-tauri/src/git/merge.rs](../src-tauri/src/git/merge.rs): `detect` (called
+   from `remote.rs`'s divergent branch) runs `merge_commits` for the correct
+   recursive base, auto-finalizes a clean merge (`Merged`), or returns rich
+   per-file `ConflictFile` data (`MergeRequired`) and pins the fetched commit
+   under `refs/twriter/incoming`. `resolve` (new `sync_resolve_merge` command)
+   re-runs the deterministic merge, applies the user's choices, and commits —
+   guarded by a base-HEAD/dirty check that returns `Stale` if the repo moved.
+   Conflict text comes from the `diffy` crate (git2 0.19 doesn't expose
+   libgit2's merge-file). Strict UTF-8 / `is_binary` classification — content
+   that might be committed is never lossily decoded. New wire types in
+   [types.rs](../src-tauri/src/types.rs): `ConflictFile`, `Resolution`,
+   `ResolveOutcome`, `PullOutcome::{Merged,UnrelatedHistories}`, reshaped
+   `MergeRequired`.
+3. **5C-2 — TS plumbing.** `PullOutcome`/`ResolveOutcome`/`ConflictFile`/
+   `Resolution`/`PendingMerge` mirrored in
+   [types/index.ts](../src/types/index.ts); `syncResolveMerge` added to the
+   Repository interface + both impls;
+   [ui-state.ts](../src/state/ui-state.ts) gained the `'conflict'` status,
+   `pendingMerge`, and `showConflictModal`;
+   [sync-policy.ts](../src/services/sync-policy.ts) latches `mergeRequired`
+   into the modal, auto-finalizes `merged`, short-circuits pull/push while a
+   conflict is pending, and on resolve reloads the document from disk (so the
+   next autosave can't clobber the merge) before pushing. Autosave is
+   suppressed during a pending merge in
+   [project-state.ts](../src/state/project-state.ts) so a moving HEAD can't
+   invalidate the open modal.
+4. **5C-3 — resolution UI.** Pure, unit-tested marker parser
+   [conflict-merge.ts](../src/features/modals/conflict-merge.ts) (strict
+   line-anchored envelope rule — a lone `=======` Setext underline is never a
+   separator); `ConflictResolutionModal` + `ConflictFileView` offer per-hunk
+   LOCAL/REMOTE, whole-file pick, and manual edit, with binary and
+   modify/delete handled distinctly (deleting requires an explicit choice).
+   The sidebar `'conflict'` dot is clickable to reopen the modal after cancel.
+5. **5C-4 — tests.** `conflict-merge.test.ts` (9 cases incl. the Setext
+   non-misparse and CRLF stripping); Rust tests in `merge.rs` cover marker
+   detection, clean vs conflicting `diffy` merges, a full detect→resolve
+   round-trip asserting a clean working tree (the CRLF regression guard), the
+   `Stale` guard, and clean auto-merge. Added `tempfile` dev-dependency.
+
+**What to verify.** `npm test` (27 pass), `npm run typecheck`, `npm run
+build`, `cargo test --manifest-path src-tauri/Cargo.toml` (4 merge tests
+pass). Manual (desktop): clone the project elsewhere, edit the same lines of
+`project.md` in the app and the clone, push from the clone, then pull in the
+app — the modal opens; resolve and confirm a 2-parent merge commit, exact
+chosen content, a **clean** working tree, and an auto-push. Edit *different*
+lines for the `Merged` (no-modal) path.
+
+**Rollback.** Sub-steps are independent. Reverting `merge.rs` +
+`commands/sync.rs` + the `lib.rs` registration + the `types.rs` additions
+restores the empty-conflict-list behavior; the TS/UI files then fall back to
+the latched-error indicator. 5C-0 (line-ending policy) is safe to keep in
+isolation and is recommended even if the rest is reverted.
+
+**Current state.** Storage: disk + SQLite + git + remote GitHub. Sync:
+pull/push automated, divergence now *resolvable* in-app. Conflict resolution
+no longer requires an external git client.

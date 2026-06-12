@@ -6,7 +6,7 @@
 
 use crate::error::{err, AppResult};
 use crate::project::AppState;
-use crate::types::{PullOutcome, PushOutcome, SyncState};
+use crate::types::{PullOutcome, PushOutcome, Resolution, ResolveOutcome, SyncState};
 use tauri::State;
 
 const GIT_TOKEN_SERVICE: &str = "git";
@@ -26,6 +26,20 @@ pub async fn sync_pull(state: State<'_, AppState>) -> AppResult<PullOutcome> {
 pub async fn sync_push(state: State<'_, AppState>) -> AppResult<PushOutcome> {
     let token = read_git_token()?;
     state.with_current(|h| crate::git::remote::push(&h.git, &token))
+}
+
+/// Apply the user's per-file conflict choices and create the merge commit.
+/// `their_commit`/`base_head` are echoed back from the `MergeRequired` outcome.
+#[tauri::command]
+pub async fn sync_resolve_merge(
+    state: State<'_, AppState>,
+    their_commit: String,
+    base_head: String,
+    resolutions: Vec<Resolution>,
+) -> AppResult<ResolveOutcome> {
+    state.with_current(|h| {
+        crate::git::merge::resolve(&h.git, &their_commit, &base_head, &resolutions)
+    })
 }
 
 #[tauri::command]

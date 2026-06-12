@@ -20,20 +20,22 @@ in [src-tauri/src/db/schema.sql](../src-tauri/src/db/schema.sql), a
 `search_sections` Tauri command in `src-tauri/src/commands/`, and a
 sidebar search input that highlights treemap hits.
 
-### In-app conflict resolution UI
-[src-tauri/src/git/remote.rs:106-109](../src-tauri/src/git/remote.rs#L106)
-currently returns an **empty conflict list** from `pull` even when a real
-conflict exists. Today users resolve via their git client. Phase 5: run a
-real merge, surface conflicted sections in a modal, let the user pick
-ours/theirs/edited per hunk.
+### In-app conflict resolution UI — DONE (2026-06-11, 5C)
+`pull` now runs a real in-memory 3-way merge
+([src-tauri/src/git/merge.rs](../src-tauri/src/git/merge.rs)): clean
+divergence auto-merges (`Merged`); real conflicts return per-file data
+(`MergeRequired`) that drives a resolution modal
+([ConflictResolutionModal.tsx](../src/features/modals/ConflictResolutionModal.tsx)),
+where the user picks LOCAL/REMOTE per hunk, whole-file, or edits manually.
+`sync_resolve_merge` applies the choices and creates the merge commit. The
+merge is transactional/abort-safe (in-memory until commit) and never
+discards a local commit or silently alters prose; a line-ending policy
+(repo-local `core.autocrlf=false` + `.gitattributes`) prevents CRLF
+divergence on Windows. See migration-log, "Phase 5 (5C)".
 
-**Partly done (2026-06-11 sync-indicator hardening).** Divergence is no
-longer *silent*: pull/push failures now latch a visible error in the
-sidebar (no 30s auto-clear), and unpushed/unpulled commits show an amber
-indicator (see migration-log, "Phase 5 — sync-indicator hardening"). What
-remains is the *resolution* itself — `pull` still returns an empty conflict
-list, so there are no hunks to drive a modal yet. Build that on top of a
-real merge attempt.
+Possible follow-ups (not blocking): SSH auth is still out of scope; the
+per-hunk picker relies on the strict marker-envelope rule with the
+manual-edit textarea as the always-correct fallback.
 
 ### Stable section IDs (was `docs/id-strategy.md`)
 Today IDs are derived from `title.slug + index`
@@ -100,7 +102,6 @@ Stay out of Phase 5 unless requirements change:
 
 ## Order to pick items
 
-When Phase 5 starts: conflict-resolution UI is the highest-value remaining
-sync item — divergence is now *visible* (2026-06-11 hardening) but still
-not *resolvable* in-app. Streaming AI is the next-most-felt. The rest is
-polish — pick by mood or by which bug surfaces first.
+Conflict-resolution UI is **done** (2026-06-11, 5C) — divergence is now both
+*visible* and *resolvable* in-app. **Streaming AI is now the next-most-felt**
+item. The rest is polish — pick by mood or by which bug surfaces first.
