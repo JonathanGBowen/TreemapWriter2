@@ -93,23 +93,23 @@ export const CoachModal: React.FC<CoachModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/40 dark:bg-[#000000]/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#000000]/60 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-[600px] flex flex-col bg-slate-50 dark:bg-hld-bg border border-slate-200 dark:border-hld-border shadow-[0_8px_32px_rgba(0,0,0,0.15)] dark:shadow-[0_0_40px_rgba(0,232,245,0.1)] overflow-hidden font-sans pointer-events-auto max-h-[85vh]">
+      <div className="relative w-[600px] flex flex-col bg-hld-bg border border-hld-border shadow-[0_0_40px_rgba(0,232,245,0.1)] overflow-hidden font-sans pointer-events-auto max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-[12px_16px] bg-slate-100 dark:bg-hld-surface border-b border-slate-200 dark:border-hld-border shrink-0">
+        <div className="flex items-center justify-between p-[12px_16px] bg-hld-surface border-b border-hld-border shrink-0">
           <div className="flex items-center gap-[10px]">
-            <BrainCircuit className="text-amber-500 dark:text-hld-yellow" size={16} />
-            <h2 className="text-[12px] font-bold text-slate-800 dark:text-hld-text font-mono uppercase tracking-[0.1em]">
+            <BrainCircuit className="text-hld-yellow" size={16} />
+            <h2 className="text-[12px] font-bold text-hld-text font-mono uppercase tracking-[0.1em]">
               ADHD Writing Coach
             </h2>
           </div>
           <button 
             onClick={onClose}
-            className="text-slate-400 dark:text-hld-muted hover:text-rose-500 dark:hover:text-hld-magenta transition-colors"
+            className="text-hld-muted hover:text-hld-magenta transition-colors"
           >
             <X size={16} />
           </button>
@@ -118,26 +118,26 @@ export const CoachModal: React.FC<CoachModalProps> = ({
         {/* Content */}
         <div className="p-4 flex flex-col flex-1 min-h-0 overflow-y-auto">
           {isStale && actionPlan && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md flex gap-2 items-start shrink-0">
+            <div className="mb-4 p-3 bg-amber-900/20 border border-amber-700 rounded-md flex gap-2 items-start shrink-0">
               <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={16} />
-              <div className="text-[12px] text-amber-700 dark:text-amber-400">
+              <div className="text-[12px] text-amber-400">
                 <strong>Project has changed.</strong> This advice is based on an older version of your document. 
-                <button onClick={handleGenerate} className="ml-2 underline font-semibold hover:text-amber-800 dark:hover:text-amber-300">Regenerate</button>
+                <button onClick={handleGenerate} className="ml-2 underline font-semibold hover:text-amber-300">Regenerate</button>
               </div>
             </div>
           )}
           {!actionPlan && !isProcessing && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <BrainCircuit className="w-12 h-12 text-slate-300 dark:text-hld-muted/30 mb-4" />
-              <h3 className="text-[14px] font-bold text-slate-700 dark:text-hld-text mb-2">Needs Direction?</h3>
-              <p className="text-[12px] text-slate-500 dark:text-hld-muted max-w-[400px]">
+              <BrainCircuit className="w-12 h-12 text-hld-muted/30 mb-4" />
+              <h3 className="text-[14px] font-bold text-hld-text mb-2">Needs Direction?</h3>
+              <p className="text-[12px] text-hld-muted max-w-[400px]">
                 The coach will analyze the full scope of your project, identify the biggest bottlenecks, and give you a focused, actionable plan to get unstuck.
               </p>
               
-              <div className="mt-8 flex flex-col items-start bg-slate-100 dark:bg-hld-surface p-4 border border-slate-200 dark:border-hld-border w-full">
-                <label className="text-[10px] font-mono uppercase text-slate-500 dark:text-hld-muted mb-2">Model</label>
+              <div className="mt-8 flex flex-col items-start bg-hld-surface p-4 border border-hld-border w-full">
+                <label className="text-[10px] font-mono uppercase text-hld-muted mb-2">Model</label>
                 <select 
-                  className="w-full bg-white dark:bg-hld-bg border border-slate-300 dark:border-hld-border text-[11px] p-2 text-slate-700 dark:text-hld-text focus:outline-none focus:border-indigo-500 dark:focus:border-hld-cyan"
+                  className="w-full bg-hld-bg border border-hld-border text-[11px] p-2 text-hld-text focus:outline-none focus:border-hld-cyan"
                   value={selectedModelId}
                   onChange={(e) => setSelectedModelId(e.target.value)}
                 >
@@ -152,33 +152,33 @@ export const CoachModal: React.FC<CoachModalProps> = ({
 
           {isProcessing && (
             <div className="flex flex-col items-center justify-center py-12">
-               <Loader2 className="w-8 h-8 text-amber-500 dark:text-hld-yellow animate-spin mb-4" />
-               <div className="text-[11px] font-mono uppercase tracking-[0.1em] text-slate-500 dark:text-hld-muted animate-pulse">
+               <Loader2 className="w-8 h-8 text-hld-yellow animate-spin mb-4" />
+               <div className="text-[11px] font-mono uppercase tracking-[0.1em] text-hld-muted animate-pulse">
                  Analyzing structure & generating plan...
                </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-rose-50 dark:bg-hld-magenta/10 border border-rose-200 dark:border-hld-magenta/30 p-4 flex gap-2 items-start mt-2">
-              <AlertCircle className="w-4 h-4 text-rose-500 dark:text-hld-magenta shrink-0 mt-0.5" />
-              <div className="text-[12px] text-rose-700 dark:text-hld-red">{error}</div>
+            <div className="bg-hld-magenta/10 border border-hld-magenta/30 p-4 flex gap-2 items-start mt-2">
+              <AlertCircle className="w-4 h-4 text-hld-magenta shrink-0 mt-0.5" />
+              <div className="text-[12px] text-hld-red">{error}</div>
             </div>
           )}
 
           {actionPlan && (
-            <div className="markdown-body p-4 bg-white dark:bg-hld-surface border border-slate-200 dark:border-hld-border shadow-inner font-sans text-sm dark:text-slate-300 overflow-y-auto">
+            <div className="markdown-body p-4 bg-hld-surface border border-hld-border shadow-inner font-sans text-sm text-slate-300 overflow-y-auto">
               <ReactMarkdown>{actionPlan}</ReactMarkdown>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t flex justify-end border-slate-200 dark:border-hld-border bg-slate-50 dark:bg-hld-surface shrink-0">
+        <div className="p-3 border-t flex justify-end border-hld-border bg-hld-surface shrink-0">
           {!actionPlan && !isProcessing && (
             <button
                onClick={handleGenerate}
-               className="px-4 py-2 bg-amber-600 hover:bg-amber-700 dark:bg-hld-yellow dark:text-black dark:hover:bg-amber-400 text-white text-[11px] font-mono uppercase tracking-[0.1em] transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(255,190,0,0.2)]"
+               className="px-4 py-2 bg-hld-yellow text-black hover:bg-amber-400 text-[11px] font-mono uppercase tracking-[0.1em] transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(255,190,0,0.2)]"
             >
               <Sparkles size={14} /> Get Action Plan
             </button>
@@ -186,7 +186,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
           {actionPlan && (
             <button
                onClick={() => setActionPlan(null)}
-               className="px-4 py-2 bg-transparent border border-slate-300 dark:border-hld-border text-slate-600 dark:text-hld-text text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-slate-100 dark:hover:bg-hld-surface2 transition-colors"
+               className="px-4 py-2 bg-transparent border border-hld-border text-hld-text text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-surface2 transition-colors"
             >
               Reset
             </button>

@@ -60,23 +60,23 @@ export const SyncConfigModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto">
       <div
-        className="absolute inset-0 bg-slate-900/40 dark:bg-[#000000]/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#000000]/60 backdrop-blur-sm"
         onClick={busy ? undefined : onClose}
       />
 
-      <div className="relative w-[520px] flex flex-col bg-slate-50 dark:bg-hld-bg border border-slate-200 dark:border-hld-border shadow-[0_8px_32px_rgba(0,0,0,0.15)] dark:shadow-[0_0_40px_rgba(0,232,245,0.1)] overflow-hidden font-sans pointer-events-auto">
+      <div className="relative w-[520px] flex flex-col bg-hld-bg border border-hld-border shadow-[0_0_40px_rgba(0,232,245,0.1)] overflow-hidden font-sans pointer-events-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-[12px_16px] bg-slate-100 dark:bg-hld-surface border-b border-slate-200 dark:border-hld-border">
+        <div className="flex items-center justify-between p-[12px_16px] bg-hld-surface border-b border-hld-border">
           <div className="flex items-center gap-[10px]">
-            <GitBranch className="text-indigo-500 dark:text-hld-cyan" size={16} />
-            <h2 className="text-[12px] font-bold text-slate-800 dark:text-hld-text font-mono uppercase tracking-[0.1em]">
+            <GitBranch className="text-hld-cyan" size={16} />
+            <h2 className="text-[12px] font-bold text-hld-text font-mono uppercase tracking-[0.1em]">
               Configure Sync
             </h2>
           </div>
           <button
             onClick={onClose}
             disabled={busy}
-            className="text-slate-400 dark:text-hld-muted hover:text-rose-500 dark:hover:text-hld-magenta transition-colors disabled:opacity-50"
+            className="text-hld-muted hover:text-hld-magenta transition-colors disabled:opacity-50"
           >
             <X size={16} />
           </button>
@@ -84,13 +84,13 @@ export const SyncConfigModal: React.FC = () => {
 
         {/* Body */}
         <div className="p-5 flex flex-col gap-4">
-          <p className="text-[12px] text-slate-600 dark:text-hld-muted leading-relaxed">
+          <p className="text-[12px] text-hld-muted leading-relaxed">
             Sync this project to a private GitHub repository. Every commit will
             push automatically. The token stays in your OS keyring, not on disk.
           </p>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-mono uppercase tracking-[0.1em] text-slate-500 dark:text-hld-muted">
+            <label className="text-[10px] font-mono uppercase tracking-[0.1em] text-hld-muted">
               Remote URL
             </label>
             <input
@@ -99,12 +99,12 @@ export const SyncConfigModal: React.FC = () => {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://github.com/username/repo.git"
               disabled={busy}
-              className="bg-white dark:bg-hld-surface border border-slate-300 dark:border-hld-border text-[12px] p-2 font-mono text-slate-700 dark:text-hld-text focus:outline-none focus:border-indigo-500 dark:focus:border-hld-cyan disabled:opacity-50"
+              className="bg-hld-surface border border-hld-border text-[12px] p-2 font-mono text-hld-text focus:outline-none focus:border-hld-cyan disabled:opacity-50"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-mono uppercase tracking-[0.1em] text-slate-500 dark:text-hld-muted">
+            <label className="text-[10px] font-mono uppercase tracking-[0.1em] text-hld-muted">
               Personal Access Token
             </label>
             <input
@@ -113,9 +113,9 @@ export const SyncConfigModal: React.FC = () => {
               onChange={(e) => setToken(e.target.value)}
               placeholder="ghp_… or github_pat_…"
               disabled={busy}
-              className="bg-white dark:bg-hld-surface border border-slate-300 dark:border-hld-border text-[12px] p-2 font-mono text-slate-700 dark:text-hld-text focus:outline-none focus:border-indigo-500 dark:focus:border-hld-cyan disabled:opacity-50"
+              className="bg-hld-surface border border-hld-border text-[12px] p-2 font-mono text-hld-text focus:outline-none focus:border-hld-cyan disabled:opacity-50"
             />
-            <p className="text-[10px] text-slate-500 dark:text-hld-muted leading-relaxed mt-1">
+            <p className="text-[10px] text-hld-muted leading-relaxed mt-1">
               Use a fine-grained PAT scoped to this single repo with read/write
               access to Contents. GitHub → Settings → Developer settings →
               Personal access tokens → Fine-grained tokens.
@@ -123,9 +123,9 @@ export const SyncConfigModal: React.FC = () => {
           </div>
 
           {error && (
-            <div className="bg-rose-50 dark:bg-hld-magenta/10 border border-rose-200 dark:border-hld-magenta/30 p-3 flex gap-2 items-start">
-              <AlertCircle className="w-4 h-4 text-rose-500 dark:text-hld-magenta shrink-0 mt-0.5" />
-              <div className="text-[12px] text-rose-700 dark:text-hld-magenta font-mono break-all">
+            <div className="bg-hld-magenta/10 border border-hld-magenta/30 p-3 flex gap-2 items-start">
+              <AlertCircle className="w-4 h-4 text-hld-magenta shrink-0 mt-0.5" />
+              <div className="text-[12px] text-hld-magenta font-mono break-all">
                 {error}
               </div>
             </div>
@@ -133,18 +133,18 @@ export const SyncConfigModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t flex justify-end gap-2 border-slate-200 dark:border-hld-border bg-slate-50 dark:bg-hld-surface">
+        <div className="p-3 border-t flex justify-end gap-2 border-hld-border bg-hld-surface">
           <button
             onClick={onClose}
             disabled={busy}
-            className="px-4 py-2 bg-transparent border border-slate-300 dark:border-hld-border text-slate-600 dark:text-hld-text text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-slate-100 dark:hover:bg-hld-surface2 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-transparent border border-hld-border text-hld-text text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-surface2 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="px-4 py-2 bg-indigo-600 dark:bg-hld-cyan text-white dark:text-hld-bg text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-indigo-700 dark:hover:bg-hld-cyan/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-hld-cyan text-hld-bg text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-cyan/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
             {busy ? 'Testing…' : 'Test & Save'}

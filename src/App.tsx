@@ -66,14 +66,14 @@ export const App = () => {
   const {
     projectList, activeProjectId, markdown, projectName, testSuite, hiddenSectionIds,
     localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
-    focusMode, selectedId, activeLineIndex, runTutorial, isDarkMode, showProjectModal,
+    focusMode, selectedId, activeLineIndex, runTutorial, showProjectModal,
     showRunModal, showPersonaModal, showSpecModal, showSuggestionsModal, showInterpolationModal,
     showPromptsGraphModal, showSectionMapModal, showProjectFileModal, showGoalSprintModal,
     showContentSprintModal, showHistoryModal, showGraphModal, showCoachModal, isProcessing,
     isInterpolating, activePersonaId, customPersonas, promptsConfig, cachedCoachAdvice,
     
     setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite, setHiddenSectionIds,
-    setSelectedId, setActiveLineIndex, setRunTutorial, setIsDarkMode, setSidebarWidth,
+    setSelectedId, setActiveLineIndex, setRunTutorial, setSidebarWidth,
     setTestsPanelWidth, setFocusMode, setShowProjectModal, setShowRunModal, setShowPersonaModal,
     setShowSpecModal, setShowSuggestionsModal, setShowInterpolationModal, setShowPromptsGraphModal,
     setShowSectionMapModal, setShowProjectFileModal, setShowGoalSprintModal, setShowContentSprintModal,
@@ -99,7 +99,6 @@ export const App = () => {
     selectedId: state.selectedId,
     activeLineIndex: state.activeLineIndex,
     runTutorial: state.runTutorial,
-    isDarkMode: state.isDarkMode,
     showProjectModal: state.showProjectModal,
     showRunModal: state.showRunModal,
     showPersonaModal: state.showPersonaModal,
@@ -131,7 +130,6 @@ export const App = () => {
     setSelectedId: state.setSelectedId,
     setActiveLineIndex: state.setActiveLineIndex,
     setRunTutorial: state.setRunTutorial,
-    setIsDarkMode: state.setIsDarkMode,
     setSidebarWidth: state.setSidebarWidth,
     setTestsPanelWidth: state.setTestsPanelWidth,
     setFocusMode: state.setFocusMode,
@@ -751,15 +749,15 @@ export const App = () => {
   }, []);
 
   return (
-    <div className={isDarkMode ? "dark" : ""}>
+    <div className="dark">
       <ConfirmModal 
         isOpen={confirmState.isOpen}
         message={confirmState.message}
         onConfirm={confirmState.onConfirm}
         onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
       />
-      <Tutorial isDarkMode={isDarkMode} run={runTutorial} onFinish={handleTutorialFinish} />
-      <div className="flex h-screen w-full bg-slate-50 dark:bg-hld-bg text-slate-800 dark:text-hld-text overflow-hidden transition-colors duration-200 font-sans">
+      <Tutorial run={runTutorial} onFinish={handleTutorialFinish} />
+      <div className="flex h-screen w-full bg-hld-bg text-hld-text overflow-hidden transition-colors duration-200 font-sans">
         <Sidebar
           onSelect={setSelectedId}
           onImportMarkdown={handleImportMarkdown}
@@ -772,7 +770,7 @@ export const App = () => {
           onStartTutorial={() => setRunTutorial(true)}
         />
 
-        <div className="flex-1 min-w-0 flex flex-col h-full bg-white dark:bg-hld-bg relative">
+        <div className="flex-1 min-w-0 flex flex-col h-full bg-hld-bg relative">
           <EditorPanel
             handleSave={handleManualSave}
             editorRef={editorRef}

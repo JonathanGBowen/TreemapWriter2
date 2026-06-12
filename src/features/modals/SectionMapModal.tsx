@@ -163,31 +163,31 @@ export const SectionMapModal: React.FC<SectionMapModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div ref={modalRef} className="bg-white dark:bg-hld-bg rounded-xl shadow-2xl w-full max-w-[95vw] h-[90vh] border border-slate-200 dark:border-hld-border flex overflow-hidden">
+      <div ref={modalRef} className="bg-hld-bg rounded-xl shadow-2xl w-full max-w-[95vw] h-[90vh] border border-hld-border flex overflow-hidden">
         
         {/* Main Interface */}
-        <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-hld-border bg-white dark:bg-hld-surface flex justify-between items-center shrink-0">
+        <div className="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+          <div className="p-4 border-b border-hld-border bg-hld-surface flex justify-between items-center shrink-0">
              <div>
-               <h3 className="font-bold text-lg dark:text-hld-text font-sans">Project Map</h3>
+               <h3 className="font-bold text-lg text-hld-text font-sans">Project Map</h3>
                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-mono mt-1">Navigate & Plan Sections</p>
              </div>
-             <div className="flex bg-slate-100 dark:bg-hld-bg p-1 rounded-lg">
+             <div className="flex bg-hld-bg p-1 rounded-lg">
                 <button 
                   onClick={() => setLayout('rows')}
-                  className={`p-1.5 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${layout === 'rows' ? 'bg-white dark:bg-hld-surface shadow-sm text-indigo-600 dark:text-hld-cyan font-bold' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                  className={`p-1.5 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${layout === 'rows' ? 'bg-hld-surface shadow-sm text-hld-cyan font-bold' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                   <AlignJustify size={14} /> Rows
                 </button>
                 <button 
                   onClick={() => setLayout('columns')}
-                  className={`p-1.5 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${layout === 'columns' ? 'bg-white dark:bg-hld-surface shadow-sm text-indigo-600 dark:text-hld-cyan font-bold' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                  className={`p-1.5 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${layout === 'columns' ? 'bg-hld-surface shadow-sm text-hld-cyan font-bold' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                   <LayoutTemplate size={14} /> Columns
                 </button>
                 <button 
                   onClick={() => setLayout('corkboard')}
-                  className={`p-1.5 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${layout === 'corkboard' ? 'bg-white dark:bg-hld-surface shadow-sm text-indigo-600 dark:text-hld-cyan font-bold' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                  className={`p-1.5 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${layout === 'corkboard' ? 'bg-hld-surface shadow-sm text-hld-cyan font-bold' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                   <LayoutGrid size={14} /> Corkboard
                 </button>
@@ -285,16 +285,16 @@ export const SectionMapModal: React.FC<SectionMapModalProps> = ({
         {/* Resizer */}
         <div 
           onMouseDown={startResizing}
-          className="w-1 cursor-col-resize flex-shrink-0 bg-slate-200 dark:bg-hld-border hover:bg-indigo-400 dark:hover:bg-hld-cyan transition-colors"
+          className="w-1 cursor-col-resize flex-shrink-0 bg-hld-border hover:bg-hld-cyan transition-colors"
         />
 
         {/* Side Panel */}
-        <div style={{ width: panelWidth }} className="flex flex-col bg-white dark:bg-hld-surface shrink-0 relative">
-          <div className="p-4 border-b border-slate-200 dark:border-hld-border flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-            <h3 className="font-bold text-sm font-sans dark:text-hld-text uppercase tracking-widest text-slate-700">Goal Editor</h3>
+        <div style={{ width: panelWidth }} className="flex flex-col bg-hld-surface shrink-0 relative">
+          <div className="p-4 border-b border-hld-border flex justify-between items-center bg-slate-900/50">
+            <h3 className="font-bold text-sm font-sans text-hld-text uppercase tracking-widest">Goal Editor</h3>
             <button 
               onClick={onClose}
-              className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-hld-border text-slate-500 transition-colors"
+              className="p-1.5 rounded hover:bg-hld-border text-slate-500 transition-colors"
             >
               <X size={16} />
             </button>
@@ -304,26 +304,26 @@ export const SectionMapModal: React.FC<SectionMapModalProps> = ({
             {selectedSection ? (
                <div className="flex flex-col h-full">
                  <div className="mb-4">
-                   <h2 className="text-xl font-bold dark:text-hld-text mb-3 font-sans leading-tight">{selectedSection.title || 'Untitled Section'}</h2>
-                   <div className="text-[10px] font-mono text-indigo-700 dark:text-hld-cyan uppercase tracking-widest bg-indigo-50 dark:bg-hld-cyan/10 inline-block px-2 py-1 rounded shadow-sm border border-indigo-100 dark:border-hld-cyan/30">
+                   <h2 className="text-xl font-bold text-hld-text mb-3 font-sans leading-tight">{selectedSection.title || 'Untitled Section'}</h2>
+                   <div className="text-[10px] font-mono text-hld-cyan uppercase tracking-widest bg-hld-cyan/10 inline-block px-2 py-1 rounded shadow-sm border border-hld-cyan/30">
                      H{selectedSection.level} • {selectedSection.wordCount} words
                    </div>
                  </div>
                  
-                 <div className="mb-6 bg-slate-50 dark:bg-hld-bg/50 border border-slate-200 dark:border-hld-border rounded p-4 overflow-y-auto max-h-[30vh]">
-                   <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-slate-500 dark:text-hld-muted mb-2 block border-b border-slate-200 dark:border-hld-border/50 pb-1">Markdown Content</label>
-                   <div className="text-xs text-slate-700 dark:text-hld-text font-sans whitespace-pre-wrap font-medium">
+                 <div className="mb-6 bg-hld-bg/50 border border-hld-border rounded p-4 overflow-y-auto max-h-[30vh]">
+                   <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted mb-2 block border-b border-hld-border/50 pb-1">Markdown Content</label>
+                   <div className="text-xs text-hld-text font-sans whitespace-pre-wrap font-medium">
                      {selectedSection.content || <span className="italic opacity-50">Empty section content...</span>}
                    </div>
                  </div>
                  
                  <div className="flex-1 flex flex-col relative h-[50%] min-h-[250px]">
-                   <label className="text-xs font-bold text-slate-600 dark:text-hld-muted uppercase tracking-widest mb-2 font-mono flex items-center justify-between">
+                   <label className="text-xs font-bold text-hld-muted uppercase tracking-widest mb-2 font-mono flex items-center justify-between">
                      <span>Section Goal / Spec</span>
-                     <span className="text-[9px] font-normal opacity-50 dark:text-hld-muted">(Auto-saves)</span>
+                     <span className="text-[9px] font-normal opacity-50 text-hld-muted">(Auto-saves)</span>
                    </label>
                    <textarea
-                     className="w-full flex-1 p-4 bg-slate-50 dark:bg-hld-bg border border-slate-200 dark:border-hld-border rounded-lg text-sm dark:text-hld-text font-sans resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-hld-cyan shadow-inner font-medium text-slate-700"
+                     className="w-full flex-1 p-4 bg-hld-bg border border-hld-border rounded-lg text-sm text-hld-text font-sans resize-none focus:outline-none focus:ring-2 focus:ring-hld-cyan shadow-inner font-medium"
                      placeholder="What should this section accomplish? E.g., 'Argue that...'"
                      value={testSuite[selectedSection.id]?.goals || ''}
                      onChange={(e) => onUpdateGoals(selectedSection.id, e.target.value)}
@@ -331,8 +331,8 @@ export const SectionMapModal: React.FC<SectionMapModalProps> = ({
                  </div>
                </div>
             ) : (
-               <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-hld-muted p-8 text-center border-2 border-dashed border-slate-200 dark:border-hld-border rounded-xl bg-slate-50 dark:bg-hld-bg/50">
-                 <LayoutTemplate size={32} className="mb-4 opacity-50 text-indigo-300 dark:text-hld-cyan" />
+               <div className="h-full flex flex-col items-center justify-center text-hld-muted p-8 text-center border-2 border-dashed border-hld-border rounded-xl bg-hld-bg/50">
+                 <LayoutTemplate size={32} className="mb-4 opacity-50 text-hld-cyan" />
                  <p className="text-sm font-sans mb-1 font-semibold">No section selected.</p>
                  <p className="text-[10px] font-mono uppercase tracking-widest opacity-70 mt-2">Click a section card to edit its goals.</p>
                </div>

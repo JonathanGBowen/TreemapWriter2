@@ -1,10 +1,9 @@
-import React, { useRef } from "react";
-import { BrainCircuit, Sun, Moon, Upload, FolderOpen, Save, FilePlus, Sparkles, RefreshCw, Trash2, Download, Network, CircleAlert, CheckCircle, Clock, HelpCircle, ChevronsRight, FileDown, Map, FileJson, Archive, GitBranch } from "lucide-react";
-import { toast } from "sonner";
+import React from "react";
+import { BrainCircuit, Plus, FolderOpen, Sparkles, Network, CircleAlert, HelpCircle, ChevronsRight, Map, FileJson, GitBranch } from "lucide-react";
 import { Treemap } from "../treemap/Treemap";
+import { FileMenu } from "./FileMenu";
 import { Section } from "../../types";
 import { useStore } from "../../store";
-import { exportAllProjects } from "../../lib/exportBackup";
 
 interface SidebarProps {
   onSelect: (id: string) => void;
@@ -30,8 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onStartTutorial,
 }) => {
   // Domain + UI state from store
-  const isDarkMode = useStore(s => s.isDarkMode);
-  const setIsDarkMode = useStore(s => s.setIsDarkMode);
   const syncStatus = useStore(s => s.syncStatus);
   const syncError = useStore(s => s.syncError);
   const syncAhead = useStore(s => s.syncAhead);
@@ -70,43 +67,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const onOpenProjectFileEditor = () => setShowProjectFileModal(true);
   const onOpenCoach = () => setShowCoachModal(true);
 
-  const mdInputRef = useRef<HTMLInputElement>(null);
-  const projectInputRef = useRef<HTMLInputElement>(null);
-
-  const handleMdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result;
-      if (typeof content === 'string') onImportMarkdown(content);
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  const handleProjectChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result;
-      if (typeof content === 'string') onLoadProject(content);
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  const handleBackupAll = async () => {
-    try {
-      await exportAllProjects();
-      toast.success('Backup downloaded. Keep it somewhere safe.');
-    } catch (err) {
-      toast.error('Backup failed. See console.');
-      console.error(err);
-    }
-  };
-
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -134,24 +94,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const paddingLeft = sec.level * 16;
     const status = testSuite[sec.id]?.status || 'idle';
     
-    let sqColor = 'bg-slate-300 dark:bg-hld-dim'; // Default idle
+    let sqColor = 'bg-hld-dim'; // Default idle
     let sqShadow = '';
     
     switch (status) {
       case 'success':
-        sqColor = 'bg-emerald-500 dark:bg-hld-green';
-        sqShadow = 'dark:shadow-[0_0_5px_var(--tw-colors-hld-green)]';
+        sqColor = 'bg-hld-green';
+        sqShadow = 'shadow-[0_0_5px_var(--tw-colors-hld-green)]';
         break;
       case 'fail':
-        sqColor = 'bg-rose-500 dark:bg-hld-magenta';
-        sqShadow = 'dark:shadow-[0_0_5px_var(--tw-colors-hld-magenta)]';
+        sqColor = 'bg-hld-magenta';
+        sqShadow = 'shadow-[0_0_5px_var(--tw-colors-hld-magenta)]';
         break;
       case 'stale':
-        sqColor = 'bg-amber-400 dark:bg-hld-yellow';
-        sqShadow = 'dark:shadow-[0_0_5px_var(--tw-colors-hld-yellow)]';
+        sqColor = 'bg-hld-yellow';
+        sqShadow = 'shadow-[0_0_5px_var(--tw-colors-hld-yellow)]';
         break;
       case 'running':
-        sqColor = 'bg-indigo-500 dark:bg-hld-cyan';
+        sqColor = 'bg-hld-cyan';
         sqShadow = 'animate-pulse';
         break;
     }
@@ -160,17 +120,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div 
         key={sec.id}
         onClick={() => onSelect(sec.id)}
-        className={`flex items-center gap-0 p-[4px_12px] cursor-pointer transition-all relative select-none hover:bg-slate-100 dark:hover:bg-hld-surface2 ${isSelected ? 'dark:bg-[rgba(0,232,245,0.05)] bg-indigo-50' : ''}`}
+        className={`flex items-center gap-0 p-[4px_12px] cursor-pointer transition-all relative select-none hover:bg-hld-surface2 ${isSelected ? 'bg-[rgba(0,232,245,0.05)]' : ''}`}
       >
         {isSelected && (
-           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-indigo-500 dark:bg-hld-cyan dark:shadow-[0_0_6px_var(--tw-colors-hld-cyan)]" />
+           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]" />
         )}
         <div className="shrink-0" style={{ width: `${paddingLeft}px` }}></div>
         <div className={`w-[6px] h-[6px] shrink-0 mr-2 transition-shadow ${sqColor} ${sqShadow}`}></div>
-        <div className={`flex-1 text-[9px] whitespace-nowrap overflow-hidden text-ellipsis ${isSelected ? 'text-indigo-600 dark:text-hld-cyan opacity-100 font-bold' : 'text-slate-600 dark:text-hld-text opacity-65'}`}>
+        <div className={`flex-1 text-ui-row whitespace-nowrap overflow-hidden text-ellipsis ${isSelected ? 'text-hld-cyan opacity-100 font-bold' : 'text-hld-text opacity-65'}`}>
           {sec.title}
         </div>
-        <div className="text-[7px] text-slate-400 dark:text-hld-muted">{sec.wordCount}w</div>
+        <div className="text-ui-meta text-hld-muted-text">{sec.wordCount}w</div>
       </div>
     );
   };
@@ -178,34 +138,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div 
       style={{ width }} 
-      className="h-full flex-none relative border-r border-slate-200 dark:border-hld-border bg-white dark:bg-hld-surface flex flex-col shadow-sm z-10 transition-colors duration-200"
+      className="h-full flex-none relative border-r border-hld-border bg-hld-surface flex flex-col shadow-sm z-10 transition-colors duration-200"
     >
       {/* App Header */}
-      <div className="p-3 border-b border-slate-100 dark:border-hld-border flex items-center justify-between bg-slate-50 dark:bg-hld-surface2 relative">
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-indigo-500 dark:bg-hld-cyan dark:shadow-[0_0_12px_var(--tw-colors-hld-cyan)]" />
+      <div className="p-3 border-b border-hld-border flex items-center justify-between bg-hld-surface2 relative">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-hld-cyan shadow-[0_0_12px_var(--tw-colors-hld-cyan)]" />
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-[18px] h-[18px] bg-indigo-600 dark:bg-hld-cyan rotate-45 shrink-0 shadow-[0_0_14px_rgba(0,232,245,0.25)] relative mr-1">
-             <div className="absolute inset-[3px] bg-white dark:bg-hld-surface2" />
+          <div className="w-[18px] h-[18px] bg-hld-cyan rotate-45 shrink-0 shadow-[0_0_14px_rgba(0,232,245,0.25)] relative mr-1">
+             <div className="absolute inset-[3px] bg-hld-surface2" />
           </div>
           <div className="flex flex-col min-w-0 flex-1">
              <input 
                value={projectName}
                onChange={(e) => setProjectName(e.target.value)}
-               className="font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-slate-700 dark:text-hld-text bg-transparent outline-none border-b border-transparent hover:border-slate-300 dark:hover:border-hld-border focus:border-indigo-500 dark:focus:border-hld-cyan truncate transition-colors"
+               className="font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-hld-text bg-transparent outline-none border-b border-transparent hover:border-hld-border focus:border-hld-cyan truncate transition-colors"
                placeholder="Project Name"
                title="Rename Project"
              />
-             <div className="flex items-center gap-1.5 mt-0.5 text-[7px] text-slate-400 dark:text-hld-cyan font-mono uppercase tracking-[0.14em]">
-               <span className="w-1 h-1 rounded-full bg-emerald-500 dark:bg-hld-green animate-pulse shadow-[0_0_6px_var(--tw-colors-hld-green)]"></span>
+             <div className="flex items-center gap-1.5 mt-0.5 text-ui-meta text-hld-cyan font-mono uppercase tracking-[0.14em]">
+               <span className="w-1 h-1 rounded-full bg-hld-green animate-pulse shadow-[0_0_6px_var(--tw-colors-hld-green)]"></span>
                autosaved
                {syncStatus !== 'no-remote' && (
                  <span
                    className={`ml-2 w-1.5 h-1.5 rounded-full ${
                      syncStatus === 'error'
-                       ? 'bg-rose-500 dark:bg-hld-magenta shadow-[0_0_6px_var(--tw-colors-hld-magenta)]'
+                       ? 'bg-hld-magenta shadow-[0_0_6px_var(--tw-colors-hld-magenta)]'
                        : syncPending
-                         ? 'bg-amber-500 dark:bg-hld-yellow shadow-[0_0_6px_var(--tw-colors-hld-yellow)]'
-                         : 'bg-indigo-500 dark:bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]'
+                         ? 'bg-hld-yellow shadow-[0_0_6px_var(--tw-colors-hld-yellow)]'
+                         : 'bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]'
                    } ${syncStatus === 'pulling' || syncStatus === 'pushing' ? 'animate-pulse' : ''}`}
                    title={
                      syncStatus === 'error'
@@ -227,138 +187,69 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
         <div className="flex items-center shrink-0 ml-2">
-          <button 
+          <button
             onClick={onStartTutorial}
-            className="w-[26px] h-[26px] flex items-center justify-center border-l border-y border-slate-200 dark:border-hld-border text-slate-500 dark:text-hld-muted hover:text-indigo-600 dark:hover:text-hld-cyan hover:bg-slate-100 dark:hover:bg-hld-cyan/10 transition-all"
+            className="w-[26px] h-[26px] flex items-center justify-center border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/10 transition-all"
             title="Start Tutorial"
           >
             <HelpCircle size={12} />
           </button>
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="w-[26px] h-[26px] flex items-center justify-center border border-slate-200 dark:border-hld-border text-slate-500 dark:text-hld-muted hover:text-indigo-600 dark:hover:text-hld-cyan hover:bg-slate-100 dark:hover:bg-hld-cyan/10 transition-all"
-            title="Toggle Dark Mode"
-          >
-            {isDarkMode ? <Sun size={12} className="dark:text-hld-text" /> : <Moon size={12} />}
-          </button>
         </div>
       </div>
 
-      {/* Project Toolbar */}
-      <div className="flex items-center justify-between p-2 border-b border-slate-200 dark:border-hld-border bg-slate-50/50 dark:bg-[#080d13]">
-        <div className="flex gap-1">
-          <button 
-            onClick={onResetProject}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="New Blank Project"
-          >
-            <FilePlus size={14} />
-          </button>
-          <button 
-            onClick={onLoadDefaultProject}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Load Default Demo"
-          >
-            <RefreshCw size={14} />
-          </button>
-          <button 
-            onClick={onOpenProjectManager}
-            className="project-manager-step w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Open Saved Projects"
-          >
-            <FolderOpen size={14} />
-          </button>
-        </div>
-        <div className="flex gap-1 border-l border-slate-200 dark:border-hld-border pl-1">
-          <button 
-            onClick={onSaveProject}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Export Project File (.socratic)"
-          >
-            <Download size={14} />
-          </button>
-          <button 
-            onClick={() => projectInputRef.current?.click()}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Import Project (.socratic)"
-          >
-            <Upload size={14} />
-          </button>
-          <button 
-            onClick={onExportMarkdown}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Export Markdown File (.md)"
-          >
-            <FileDown size={14} />
-          </button>
-          <button 
-            onClick={onExportSpecs}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Export Specs JSON"
-          >
-            <FileJson size={14} />
-          </button>
-          <button
-            onClick={() => mdInputRef.current?.click()}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Import Markdown"
-          >
-            <FilePlus size={14} />
-          </button>
-          <button
-            onClick={handleBackupAll}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-amber-500 dark:hover:text-hld-yellow transition-colors"
-            title="Backup ALL projects (one-time migration insurance)"
-          >
-            <Archive size={14} />
-          </button>
-          <button
-            onClick={() => useStore.getState().setShowSyncConfigModal(true)}
-            className="w-7 h-7 flex items-center justify-center rounded bg-transparent hover:bg-slate-200 dark:hover:bg-hld-surface2 text-slate-500 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-cyan transition-colors"
-            title="Configure git sync (push to private GitHub)"
-          >
-            <GitBranch size={14} />
-          </button>
-        </div>
-
-        {/* Hidden Inputs */}
-        <input 
-          type="file" 
-          ref={mdInputRef} 
-          className="hidden" 
-          accept=".md,.markdown,.txt" 
-          onChange={handleMdChange}
+      {/* Project Toolbar — 4 labeled controls (NEW / PROJECTS / FILE / SYNC) */}
+      <div className="flex items-center gap-1.5 p-2 border-b border-hld-border bg-[#080d13]">
+        <button
+          onClick={onResetProject}
+          className="flex items-center gap-1.5 px-2.5 h-7 border border-hld-border text-ui-btn font-mono uppercase tracking-[0.1em] text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 transition-all"
+          title="New Blank Project"
+        >
+          <Plus size={12} /> New
+        </button>
+        <button
+          onClick={onOpenProjectManager}
+          className="project-manager-step flex items-center gap-1.5 px-2.5 h-7 border border-[rgba(0,232,245,0.25)] text-ui-btn font-mono uppercase tracking-[0.1em] text-hld-cyan hover:bg-hld-cyan/10 transition-all"
+          title="Open Saved Projects"
+        >
+          <FolderOpen size={12} /> Projects
+        </button>
+        <FileMenu
+          onImportMarkdown={onImportMarkdown}
+          onImportProject={onLoadProject}
+          onExportMarkdown={onExportMarkdown}
+          onExportProject={onSaveProject}
+          onExportSpecs={onExportSpecs}
+          onLoadDemo={onLoadDefaultProject}
         />
-        <input 
-          type="file" 
-          ref={projectInputRef} 
-          className="hidden" 
-          accept=".socratic,.json" 
-          onChange={handleProjectChange}
-        />
+        <button
+          onClick={() => useStore.getState().setShowSyncConfigModal(true)}
+          className="flex items-center gap-1.5 px-2.5 h-7 border border-hld-border text-ui-btn font-mono uppercase tracking-[0.1em] text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 transition-all"
+          title="Configure git sync (push to private GitHub)"
+        >
+          <GitBranch size={12} /> Sync
+        </button>
       </div>
       
       {/* Treemap & Section Tree Area */}
       <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2">
          <div className="flex items-center gap-[6px] w-full mt-1">
-            <span className="text-[7px] font-mono font-[700] uppercase text-indigo-500 dark:text-hld-cyan tracking-[0.16em] shrink-0">Structure Map</span>
-            <div className="h-[1px] flex-1 bg-slate-200 dark:bg-hld-border"></div>
+            <span className="text-ui-label font-mono font-[700] uppercase text-hld-cyan tracking-[0.16em] shrink-0">Structure Map</span>
+            <div className="h-[1px] flex-1 bg-hld-border"></div>
          </div>
 
-         <div className="flex-1 w-full border border-slate-100 dark:border-hld-border bg-white dark:bg-[#080d13] relative overflow-hidden min-h-0">
-           <Treemap 
-             sections={sections} 
-             selectedId={selectedId || ''} 
-             onSelect={onSelect} 
-             isDarkMode={isDarkMode}
+         <div className="flex-1 w-full border border-hld-border bg-[#080d13] relative overflow-hidden min-h-0">
+           <Treemap
+             sections={sections}
+             selectedId={selectedId || ''}
+             onSelect={onSelect}
              hiddenSectionIds={hiddenSectionIds}
              testSuite={testSuite}
            />
          </div>
 
          <div className="flex items-center gap-[6px] w-full mt-1" style={{marginTop: '4px'}}>
-            <span className="text-[7px] font-mono font-[700] uppercase text-indigo-500 dark:text-hld-cyan tracking-[0.16em] shrink-0">Sections</span>
-            <div className="h-[1px] flex-1 bg-slate-200 dark:bg-hld-border"></div>
+            <span className="text-ui-label font-mono font-[700] uppercase text-hld-cyan tracking-[0.16em] shrink-0">Sections</span>
+            <div className="h-[1px] flex-1 bg-hld-border"></div>
          </div>
 
          <div className="max-h-[140px] overflow-y-auto section-tree">
@@ -368,11 +259,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* AI Tools & Sprints */}
       <div className="flex flex-col gap-[4px] px-2 pb-2">
-        <label className="text-[7px] font-mono font-bold uppercase text-indigo-500 dark:text-hld-cyan tracking-[0.16em] mb-1 pl-1">Sprints</label>
+        <label className="text-ui-label font-mono font-bold uppercase text-hld-cyan tracking-[0.16em] mb-1 pl-1">Sprints</label>
         <div className="grid grid-cols-2 gap-[4px]">
-          <button 
+          <button
              onClick={onSprintGoals}
-             className="ai-btn bracketed p-[6px] bg-transparent border border-emerald-200 dark:border-hld-green/20 text-emerald-700 dark:text-hld-green text-[8px] font-mono uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all hover:bg-emerald-50 dark:hover:bg-hld-green/10 hover:shadow-[0_0_16px_rgba(0,255,128,0.3)]"
+             className="ai-btn bracketed p-[6px] bg-transparent border border-hld-green/20 text-hld-green text-ui-btn font-mono uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all hover:bg-hld-green/10 hover:shadow-[0_0_16px_rgba(0,255,128,0.3)]"
              style={{"--br-color": "var(--tw-colors-hld-green)", marginTop: 0} as any}
              title="Goal Sprint"
           >
@@ -380,7 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>  
           <button 
              onClick={onSprintContent}
-             className="ai-btn bracketed p-[6px] bg-transparent border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-500 text-[8px] font-mono uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:shadow-[0_0_16px_rgba(245,158,11,0.3)]"
+             className="ai-btn bracketed p-[6px] bg-transparent border border-amber-500/20 text-amber-500 text-ui-btn font-mono uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all hover:bg-amber-500/10 hover:shadow-[0_0_16px_rgba(245,158,11,0.3)]"
              style={{"--br-color": "var(--tw-colors-amber-500)", marginTop: 0} as any}
              title="Content Sprint"
           >
@@ -388,51 +279,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>  
         </div>
 
-        <label className="text-[7px] font-mono font-bold uppercase text-indigo-500 dark:text-hld-cyan tracking-[0.16em] mb-1 pl-1 mt-2">AI Tools</label>
-        <button 
+        <label className="text-ui-label font-mono font-bold uppercase text-hld-cyan tracking-[0.16em] mb-1 pl-1 mt-2">AI Tools</label>
+        <button
            onClick={onInterpolateTasks}
            disabled={isInterpolating}
-           className="ai-btn bracketed w-full p-[6px] bg-transparent border border-indigo-200 dark:border-[rgba(0,232,245,0.2)] text-indigo-700 dark:text-hld-cyan text-[8px] font-mono uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all disabled:opacity-50 hover:bg-indigo-50 dark:hover:bg-[rgba(0,232,245,0.1)] hover:shadow-[0_0_16px_rgba(0,232,245,0.3)]"
+           className="ai-btn bracketed w-full p-[6px] bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan text-ui-btn font-mono uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all disabled:opacity-50 hover:bg-[rgba(0,232,245,0.1)] hover:shadow-[0_0_16px_rgba(0,232,245,0.3)]"
            style={{"--br-color": "var(--tw-colors-hld-cyan)", marginTop: 0} as any}
         >
            {isInterpolating ? (
               <><Sparkles size={10} className="animate-spin" /> Analyzing...</>
            ) : (
-              <><BrainCircuit size={10} /> Interpolate Mode</>
+              <><BrainCircuit size={10} /> Generate Specs</>
            )}
         </button>
         <div className="grid grid-cols-5 gap-[4px] mt-1">
-          <button 
+          <button
              onClick={onOpenSectionMap}
-             className="map-btn p-[6px] bg-transparent border border-indigo-200 dark:border-hld-cyan/20 text-indigo-700 dark:text-hld-cyan text-[8px] font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-indigo-50 dark:hover:bg-hld-cyan/10 rounded"
-             title="Project Map & Goal Editor"
+             className="map-btn p-[6px] bg-transparent border border-hld-cyan/20 text-hld-cyan text-ui-btn font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-hld-cyan/10 rounded"
+             title="Section Goal Editor"
           >
-             <Map size={12} /> <span className="opacity-80">Proj Map</span>
+             <Map size={12} /> <span className="opacity-80">Goal Map</span>
           </button>
-          <button 
+          <button
              onClick={onOpenDependencyGraph}
-             className="topo-btn p-[6px] bg-transparent border border-fuchsia-200 dark:border-hld-purple/20 text-fuchsia-700 dark:text-hld-purple text-[8px] font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-fuchsia-50 dark:hover:bg-hld-purple/10 rounded"
-             title="View Dependency Graph"
+             className="topo-btn p-[6px] bg-transparent border border-hld-purple/20 text-hld-purple text-ui-btn font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-hld-purple/10 rounded"
+             title="View Dependencies"
           >
-             <Network size={12} /> <span className="opacity-80">Topology</span>
+             <Network size={12} /> <span className="opacity-80">Dependencies</span>
           </button>
-          <button 
+          <button
              onClick={onOpenPromptsGraph}
-             className="prompts-btn p-[6px] bg-transparent border border-rose-200 dark:border-hld-magenta/20 text-rose-700 dark:text-hld-magenta text-[8px] font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-rose-50 dark:hover:bg-hld-magenta/10 rounded"
+             className="prompts-btn p-[6px] bg-transparent border border-hld-magenta/20 text-hld-magenta text-ui-btn font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-hld-magenta/10 rounded"
              title="Manage AI Prompts & Routing"
           >
              <BrainCircuit size={12} /> <span className="opacity-80">Prompts</span>
           </button>
-          <button 
+          <button
              onClick={onOpenProjectFileEditor}
-             className="json-btn p-[6px] bg-transparent border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-500 text-[8px] font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded"
+             className="json-btn p-[6px] bg-transparent border border-emerald-500/20 text-emerald-500 text-ui-btn font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-emerald-500/10 rounded"
              title="Direct JSON Object Editor"
           >
-             <FileJson size={12} /> <span className="opacity-80">JSON Root</span>
+             <FileJson size={12} /> <span className="opacity-80">Raw Data</span>
           </button>
-          <button 
+          <button
              onClick={onOpenCoach}
-             className="coach-btn p-[6px] bg-transparent border border-amber-200 dark:border-hld-yellow/20 text-amber-700 dark:text-hld-yellow text-[8px] font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-amber-50 dark:hover:bg-hld-yellow/10 rounded"
+             className="coach-btn p-[6px] bg-transparent border border-hld-yellow/20 text-hld-yellow text-ui-btn font-mono uppercase tracking-[0.1em] flex flex-col items-center justify-center gap-1 transition-all hover:bg-hld-yellow/10 rounded"
              title="ADHD Writing Coach"
           >
              <CircleAlert size={12} /> <span className="opacity-80">Coach</span>
@@ -440,22 +331,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="p-[10px_14px] bg-slate-50 dark:bg-[#080d13] border-t border-slate-200 dark:border-hld-border transition-colors duration-200 shrink-0">
+      <div className="p-[10px_14px] bg-[#080d13] border-t border-hld-border transition-colors duration-200 shrink-0">
          <div className="flex justify-between items-center">
             <div className="flex flex-col gap-[1px]">
-               <div className="text-[6px] tracking-[0.15em] uppercase text-slate-500 dark:text-hld-muted font-mono">Words</div>
-               <div className="text-[16px] font-bold dark:text-hld-cyan leading-none font-sans">{markdown.trim().length ? markdown.trim().split(/\s+/).length : 0}</div>
+               <div className="text-ui-meta tracking-[0.15em] uppercase text-hld-muted-text font-mono">Words</div>
+               <div className="text-ui-stat font-bold text-hld-cyan leading-none font-sans">{markdown.trim().length ? markdown.trim().split(/\s+/).length : 0}</div>
             </div>
             <div className="flex flex-col gap-[1px]">
-               <div className="text-[6px] tracking-[0.15em] uppercase text-slate-500 dark:text-hld-muted font-mono">Sections</div>
-               <div className="text-[16px] font-bold dark:text-hld-yellow leading-none font-sans">{sections.length}</div>
+               <div className="text-ui-meta tracking-[0.15em] uppercase text-hld-muted-text font-mono">Sections</div>
+               <div className="text-ui-stat font-bold text-hld-yellow leading-none font-sans">{sections.length}</div>
             </div>
          </div>
       </div>
 
       {/* Resize Handle */}
       <div
-        className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-indigo-500/50 dark:hover:bg-hld-cyan/50 hover:w-2 transition-all duration-150 z-50 translate-x-1/2"
+        className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-hld-cyan/50 hover:w-2 transition-all duration-150 z-50 translate-x-1/2"
         onMouseDown={handleMouseDown}
       />
     </div>

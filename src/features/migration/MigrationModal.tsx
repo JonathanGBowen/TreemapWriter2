@@ -106,22 +106,22 @@ export const MigrationModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 dark:bg-[#05090d]/80 backdrop-blur-sm">
-      <div className="bg-white dark:bg-hld-surface border border-slate-200 dark:border-hld-cyan/30 rounded-lg shadow-xl w-full max-w-md p-6 mx-4 font-sans">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#05090d]/80 backdrop-blur-sm">
+      <div className="bg-hld-surface border border-hld-cyan/30 rounded-lg shadow-xl w-full max-w-md p-6 mx-4 font-sans">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Archive
               size={16}
-              className="text-indigo-600 dark:text-hld-cyan"
+              className="text-hld-cyan"
             />
-            <h3 className="text-slate-800 dark:text-hld-text font-bold text-sm uppercase tracking-wider font-mono">
+            <h3 className="text-hld-text font-bold text-sm uppercase tracking-wider font-mono">
               Welcome to TreemapWriter
             </h3>
           </div>
           {phase !== 'running' && (
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-700 dark:hover:text-hld-text"
+              className="text-slate-400 hover:text-hld-text"
               title="Close"
             >
               <X size={14} />
@@ -131,7 +131,7 @@ export const MigrationModal: React.FC = () => {
 
         {phase === 'choose' && (
           <>
-            <p className="text-[12px] text-slate-600 dark:text-hld-muted mb-4 leading-relaxed">
+            <p className="text-[12px] text-hld-muted mb-4 leading-relaxed">
               Your dissertation now lives on disk as plain markdown plus
               git history. If you have projects in an older browser-only
               build, import them now.
@@ -139,11 +139,11 @@ export const MigrationModal: React.FC = () => {
             <div className="flex flex-col gap-2">
               <button
                 onClick={importFromFile}
-                className="flex items-center gap-2 p-3 border border-indigo-200 dark:border-hld-cyan/30 hover:bg-indigo-50 dark:hover:bg-hld-cyan/5 rounded text-[12px] text-slate-700 dark:text-hld-text"
+                className="flex items-center gap-2 p-3 border border-hld-cyan/30 hover:bg-hld-cyan/5 rounded text-[12px] text-hld-text"
               >
                 <FolderOpen size={14} className="shrink-0" />
                 <div className="flex flex-col items-start">
-                  <span className="font-mono uppercase tracking-wider text-[10px] text-indigo-600 dark:text-hld-cyan">
+                  <span className="font-mono uppercase tracking-wider text-[10px] text-hld-cyan">
                     Import from backup file
                   </span>
                   <span className="text-[10px] opacity-70">
@@ -153,11 +153,11 @@ export const MigrationModal: React.FC = () => {
               </button>
               <button
                 onClick={importFromLocalIdb}
-                className="flex items-center gap-2 p-3 border border-amber-200 dark:border-hld-yellow/30 hover:bg-amber-50 dark:hover:bg-hld-yellow/5 rounded text-[12px] text-slate-700 dark:text-hld-text"
+                className="flex items-center gap-2 p-3 border border-hld-yellow/30 hover:bg-hld-yellow/5 rounded text-[12px] text-hld-text"
               >
                 <Archive size={14} className="shrink-0" />
                 <div className="flex flex-col items-start">
-                  <span className="font-mono uppercase tracking-wider text-[10px] text-amber-600 dark:text-hld-yellow">
+                  <span className="font-mono uppercase tracking-wider text-[10px] text-hld-yellow">
                     Import from this device&rsquo;s cache
                   </span>
                   <span className="text-[10px] opacity-70">
@@ -168,7 +168,7 @@ export const MigrationModal: React.FC = () => {
               </button>
               <button
                 onClick={skip}
-                className="flex items-center gap-2 p-3 border border-slate-200 dark:border-hld-border hover:bg-slate-50 dark:hover:bg-hld-surface2 rounded text-[12px] text-slate-700 dark:text-hld-muted"
+                className="flex items-center gap-2 p-3 border border-hld-border hover:bg-hld-surface2 rounded text-[12px] text-hld-muted"
               >
                 <span className="font-mono uppercase tracking-wider text-[10px]">
                   Skip — start fresh
@@ -179,25 +179,25 @@ export const MigrationModal: React.FC = () => {
         )}
 
         {phase === 'picking-target' && (
-          <p className="text-[12px] text-slate-600 dark:text-hld-muted">
+          <p className="text-[12px] text-hld-muted">
             Waiting for folder pick&hellip;
           </p>
         )}
 
         {phase === 'running' && (
           <>
-            <p className="text-[12px] text-slate-600 dark:text-hld-muted mb-2">
+            <p className="text-[12px] text-hld-muted mb-2">
               Importing projects&hellip; do not close this window.
             </p>
-            <div className="w-full h-1 bg-slate-100 dark:bg-hld-surface2 rounded overflow-hidden">
+            <div className="w-full h-1 bg-hld-surface2 rounded overflow-hidden">
               <div
-                className="h-1 bg-indigo-500 dark:bg-hld-cyan transition-all"
+                className="h-1 bg-hld-cyan transition-all"
                 style={{
                   width: `${progress.total === 0 ? 0 : (progress.done / progress.total) * 100}%`,
                 }}
               />
             </div>
-            <p className="text-[10px] mt-2 font-mono text-slate-500 dark:text-hld-muted">
+            <p className="text-[10px] mt-2 font-mono text-hld-muted">
               {progress.done} / {progress.total} commands
             </p>
           </>
@@ -205,10 +205,10 @@ export const MigrationModal: React.FC = () => {
 
         {phase === 'done' && (
           <>
-            <p className="text-[12px] text-slate-700 dark:text-hld-green mb-3 font-mono uppercase tracking-wider">
+            <p className="text-[12px] text-hld-green mb-3 font-mono uppercase tracking-wider">
               Import complete
             </p>
-            <ul className="text-[11px] text-slate-600 dark:text-hld-muted mb-4 max-h-40 overflow-y-auto space-y-1">
+            <ul className="text-[11px] text-hld-muted mb-4 max-h-40 overflow-y-auto space-y-1">
               {summary.map((line) => (
                 <li key={line} className="font-mono">
                   {line}
@@ -217,7 +217,7 @@ export const MigrationModal: React.FC = () => {
             </ul>
             <button
               onClick={onClose}
-              className="w-full p-2 border border-emerald-200 dark:border-hld-green/40 hover:bg-emerald-50 dark:hover:bg-hld-green/10 rounded text-[12px] font-mono uppercase tracking-wider text-emerald-700 dark:text-hld-green"
+              className="w-full p-2 border border-hld-green/40 hover:bg-hld-green/10 rounded text-[12px] font-mono uppercase tracking-wider text-hld-green"
             >
               Done
             </button>
@@ -226,15 +226,15 @@ export const MigrationModal: React.FC = () => {
 
         {phase === 'error' && (
           <>
-            <p className="text-[12px] text-rose-600 dark:text-hld-magenta mb-3 font-mono uppercase tracking-wider">
+            <p className="text-[12px] text-hld-magenta mb-3 font-mono uppercase tracking-wider">
               Import failed
             </p>
-            <pre className="text-[10px] text-slate-600 dark:text-hld-muted whitespace-pre-wrap bg-slate-50 dark:bg-hld-surface2 p-2 rounded mb-3 max-h-40 overflow-y-auto">
+            <pre className="text-[10px] text-hld-muted whitespace-pre-wrap bg-hld-surface2 p-2 rounded mb-3 max-h-40 overflow-y-auto">
               {error}
             </pre>
             <button
               onClick={() => setPhase('choose')}
-              className="w-full p-2 border border-slate-200 dark:border-hld-border hover:bg-slate-50 dark:hover:bg-hld-surface2 rounded text-[12px] font-mono uppercase tracking-wider"
+              className="w-full p-2 border border-hld-border hover:bg-hld-surface2 rounded text-[12px] font-mono uppercase tracking-wider"
             >
               Back
             </button>
