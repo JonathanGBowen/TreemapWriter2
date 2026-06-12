@@ -55,6 +55,18 @@ duplicate titles, renames, and reordering. Phase 5 work:
 - Cost estimate: ~1 day + a per-project migration.
 - Trigger to prioritize: any rename/reorder bug surfacing in production.
 
+### Task system (design: [task-system.md](task-system.md))
+Quick capture (`Mod-J`), a persisted session-resumption note, and a sidebar
+work queue that derives structural items from existing diagnostics — full
+design with verified file anchors in [task-system.md](task-system.md).
+Persistence is one git-synced `.twriter/tasks.yaml` riding the existing
+`project_read`/`project_write`; no new IPC. Three phases: A capture/persist
+(~600–800 LOC), B derived queue + treemap badges + diagnostics-persistence
+repair (~400–500), C resumption (~150–250). Degrades gracefully without
+stable section IDs (title-snapshot reconciliation); ULIDs above would make
+that reconciliation unnecessary. Trigger to prioritize: a paper-captured
+todo gets lost, or a session starts with >5 min of "where was I."
+
 ### 300-line cap follow-up
 [App.tsx](../src/App.tsx) still ~932 lines (target ~150 — layout shell
 only); 13 other files over the cap per the Phase 3.5 audit. Opportunistic;
