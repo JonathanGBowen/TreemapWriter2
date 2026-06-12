@@ -158,7 +158,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
              <div className="flex items-center gap-1.5 mt-0.5 text-ui-meta text-hld-cyan font-mono uppercase tracking-[0.14em]">
                <span className="w-1 h-1 rounded-full bg-hld-green animate-pulse shadow-[0_0_6px_var(--tw-colors-hld-green)]"></span>
                autosaved
-               {syncStatus !== 'no-remote' && (
+               {syncStatus === 'conflict' ? (
+                 <button
+                   type="button"
+                   onClick={() => useStore.getState().setShowConflictModal(true)}
+                   className="ml-2 w-1.5 h-1.5 rounded-full bg-hld-magenta shadow-[0_0_6px_var(--tw-colors-hld-magenta)] animate-pulse cursor-pointer"
+                   title={syncError || 'merge conflict — click to resolve'}
+                 />
+               ) : syncStatus !== 'no-remote' ? (
                  <span
                    className={`ml-2 w-1.5 h-1.5 rounded-full ${
                      syncStatus === 'error'
@@ -182,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                              : 'synced'
                    }
                  />
-               )}
+               ) : null}
              </div>
           </div>
         </div>

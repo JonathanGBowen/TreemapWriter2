@@ -10,6 +10,8 @@ interface ProjectManagerModalProps {
   onCreateProject: () => void;
   onLoadDefaultProject: () => void;
   onDeleteProject: (id: string) => void;
+  /** Desktop only: open an existing project folder. Undefined hides the button. */
+  onOpenProject?: () => void;
 }
 
 export const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
@@ -18,7 +20,8 @@ export const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
   onLoadProject,
   onCreateProject,
   onLoadDefaultProject,
-  onDeleteProject
+  onDeleteProject,
+  onOpenProject
 }) => {
   const isOpen = useStore(s => s.showProjectModal);
   const setShow = useStore(s => s.setShowProjectModal);
@@ -75,13 +78,21 @@ export const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
                className="w-full pl-9 pr-4 py-2 rounded-lg bg-hld-bg border border-hld-border text-sm outline-none focus:ring-2 focus:ring-hld-cyan/30 focus:border-hld-cyan text-hld-text font-sans"
              />
            </div>
-           <button 
+           <button
              onClick={() => { onLoadDefaultProject(); onClose(); }}
              className="px-4 py-2 bg-hld-surface2 text-hld-text rounded-lg text-[10px] font-mono uppercase tracking-widest font-bold shadow-sm hover:bg-hld-border flex items-center gap-2 transition-transform active:scale-95 border border-hld-border"
            >
              Load Demo
            </button>
-           <button 
+           {onOpenProject && (
+             <button
+               onClick={() => { onOpenProject(); onClose(); }}
+               className="px-4 py-2 bg-hld-surface2 text-hld-text rounded-lg text-[10px] font-mono uppercase tracking-widest font-bold shadow-sm hover:bg-hld-border flex items-center gap-2 transition-transform active:scale-95 border border-hld-border"
+             >
+               <FolderOpen size={16} /> Open Folder
+             </button>
+           )}
+           <button
              onClick={() => { onCreateProject(); onClose(); }}
              className="px-4 py-2 bg-hld-cyan text-hld-bg rounded-lg text-[10px] font-mono uppercase tracking-widest font-bold shadow-md hover:bg-hld-cyan/80 flex items-center gap-2 transition-transform active:scale-95 hld-glow-cyan"
            >

@@ -14,6 +14,8 @@ import type {
   ProjectMeta,
   PullOutcome,
   PushOutcome,
+  Resolution,
+  ResolveOutcome,
   Snapshot,
   SyncState,
 } from '../types';
@@ -110,6 +112,20 @@ export const tauriRepository: Repository = {
     // never be a one-click event.
   },
 
+  async createProjectAt(name: string, path: string): Promise<ProjectMeta> {
+    // project_create scaffolds the folder (project.md, .twriter/, git init +
+    // initial commit) and installs it as the current handle.
+    const meta = await invoke<ProjectMeta>('project_create', { path, name });
+    if (meta.path) idToPath.set(meta.id, meta.path);
+    return meta;
+  },
+
+  async openProjectAt(path: string): Promise<ProjectMeta> {
+    const meta = await invoke<ProjectMeta>('project_open', { path });
+    if (meta.path) idToPath.set(meta.id, meta.path);
+    return meta;
+  },
+
   async commitSnapshot(
     message: string,
     trigger: 'manual' | 'autosave' | 'pre-ai-write',
@@ -141,6 +157,18 @@ export const tauriRepository: Repository = {
 
   async syncPush(): Promise<PushOutcome> {
     return invoke<PushOutcome>('sync_push');
+  },
+
+  async syncResolveMerge(
+    theirCommit: string,
+    baseHead: string,
+    resolutions: Resolution[],
+  ): Promise<ResolveOutcome> {
+    return invoke<ResolveOutcome>('sync_resolve_merge', {
+      theirCommit,
+      baseHead,
+      resolutions,
+    });
   },
 
   async configureRemote(url: string): Promise<void> {

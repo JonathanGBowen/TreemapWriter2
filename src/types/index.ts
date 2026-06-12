@@ -184,9 +184,50 @@ export interface PromptsConfig {
 export type PullOutcome =
   | { kind: 'upToDate' }
   | { kind: 'fastForwarded'; commits: number }
-  | { kind: 'mergeRequired'; conflicts: string[] }
+  /** Divergent but conflict-free: merged + committed automatically. */
+  | { kind: 'merged'; commits: number }
+  /** Divergent with real conflicts; nothing written. Drives the resolution modal. */
+  | { kind: 'mergeRequired'; theirCommit: string; baseHead: string; conflicts: ConflictFile[] }
+  /** Local and remote share no common ancestor; refused. */
+  | { kind: 'unrelatedHistories' }
   | { kind: 'workingTreeDirty' }
   | { kind: 'noRemote' };
+
+/** One conflicted path. Text fields are absent for binary/non-UTF-8 sides. */
+export interface ConflictFile {
+  path: string;
+  kind: 'text' | 'binary' | 'modifyDelete';
+  base?: string;
+  ours?: string;
+  theirs?: string;
+  /** Conflict-markered 3-way merge (text conflicts only). */
+  merged?: string;
+  automergeable: boolean;
+  ourDeleted: boolean;
+  theirDeleted: boolean;
+}
+
+/** The user's choice per conflicted path, sent to `sync_resolve_merge`. */
+export type Resolution =
+  | { kind: 'content'; path: string; text: string }
+  | { kind: 'ours'; path: string }
+  | { kind: 'theirs'; path: string }
+  | { kind: 'delete'; path: string };
+
+export type ResolveOutcome =
+  | { kind: 'resolved'; commits: number }
+  /** HEAD moved / tree dirtied since detect; re-pull and reopen. */
+  | { kind: 'stale' }
+  | { kind: 'noRemote' }
+  /** Could not apply; nothing committed, local work intact. */
+  | { kind: 'failed'; reason: string };
+
+/** Latched conflict state held in ui-state while the resolution modal is live. */
+export interface PendingMerge {
+  theirCommit: string;
+  baseHead: string;
+  conflicts: ConflictFile[];
+}
 
 export type PushOutcome =
   | { kind: 'upToDate' }

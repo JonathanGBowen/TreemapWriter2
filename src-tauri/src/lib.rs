@@ -77,6 +77,7 @@ pub fn run() {
             commands::sync::sync_state,
             commands::sync::sync_pull,
             commands::sync::sync_push,
+            commands::sync::sync_resolve_merge,
             commands::sync::sync_configure_remote,
         ])
         .run(tauri::generate_context!())

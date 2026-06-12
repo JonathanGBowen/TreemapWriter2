@@ -258,9 +258,77 @@ pub struct StoredProjectData {
 pub enum PullOutcome {
     UpToDate,
     FastForwarded { commits: u32 },
-    MergeRequired { conflicts: Vec<String> },
+    /// Divergent but conflict-free: an in-memory 3-way merge succeeded and was
+    /// committed automatically (matches the auto-fast-forward UX).
+    Merged { commits: u32 },
+    /// Divergent with real conflicts. Nothing has been written to disk — the
+    /// working tree is untouched. `their_commit` (hex OID, also held alive by
+    /// `refs/twriter/incoming`) and `base_head` are echoed back into
+    /// `sync_resolve_merge` once the user picks resolutions.
+    MergeRequired {
+        their_commit: String,
+        base_head: String,
+        conflicts: Vec<ConflictFile>,
+    },
+    /// Local and remote share no common ancestor (e.g. the GitHub repo was
+    /// created with a README while the local repo was `init`'d separately).
+    /// We refuse to merge unrelated histories automatically.
+    UnrelatedHistories,
     WorkingTreeDirty,
     NoRemote,
+}
+
+/// One conflicted path in a `MergeRequired` outcome. Text content is only
+/// populated when a side is present and valid UTF-8; binary/non-UTF-8 content
+/// is never lossily decoded (it is resolved by OID, byte-exact).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictFile {
+    pub path: String,
+    /// "text" | "binary" | "modifyDelete"
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub base: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ours: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub theirs: Option<String>,
+    /// libgit2 merge-file output with conflict markers (text conflicts only).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub merged: Option<String>,
+    pub automergeable: bool,
+    /// For modify/delete conflicts: which side removed the file.
+    pub our_deleted: bool,
+    pub their_deleted: bool,
+}
+
+/// The user's choice for one conflicted path, sent to `sync_resolve_merge`.
+/// Externally tagged so binary files stay byte-exact (Ours/Theirs reference the
+/// blob OID rather than round-tripping through a string).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum Resolution {
+    /// Resolved text (text files) — committed as the given UTF-8 bytes.
+    Content { path: String, text: String },
+    /// Take our side's blob byte-exact.
+    Ours { path: String },
+    /// Take their side's blob byte-exact.
+    Theirs { path: String },
+    /// Accept deletion of the path.
+    Delete { path: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum ResolveOutcome {
+    Resolved { commits: u32 },
+    /// HEAD moved or the working tree went dirty between detect and resolve;
+    /// the caller should re-pull and reopen with fresh conflict data.
+    Stale,
+    NoRemote,
+    /// The merge could not be applied. Nothing was committed; local work is
+    /// intact. `reason` is surfaced verbatim in the UI.
+    Failed { reason: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

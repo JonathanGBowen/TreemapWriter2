@@ -1,7 +1,10 @@
 import type { StateCreator } from 'zustand';
+import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
+import { toast } from 'sonner';
 import { DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
+import { isTauri } from '../services/tauri-environment';
 import type { Dependency, ProjectMeta, PromptsConfig, Snapshot, TestSuite } from '../types';
 import type { AppState } from '.';
 
@@ -22,6 +25,13 @@ export interface ProjectStateSlice {
   projectList: ProjectMeta[];
   activeProjectId: string | null;
   projectName: string;
+  /**
+   * Desktop: true once the active project is backed by a real on-disk handle
+   * (created or opened via a folder). The first-launch demo is an in-memory
+   * preview with this false, so autosave/snapshot writes are suppressed until
+   * the user creates or opens a real project. Browser persistence ignores it.
+   */
+  hasOpenProject: boolean;
 
   setProjectList: (list: ProjectMeta[]) => void;
   setActiveProjectId: (id: string | null) => void;
@@ -30,6 +40,8 @@ export interface ProjectStateSlice {
   loadInitialState: () => Promise<void>;
   createDemoProject: () => Promise<void>;
   createNewProject: () => Promise<void>;
+  /** Desktop: pick an existing project folder and open it. Browser: no-op. */
+  openExistingProject: () => Promise<void>;
   loadProject: (id: string) => Promise<boolean>;
   deleteProject: (id: string) => Promise<void>;
   saveCurrentState: () => Promise<void>;
@@ -55,10 +67,62 @@ const sha256Hex = async (str: string): Promise<string> => {
     .join('');
 };
 
+/** Derive a project name from the trailing segment of a folder path. */
+const folderName = (p: string): string =>
+  p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'Untitled Project';
+
+/**
+ * Desktop create/open flow: pick a folder, scaffold (project_create) or open
+ * (project_open) it — both establish the Rust project handle — then load it.
+ * Shared by createNewProject and openExistingProject.
+ */
+async function createFolderProject(
+  get: () => AppState,
+  set: (partial: Partial<AppState>) => void,
+  mode: 'create' | 'open',
+): Promise<void> {
+  let selected: string | string[] | null;
+  try {
+    selected = await openFolderDialog({
+      directory: true,
+      multiple: false,
+      title:
+        mode === 'create'
+          ? 'Choose an empty folder for your new project'
+          : 'Open a TreemapWriter project folder',
+    });
+  } catch (e) {
+    console.error('folder picker failed', e);
+    toast.error('Could not open the folder picker.');
+    return;
+  }
+  const folder = Array.isArray(selected) ? selected[0] : selected;
+  if (!folder) return; // user cancelled the dialog
+
+  try {
+    const meta =
+      mode === 'create'
+        ? await repo.createProjectAt(folderName(folder), folder)
+        : await repo.openProjectAt(folder);
+    // Refresh the recent list (also repopulates the id→path cache) and load.
+    set({ projectList: await repo.getMeta() });
+    const ok = await get().loadProject(meta.id);
+    if (ok) {
+      toast.success(mode === 'create' ? `Created "${meta.name}".` : `Opened "${meta.name}".`);
+    } else {
+      toast.error('Project handle opened but its data could not be loaded.');
+    }
+  } catch (e) {
+    const msg = String((e as { message?: string })?.message || e || 'Unknown error');
+    toast.error(`${mode === 'create' ? 'Create' : 'Open'} failed: ${msg}`);
+  }
+}
+
 export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStateSlice> = (set, get) => ({
   projectList: [],
   activeProjectId: null,
   projectName: 'Untitled Project',
+  hasOpenProject: false,
 
   setProjectList: (list) => set({ projectList: list }),
   setActiveProjectId: (id) => set({ activeProjectId: id }),
@@ -118,6 +182,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       activeProjectId: newId,
       lastAutoSave: null,
       revisions: (defaultProjectData.revisions as Snapshot[]) || [],
+      // Browser persists to IndexedDB; desktop shows the demo as an unsaved
+      // preview until the user creates/opens a real folder-backed project.
+      hasOpenProject: !isTauri(),
     });
 
     const uiState = (defaultProjectData as { uiState?: {
@@ -135,15 +202,23 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       });
     }
 
-    await get().saveCurrentState();
+    // Desktop demo is an unsaved preview (no open handle yet); only the
+    // browser path persists.
+    if (!isTauri()) await get().saveCurrentState();
   },
 
   createNewProject: async () => {
-    const newId = `proj_${Date.now()}`;
-    const newName = 'Untitled Project';
+    // Desktop: a project is a real folder on disk. Pick one, scaffold it via
+    // project_create (which opens the handle), then load it.
+    if (isTauri()) {
+      await createFolderProject(get, set, 'create');
+      return;
+    }
 
+    // Browser: an in-memory project persisted to IndexedDB.
+    const newId = `proj_${Date.now()}`;
     set({
-      projectName: newName,
+      projectName: 'Untitled Project',
       markdown: '',
       localContent: '',
       testSuite: {},
@@ -157,9 +232,15 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       activeProjectId: newId,
       lastAutoSave: null,
       revisions: [],
+      hasOpenProject: true,
     });
 
     await get().saveCurrentState();
+  },
+
+  openExistingProject: async () => {
+    if (!isTauri()) return;
+    await createFolderProject(get, set, 'open');
   },
 
   loadProject: async (id: string) => {
@@ -181,6 +262,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
 
       set({
         activeProjectId: id,
+        hasOpenProject: true,
         projectName: data.projectName || 'Untitled',
         markdown: data.markdown || '',
         localContent: data.localDraft !== undefined ? data.localDraft : data.markdown || '',
@@ -243,6 +325,13 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
   saveCurrentState: async () => {
     const state = get();
     if (!state.activeProjectId) return;
+    // Desktop: the demo preview has no on-disk handle; writing would fail with
+    // "no project is currently open". Skip until a real project is created/opened.
+    if (isTauri() && !state.hasOpenProject) return;
+    // Phase 5: while a merge awaits in-app resolution, suppress disk writes so
+    // the working tree stays clean (a dirty tree trips resolve()'s Stale guard).
+    // In-progress edits remain in editor-state and flush once the merge resolves.
+    if (state.pendingMerge) return;
 
     const data = {
       projectName: state.projectName,
@@ -285,6 +374,11 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
   createSnapshot: async (trigger, affectedScope = 'all', configOverride) => {
     const state = get();
     if (!state.activeProjectId) return;
+    // Desktop demo preview has no on-disk handle to commit against.
+    if (isTauri() && !state.hasOpenProject) return;
+    // Phase 5: don't land new commits while a merge is pending resolution —
+    // a moving HEAD would invalidate the conflict data the modal is showing.
+    if (state.pendingMerge) return;
 
     const stateString = JSON.stringify({
       markdown: state.localContent,

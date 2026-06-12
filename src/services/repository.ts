@@ -4,6 +4,8 @@ import type {
   ProjectMeta,
   PullOutcome,
   PushOutcome,
+  Resolution,
+  ResolveOutcome,
   Snapshot,
   SyncState,
   TestSuite,
@@ -55,6 +57,19 @@ export interface Repository {
   deleteProject(id: string): Promise<void>;
 
   /**
+   * Desktop only: create a new on-disk project at `path` (an empty folder) and
+   * make it the open project handle. Returns its metadata. The browser has no
+   * folder concept and throws — callers branch on `isTauri()`.
+   */
+  createProjectAt(name: string, path: string): Promise<ProjectMeta>;
+
+  /**
+   * Desktop only: open an existing TreemapWriter folder (e.g. one cloned from a
+   * remote) as the current project handle. Returns its metadata. Browser throws.
+   */
+  openProjectAt(path: string): Promise<ProjectMeta>;
+
+  /**
    * One-time migration of the very old `socratic_project_v1` localStorage
    * key. Returns the imported meta + data, or null if nothing to migrate.
    * The caller is responsible for adding the meta to the active list.
@@ -100,6 +115,18 @@ export interface Repository {
    * than erroring on divergence. Browser mode returns `{ kind: 'noRemote' }`.
    */
   syncPush(): Promise<PushOutcome>;
+
+  /**
+   * Apply the user's per-file conflict resolutions (from a prior `mergeRequired`
+   * pull) and create the merge commit. `theirCommit`/`baseHead` are echoed from
+   * that outcome. Returns `stale` if the repo moved since detect — re-pull and
+   * reopen. Browser mode returns `{ kind: 'noRemote' }`.
+   */
+  syncResolveMerge(
+    theirCommit: string,
+    baseHead: string,
+    resolutions: Resolution[],
+  ): Promise<ResolveOutcome>;
 
   /**
    * Set the `origin` remote URL for the currently-open project. Also writes

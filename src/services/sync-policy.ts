@@ -108,6 +108,8 @@ function schedulePush() {
 
 async function runPull() {
   const ui = useStore.getState();
+  // Sync is paused while a conflict awaits in-app resolution.
+  if (ui.pendingMerge) return;
   // Don't interfere with an in-flight operation.
   if (ui.syncStatus === 'pulling' || ui.syncStatus === 'pushing') return;
   ui.setSyncStatus('pulling');
@@ -115,8 +117,31 @@ async function runPull() {
   try {
     const result = await repository.syncPull();
     switch (result.kind) {
+      case 'merged':
+        // Divergent histories merged cleanly and were committed on the Rust
+        // side. Reload so in-memory state matches the new project.md on disk —
+        // otherwise the next autosave would overwrite the merge.
+        await reloadDocument();
+        succeed();
+        break;
       case 'mergeRequired':
-        flagError('Remote diverged. Resolve via your git client.');
+        // Latch the conflict and open the resolution modal. runPull/runPush
+        // short-circuit on pendingMerge, so sync stays paused until resolved.
+        ui.setPendingMerge({
+          theirCommit: result.theirCommit,
+          baseHead: result.baseHead,
+          conflicts: result.conflicts,
+        });
+        ui.setSyncStatus('conflict');
+        ui.setSyncError(
+          `Merge conflict in ${result.conflicts.length} file${
+            result.conflicts.length === 1 ? '' : 's'
+          } — resolve in app.`,
+        );
+        ui.setShowConflictModal(true);
+        break;
+      case 'unrelatedHistories':
+        flagError('Local and remote share no history. Resolve via your git client.');
         break;
       case 'workingTreeDirty':
         // Silent: autosave will commit soon; we retry on next focus. Keep any
@@ -136,8 +161,54 @@ async function runPull() {
   }
 }
 
+/**
+ * A merge (clean auto-merge or a resolved conflict) rewrote project.md on disk.
+ * Reload the project so the in-memory document, specs, and revisions match —
+ * and keep the commit-watcher baseline in step so it doesn't fire a redundant
+ * push for commits already on the remote.
+ */
+async function reloadDocument(): Promise<void> {
+  const store = useStore.getState();
+  const id = store.activeProjectId;
+  if (!id) return;
+  try {
+    await store.loadProject(id);
+  } catch (e) {
+    console.error('reload after sync failed', e);
+  }
+  lastRevisionsLength = useStore.getState().revisions.length;
+}
+
+/**
+ * Called by the conflict modal after `syncResolveMerge` returns `resolved`.
+ * Clears the latched conflict, reloads the merged document, then pushes the
+ * merge commit. Resolution is user-driven from the modal, so this is exported
+ * rather than living in the automation loop.
+ */
+export async function onMergeResolved(): Promise<void> {
+  const store = useStore.getState();
+  store.setShowConflictModal(false);
+  store.setPendingMerge(null);
+  await reloadDocument();
+  succeed();
+  void refreshSyncCounts();
+  await runPush();
+}
+
+/**
+ * Called by the conflict modal when resolution comes back `stale` (HEAD moved
+ * or the tree dirtied under the modal). Clears the stale conflict and re-pulls;
+ * a fresh `mergeRequired` reopens the modal with current data.
+ */
+export async function retryPull(): Promise<void> {
+  useStore.getState().setPendingMerge(null);
+  await runPull();
+}
+
 async function runPush() {
   const ui = useStore.getState();
+  // Sync is paused while a conflict awaits in-app resolution.
+  if (ui.pendingMerge) return;
   if (ui.syncStatus === 'pulling' || ui.syncStatus === 'pushing') {
     // Reschedule rather than collide.
     schedulePush();

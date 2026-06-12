@@ -20,6 +20,7 @@ import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
+import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -35,6 +36,7 @@ import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
+import { isTauri } from './services/tauri-environment';
 import { useStore } from './store';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -64,7 +66,7 @@ const findSectionByLine = (nodes: Section[], line: number): Section | null => {
 
 export const App = () => {
   const {
-    projectList, activeProjectId, markdown, projectName, testSuite, hiddenSectionIds,
+    projectList, activeProjectId, hasOpenProject, markdown, projectName, testSuite, hiddenSectionIds,
     localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
     focusMode, selectedId, activeLineIndex, runTutorial, showProjectModal,
     showRunModal, showPersonaModal, showSpecModal, showSuggestionsModal, showInterpolationModal,
@@ -80,11 +82,12 @@ export const App = () => {
     setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing, setIsInterpolating,
     setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
     
-    loadInitialState, createDemoProject, createNewProject, loadProject, deleteProject,
+    loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, deleteProject,
     saveCurrentState, createSnapshot, setRevisions
   } = useStore(useShallow(state => ({
     projectList: state.projectList,
     activeProjectId: state.activeProjectId,
+    hasOpenProject: state.hasOpenProject,
     markdown: state.markdown,
     projectName: state.projectName,
     testSuite: state.testSuite,
@@ -157,6 +160,7 @@ export const App = () => {
     loadInitialState: state.loadInitialState,
     createDemoProject: state.createDemoProject,
     createNewProject: state.createNewProject,
+    openExistingProject: state.openExistingProject,
     loadProject: state.loadProject,
     deleteProject: state.deleteProject,
     saveCurrentState: state.saveCurrentState,
@@ -210,7 +214,8 @@ export const App = () => {
   // Phase 4e — bootstrap sync-policy when a project becomes active; tear
   // down on switch/close so timers and event listeners don't leak.
   useEffect(() => {
-    if (!activeProjectId) {
+    // Desktop demo preview has no on-disk handle; sync_state would error.
+    if (!activeProjectId || (isTauri() && !hasOpenProject)) {
       teardownSyncPolicy();
       return;
     }
@@ -218,7 +223,7 @@ export const App = () => {
     return () => {
       teardownSyncPolicy();
     };
-  }, [activeProjectId]);
+  }, [activeProjectId, hasOpenProject]);
 
   // --- INITIALIZATION & MIGRATION ---
   useEffect(() => {
@@ -866,6 +871,7 @@ export const App = () => {
           }}
           onCreateProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
+          onOpenProject={isTauri() ? () => openExistingProject() : undefined}
           onDeleteProject={deleteProject}
         />
 
@@ -935,6 +941,8 @@ export const App = () => {
         <MigrationModal />
 
         <SyncConfigModal />
+
+        <ConflictResolutionModal />
 
         <Toaster position="bottom-right" richColors />
       </div>
