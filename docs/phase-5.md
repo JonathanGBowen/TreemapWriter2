@@ -27,6 +27,14 @@ conflict exists. Today users resolve via their git client. Phase 5: run a
 real merge, surface conflicted sections in a modal, let the user pick
 ours/theirs/edited per hunk.
 
+**Partly done (2026-06-11 sync-indicator hardening).** Divergence is no
+longer *silent*: pull/push failures now latch a visible error in the
+sidebar (no 30s auto-clear), and unpushed/unpulled commits show an amber
+indicator (see migration-log, "Phase 5 — sync-indicator hardening"). What
+remains is the *resolution* itself — `pull` still returns an empty conflict
+list, so there are no hunks to drive a modal yet. Build that on top of a
+real merge attempt.
+
 ### Stable section IDs (was `docs/id-strategy.md`)
 Today IDs are derived from `title.slug + index`
 ([src/lib/utils.ts:4-6, 78-92](../src/lib/utils.ts#L4)). Fragile under
@@ -92,7 +100,7 @@ Stay out of Phase 5 unless requirements change:
 
 ## Order to pick items
 
-When Phase 5 starts: conflict-resolution UI is the only item gated by an
-actual user-facing limitation today (silent merge failures). Streaming AI
-is the next-most-felt. The rest is polish — pick by mood or by which bug
-surfaces first.
+When Phase 5 starts: conflict-resolution UI is the highest-value remaining
+sync item — divergence is now *visible* (2026-06-11 hardening) but still
+not *resolvable* in-app. Streaming AI is the next-most-felt. The rest is
+polish — pick by mood or by which bug surfaces first.

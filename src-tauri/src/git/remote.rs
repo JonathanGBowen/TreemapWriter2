@@ -143,6 +143,14 @@ pub fn push(repo: &Repository, token: &str) -> AppResult<PushOutcome> {
     let refspec = format!("refs/heads/{name}:refs/heads/{name}", name = branch);
     match remote.push(&[&refspec], Some(&mut push_opts)) {
         Ok(()) => {
+            // Advance the local remote-tracking ref to the just-pushed commit.
+            // libgit2's push does not reliably do this, which would leave
+            // `sync_state` reporting phantom "ahead" commits (and a stuck
+            // "unpushed" indicator) until the next fetch.
+            if let Some(local_oid) = repo.head()?.target() {
+                let tracking = format!("refs/remotes/{}/{}", REMOTE_NAME, branch);
+                let _ = repo.reference(&tracking, local_oid, true, "sync push: advance tracking ref");
+            }
             let commits = ahead_known.map(|(a, _)| a).unwrap_or(0);
             Ok(PushOutcome::Pushed { commits })
         }

@@ -25,6 +25,10 @@ export interface UIStateSlice {
   // Sync status (Phase 4). 'no-remote' hides the indicator entirely.
   syncStatus: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error';
   syncError: string | null;
+  // Commits the local branch is ahead/behind its upstream. ahead > 0 means
+  // unpushed work exists — the indicator must read as such, never "synced".
+  syncAhead: number;
+  syncBehind: number;
 
   // Modal openness flags (one boolean per modal, like the original store)
   showProjectModal: boolean;
@@ -55,6 +59,7 @@ export interface UIStateSlice {
   setIsInterpolating: (interp: boolean) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error') => void;
   setSyncError: (err: string | null) => void;
+  setSyncCounts: (ahead: number, behind: number) => void;
   setShowProjectModal: (show: boolean) => void;
   setShowRunModal: (show: boolean) => void;
   setShowPersonaModal: (show: boolean) => void;
@@ -86,6 +91,8 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
 
   syncStatus: 'no-remote',
   syncError: null,
+  syncAhead: 0,
+  syncBehind: 0,
 
   showProjectModal: false,
   showRunModal: false,
@@ -114,6 +121,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setIsInterpolating: (interp) => set({ isInterpolating: interp }),
   setSyncStatus: (status) => set({ syncStatus: status }),
   setSyncError: (err) => set({ syncError: err }),
+  setSyncCounts: (ahead, behind) => set({ syncAhead: ahead, syncBehind: behind }),
   setShowProjectModal: (show) => set({ showProjectModal: show }),
   setShowRunModal: (show) => set({ showRunModal: show }),
   setShowPersonaModal: (show) => set({ showPersonaModal: show }),

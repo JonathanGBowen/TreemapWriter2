@@ -1063,3 +1063,62 @@ returns to Phase 3.5 state (local git only, no sync).
 panel, FTS5-backed full-text search, conflict resolution UI, and
 (optionally) SSH auth. See [`refactor-plan.md`](refactor-plan.md)
 Part IV "Phase 5 — Polish".
+
+---
+
+## 2026-06-11 — Phase 5 (partial): sync-indicator hardening
+
+**Scope.** Not a full phase. Three targeted fixes to how the Phase 4 sync
+loop behaves offline and on divergence, plus the Rust + tooling support
+they needed. Auth is unchanged (HTTPS + PAT). Does **not** add in-app
+conflict resolution — that remains the big Phase 5 sync item.
+
+**What changed.**
+
+1. **Persistent errors latch; transient ones stay silent.**
+   [src/services/sync-policy.ts](../src/services/sync-policy.ts) dropped the
+   30s `ERROR_CLEAR_MS` auto-clear. Divergence / auth / unknown failures
+   now stay pinned in the sidebar (via `flagError`) until a later pull or
+   push succeeds (`succeed()` lifts them). Offline/network failures call
+   `settle()` — no scary dot, and they no longer mask a previously-latched
+   error. The transient-signature list grew (`failed to connect`, `no such
+   host`, `offline`, …) so being offline never latches red.
+2. **"Synced" now only ever means synced.**
+   [src/state/ui-state.ts](../src/state/ui-state.ts) gained `syncAhead` /
+   `syncBehind` + `setSyncCounts`. sync-policy refreshes them after every
+   pull/push and immediately on each local commit. The sidebar dot
+   ([src/features/sidebar/Sidebar.tsx](../src/features/sidebar/Sidebar.tsx))
+   shows **amber** (`hld-yellow`) when idle with unpushed/unpulled commits,
+   tooltip `"N unpushed · M to pull"`. Precedence: error (magenta) >
+   in-flight (cyan pulse) > pending (amber) > synced (cyan).
+3. **Offline work flushes without a new edit.** `initSyncPolicy` now runs a
+   `flush()` (pull → push) on launch instead of pull-only, and a
+   `window 'online'` listener flushes on reconnect (removed in teardown).
+   Closing offline and reopening online — with no further typing — now
+   lands the queued commits.
+
+Supporting changes:
+
+- [src-tauri/src/git/remote.rs](../src-tauri/src/git/remote.rs) `push()`
+  now advances the local remote-tracking ref (`refs/remotes/origin/<branch>`)
+  to the just-pushed commit. libgit2's push does not reliably do this, which
+  would otherwise leave `sync_state` reporting phantom "ahead" commits — and
+  a stuck amber dot — until the next fetch. Idempotent if libgit2 already
+  updated it.
+- [tsconfig.json](../tsconfig.json) gained `"exclude": ["src-tauri",
+  "dist", "node_modules"]`. With `allowJs: true` and no exclude, `tsc`
+  swept `src-tauri/target/**/*.js` build artifacts once the Rust crate had
+  been compiled, drowning `npm run typecheck` in thousands of bogus errors.
+
+**What to verify.** `npm test` (18 pass), `npm run build`, `npm run
+typecheck` (now clean — no `src-tauri/target` noise), and `cargo check
+--manifest-path src-tauri/Cargo.toml`. Manual: with a remote configured,
+make an edit offline (DevTools → Network offline) — dot goes amber
+"unpushed"; reconnect — it flushes to cyan "synced". Force a divergence
+(push from another clone) — dot latches magenta and does **not** clear
+after 30s.
+
+**Rollback.** All five files are independent of each other; revert any
+subset. Reverting `sync-policy.ts` + `ui-state.ts` + `Sidebar.tsx` together
+restores the Phase 4 indicator (status-only, 30s auto-clear). The
+`remote.rs` and `tsconfig.json` changes are safe to keep in isolation.

@@ -25,5 +25,10 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "src-tauri",
+    "dist",
+    "node_modules"
+  ]
 }

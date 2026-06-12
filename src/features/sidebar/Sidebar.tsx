@@ -34,6 +34,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const setIsDarkMode = useStore(s => s.setIsDarkMode);
   const syncStatus = useStore(s => s.syncStatus);
   const syncError = useStore(s => s.syncError);
+  const syncAhead = useStore(s => s.syncAhead);
+  const syncBehind = useStore(s => s.syncBehind);
+  // Unpushed/unpulled commits → amber, so "synced" only ever means synced.
+  const syncPending = syncStatus === 'idle' && (syncAhead > 0 || syncBehind > 0);
   const markdown = useStore(s => s.markdown);
   const sections = useStore(s => s.sections);
   const selectedId = useStore(s => s.selectedId);
@@ -199,7 +203,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                    className={`ml-2 w-1.5 h-1.5 rounded-full ${
                      syncStatus === 'error'
                        ? 'bg-rose-500 dark:bg-hld-magenta shadow-[0_0_6px_var(--tw-colors-hld-magenta)]'
-                       : 'bg-indigo-500 dark:bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]'
+                       : syncPending
+                         ? 'bg-amber-500 dark:bg-hld-yellow shadow-[0_0_6px_var(--tw-colors-hld-yellow)]'
+                         : 'bg-indigo-500 dark:bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]'
                    } ${syncStatus === 'pulling' || syncStatus === 'pushing' ? 'animate-pulse' : ''}`}
                    title={
                      syncStatus === 'error'
@@ -208,7 +214,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                          ? 'pulling from remote'
                          : syncStatus === 'pushing'
                            ? 'pushing to remote'
-                           : 'synced'
+                           : syncPending
+                             ? [
+                                 syncAhead > 0 ? `${syncAhead} unpushed` : null,
+                                 syncBehind > 0 ? `${syncBehind} to pull` : null,
+                               ].filter(Boolean).join(' · ')
+                             : 'synced'
                    }
                  />
                )}
