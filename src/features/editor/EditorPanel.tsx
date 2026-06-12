@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useLayoutEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
-import { Eye, Save, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History } from "lucide-react";
+import { Eye, Clock, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
@@ -110,6 +110,21 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const skipNextScroll = useRef(false);
   
   const isEmptyState = localContent.trim() === '';
+
+  // Ambient save status: tick once a second so "saved · 12s" stays relative.
+  const [nowTs, setNowTs] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const savedAgoSec = lastAutoSave
+    ? Math.max(0, Math.floor((nowTs - new Date(lastAutoSave).getTime()) / 1000))
+    : null;
+  const savedAgoLabel =
+    savedAgoSec == null ? null
+      : savedAgoSec < 60 ? `${savedAgoSec}s`
+      : savedAgoSec < 3600 ? `${Math.floor(savedAgoSec / 60)}m`
+      : `${Math.floor(savedAgoSec / 3600)}h`;
 
   // Keep a ref of localContent to avoid stale closures during focus calculations
   useEffect(() => {
@@ -255,40 +270,47 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const isHidden = currentSection ? (hiddenSectionIds || []).includes(currentSection.id) : false;
 
   return (
-    <div className="editor-panel-step flex-1 flex flex-col h-full bg-white dark:bg-[#05090d] relative transition-colors duration-200 min-w-0">
+    <div className="editor-panel-step flex-1 flex flex-col h-full bg-[#05090d] relative transition-colors duration-200 min-w-0">
       {/* Toolbar */}
-      <div className="h-14 border-b border-slate-200 dark:border-hld-border bg-white dark:bg-[#0c1520] flex items-center justify-between px-4 z-20 relative shrink-0 min-w-0">
-         <div className="absolute top-0 left-0 right-0 h-[1px] bg-slate-200 dark:bg-[#c5d8e8]/40" />
+      <div className="h-14 border-b border-hld-border bg-[#0c1520] flex items-center justify-between px-4 z-20 relative shrink-0 min-w-0">
+         <div className="absolute top-0 left-0 right-0 h-[1px] bg-[#c5d8e8]/40" />
          
-         <div className="flex items-center gap-[5px] text-[8px] tracking-[0.1em] uppercase text-slate-500 dark:text-hld-muted font-mono flex-1 min-w-0 pr-4">
+         <div className="flex items-center gap-[5px] text-ui-meta tracking-[0.1em] uppercase text-hld-muted-text font-mono flex-1 min-w-0 pr-4">
            {currentSection ? (
              <>
                <span className="truncate">{projectName || 'Project'}</span>
-               <span className="text-slate-400 dark:text-[#1f3050]">›</span>
-               <span className="text-slate-800 dark:text-hld-text font-bold truncate">
+               <span className="text-[#1f3050]">›</span>
+               <span className="text-hld-text font-bold truncate">
                  {titleInput}
                </span>
              </>
            ) : (
-             <span className="text-slate-800 dark:text-hld-text font-bold truncate">
+             <span className="text-hld-text font-bold truncate">
                {isEmptyState ? "Untitled Document" : "Untitled Section"}
              </span>
            )}
          </div>
 
          <div className="flex items-center gap-[6px] shrink-0">
+           {/* Ambient save status — answers "is my work safe?" passively (autosave). */}
+           {savedAgoLabel && (
+              <div className="flex items-center gap-1.5 mr-1 text-ui-meta font-mono uppercase tracking-[0.12em] text-hld-muted-text" title="Autosaved continuously">
+                <span className="w-[5px] h-[5px] rounded-full bg-hld-green shadow-[0_0_6px_var(--tw-colors-hld-green)]" />
+                saved · {savedAgoLabel}
+              </div>
+           )}
            {currentSection && testSuite[currentSection.id]?.status === 'stale' && (
-              <span className="bg-amber-100 dark:bg-hld-yellow/10 text-amber-700 dark:text-hld-yellow border border-amber-200 dark:border-hld-yellow/20 text-[7px] uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
+              <span className="bg-hld-yellow/10 text-hld-yellow border border-hld-yellow/20 text-ui-meta uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
                 ⬥ Stale
               </span>
            )}
            {currentSection && testSuite[currentSection.id]?.status === 'success' && (
-              <span className="bg-emerald-100 dark:bg-hld-green/10 text-emerald-700 dark:text-hld-green border border-emerald-200 dark:border-hld-green/20 text-[7px] uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
+              <span className="bg-hld-green/10 text-hld-green border border-hld-green/20 text-ui-meta uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
                 ✓ Solid
               </span>
            )}
            {currentSection && testSuite[currentSection.id]?.status === 'fail' && (
-              <span className="bg-rose-100 dark:bg-hld-magenta/10 text-rose-700 dark:text-hld-magenta border border-rose-200 dark:border-hld-magenta/20 text-[7px] uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
+              <span className="bg-hld-magenta/10 text-hld-magenta border border-hld-magenta/20 text-ui-meta uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
                 ✕ Failing
               </span>
            )}
@@ -296,66 +318,67 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
            {/* Focus Mode Toggle */}
            <button
              onClick={toggleFocusMode}
-             className={`p-[4px_9px] bg-transparent border text-[7px] font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all ${
-                focusMode 
-                  ? 'border-indigo-300 dark:border-[rgba(0,232,245,0.12)] text-indigo-600 dark:text-hld-cyan bg-indigo-50 dark:bg-[rgba(0,232,245,0.12)] shadow-[0_0_8px_rgba(0,232,245,0.12)]' 
-                  : 'border-slate-300 dark:border-hld-border text-slate-500 dark:text-hld-muted'
+             className={`p-[4px_9px] bg-transparent border text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all ${
+                focusMode
+                  ? 'border-[rgba(0,232,245,0.12)] text-hld-cyan bg-[rgba(0,232,245,0.12)] shadow-[0_0_8px_rgba(0,232,245,0.12)]'
+                  : 'border-hld-border text-hld-muted-text'
              }`}
              title="Toggle Focus Mode"
            >
-             <div className={`w-[5px] h-[5px] ${focusMode ? 'bg-indigo-600 dark:bg-hld-cyan' : 'bg-slate-400 dark:text-hld-muted bg-current'}`} />
+             <div className={`w-[5px] h-[5px] ${focusMode ? 'bg-hld-cyan' : 'bg-hld-muted'}`} />
              Focus
            </button>
-           
-           <button 
+
+           <button
              onClick={onOpenHistory}
-             className="p-[5px_10px] bg-transparent border border-slate-300 dark:border-hld-border text-slate-500 dark:text-hld-muted hover:text-slate-800 dark:hover:text-hld-text hover:border-slate-400 dark:hover:border-[#1e2f42] text-[7px] font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
+             className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-text hover:border-[#1e2f42] text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
              title="Version History"
            >
              <History size={11} /> History
            </button>
 
-           <button 
+           <button
              onClick={handleSave}
-             className="p-[5px_12px] bg-transparent border border-indigo-400 dark:border-[rgba(0,232,245,0.3)] text-indigo-600 dark:text-hld-cyan hover:bg-indigo-50 dark:hover:bg-[rgba(0,232,245,0.12)] hover:shadow-[0_0_10px_rgba(0,232,245,0.25)] text-[7px] font-mono uppercase tracking-[0.12em] flex items-center gap-[5px] transition-all bracketed"
+             className="p-[5px_12px] bg-transparent border border-[rgba(0,232,245,0.3)] text-hld-cyan hover:bg-[rgba(0,232,245,0.12)] hover:shadow-[0_0_10px_rgba(0,232,245,0.25)] text-ui-btn font-mono uppercase tracking-[0.12em] flex items-center gap-[5px] transition-all bracketed"
              style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}
+             title="Commit a labeled snapshot to History"
            >
-             <Save size={11} /> Save
+             <Clock size={11} /> Snapshot
            </button>
          </div>
       </div>
 
       {/* Editor Area */}
-      <div className="flex-1 overflow-hidden bg-slate-50 dark:bg-transparent relative h-full">
+      <div className="flex-1 overflow-hidden bg-transparent relative h-full">
         <div className="h-full relative">
           
           {focusMode && currentSection && (
-            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-slate-200 dark:border-[rgba(0,232,245,0.2)] bg-slate-50 dark:bg-[#05090d] z-10 w-full max-w-[800px] mx-auto">
-              <div className="w-[7px] h-[7px] bg-indigo-500 dark:bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />
-              <span className="text-[7px] tracking-[0.14em] uppercase text-indigo-600 dark:text-hld-cyan font-mono">{currentSection.title} — Focus Mode Active</span>
+            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-[#05090d] z-10 w-full max-w-[800px] mx-auto">
+              <div className="w-[7px] h-[7px] bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />
+              <span className="text-ui-label tracking-[0.14em] uppercase text-hld-cyan font-mono">{currentSection.title} — Focus Mode Active</span>
             </div>
           )}
           
           {isEmptyState && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10 pointer-events-none opacity-100 animate-in fade-in duration-700">
-               <div className="text-center pointer-events-auto bg-white/50 dark:bg-[#0c1520]/80 backdrop-blur-sm p-12 border border-slate-200 dark:border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
-                 <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-slate-800 dark:text-hld-text mb-2 font-mono">Ready to Write?</h2>
-                 <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-500 dark:text-hld-muted mb-8 leading-[1.6]">Upload a markdown file to visualize its structure, or start typing to create something new.</p>
+               <div className="text-center pointer-events-auto bg-[#0c1520]/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
+                 <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Ready to Write?</h2>
+                 <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Upload a markdown file to visualize its structure, or start typing to create something new.</p>
                  <div className="space-y-3">
-                   <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-indigo-700 dark:text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
+                   <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
                      <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
-                     <span className="font-bold font-mono uppercase tracking-[0.14em] text-[8px]">Import Markdown</span>
+                     <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Import Markdown</span>
                    </button>
-                   <button onClick={() => projectInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(255,16,96,0.2)] text-fuchsia-700 dark:text-hld-magenta hover:bg-[rgba(255,16,96,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(255,16,96,0.2)] hover:border-[rgba(255,16,96,0.4)]" style={{"--br-color": "var(--tw-colors-hld-magenta)"} as any}>
+                   <button onClick={() => projectInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(255,16,96,0.2)] text-hld-magenta hover:bg-[rgba(255,16,96,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(255,16,96,0.2)] hover:border-[rgba(255,16,96,0.4)]" style={{"--br-color": "var(--tw-colors-hld-magenta)"} as any}>
                      <FolderOpen size={16} className="group-hover:scale-110 transition-transform"/>
-                     <span className="font-bold font-mono uppercase tracking-[0.14em] text-[8px]">Open Project</span>
+                     <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Open Project</span>
                    </button>
                    <div className="pt-4 text-center">
                       <button onClick={() => {
                         if (cmRef.current?.view) {
                            cmRef.current.view.focus();
                         }
-                      }} className="text-slate-400 dark:text-hld-muted hover:text-indigo-500 dark:hover:text-hld-text text-[8px] font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
+                      }} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
                          <PenTool size={12} /> Start with a blank page
                       </button>
                    </div>

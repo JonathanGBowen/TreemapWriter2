@@ -14,7 +14,6 @@ export interface UIStateSlice {
   sidebarWidth: number;
   testsPanelWidth: number;
   focusMode: boolean;
-  isDarkMode: boolean;
   runTutorial: boolean;
   activeTab: 'editor' | 'preview';
 
@@ -52,7 +51,6 @@ export interface UIStateSlice {
   setSidebarWidth: (w: number) => void;
   setTestsPanelWidth: (w: number) => void;
   setFocusMode: (mode: boolean) => void;
-  setIsDarkMode: (dark: boolean) => void;
   setRunTutorial: (run: boolean) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
   setIsProcessing: (proc: boolean) => void;
@@ -82,7 +80,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   sidebarWidth: 320,
   testsPanelWidth: 350,
   focusMode: true,
-  isDarkMode: true,
   runTutorial: false,
   activeTab: 'editor',
 
@@ -114,7 +111,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
   setFocusMode: (mode) => set({ focusMode: mode }),
-  setIsDarkMode: (dark) => set({ isDarkMode: dark }),
   setRunTutorial: (run) => set({ runTutorial: run }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),

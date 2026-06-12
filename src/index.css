@@ -13,19 +13,27 @@
   --color-hld-purple: #aa00ff;
   --color-hld-orange: #ff8800;
   --color-hld-text: #c5d8e8;
+  /* Decorative only — dividers, idle status squares, rules (see --color-hld-muted-text for text). */
   --color-hld-muted: #3d5570;
+  /* Readable muted TEXT — ~5.3:1 on hld-surface. Use for word-counts, eyebrows, captions. */
+  --color-hld-muted-text: #6f8cab;
   --color-hld-border: #172335;
-  
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* UI type scale — Scale A, floor 8px. Keeps mono/uppercase/tracking voice. */
+  --text-ui-label: 9px;   /* section dividers, eyebrow labels */
+  --text-ui-row: 11px;    /* section-tree row titles */
+  --text-ui-btn: 10px;    /* toolbar / AI button labels */
+  --text-ui-meta: 9px;    /* word-counts, status eyebrows, breadcrumb */
+  --text-ui-stat: 18px;   /* big Words / Sections numerals */
 }
 
+/* Dark theme is canonical and unconditional — light mode removed. */
 @layer base {
   body {
     font-family: 'Inter', sans-serif;
-    background-color: #f8fafc;
-  }
-  .dark body {
     background-color: #05090d;
     color: #c5d8e8;
     background-image:
@@ -34,7 +42,7 @@
       radial-gradient(circle, #1f3050 1px, transparent 1px);
     background-size: auto, auto, 22px 22px;
   }
-  .dark body::after {
+  body::after {
     content: '';
     position: fixed; inset: 0; pointer-events: none; z-index: 9999;
     background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
@@ -43,42 +51,64 @@
 
 @layer utilities {
   /* HLD Specific Brackets */
-  .dark .bracketed { position: relative; }
-  .dark .bracketed::before, .dark .bracketed::after {
+  .bracketed { position: relative; }
+  .bracketed::before, .bracketed::after {
     content: ''; position: absolute; width: 7px; height: 7px;
     pointer-events: none; z-index: 2;
   }
-  .dark .bracketed::before { top: 0; left: 0; border-top: 1.5px solid var(--br-color, #00e8f5); border-left: 1.5px solid var(--br-color, #00e8f5); }
-  .dark .bracketed::after  { bottom: 0; right: 0; border-bottom: 1.5px solid var(--br-color, #00e8f5); border-right: 1.5px solid var(--br-color, #00e8f5); }
+  .bracketed::before { top: 0; left: 0; border-top: 1.5px solid var(--br-color, #00e8f5); border-left: 1.5px solid var(--br-color, #00e8f5); }
+  .bracketed::after  { bottom: 0; right: 0; border-bottom: 1.5px solid var(--br-color, #00e8f5); border-right: 1.5px solid var(--br-color, #00e8f5); }
 
   /* HLD Specific Styles */
-  .dark .hld-border {
+  .hld-border {
     border-color: #1e293b;
   }
-  .dark .hld-border:hover {
+  .hld-border:hover {
     border-color: #00f0ff;
     box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
   }
-  .dark .hld-glow-cyan {
+  .hld-glow-cyan {
     box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
   }
-  .dark .hld-glow-magenta {
+  .hld-glow-magenta {
     box-shadow: 0 0 10px rgba(255, 0, 85, 0.2);
   }
-  .dark .hld-glow-pink {
+  .hld-glow-pink {
     box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
   }
-  .dark .hld-glow-purple {
+  .hld-glow-purple {
     box-shadow: 0 0 10px rgba(176, 0, 255, 0.2);
   }
-  .dark .hld-text-glow {
+  .hld-text-glow {
     text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
   }
-  
+
   .editor-focus:focus {
     outline: none;
   }
 }
+
+/* Global HLD scrollbars — square, glyphic, dark-only (fix 01) */
+* {
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: #22364e transparent;  /* thumb track */
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-left: 1px solid var(--color-hld-border); /* #172335 seam */
+}
+*::-webkit-scrollbar-thumb {
+  background: #22364e;
+  border: 1px solid #2a4258;
+  border-radius: 0;                      /* square — glyphic, no pill */
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 232, 245, 0.45);   /* hld-cyan @ 45% */
+  border-color: rgba(0, 232, 245, 0.7);
+  box-shadow: 0 0 8px rgba(0, 232, 245, 0.5);
+}
+*::-webkit-scrollbar-corner { background: transparent; }
 
 /* Theme transitions etc */
 * {

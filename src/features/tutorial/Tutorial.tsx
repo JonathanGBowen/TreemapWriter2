@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Joyride, Step, STATUS } from 'react-joyride';
 
 interface TutorialProps {
-  isDarkMode: boolean;
   run: boolean;
   onFinish: () => void;
 }
 
-export const Tutorial: React.FC<TutorialProps> = ({ isDarkMode, run, onFinish }) => {
+export const Tutorial: React.FC<TutorialProps> = ({ run, onFinish }) => {
   const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
@@ -60,9 +59,9 @@ export const Tutorial: React.FC<TutorialProps> = ({ isDarkMode, run, onFinish })
       options={{
         zIndex: 10000,
         primaryColor: '#00f0ff',
-        backgroundColor: isDarkMode ? '#0d0d12' : '#ffffff',
-        textColor: isDarkMode ? '#e2e8f0' : '#334155',
-        arrowColor: isDarkMode ? '#0d0d12' : '#ffffff',
+        backgroundColor: '#0d0d12',
+        textColor: '#e2e8f0',
+        arrowColor: '#0d0d12',
         showProgress: true,
         buttons: ['back', 'close', 'primary', 'skip']
       }}
@@ -90,13 +89,13 @@ export const Tutorial: React.FC<TutorialProps> = ({ isDarkMode, run, onFinish })
           fontSize: '12px'
         },
         buttonBack: {
-          color: isDarkMode ? '#8b949e' : '#64748b',
+          color: '#8b949e',
           fontFamily: 'JetBrains Mono, monospace',
           textTransform: 'uppercase',
           fontSize: '12px'
         },
         buttonSkip: {
-          color: isDarkMode ? '#8b949e' : '#64748b',
+          color: '#8b949e',
           fontFamily: 'JetBrains Mono, monospace',
           textTransform: 'uppercase',
           fontSize: '12px'

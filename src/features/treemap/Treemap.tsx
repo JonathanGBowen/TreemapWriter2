@@ -10,17 +10,15 @@ interface TreemapProps {
   sections: Section[];
   onSelect: (id: string) => void;
   selectedId: string;
-  isDarkMode: boolean;
   hiddenSectionIds: string[];
   testSuite: TestSuite;
 }
 
 export const Treemap: React.FC<TreemapProps> = ({ 
   sections, 
-  onSelect, 
-  selectedId, 
-  isDarkMode,
-  hiddenSectionIds = [], 
+  onSelect,
+  selectedId,
+  hiddenSectionIds = [],
   testSuite
 }) => {
   // Filter the sections tree based on hidden IDs
@@ -78,10 +76,10 @@ export const Treemap: React.FC<TreemapProps> = ({
 
     ids.forEach(id => {
       if (id === 'root') {
-        colors.push(isDarkMode ? '#05090d' : '#f8fafc');
-        lineColors.push(isDarkMode ? '#0c1520' : '#f8fafc');
+        colors.push('#05090d');
+        lineColors.push('#0c1520');
         lineWidths.push(0);
-        fontColors.push(isDarkMode ? '#ffffff' : '#000000');
+        fontColors.push('#ffffff');
         return;
       }
 
@@ -94,86 +92,86 @@ export const Treemap: React.FC<TreemapProps> = ({
 
       if (isBlocked) {
         // Blocked: Gray/Slate with a distinct look
-        bgColor = isDarkMode ? '#111d2b' : '#e2e8f0'; // hld-surface2 / slate-200
-        lineColor = isDarkMode ? '#1e293b' : '#cbd5e1'; // Neutral border
+        bgColor = '#111d2b'; // hld-surface2 / slate-200
+        lineColor = '#1e293b'; // Neutral border
         lineWidth = 1;
       } else if (status === 'stale') {
-        bgColor = isDarkMode ? 'rgba(255,230,0,0.09)' : '#fbbf24'; // tc-2 yellow dim
-        lineColor = isDarkMode ? 'rgba(255,230,0,0.6)' : '#f59e0b';
+        bgColor = 'rgba(255,230,0,0.09)'; // tc-2 yellow dim
+        lineColor = 'rgba(255,230,0,0.6)';
         lineWidth = 2;
       } else if (status === 'fail') {
-        bgColor = isDarkMode ? 'rgba(255,16,96,0.08)' : '#fb7185'; // tc-3 mag dim
-        lineColor = isDarkMode ? 'rgba(255,16,96,0.7)' : '#f43f5e';
+        bgColor = 'rgba(255,16,96,0.08)'; // tc-3 mag dim
+        lineColor = 'rgba(255,16,96,0.7)';
         lineWidth = 2;
       } else if (status === 'running') {
-        bgColor = isDarkMode ? 'rgba(170,0,255,0.06)' : '#60a5fa'; // tc-6 purple dim
-        lineColor = isDarkMode ? 'rgba(170,0,255,0.7)' : '#8b5cf6';
+        bgColor = 'rgba(170,0,255,0.06)'; // tc-6 purple dim
+        lineColor = 'rgba(170,0,255,0.7)';
         lineWidth = 2;
       } else if (status === 'success') {
         const readiness = testSuite[id]?.lastDiagnostic?.overallReadiness;
         
         if (readiness === 'draft') {
           // Draft: Look unfinished, muted red/magenta bg, thin distinct border
-          bgColor = isDarkMode ? 'rgba(255,16,96,0.03)' : '#fff1f2';
-          lineColor = isDarkMode ? 'rgba(255,16,96,0.4)' : '#fda4af';
+          bgColor = 'rgba(255,16,96,0.03)';
+          lineColor = 'rgba(255,16,96,0.4)';
           lineWidth = 1;
         } else if (readiness === 'developing') {
           // Developing: Amber/yellow, slightly thicker border
-          bgColor = isDarkMode ? 'rgba(255,230,0,0.05)' : '#fffbeb';
-          lineColor = isDarkMode ? 'rgba(255,230,0,0.6)' : '#fcd34d';
+          bgColor = 'rgba(255,230,0,0.05)';
+          lineColor = 'rgba(255,230,0,0.6)';
           lineWidth = 2;
         } else if (readiness === 'nearly-there') {
           // Nearly There: Cyan/blue, thicker confident border
-          bgColor = isDarkMode ? 'rgba(0,232,245,0.1)' : '#e0f2fe';
-          lineColor = isDarkMode ? 'rgba(0,232,245,0.7)' : '#7dd3fc';
+          bgColor = 'rgba(0,232,245,0.1)';
+          lineColor = 'rgba(0,232,245,0.7)';
           lineWidth = 3;
         } else if (readiness === 'solid') {
           // Solid: Bright Green, strong thick border
-          bgColor = isDarkMode ? 'rgba(0,232,112,0.15)' : '#d1fae5';
-          lineColor = isDarkMode ? 'rgba(0,232,112,0.9)' : '#10b981';
+          bgColor = 'rgba(0,232,112,0.15)';
+          lineColor = 'rgba(0,232,112,0.9)';
           lineWidth = 4;
         } else {
           // Fallback (e.g. legacy test result without diagnostic)
-          bgColor = isDarkMode ? 'rgba(0,232,112,0.12)' : '#34d399';
-          lineColor = isDarkMode ? 'rgba(0,232,112,0.7)' : '#34d399';
+          bgColor = 'rgba(0,232,112,0.12)';
+          lineColor = 'rgba(0,232,112,0.7)';
           lineWidth = 2;
         }
       } else {
         // Default Neutral Colors
-        bgColor = isDarkMode ? 'rgba(0,232,245,0.05)' : '#cbd5e1'; // tc-5 cyan dim
-        lineColor = isDarkMode ? '#0c1520' : '#f8fafc';
+        bgColor = 'rgba(0,232,245,0.05)'; // tc-5 cyan dim
+        lineColor = '#0c1520';
         lineWidth = 2;
       }
 
-      let fontColor = isDarkMode ? '#f8fafc' : '#0f172a';
+      let fontColor = '#f8fafc';
 
       // Highlight selected node (HLD Focus Mode)
       if (selectedId && id !== 'root') {
         if (id === selectedId) {
           // ACTIVE FOCUS
-          lineColor = isDarkMode ? '#00e8f5' : '#0284c7'; // HLD Cyan
+          lineColor = '#00e8f5'; // HLD Cyan
           lineWidth = 4;
           if (bgColor.startsWith('rgba')) {
             bgColor = bgColor.replace(/[\d.]+\)$/, '0.35)');
           } else {
-            bgColor = isDarkMode ? 'rgba(0, 232, 245, 0.25)' : 'rgba(2, 132, 199, 0.2)';
+            bgColor = 'rgba(0, 232, 245, 0.25)';
           }
-          fontColor = isDarkMode ? '#ffffff' : '#000000';
+          fontColor = '#ffffff';
         } else {
           // DIMMED BACKGROUND
           lineWidth = 1;
           if (bgColor.startsWith('rgba')) {
             bgColor = bgColor.replace(/[\d.]+\)$/, '0.015)');
           } else {
-            bgColor = isDarkMode ? 'rgba(255,255,255,0.005)' : 'rgba(0,0,0,0.015)';
+            bgColor = 'rgba(255,255,255,0.005)';
           }
           
           if (lineColor.startsWith('rgba')) {
             lineColor = lineColor.replace(/[\d.]+\)$/, '0.1)');
           } else {
-            lineColor = isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.08)';
+            lineColor = 'rgba(255,255,255,0.03)';
           }
-          fontColor = isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)';
+          fontColor = 'rgba(255,255,255,0.3)';
         }
       }
 
@@ -209,7 +207,7 @@ export const Treemap: React.FC<TreemapProps> = ({
         pad: 4
       }
     }];
-  }, [filteredSections, isDarkMode, testSuite, selectedId]);
+  }, [filteredSections, testSuite, selectedId]);
 
   const layout = useMemo(() => ({
     margin: { t: 0, l: 0, r: 0, b: 0 },
@@ -217,10 +215,10 @@ export const Treemap: React.FC<TreemapProps> = ({
     plot_bgcolor: 'rgba(0,0,0,0)',
     font: {
       family: 'JetBrains Mono, monospace', // HLD prefers mono for data
-      color: isDarkMode ? '#c5d8e8' : '#334155' // hld-text / slate-700
+      color: '#c5d8e8' // hld-text / slate-700
     },
     autosize: true
-  }), [isDarkMode]);
+  }), []);
 
   const config = { responsive: true, displayModeBar: false };
 
@@ -235,7 +233,7 @@ export const Treemap: React.FC<TreemapProps> = ({
   };
 
   if (filteredSections.length === 0) {
-     return <div className="flex items-center justify-center h-full text-slate-400 dark:text-hld-muted text-[10px] font-mono uppercase tracking-widest px-4 text-center">No visible sections. Adjust filters or content.</div>;
+     return <div className="flex items-center justify-center h-full text-hld-muted-text text-[10px] font-mono uppercase tracking-widest px-4 text-center">No visible sections. Adjust filters or content.</div>;
   }
 
   return (

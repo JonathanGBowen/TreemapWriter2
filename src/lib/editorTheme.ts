@@ -19,7 +19,25 @@ export const hldTheme = EditorView.theme({
   ".cm-scroller": {
     fontFamily: "inherit",
     backgroundColor: "#05090d",
-    overflow: "auto"
+    overflow: "auto",
+    scrollbarWidth: "thin",
+    scrollbarColor: "#22364e transparent"
+  },
+  /* HLD scrollbars inside CodeMirror — match the global treatment (fix 01) */
+  ".cm-scroller::-webkit-scrollbar": { width: "8px", height: "8px" },
+  ".cm-scroller::-webkit-scrollbar-track": {
+    background: "transparent",
+    borderLeft: "1px solid #172335"
+  },
+  ".cm-scroller::-webkit-scrollbar-thumb": {
+    background: "#22364e",
+    border: "1px solid #2a4258",
+    borderRadius: "0"
+  },
+  ".cm-scroller::-webkit-scrollbar-thumb:hover": {
+    background: "rgba(0, 232, 245, 0.45)",
+    borderColor: "rgba(0, 232, 245, 0.7)",
+    boxShadow: "0 0 8px rgba(0, 232, 245, 0.5)"
   },
   ".cm-content": {
     caretColor: "#00f0ff",
