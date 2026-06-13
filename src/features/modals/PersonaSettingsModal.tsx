@@ -1,12 +1,11 @@
 import React, { useState, useRef } from "react";
-import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload, Key } from "lucide-react";
+import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload } from "lucide-react";
 import { Persona, PromptsConfig } from "../../types";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
-import { aiProvider, refreshGeminiKey } from "../../services/ai-provider-registry";
-import { setSecret } from "../../services/credentials";
-import { isTauri } from "../../services/tauri-environment";
+import { aiProvider } from "../../services/ai-provider-registry";
+import { AiSettingsSection } from "./AiSettingsSection";
 
 interface PersonaSettingsModalProps {
   activePersonaId: string;
@@ -38,31 +37,6 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newInstruction, setNewInstruction] = useState("");
-
-  // API key field (Phase 4f). The actual stored value lives in the OS
-  // keyring; we never read it back into the UI. The user types a new value
-  // here only when changing or setting the key.
-  const [pendingApiKey, setPendingApiKey] = useState("");
-  const [savingApiKey, setSavingApiKey] = useState(false);
-
-  const handleSaveApiKey = async () => {
-    if (!pendingApiKey.trim()) return;
-    if (!isTauri()) {
-      toast.error("API key storage requires the desktop app.");
-      return;
-    }
-    setSavingApiKey(true);
-    try {
-      await setSecret('gemini', pendingApiKey.trim());
-      refreshGeminiKey(pendingApiKey.trim());
-      setPendingApiKey("");
-      toast.success("Gemini API key saved to OS keyring.");
-    } catch (e: any) {
-      toast.error(`Failed to save key: ${e?.message || e}`);
-    } finally {
-      setSavingApiKey(false);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -153,10 +127,10 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
         <div className="p-6 border-b border-hld-border flex justify-between items-center bg-hld-surface2 rounded-t-xl">
           <div>
             <h3 className="text-xl font-bold text-hld-text flex items-center gap-2 font-sans">
-              <User size={20} className="text-hld-cyan" /> 
-              Persona Configuration
+              <User size={20} className="text-hld-cyan" />
+              AI &amp; Personas
             </h3>
-            <p className="text-sm text-hld-muted font-sans">Who is reviewing your work?</p>
+            <p className="text-sm text-hld-muted font-sans">Models, keys, and who reviews your work.</p>
           </div>
           <button onClick={onClose} className="text-hld-muted hover:text-hld-text p-2 transition-colors">
             <X size={20} />
@@ -167,36 +141,8 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {view === 'list' ? (
             <div className="space-y-4">
-              {/* Gemini API Key (Phase 4f) */}
-              <div className="bg-hld-surface2 border border-hld-border rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Key size={14} className="text-hld-yellow" />
-                  <h4 className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-text">
-                    Gemini API Key
-                  </h4>
-                </div>
-                <p className="text-[11px] text-hld-muted leading-relaxed mb-3 font-sans">
-                  Stored in your OS keyring (Windows Credential Manager / macOS
-                  Keychain / Linux Secret Service). Falls back to <code className="font-mono">.env.local</code> if unset.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={pendingApiKey}
-                    onChange={(e) => setPendingApiKey(e.target.value)}
-                    placeholder="Paste a new key to set or replace"
-                    disabled={savingApiKey}
-                    className="flex-1 p-2 text-[12px] font-mono border border-hld-border rounded bg-hld-bg text-hld-text focus:outline-none focus:border-hld-cyan disabled:opacity-50"
-                  />
-                  <button
-                    onClick={handleSaveApiKey}
-                    disabled={!pendingApiKey.trim() || savingApiKey}
-                    className="px-3 py-2 bg-hld-cyan text-hld-bg rounded text-[10px] font-mono uppercase tracking-widest font-bold hover:bg-hld-cyan/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {savingApiKey ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-              </div>
+              {/* AI providers, default model, per-task overrides, catalog */}
+              <AiSettingsSection />
 
               {/* Generator Banner */}
               <div className="bg-hld-cyan/10 border border-hld-cyan/30 rounded-lg p-4 flex items-center justify-between mb-6">

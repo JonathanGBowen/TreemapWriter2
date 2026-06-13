@@ -256,6 +256,11 @@ pub struct StoredProjectData {
     pub interpolation_config: Option<PromptsConfig>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cached_coach_advice: Option<serde_json::Value>,
+    /// Per-project, per-call model config (`.twriter/models.json`). Schema-
+    /// agnostic on the Rust side — the TS layer owns the shape (provider/model/
+    /// thinkingBudget per call kind). Holds model choices, never secrets.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub models_config: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

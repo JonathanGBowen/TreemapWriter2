@@ -1,11 +1,14 @@
-import React, { useState, useMemo } from "react";
-import { BrainCircuit, Zap, Gauge, Check, Info, X, Edit3 } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { BrainCircuit, Zap, Check, Info, X, Edit3 } from "lucide-react";
 
 import { PromptsConfig } from "../../types";
 import { useStore } from "../../store";
+import { ModelPicker } from "./ModelPicker";
+import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
+import type { ModelChoice } from "../../services/ai/model-types";
 
 interface InterpolationModalProps {
-  onConfirm: (modelId: string, thinkingBudget: number, config: PromptsConfig) => void;
+  onConfirm: (choice: ModelChoice, config: PromptsConfig) => void;
   documentStats: {
     wordCount: number;
     sectionCount: number;
@@ -13,41 +16,6 @@ interface InterpolationModalProps {
   };
   initialConfig: PromptsConfig;
 }
-
-const MODELS = [
-  {
-    id: 'gemini-3-flash-preview',
-    name: 'Gemini 3 Flash',
-    desc: 'Balanced reasoning & speed. Best for most tasks.',
-    icon: Zap,
-    thinkingBudget: 0,
-    costTier: 'Low'
-  },
-  {
-    id: 'gemini-3.1-pro-preview',
-    name: 'Gemini 3.1 Pro',
-    desc: 'Deepest reasoning. Best for complex logic.',
-    icon: BrainCircuit,
-    thinkingBudget: 16000,
-    costTier: 'High'
-  },
-  {
-    id: 'gemini-3.1-flash-lite-preview',
-    name: 'Gemini Flash Lite',
-    desc: 'Fastest. No advanced thinking steps.',
-    icon: Gauge,
-    thinkingBudget: 0,
-    costTier: 'Lowest'
-  },
-  {
-    id: 'gemini-flash-latest',
-    name: 'Gemini Flash',
-    desc: 'Fast. Standard reasoning.',
-    icon: Zap,
-    thinkingBudget: 0,
-    costTier: 'Low'
-  }
-];
 
 export const InterpolationModal: React.FC<InterpolationModalProps> = ({
   onConfirm,
@@ -57,13 +25,21 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
   const isOpen = useStore(s => s.showInterpolationModal);
   const setShow = useStore(s => s.setShowInterpolationModal);
   const onClose = () => setShow(false);
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3-flash-preview');
+  const [choice, setChoice] = useState<ModelChoice>(() => {
+    const s = useStore.getState();
+    return resolveModelChoice('generateSpecs', s.modelConfig, s.globalModelDefault);
+  });
   const [config, setConfig] = useState<PromptsConfig>(initialConfig);
   const [copied, setCopied] = useState(false);
 
-  const selectedModel = useMemo(() => 
-    MODELS.find(m => m.id === selectedModelId) || MODELS[0]
-  , [selectedModelId]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const s = useStore.getState();
+    setChoice(resolveModelChoice('generateSpecs', s.modelConfig, s.globalModelDefault));
+  }, [isOpen]);
+
+  const isGemini = choice.provider === 'gemini';
+  const thinkingBudget = choice.thinkingBudget ?? 0;
 
   // Estimation Logic
   const estimates = useMemo(() => {
@@ -78,7 +54,7 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
     const totalInputTokens = inputBaseTokens * estimatedBatches;
     
     // Thinking per batch
-    const totalThinkingTokens = selectedModel.thinkingBudget * estimatedBatches;
+    const totalThinkingTokens = thinkingBudget * estimatedBatches;
     
     // Output: Approx 150 tokens per section goal
     const totalOutputTokens = documentStats.sectionCount * 150;
@@ -90,7 +66,7 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
       output: totalOutputTokens,
       total: totalInputTokens + totalThinkingTokens + totalOutputTokens
     };
-  }, [documentStats, selectedModel]);
+  }, [documentStats, thinkingBudget]);
 
   if (!isOpen) return null;
 
@@ -139,37 +115,15 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
           {/* Model Selection */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {MODELS.map((model) => {
-              const Icon = model.icon;
-              const isSelected = selectedModelId === model.id;
-              return (
-                <div 
-                  key={model.id}
-                  onClick={() => setSelectedModelId(model.id)}
-                  className={`cursor-pointer relative p-4 rounded-xl border-2 transition-all duration-200 ${
-                    isSelected 
-                      ? 'border-hld-cyan bg-hld-cyan/10' 
-                      : 'border-hld-border hover:border-hld-cyan/50 bg-hld-surface'
-                  }`}
-                >
-                  {isSelected && (
-                    <div className="absolute top-2 right-2 text-hld-cyan">
-                      <Check size={16} strokeWidth={3} />
-                    </div>
-                  )}
-                  <div className={`p-2 rounded-lg w-fit mb-3 ${isSelected ? 'bg-hld-cyan/20 text-hld-cyan' : 'bg-hld-surface2 text-hld-muted'}`}>
-                    <Icon size={20} />
-                  </div>
-                  <h4 className={`font-bold text-sm font-sans ${isSelected ? 'text-hld-cyan' : 'text-hld-text'}`}>
-                    {model.name}
-                  </h4>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-hld-muted mt-1 leading-relaxed">
-                    {model.desc}
-                  </p>
-                </div>
-              );
-            })}
+          <div>
+            <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted mb-2 block">
+              Model
+            </label>
+            <ModelPicker
+              value={choice}
+              onChange={(c) => c && setChoice(c)}
+              className="w-full bg-hld-bg border border-hld-border rounded-lg px-3 py-2.5 text-sm font-mono text-hld-text outline-none focus:border-hld-cyan"
+            />
           </div>
 
           {/* Prompt Configuration - HLD Inspired Visual Tree */}
@@ -230,7 +184,8 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
             </p>
           </div>
 
-          {/* Stats & Estimation */}
+          {/* Stats & Estimation — token math is Gemini-specific. */}
+          {isGemini && (
           <div className="bg-hld-bg rounded-lg p-5 border border-hld-border">
             <h5 className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted mb-4 flex items-center gap-2">
               <Info size={14} /> Usage Estimation
@@ -257,9 +212,10 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
 
             <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-hld-muted italic bg-hld-surface2 p-2 rounded border border-hld-border">
               * Estimations are rough approximations based on document structure. Actual usage may vary.
-              {selectedModel.thinkingBudget === 0 && " This model does not use thinking tokens."}
+              {thinkingBudget === 0 && " This model does not use thinking tokens."}
             </div>
           </div>
+          )}
 
         </div>
 
@@ -270,8 +226,8 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
           >
             Cancel
           </button>
-          <button 
-            onClick={() => onConfirm(selectedModelId, selectedModel.thinkingBudget, config)}
+          <button
+            onClick={() => onConfirm(choice, config)}
             className="px-6 py-2 bg-hld-cyan hover:bg-hld-cyan/80 text-hld-bg rounded-lg text-[10px] font-mono uppercase tracking-widest font-bold shadow-md transition-all active:scale-95 flex items-center gap-2 hld-glow-cyan"
           >
             <BrainCircuit size={16} />

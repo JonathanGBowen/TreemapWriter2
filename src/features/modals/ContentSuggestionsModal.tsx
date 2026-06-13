@@ -7,25 +7,9 @@ import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
-
-const MODELS = [
-  {
-    id: 'gemini-3.1-flash-lite-preview',
-    name: 'Gemini Flash Lite',
-  },
-  {
-    id: 'gemini-flash-latest',
-    name: 'Gemini Flash',
-  },
-  {
-    id: 'gemini-3-flash-preview',
-    name: 'Gemini 3 Flash',
-  },
-  {
-    id: 'gemini-3.1-pro-preview',
-    name: 'Gemini 3.1 Pro',
-  }
-];
+import { ModelPicker } from "./ModelPicker";
+import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
+import type { ModelChoice } from "../../services/ai/model-types";
 
 interface ContentSuggestionsModalProps {
   sectionTitle: string;
@@ -53,7 +37,10 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
   const onClose = () => setShow(false);
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.1-flash-lite-preview');
+  const [choice, setChoice] = useState<ModelChoice>(() => {
+    const s = useStore.getState();
+    return resolveModelChoice('getContentSuggestions', s.modelConfig, s.globalModelDefault);
+  });
   const [isStale, setIsStale] = useState(false);
   
   const currentInputHash = computeHash(`${sectionTitle}|${currentGoals}|${fullSectionContent}|${parentGoals||''}`);
@@ -83,7 +70,7 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
         fullSectionContent,
         parentGoals,
         config: promptsConfig,
-        modelId: selectedModelId,
+        modelChoice: choice,
       });
       setSuggestions(text);
       if (onSaveCache && text) {
@@ -152,15 +139,7 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
         <div className="p-4 border-t border-hld-border bg-hld-surface rounded-b-xl flex justify-between items-center">
            <div className="flex items-center gap-2">
              <Settings size={14} className="text-hld-muted" />
-             <select 
-               value={selectedModelId}
-               onChange={(e) => setSelectedModelId(e.target.value)}
-               className="bg-hld-surface2 border border-hld-border rounded px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-hld-text outline-none focus:border-hld-cyan"
-             >
-               {MODELS.map(m => (
-                 <option key={m.id} value={m.id}>{m.name}</option>
-               ))}
-             </select>
+             <ModelPicker value={choice} onChange={(c) => c && setChoice(c)} />
            </div>
            <div className="flex gap-3">
              <button 

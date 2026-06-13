@@ -6,6 +6,9 @@ import { computeHash } from '../../lib/utils';
 import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { useStore } from '../../store';
 import { aiProvider } from '../../services/ai-provider-registry';
+import { ModelPicker } from './ModelPicker';
+import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
+import type { ModelChoice } from '../../services/ai/model-types';
 
 interface CoachModalProps {
   markdown: string;
@@ -27,7 +30,10 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   const isOpen = useStore(s => s.showCoachModal);
   const setShow = useStore(s => s.setShowCoachModal);
   const onClose = () => setShow(false);
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3-flash-preview');
+  const [choice, setChoice] = useState<ModelChoice>(() => {
+    const s = useStore.getState();
+    return resolveModelChoice('getCoachAdvice', s.modelConfig, s.globalModelDefault);
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionPlan, setActionPlan] = useState<string | null>(null);
@@ -75,7 +81,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
         sections,
         testSuite,
         config: promptsConfig,
-        modelId: selectedModelId,
+        modelChoice: choice,
       });
       setActionPlan(text);
       if (onSaveCache && text) {
@@ -136,16 +142,11 @@ export const CoachModal: React.FC<CoachModalProps> = ({
               
               <div className="mt-8 flex flex-col items-start bg-hld-surface p-4 border border-hld-border w-full">
                 <label className="text-[10px] font-mono uppercase text-hld-muted mb-2">Model</label>
-                <select 
+                <ModelPicker
+                  value={choice}
+                  onChange={(c) => c && setChoice(c)}
                   className="w-full bg-hld-bg border border-hld-border text-[11px] p-2 text-hld-text focus:outline-none focus:border-hld-cyan"
-                  value={selectedModelId}
-                  onChange={(e) => setSelectedModelId(e.target.value)}
-                >
-                  <option value="gemini-3.1-flash-lite-preview">Gemini Flash Lite (Fastest)</option>
-                  <option value="gemini-flash-latest">Gemini Flash (Balanced)</option>
-                  <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Deepest Analysis)</option>
-                </select>
+                />
               </div>
             </div>
           )}

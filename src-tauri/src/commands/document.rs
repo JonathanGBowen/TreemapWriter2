@@ -5,6 +5,7 @@
 //   .twriter/settings.json → projectName, activePersonaId
 //   .twriter/personas.json → customPersonas
 //   .twriter/prompts.json  → promptsConfig
+//   .twriter/models.json   → modelsConfig (per-call model choices; no secrets)
 //   .twriter/hidden.json   → hiddenSectionIds
 //   .twriter/uistate.json  → uiState
 //   .twriter/specs/*.yaml  → testSuite (one entry per section id)
@@ -55,6 +56,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.personas_json())?;
     let prompts_config: Option<PromptsConfig> =
         crate::fs_io::read_json(&layout.prompts_json())?;
+    let models_config: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.models_json())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -75,6 +78,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         custom_personas,
         prompts_config,
         interpolation_config: None, // legacy alias; importer normalizes
+        models_config,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -104,6 +108,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(pc) = &data.prompts_config {
         crate::fs_io::write_json(&layout.prompts_json(), pc)?;
+    }
+    if let Some(mc) = &data.models_config {
+        crate::fs_io::write_json(&layout.models_json(), mc)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;

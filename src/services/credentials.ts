@@ -11,7 +11,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from './tauri-environment';
 
-export type SecretService = 'git' | 'gemini';
+export type SecretService = 'git' | 'gemini' | 'anthropic';
 
 export async function setSecret(service: SecretService, value: string): Promise<void> {
   if (!isTauri()) return;

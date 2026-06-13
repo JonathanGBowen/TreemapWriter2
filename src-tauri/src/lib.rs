@@ -33,8 +33,44 @@ fn app_info() -> AppInfo {
     }
 }
 
+/// Load `src-tauri/.env.local` into the process environment at startup so the
+/// keyring env-fallback (see commands/credentials.rs) can serve API keys from
+/// it. This is a dev/first-run convenience — a packaged binary has no
+/// `.env.local` next to it, so production relies on the OS keyring. A real env
+/// var already set in the environment is never overridden.
+fn load_env_local() {
+    let candidates = [
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".env.local"),
+        std::path::PathBuf::from(".env.local"),
+        std::path::PathBuf::from("src-tauri/.env.local"),
+    ];
+    for path in candidates {
+        if let Ok(contents) = std::fs::read_to_string(&path) {
+            for line in contents.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                if let Some((k, v)) = line.split_once('=') {
+                    let key = k.trim().trim_matches('"').trim_matches('\'');
+                    let val = v.trim().trim_matches('"').trim_matches('\'');
+                    if key.is_empty() || val.is_empty() {
+                        continue;
+                    }
+                    if std::env::var_os(key).is_none() {
+                        std::env::set_var(key, val);
+                    }
+                }
+            }
+            return;
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    load_env_local();
+
     let app_state = project::AppState::new()
         .expect("failed to initialize TreemapWriter AppState (recent-projects DB)");
 

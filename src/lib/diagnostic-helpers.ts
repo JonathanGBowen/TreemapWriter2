@@ -1,7 +1,7 @@
 // Pure (non-AI) helpers around DiagnosticResult / SectionSpec, extracted from
 // the retired `lib/ai-pipeline.tsx` during Phase 3.5. The AI calls themselves
-// live in `services/gemini-provider.ts`; what stayed here is the small layer
-// of derivation logic that runs locally and has no network dependency.
+// live in `services/ai/ai-provider.impl.ts`; what stayed here is the small
+// layer of derivation logic that runs locally and has no network dependency.
 
 import type { DiagnosticResult, SectionSpec } from '../types';
 
