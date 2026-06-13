@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { BrainCircuit, Zap, Check, Info, X, Edit3 } from "lucide-react";
 
 import { PromptsConfig } from "../../types";
 import { useStore } from "../../store";
 import { ModelPicker } from "./ModelPicker";
-import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
+import { useModelChoice } from "./use-model-choice";
 import type { ModelChoice } from "../../services/ai/model-types";
 
 interface InterpolationModalProps {
@@ -25,18 +25,9 @@ export const InterpolationModal: React.FC<InterpolationModalProps> = ({
   const isOpen = useStore(s => s.showInterpolationModal);
   const setShow = useStore(s => s.setShowInterpolationModal);
   const onClose = () => setShow(false);
-  const [choice, setChoice] = useState<ModelChoice>(() => {
-    const s = useStore.getState();
-    return resolveModelChoice('generateSpecs', s.modelConfig, s.globalModelDefault);
-  });
+  const [choice, setChoice] = useModelChoice('generateSpecs', isOpen);
   const [config, setConfig] = useState<PromptsConfig>(initialConfig);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const s = useStore.getState();
-    setChoice(resolveModelChoice('generateSpecs', s.modelConfig, s.globalModelDefault));
-  }, [isOpen]);
 
   const isGemini = choice.provider === 'gemini';
   const thinkingBudget = choice.thinkingBudget ?? 0;

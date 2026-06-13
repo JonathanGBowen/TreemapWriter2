@@ -8,8 +8,7 @@ import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
 import { ModelPicker } from "./ModelPicker";
-import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
-import type { ModelChoice } from "../../services/ai/model-types";
+import { useModelChoice } from "./use-model-choice";
 
 interface ContentSuggestionsModalProps {
   sectionTitle: string;
@@ -37,10 +36,7 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
   const onClose = () => setShow(false);
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [choice, setChoice] = useState<ModelChoice>(() => {
-    const s = useStore.getState();
-    return resolveModelChoice('getContentSuggestions', s.modelConfig, s.globalModelDefault);
-  });
+  const [choice, setChoice] = useModelChoice('getContentSuggestions', isOpen);
   const [isStale, setIsStale] = useState(false);
   
   const currentInputHash = computeHash(`${sectionTitle}|${currentGoals}|${fullSectionContent}|${parentGoals||''}`);

@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { FileText, Layout, Book, Check, Info, X, Play, Edit3, Clipboard } from "lucide-react";
 import { Section, Persona } from "../../types";
 import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { ModelPicker } from "./ModelPicker";
-import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
+import { useModelChoice } from "./use-model-choice";
 import type { ModelChoice } from "../../services/ai/model-types";
 
 interface TestRunnerModalProps {
@@ -42,10 +42,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   const setShow = useStore(s => s.setShowRunModal);
   const onClose = () => setShow(false);
   const [selectedScope, setSelectedScope] = useState<'segment' | 'parent' | 'full'>('segment');
-  const [choice, setChoice] = useState<ModelChoice>(() => {
-    const s = useStore.getState();
-    return resolveModelChoice('runDiagnostic', s.modelConfig, s.globalModelDefault);
-  });
+  const [choice, setChoice] = useModelChoice('runDiagnostic', isOpen);
   const [useThinking, setUseThinking] = useState(false);
   const [customInstruction, setCustomInstruction] = useState("");
   const [copied, setCopied] = useState(false);
@@ -53,12 +50,6 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   const catalogModel = useStore((s) =>
     s.modelCatalog.find((m) => m.provider === choice.provider && m.id === choice.model),
   );
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const s = useStore.getState();
-    setChoice(resolveModelChoice('runDiagnostic', s.modelConfig, s.globalModelDefault));
-  }, [isOpen]);
 
   const isGemini = choice.provider === 'gemini';
   // The numeric thinking knob is Gemini-only; other providers manage reasoning themselves.

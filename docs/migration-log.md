@@ -1442,3 +1442,46 @@ committed; rotation is optional.
 Per-project `modelConfig` / `.twriter/models.json` is additive and tolerated on
 read by older code (sparse, ignored if unknown), so reverting loses the feature
 but no document data.
+
+## 2026-06-13 — Fix: code-review findings on multi-provider model selection
+
+An adversarial code-review pass (9 finder angles) surfaced four confirmed
+correctness/UI bugs in the multi-provider change above; all fixed here.
+
+1. **Configured model ignored for Coach & Content Suggestions.** Flow modals are
+   mounted unconditionally (they self-gate via `return null`), so a bare
+   `useState(() => resolveModelChoice(...))` initializer froze the choice at app
+   boot — before prefs hydrate or a project loads. Interpolation/TestRunner had a
+   reseed `useEffect([isOpen])`; Coach/ContentSuggestions did not, so they
+   permanently ran the boot-time default and ignored the user's configured model.
+   Fixed at the right altitude: a shared `useModelChoice(kind, isOpen)` hook
+   ([src/features/modals/use-model-choice.ts](../src/features/modals/use-model-choice.ts))
+   now backs all four modals (re-seeds on open), removing the 4× duplication that
+   caused the divergence.
+2. **ModelPicker display desync.** A controlled `<select>` whose value isn't in
+   the catalog (Ollama offline, model removed, hand-edited config) showed the
+   wrong row while state held the real choice. The picker now renders a
+   `"<provider>: <model> (unavailable)"` fallback option so the visible selection
+   always matches the actual choice.
+3. **Catalog `supportsThinking` vs adaptive-thinking mismatch.** The field means
+   "exposes a numeric budget knob," which no Anthropic model does (adaptive/
+   native), yet all three were marked `true` — contradicting the client's
+   `supportsAdaptiveThinking`. Set Anthropic rows to `false` so the two concepts
+   stop conflicting.
+4. **Anthropic default `max_tokens`.** Bumped the (currently-unreached) default
+   from 8192 → 16000 so a future caller that omits `maxTokens` can't have the
+   adaptive-thinking pass (counted inside `max_tokens`) truncate the JSON body.
+
+**Deferred (noted, not fixed).** The single "Default Model" knob flattens
+per-kind thinking budgets across all 10 kinds — a known tradeoff of a deliberately
+coarse knob (per-kind nuance survives via Advanced overrides or by leaving the
+knob on "Recommended"). Lower-severity items: registry boot keyring lookup can
+race a user key-save (narrow window; pre-existing pattern); Ollama fetches lack a
+timeout; auto-detected Ollama rows persist to prefs. The `thinkingBudget` field
+on the provider-agnostic `LLMRequest` is a deliberate pragmatic leak.
+
+**What to verify.** `npm run typecheck`, `npm test` (68 pass), `npm run build`,
+`cargo check` — all green. Manual: set a global default model, open Coach /
+Content Suggestions → they now use it (previously stuck on the boot default).
+
+**Rollback.** Revert this commit; the feature commit above stands on its own.

@@ -15,8 +15,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { LLMClient, LLMRequest, LLMMessage } from './llm-client';
 import { trimToFirstUser } from './llm-client';
 
-/** Non-streaming default; generous enough for spec/diagnostic/analysis JSON. */
-const DEFAULT_MAX_TOKENS = 8192;
+// Non-streaming default. Adaptive thinking is counted INSIDE max_tokens, so this
+// must leave room for both the reasoning pass and the JSON body — callers pass an
+// explicit value, but the default stays generous so a future caller can't truncate.
+const DEFAULT_MAX_TOKENS = 16000;
 /** Streaming dialogue default; a chat turn rarely needs more. */
 const STREAM_MAX_TOKENS = 16000;
 

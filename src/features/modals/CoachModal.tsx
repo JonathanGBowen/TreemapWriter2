@@ -7,8 +7,7 @@ import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { useStore } from '../../store';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { ModelPicker } from './ModelPicker';
-import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
-import type { ModelChoice } from '../../services/ai/model-types';
+import { useModelChoice } from './use-model-choice';
 
 interface CoachModalProps {
   markdown: string;
@@ -30,10 +29,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   const isOpen = useStore(s => s.showCoachModal);
   const setShow = useStore(s => s.setShowCoachModal);
   const onClose = () => setShow(false);
-  const [choice, setChoice] = useState<ModelChoice>(() => {
-    const s = useStore.getState();
-    return resolveModelChoice('getCoachAdvice', s.modelConfig, s.globalModelDefault);
-  });
+  const [choice, setChoice] = useModelChoice('getCoachAdvice', isOpen);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionPlan, setActionPlan] = useState<string | null>(null);

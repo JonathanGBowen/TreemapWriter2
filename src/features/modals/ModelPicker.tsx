@@ -32,6 +32,10 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 }) => {
   const catalog = useStore((s) => s.modelCatalog);
   const current = value ? `${value.provider}:${value.model}` : '';
+  // The selected model may not be in the catalog (Ollama server offline, model
+  // removed, or hand-edited config). Without a matching <option> the browser
+  // would show the wrong row while state holds the real choice — so surface it.
+  const isOrphan = !!value && !catalog.some((m) => m.provider === value.provider && m.id === value.model);
 
   const grouped: Record<ProviderId, CatalogModel[]> = {
     gemini: catalog.filter((m) => m.provider === 'gemini'),
@@ -62,6 +66,11 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
       }
     >
       {inheritLabel && <option value="">{inheritLabel}</option>}
+      {isOrphan && value && (
+        <option value={current}>
+          {value.provider}: {value.model} (unavailable)
+        </option>
+      )}
       {PROVIDER_ORDER.map((p) =>
         grouped[p].length ? (
           <optgroup key={p} label={PROVIDER_LABEL[p]}>
