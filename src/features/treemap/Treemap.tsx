@@ -1,8 +1,16 @@
 import React, { useEffect, useMemo } from "react";
 import Plotly from 'plotly.js-dist-min';
-import createPlotlyComponent from 'react-plotly.js/factory';
+import createPlotlyComponentImport from 'react-plotly.js/factory';
 import { Section, TestSuite } from "../../types";
 import { flattenTree } from "../../lib/utils";
+
+// `react-plotly.js/factory` is a CommonJS module (module.exports.default = factory).
+// Under Vite 8's Rolldown bundler a default import can resolve to the module
+// namespace object instead of the function, so unwrap `.default` defensively.
+const createPlotlyComponent: (plotly: typeof Plotly) => React.ComponentType<any> =
+  typeof createPlotlyComponentImport === 'function'
+    ? (createPlotlyComponentImport as any)
+    : (createPlotlyComponentImport as any).default;
 
 const Plot = createPlotlyComponent(Plotly);
 
