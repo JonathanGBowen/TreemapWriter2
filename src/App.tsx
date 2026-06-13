@@ -763,6 +763,11 @@ export const App = () => {
       <div className="flex h-screen w-full bg-hld-bg text-hld-text overflow-hidden transition-colors duration-200 font-sans">
         <Sidebar
           onSelect={setSelectedId}
+          onContinue={() => {
+            const targetId = selectedId ?? sections[0]?.id ?? null;
+            if (targetId) setSelectedId(targetId);
+            editorRef.current?.focus();
+          }}
           onImportMarkdown={handleImportMarkdown}
           onLoadProject={handleLoadFile}
           onSaveProject={handleExportProject}
