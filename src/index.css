@@ -48,6 +48,62 @@
   }
 }
 
+/* Affordance grammar primitives (Columns & Modals overhaul).
+   lit = THE one next action on a surface; pip = the one state vocabulary. */
+@layer components {
+  /* lit = the single next action. Max ONE per visible surface. */
+  .hld-lit {
+    position: relative;
+    background: rgba(0, 232, 245, 0.07);
+    border: 1px solid rgba(0, 232, 245, 0.35);
+    color: var(--color-hld-cyan);
+    box-shadow: 0 0 18px rgba(0, 232, 245, 0.12), inset 0 0 18px rgba(0, 232, 245, 0.04);
+    cursor: pointer;
+  }
+  .hld-lit:hover:not(:disabled) {
+    background: rgba(0, 232, 245, 0.12);
+    box-shadow: 0 0 24px rgba(0, 232, 245, 0.25);
+  }
+  .hld-lit-magenta {
+    position: relative;
+    background: rgba(255, 16, 96, 0.06);
+    border: 1px solid rgba(255, 16, 96, 0.4);
+    color: var(--color-hld-magenta);
+    box-shadow: 0 0 18px rgba(255, 16, 96, 0.12), inset 0 0 18px rgba(255, 16, 96, 0.04);
+    cursor: pointer;
+  }
+  .hld-lit-magenta:hover:not(:disabled) {
+    background: rgba(255, 16, 96, 0.1);
+    box-shadow: 0 0 24px rgba(255, 16, 96, 0.25);
+  }
+
+  /* diamond status pip — the ONE state vocabulary, everywhere.
+     green done/safe · yellow attention · magenta missing/failing ·
+     cyan active · hollow untouched. */
+  .hld-pip {
+    width: 6px; height: 6px;
+    transform: rotate(45deg);
+    flex: none;
+    display: inline-block;
+  }
+  .hld-pip-sm { width: 4px; height: 4px; }
+  .hld-pip-lg { width: 8px; height: 8px; }
+  .hld-pip-green   { background: var(--color-hld-green);   box-shadow: 0 0 6px var(--color-hld-green); }
+  .hld-pip-yellow  { background: var(--color-hld-yellow);  box-shadow: 0 0 6px var(--color-hld-yellow); }
+  .hld-pip-magenta { background: var(--color-hld-magenta); box-shadow: 0 0 6px var(--color-hld-magenta); }
+  .hld-pip-cyan    { background: var(--color-hld-cyan);    box-shadow: 0 0 6px var(--color-hld-cyan); }
+  .hld-pip-purple  { background: var(--color-hld-purple);  box-shadow: 0 0 6px var(--color-hld-purple); }
+  .hld-pip-dim     { background: var(--color-hld-muted); }
+  .hld-pip-idle    { background: transparent; border: 1px solid var(--color-hld-muted); }
+
+  /* slow attention pulse for in-flight states (sync, running) */
+  .hld-pip-pulse { animation: hld-pip-pulse 1.4s ease-in-out infinite; }
+  @keyframes hld-pip-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+}
+
 @layer utilities {
   /* HLD Specific Brackets */
   .bracketed { position: relative; }
