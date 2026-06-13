@@ -1,21 +1,25 @@
 import React, { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { FlaskConical, MessagesSquare, Send } from "lucide-react";
 import type { DialogueMessage } from "../../types";
 import { useStore } from "../../state";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
 
-const Bubble: React.FC<{ message: DialogueMessage }> = ({ message }) => (
-  <div
-    className={`max-w-[88%] p-[8px] border text-[10px] font-sans leading-[1.6] whitespace-pre-wrap ${
-      message.role === 'user'
-        ? 'ml-auto border-hld-cyan/30 bg-hld-cyan/5 text-hld-text'
-        : 'mr-auto border-hld-border bg-hld-surface2 text-hld-text'
-    }`}
-  >
-    {message.text}
-  </div>
-);
+/** Left edge = your sentence (cyan); a muted panel = the partner's. */
+const Bubble: React.FC<{ message: DialogueMessage }> = ({ message }) => {
+  const me = message.role === 'user';
+  return (
+    <div
+      className={`max-w-[88%] p-[8px] text-[10px] font-sans leading-relaxed whitespace-pre-wrap ${
+        me ? 'ml-auto border-l-2 border-hld-cyan/40 bg-hld-cyan/5 text-hld-text' : 'mr-auto border border-hld-border bg-hld-surface2 text-hld-text'
+      }`}
+    >
+      <span className={`block font-mono text-[7px] uppercase tracking-[0.14em] mb-[4px] ${me ? 'text-hld-cyan' : 'text-hld-muted'}`}>{me ? 'You' : 'Partner'}</span>
+      {message.text}
+    </div>
+  );
+};
 
 /** Pre-first-chunk indicator: three pulsing status squares. */
 const TypingPulse: React.FC = () => (
@@ -103,11 +107,11 @@ const DialogueComposer: React.FC<{
         <button
           onClick={onRefactor}
           disabled={!canRefactor}
-          className="flex-1 p-[11px] bg-transparent border border-[rgba(255,16,96,0.3)] text-hld-magenta font-mono uppercase tracking-[0.14em] text-[8px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[rgba(255,16,96,0.06)] hover:shadow-[0_0_20px_rgba(255,16,96,0.3)] bracketed"
-          style={{"--br-color": "var(--tw-colors-hld-magenta)"} as React.CSSProperties}
+          className="flex-1 py-[11px] bracketed hld-lit-magenta font-mono uppercase tracking-[0.12em] text-[9.5px] font-bold flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed"
+          style={{ "--br-color": "var(--color-hld-magenta)" } as CSSProperties}
           title="Synthesize this dialogue into a new analysis version"
         >
-          {isProcessing ? <>Refactoring...</> : <><FlaskConical size={10} /> Conclude & Refactor</>}
+          {isProcessing ? <>Refactoring…</> : <><FlaskConical size={10} /> Conclude → new version</>}
         </button>
         {canClear && (
           <button
@@ -155,11 +159,11 @@ export const DialogueTab: React.FC = () => {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
-      {/* Focus banner: what this dialogue is about */}
+      {/* Focus banner: what this dialogue is pinned to */}
       {context && (
-        <div className="m-3 mb-0 p-[8px] border border-hld-border bg-hld-surface2 shrink-0">
-          <div className="text-[6px] font-mono uppercase tracking-[0.15em] text-hld-cyan mb-[3px]">Focus</div>
-          <div className="text-[9px] text-hld-muted-text font-sans leading-[1.5] whitespace-pre-wrap line-clamp-3">
+        <div className="m-3 mb-0 p-[8px] border border-hld-border bg-hld-surface2/50 shrink-0 bracketed" style={{ "--br-color": "var(--color-hld-purple)" } as CSSProperties}>
+          <div className="text-[7px] font-mono uppercase tracking-[0.15em] text-hld-purple mb-[3px]">Focus</div>
+          <div className="text-[9px] text-hld-muted-text font-sans leading-snug whitespace-pre-wrap line-clamp-3">
             {context}
           </div>
         </div>
