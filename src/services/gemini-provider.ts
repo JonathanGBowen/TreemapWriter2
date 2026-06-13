@@ -15,7 +15,7 @@ import type {
   DiagnosticResult,
   Dependency,
 } from '../types';
-import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
+import { buildDiagnosticPrompt } from '../lib/constants';
 import { safeJsonParse } from '../lib/utils';
 import {
   buildAnalysisRequestText,
@@ -50,6 +50,11 @@ const DIALOGUE_DEFAULT_THINKING = 8192;
 // Analysis reads the whole subtree (fullContent), so the cap is far above
 // the 12000/5000 of the targeted flows — it only guards pathological inputs.
 const ANALYSIS_INPUT_CAP = 60000;
+// Dialogue history is resent in full each turn (stateless, reload-faithful);
+// this window keeps a very long exchange from growing the request unbounded.
+const DIALOGUE_HISTORY_WINDOW = 40;
+// Bound the analysis JSON injected into the dialogue system instruction.
+const DIALOGUE_ANALYSIS_CAP = 12000;
 
 const VALID_FUNCTIONS: SectionFunction[] = [
   'introduce', 'explicate', 'argue', 'compare', 'critique',
@@ -421,25 +426,34 @@ USER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals f
     return (response.text || '').trim();
   }
 
-  async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
-    const prompt = buildAnalysisRequestText(
-      input.sectionTitle,
-      input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
-      input.config.analysisPrompt || DEFAULT_PROMPTS_CONFIG.analysisPrompt,
-    );
-
+  /** Shared request/parse/validate for the two analysis-producing calls. */
+  private async generateAnalysis(
+    prompt: string,
+    modelId: string | undefined,
+    thinkingBudget: number | undefined,
+    parseError = 'Analysis response could not be parsed.',
+  ): Promise<SectionAnalysis> {
     const response = await this.client.models.generateContent({
-      model: input.modelId || ANALYSIS_DEFAULT_MODEL,
+      model: modelId || ANALYSIS_DEFAULT_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: input.thinkingBudget ?? ANALYSIS_DEFAULT_THINKING },
+        thinkingConfig: { thinkingBudget: thinkingBudget ?? ANALYSIS_DEFAULT_THINKING },
       },
     });
 
     const analysis = normalizeAnalysis(safeJsonParse(response.text || '', null));
-    if (!analysis) throw new Error('Analysis response could not be parsed.');
+    if (!analysis) throw new Error(parseError);
     return analysis;
+  }
+
+  async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
+    const prompt = buildAnalysisRequestText(
+      input.sectionTitle,
+      input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      input.config.analysisPrompt,
+    );
+    return this.generateAnalysis(prompt, input.modelId, input.thinkingBudget);
   }
 
   async refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis> {
@@ -448,21 +462,14 @@ USER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals f
       sectionText: input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
       analysisJson: JSON.stringify(input.analysis, null, 2),
       transcript: formatTranscript(input.dialogue, input.dialogueContext),
-      prompt: input.config.refactorAnalysisPrompt || DEFAULT_PROMPTS_CONFIG.refactorAnalysisPrompt,
+      prompt: input.config.refactorAnalysisPrompt,
     });
-
-    const response = await this.client.models.generateContent({
-      model: input.modelId || ANALYSIS_DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: input.thinkingBudget ?? ANALYSIS_DEFAULT_THINKING },
-      },
-    });
-
-    const analysis = normalizeAnalysis(safeJsonParse(response.text || '', null));
-    if (!analysis) throw new Error('Refactored analysis could not be parsed.');
-    return analysis;
+    return this.generateAnalysis(
+      prompt,
+      input.modelId,
+      input.thinkingBudget,
+      'Refactored analysis could not be parsed.',
+    );
   }
 
   /**
@@ -471,17 +478,26 @@ USER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals f
    * conversation survives reloads and the provider holds no state.
    */
   async *continueDialogue(input: ContinueDialogueInput): AsyncIterable<string> {
+    const analysisJson = input.analysis
+      ? JSON.stringify(input.analysis).slice(0, DIALOGUE_ANALYSIS_CAP)
+      : '';
     const systemInstruction = [
-      input.config.dialoguePrompt || DEFAULT_PROMPTS_CONFIG.dialoguePrompt,
+      input.config.dialoguePrompt,
       `CONTEXT:\n${input.context}`,
-      input.analysis ? `CURRENT ANALYSIS (JSON):\n${JSON.stringify(input.analysis)}` : '',
+      analysisJson ? `CURRENT ANALYSIS (JSON):\n${analysisJson}` : '',
     ]
       .filter(Boolean)
       .join('\n\n');
 
+    // Send only the most recent turns. Trim any leading non-user turn: the
+    // Gemini API rejects a `contents` array that doesn't begin with `user`.
+    let recent = input.messages.slice(-DIALOGUE_HISTORY_WINDOW);
+    const firstUser = recent.findIndex((m) => m.role === 'user');
+    if (firstUser > 0) recent = recent.slice(firstUser);
+
     const stream = await this.client.models.generateContentStream({
       model: input.modelId || DIALOGUE_DEFAULT_MODEL,
-      contents: input.messages.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+      contents: recent.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
       config: {
         systemInstruction,
         thinkingConfig: { thinkingBudget: input.thinkingBudget ?? DIALOGUE_DEFAULT_THINKING },

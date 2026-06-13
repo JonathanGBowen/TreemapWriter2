@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ChevronRight, MessageSquareQuote, Network, RefreshCw } from "lucide-react";
 import type { AnalysisVersion, DialogueMessage, SectionAnalysis } from "../../types";
 import { useStore } from "../../state";
@@ -161,6 +161,13 @@ export const AnalysisTab: React.FC = () => {
   const setActiveAnalysisVersion = useStore(s => s.setActiveAnalysisVersion);
   const currentSection = useCurrentSection();
   const { runAnalysis, interrogate } = useAnalysisActions();
+  // Memoize the (linear) content hash so it isn't recomputed on every render —
+  // AnalysisTab re-renders on any testSuite change. Declared before the early
+  // return to satisfy the rules of hooks.
+  const contentHash = useMemo(
+    () => computeHash(currentSection?.fullContent ?? ''),
+    [currentSection?.fullContent],
+  );
 
   if (!currentSection) return null;
 
@@ -168,7 +175,7 @@ export const AnalysisTab: React.FC = () => {
   const versions = state?.versions ?? [];
   const active = versions.find(v => v.id === state?.activeVersionId) ?? versions[0];
   // Surfaced, never auto-invalidated: versions are history, not cache.
-  const edited = !!active && active.inputHash !== computeHash(currentSection.fullContent);
+  const edited = !!active && active.inputHash !== contentHash;
 
   const analyzeButton = <AnalyzeButton hasVersion={!!active} busy={isProcessing} onRun={runAnalysis} />;
 

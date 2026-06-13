@@ -127,6 +127,11 @@ export const makeVersionLabel = (
   kind: 'analysis' | 'refactor',
 ): string => `${kind} ${versions.filter((v) => v.kind === kind).length + 1}`;
 
+// Monotonic per-session counter so two versions created in the same
+// millisecond still get distinct ids — `av_${Date.now()}` alone can collide,
+// and the id doubles as a React key and the activeVersionId lookup key.
+let versionSeq = 0;
+
 export const makeAnalysisVersion = (args: {
   kind: 'analysis' | 'refactor';
   prevVersions: AnalysisVersion[];
@@ -134,7 +139,7 @@ export const makeAnalysisVersion = (args: {
   inputHash: string;
   sourceDialogue?: DialogueMessage[];
 }): AnalysisVersion => ({
-  id: `av_${Date.now()}`,
+  id: `av_${Date.now()}_${versionSeq++}`,
   timestamp: Date.now(),
   label: makeVersionLabel(args.prevVersions, args.kind),
   kind: args.kind,

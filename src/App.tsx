@@ -24,7 +24,7 @@ import { ConflictResolutionModal } from "./features/modals/ConflictResolutionMod
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
-import { DEFAULT_PROMPTS_CONFIG } from "./lib/constants";
+import { normalizePromptsConfig } from "./lib/constants";
 import defaultProjectData from "./lib/defaultProject.json";
 import { Section, TestSuite, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
@@ -806,8 +806,8 @@ export const App = () => {
             setMarkdown(snapshot.markdown);
             setTestSuite(snapshot.testSuite || {});
             if (snapshot.interpolationConfig) {
-              // Merge over defaults: old snapshots predate newer prompt fields.
-              setPromptsConfig({ ...DEFAULT_PROMPTS_CONFIG, ...snapshot.interpolationConfig });
+              // Normalized: old snapshots predate newer prompt fields.
+              setPromptsConfig(normalizePromptsConfig(snapshot.interpolationConfig));
             }
             if (activeProjectId) {
               saveCurrentState();

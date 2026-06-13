@@ -86,7 +86,7 @@ const DialogueComposer: React.FC<{
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend(); }}
           placeholder="Critique or question..."
           className="flex-1 min-w-0 p-[8px] text-[10px] border border-hld-border bg-[#080d13] text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
         />
@@ -168,7 +168,8 @@ export const DialogueTab: React.FC = () => {
       <Transcript scrollRef={scrollRef} messages={messages} isStreaming={isStreaming} streamedText={streamedText} />
 
       <DialogueComposer
-        canSend={!isStreaming}
+        key={currentSection.id}
+        canSend={!isStreaming && !isProcessing}
         canRefactor={canRefactor}
         canClear={messages.length > 0 || !!context}
         isStreaming={isStreaming}

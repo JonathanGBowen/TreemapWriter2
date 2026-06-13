@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef, useLayoutEffect, useMemo } from "react";
+import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { Eye, Clock, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
+import { useCurrentSection } from "../tests-panel/use-current-section";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -59,15 +60,6 @@ const findSectionForLine = (nodes: Section[], line: number): Section | null => {
   return null;
 };
 
-const findSectionById = (nodes: Section[], id: string): Section | null => {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    const found = findSectionById(node.children, id);
-    if (found) return found;
-  }
-  return null;
-};
-
 export const EditorPanel: React.FC<EditorPanelProps> = ({
   handleSave,
   editorRef,
@@ -88,7 +80,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const initialLineIndex = useStore(s => s.activeLineIndex);
   const onLineFocus = useStore(s => s.setActiveLineIndex);
   const sections = useStore(s => s.sections);
-  const selectedId = useStore(s => s.selectedId);
   const onSectionChange = useStore(s => s.setSelectedId);
   const projectName = useStore(s => s.projectName);
   const setShowHistoryModal = useStore(s => s.setShowHistoryModal);
@@ -96,10 +87,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const toggleFocusMode = () => setFocusMode(!focusMode);
   const onOpenHistory = () => setShowHistoryModal(true);
 
-  const currentSection = useMemo(
-    () => (selectedId ? findSectionById(sections, selectedId) : null),
-    [selectedId, sections],
-  );
+  const currentSection = useCurrentSection();
   
   const [titleInput, setTitleInput] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);

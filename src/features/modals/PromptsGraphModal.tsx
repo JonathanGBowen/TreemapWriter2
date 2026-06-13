@@ -111,23 +111,27 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
             <div className="grid grid-cols-4 gap-8 w-full max-w-3xl relative mt-12">
               {/* Connecting lines via SVG */}
               <svg className="absolute -top-[50px] left-0 w-full h-[600px] pointer-events-none stroke-slate-700 stroke-2 fill-none" style={{ zIndex: 0 }}>
-                 {/* Hub to 3 pillars */}
-                 <path d="M 384 0 L 384 40 L 128 40 L 128 60" />
-                 <path d="M 384 0 L 384 40 L 384 60" />
-                 <path d="M 384 0 L 384 40 L 640 40 L 640 60" />
+                 {/* Hub to 4 pillars */}
+                 <path d="M 384 0 L 384 40 L 84 40 L 84 60" />
+                 <path d="M 384 0 L 384 40 L 284 40 L 284 60" />
+                 <path d="M 384 0 L 384 40 L 484 40 L 484 60" />
+                 <path d="M 384 0 L 384 40 L 684 40 L 684 60" />
                  
-                 {/* Pillar 1 lines */}
-                 <path d="M 128 120 L 128 140" />
-                 <path d="M 128 200 L 128 220" />
-                 <path d="M 128 280 L 128 300" />
+                 {/* Pillar 1 lines (Structural — 4 nodes) */}
+                 <path d="M 84 120 L 84 140" />
+                 <path d="M 84 200 L 84 220" />
+                 <path d="M 84 280 L 84 300" />
                  
-                 {/* Pillar 2 lines */}
-                 <path d="M 384 120 L 384 140" />
-                 <path d="M 384 200 L 384 220" />
+                 {/* Pillar 2 lines (Diagnostic — 3 nodes) */}
+                 <path d="M 284 120 L 284 140" />
+                 <path d="M 284 200 L 284 220" />
                  
-                 {/* Pillar 3 lines */}
-                 <path d="M 640 120 L 640 140" />
-                 <path d="M 640 200 L 640 220" />
+                 {/* Pillar 3 lines (Generative — 2 nodes) */}
+                 <path d="M 484 120 L 484 140" />
+
+                 {/* Pillar 4 lines (Exegesis — 3 nodes) */}
+                 <path d="M 684 120 L 684 140" />
+                 <path d="M 684 200 L 684 220" />
               </svg>
 
               {/* Structural Specification */}

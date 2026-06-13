@@ -5,6 +5,7 @@ import { useCurrentSection } from "./use-current-section";
 import { SpecTab } from "./SpecTab";
 import { AnalysisTab } from "./AnalysisTab";
 import { DialogueTab } from "./DialogueTab";
+import { PersonaBanner } from "./PersonaBanner";
 
 const TABS = [
   { id: 'spec', label: 'Spec', icon: CheckCircle },
@@ -110,7 +111,10 @@ export const TestsPanel: React.FC = () => {
           {tab === 'dialogue' && <DialogueTab />}
         </>
       ) : (
-        <div className="flex-1 overflow-y-auto p-3 bg-[#080d13]">
+        <div className="flex-1 overflow-y-auto p-3 bg-[#080d13] space-y-[10px]">
+          {/* The persona/evaluator is a Spec-tab concern; surface it here too so
+              it stays visible with no section selected, as it was pre-tabs. */}
+          {tab === 'spec' && <PersonaBanner />}
           <div className="text-center text-hld-muted mt-10">
             <Layout size={32} className="mx-auto mb-2 opacity-50" />
             <p className="font-mono uppercase tracking-[0.14em] text-[8px]">Select a section</p>

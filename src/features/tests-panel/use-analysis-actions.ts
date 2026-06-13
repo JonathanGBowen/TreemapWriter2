@@ -63,12 +63,17 @@ const runDialogueTurn = async (args: {
  *
  * Analyze/refactor set the global `isProcessing` (the existing convention
  * for heavyweight AI calls); dialogue turns only set the per-section
- * in-flight guard, so a chat never locks the rest of the app.
+ * in-flight guard, so a chat never locks the rest of the app. The two locks
+ * are mutually exclusive *for a given section*: every entry point bails if
+ * either is held, so a refactor can't run while a turn streams (and vice
+ * versa) and they can never race two writes to the same sidecar.
+ *
+ * `testSuite`/`promptsConfig`/`isProcessing` are read via `getState()` at
+ * call time rather than subscribed, so the callbacks keep a stable identity
+ * (they don't churn on every streamed-message commit) and the guards always
+ * see live values instead of a render-time snapshot.
  */
 export const useAnalysisActions = () => {
-  const testSuite = useStore((s) => s.testSuite);
-  const promptsConfig = useStore((s) => s.promptsConfig);
-  const isProcessing = useStore((s) => s.isProcessing);
   const setIsProcessing = useStore((s) => s.setIsProcessing);
   const setTestsPanelTab = useStore((s) => s.setTestsPanelTab);
   const addAnalysisVersion = useStore((s) => s.addAnalysisVersion);
@@ -82,10 +87,14 @@ export const useAnalysisActions = () => {
   const [streaming, setStreaming] = useState<{ sectionId: string; text: string } | null>(null);
 
   const runAnalysis = useCallback(async () => {
-    if (!currentSection || isProcessing) return;
+    if (!currentSection) return;
     // Capture at call time: edits or a section switch mid-flight must not
     // redirect where the result lands or what the inputHash describes.
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
+    const { testSuite, promptsConfig, isProcessing } = useStore.getState();
+    // Mutually exclusive with a streaming dialogue turn for this section:
+    // both would write the same sidecar and could otherwise race two saves.
+    if (isProcessing || inFlight.has(sectionId)) return;
     const prevVersions = testSuite[sectionId]?.analysis?.versions ?? [];
 
     setIsProcessing(true);
@@ -102,21 +111,50 @@ export const useAnalysisActions = () => {
         inputHash: computeHash(sectionText),
       });
       addAnalysisVersion(sectionId, version);
-      await saveCurrentState();
     } catch (e) {
       toast.error(`Analysis failed: ${errMessage(e)}`);
+      setIsProcessing(false);
+      return;
+    }
+    // The analysis succeeded the moment the version is in state; a persistence
+    // failure is a distinct error, not "analysis failed".
+    try {
+      await saveCurrentState();
+    } catch (e) {
+      toast.error(`Analysis saved in memory, but writing to disk failed: ${errMessage(e)}`);
     } finally {
       setIsProcessing(false);
     }
-  }, [currentSection, isProcessing, testSuite, promptsConfig, setIsProcessing, addAnalysisVersion, saveCurrentState]);
+  }, [currentSection, setIsProcessing, addAnalysisVersion, saveCurrentState]);
 
   const interrogate = useCallback(
     (context: string) => {
       if (!currentSection) return;
-      startDialogue(currentSection.id, context);
+      const sectionId = currentSection.id;
+      // A turn is mid-stream for this section: don't disturb it. Clearing now
+      // would be undone by the stream's onCommit (which rebuilds from the
+      // captured nextMessages), resurrecting the transcript under a new focus.
+      // Just surface the live dialogue instead.
+      if (inFlight.has(sectionId)) {
+        setTestsPanelTab('dialogue');
+        return;
+      }
+      const state = useStore.getState().testSuite[sectionId]?.analysis;
+      // A glyph seeds a *fresh* focused dialogue. If an unconcluded dialogue
+      // about a different focus is open, clear it so the transcript matches
+      // the FOCUS banner (a concluded dialogue is preserved on the version's
+      // sourceDialogue by refactor; this only discards an in-progress chat
+      // the user is redirecting away from). Re-clicking the same focus keeps
+      // the conversation going.
+      if (state && state.dialogue.length > 0 && state.dialogueContext !== context) {
+        clearDialogue(sectionId);
+      }
+      startDialogue(sectionId, context);
       setTestsPanelTab('dialogue');
+      // Persist the seed so the focus survives a reload before the first send.
+      void saveCurrentState().catch(() => {});
     },
-    [currentSection, startDialogue, setTestsPanelTab],
+    [currentSection, clearDialogue, startDialogue, setTestsPanelTab, saveCurrentState],
   );
 
   const sendDialogueMessage = useCallback(
@@ -124,7 +162,10 @@ export const useAnalysisActions = () => {
       const trimmed = text.trim();
       if (!currentSection || !trimmed) return;
       const sectionId = currentSection.id;
-      if (inFlight.has(sectionId)) return;
+      const { testSuite, promptsConfig, isProcessing } = useStore.getState();
+      // Mutually exclusive with analyze/refactor (isProcessing) and with a
+      // second concurrent send (inFlight) on this section.
+      if (inFlight.has(sectionId) || isProcessing) return;
 
       const state = testSuite[sectionId]?.analysis;
       const nextMessages: DialogueMessage[] = [
@@ -145,10 +186,10 @@ export const useAnalysisActions = () => {
             messages: nextMessages,
             config: promptsConfig,
           },
-          onProgress: (text) => setStreaming({ sectionId, text }),
-          onCommit: (text) => {
-            setDialogue(sectionId, [...nextMessages, { role: 'model', text }]);
-            void saveCurrentState();
+          onProgress: (t) => setStreaming({ sectionId, text: t }),
+          onCommit: (t) => {
+            setDialogue(sectionId, [...nextMessages, { role: 'model', text: t }]);
+            void saveCurrentState().catch(() => {});
           },
         });
       } finally {
@@ -156,13 +197,14 @@ export const useAnalysisActions = () => {
         setStreaming((prev) => (prev?.sectionId === sectionId ? null : prev));
       }
     },
-    [currentSection, testSuite, promptsConfig, setDialogue, saveCurrentState],
+    [currentSection, setDialogue, saveCurrentState],
   );
 
   const concludeAndRefactor = useCallback(async () => {
-    if (!currentSection || isProcessing) return;
+    if (!currentSection) return;
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
-    if (inFlight.has(sectionId)) return;
+    const { testSuite, promptsConfig, isProcessing } = useStore.getState();
+    if (isProcessing || inFlight.has(sectionId)) return;
 
     const state = testSuite[sectionId]?.analysis;
     const active = activeVersionOf(state);
@@ -190,23 +232,31 @@ export const useAnalysisActions = () => {
       addAnalysisVersion(sectionId, version);
       clearDialogue(sectionId);
       setTestsPanelTab('analysis');
-      await saveCurrentState();
-      toast.success('Analysis refactored.');
     } catch (e) {
       // Dialogue and versions are untouched on failure: nothing mutates
       // until the provider call resolves.
       toast.error(`Refactor failed: ${errMessage(e)}`);
+      setIsProcessing(false);
+      return;
+    }
+    // The refactor succeeded the moment the version is in state; a save
+    // failure is its own, distinct error.
+    try {
+      await saveCurrentState();
+      toast.success('Analysis refactored.');
+    } catch (e) {
+      toast.error(`Refactor saved in memory, but writing to disk failed: ${errMessage(e)}`);
     } finally {
       setIsProcessing(false);
     }
-  }, [currentSection, isProcessing, testSuite, promptsConfig, setIsProcessing, addAnalysisVersion, clearDialogue, setTestsPanelTab, saveCurrentState]);
+  }, [currentSection, setIsProcessing, addAnalysisVersion, clearDialogue, setTestsPanelTab, saveCurrentState]);
 
   const discardDialogue = useCallback(() => {
     if (!currentSection || inFlight.has(currentSection.id)) return;
     // No confirm: a cleared transcript is recoverable — dialogues ride the
     // per-section YAML sidecar into git history (Version History restores).
     clearDialogue(currentSection.id);
-    void saveCurrentState();
+    void saveCurrentState().catch(() => {});
   }, [currentSection, clearDialogue, saveCurrentState]);
 
   return { runAnalysis, interrogate, sendDialogueMessage, concludeAndRefactor, discardDialogue, streaming };
