@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
-import { DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
+import { DEFAULT_PROMPTS_CONFIG, normalizePromptsConfig } from '../lib/constants';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
 import { isTauri } from '../services/tauri-environment';
@@ -175,7 +175,11 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       hiddenSectionIds: defaultProjectData.hiddenSectionIds || [],
       activePersonaId: defaultProjectData.activePersonaId || 'default',
       customPersonas: defaultProjectData.customPersonas || [],
-      promptsConfig: (defaultProjectData.promptsConfig as PromptsConfig) || DEFAULT_PROMPTS_CONFIG,
+      // Normalized at the hydration boundary: the embedded demo config predates
+      // newer prompt fields (the analysis/dialogue prompts) and must not blank them.
+      promptsConfig: normalizePromptsConfig(
+        defaultProjectData.promptsConfig as Partial<PromptsConfig> | undefined,
+      ),
       cachedCoachAdvice: defaultProjectData.cachedCoachAdvice || null,
       selectedId: null,
       activeLineIndex: null,
@@ -276,11 +280,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         })),
         activePersonaId: data.activePersonaId || 'default',
         customPersonas: Array.isArray(data.customPersonas) ? data.customPersonas : [],
-        promptsConfig: data.promptsConfig
-          ? { ...DEFAULT_PROMPTS_CONFIG, ...data.promptsConfig }
-          : data.interpolationConfig
-            ? { ...DEFAULT_PROMPTS_CONFIG, ...data.interpolationConfig }
-            : DEFAULT_PROMPTS_CONFIG,
+        promptsConfig: normalizePromptsConfig(
+          (data.promptsConfig ?? data.interpolationConfig) as Partial<PromptsConfig> | undefined,
+        ),
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
 
@@ -436,7 +438,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       testSuite: snapshot.testSuite || {},
     });
     if (snapshot.interpolationConfig) {
-      set({ promptsConfig: snapshot.interpolationConfig });
+      // Normalized: snapshots taken before newer prompt fields existed would
+      // otherwise restore them as empty strings.
+      set({ promptsConfig: normalizePromptsConfig(snapshot.interpolationConfig) });
     }
     if (get().activeProjectId) {
       await get().saveCurrentState();

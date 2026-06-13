@@ -101,7 +101,15 @@ src/
 │   ├── sidebar/Sidebar.tsx
 │   ├── treemap/Treemap.tsx
 │   ├── editor/EditorPanel.tsx
-│   ├── tests-panel/TestsPanel.tsx
+│   ├── tests-panel/             right panel: Spec | Analysis | Dialogue tabs
+│   │   ├── TestsPanel.tsx       shell: header, tab strip, resize
+│   │   ├── SpecTab.tsx          spec editor + diagnostics (the original surface)
+│   │   ├── SpecDiagnostics.tsx  STATUS_CONFIG + diagnostic results rendering
+│   │   ├── SpecDependencies.tsx dependencies editor
+│   │   ├── AnalysisTab.tsx      per-section argument reconstruction + versions
+│   │   ├── DialogueTab.tsx      Socratic dialogue (streaming) + refactor
+│   │   ├── use-analysis-actions.ts  orchestration hook (provider + slice actions)
+│   │   └── use-current-section.ts   shared selectedId → Section derivation
 │   ├── tutorial/Tutorial.tsx
 │   └── modals/<Name>Modal.tsx (one file per modal; flat — sub-feature folders
 │                                may emerge in Phase 2+ as features mature)

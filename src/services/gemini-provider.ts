@@ -7,6 +7,7 @@
 import { GoogleGenAI } from '@google/genai';
 import type {
   Section,
+  SectionAnalysis,
   SectionFunction,
   RequiredMove,
   SectionSpec,
@@ -16,6 +17,12 @@ import type {
 } from '../types';
 import { buildDiagnosticPrompt } from '../lib/constants';
 import { safeJsonParse } from '../lib/utils';
+import {
+  buildAnalysisRequestText,
+  buildRefactorRequestText,
+  formatTranscript,
+  normalizeAnalysis,
+} from '../lib/analysis-helpers';
 import type {
   AIProvider,
   GenerateSpecsInput,
@@ -26,11 +33,28 @@ import type {
   GeneratePersonasInput,
   PersonaSuggestion,
   RefineSpecInput,
+  AnalyzeSectionInput,
+  RefactorAnalysisInput,
+  ContinueDialogueInput,
 } from './ai-provider';
 
 const PERSONAS_DEFAULT_MODEL = 'gemini-3-flash-preview';
 const REFINE_SPEC_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
 const REFINE_SPEC_DEFAULT_THINKING = 16000;
+const ANALYSIS_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
+const ANALYSIS_DEFAULT_THINKING = 16000;
+const DIALOGUE_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
+// Lower than analysis: the dialogue streams, and a deep thinking pass
+// before the first token makes the chat feel dead.
+const DIALOGUE_DEFAULT_THINKING = 8192;
+// Analysis reads the whole subtree (fullContent), so the cap is far above
+// the 12000/5000 of the targeted flows — it only guards pathological inputs.
+const ANALYSIS_INPUT_CAP = 60000;
+// Dialogue history is resent in full each turn (stateless, reload-faithful);
+// this window keeps a very long exchange from growing the request unbounded.
+const DIALOGUE_HISTORY_WINDOW = 40;
+// Bound the analysis JSON injected into the dialogue system instruction.
+const DIALOGUE_ANALYSIS_CAP = 12000;
 
 const VALID_FUNCTIONS: SectionFunction[] = [
   'introduce', 'explicate', 'argue', 'compare', 'critique',
@@ -400,6 +424,89 @@ USER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals f
     });
 
     return (response.text || '').trim();
+  }
+
+  /** Shared request/parse/validate for the two analysis-producing calls. */
+  private async generateAnalysis(
+    prompt: string,
+    modelId: string | undefined,
+    thinkingBudget: number | undefined,
+    parseError = 'Analysis response could not be parsed.',
+  ): Promise<SectionAnalysis> {
+    const response = await this.client.models.generateContent({
+      model: modelId || ANALYSIS_DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: thinkingBudget ?? ANALYSIS_DEFAULT_THINKING },
+      },
+    });
+
+    const analysis = normalizeAnalysis(safeJsonParse(response.text || '', null));
+    if (!analysis) throw new Error(parseError);
+    return analysis;
+  }
+
+  async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
+    const prompt = buildAnalysisRequestText(
+      input.sectionTitle,
+      input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      input.config.analysisPrompt,
+    );
+    return this.generateAnalysis(prompt, input.modelId, input.thinkingBudget);
+  }
+
+  async refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis> {
+    const prompt = buildRefactorRequestText({
+      sectionTitle: input.sectionTitle,
+      sectionText: input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      analysisJson: JSON.stringify(input.analysis, null, 2),
+      transcript: formatTranscript(input.dialogue, input.dialogueContext),
+      prompt: input.config.refactorAnalysisPrompt,
+    });
+    return this.generateAnalysis(
+      prompt,
+      input.modelId,
+      input.thinkingBudget,
+      'Refactored analysis could not be parsed.',
+    );
+  }
+
+  /**
+   * Stateless streaming chat: the full message history travels on every
+   * turn (the dialogue lives in the store, not in an SDK session), so a
+   * conversation survives reloads and the provider holds no state.
+   */
+  async *continueDialogue(input: ContinueDialogueInput): AsyncIterable<string> {
+    const analysisJson = input.analysis
+      ? JSON.stringify(input.analysis).slice(0, DIALOGUE_ANALYSIS_CAP)
+      : '';
+    const systemInstruction = [
+      input.config.dialoguePrompt,
+      `CONTEXT:\n${input.context}`,
+      analysisJson ? `CURRENT ANALYSIS (JSON):\n${analysisJson}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    // Send only the most recent turns. Trim any leading non-user turn: the
+    // Gemini API rejects a `contents` array that doesn't begin with `user`.
+    let recent = input.messages.slice(-DIALOGUE_HISTORY_WINDOW);
+    const firstUser = recent.findIndex((m) => m.role === 'user');
+    if (firstUser > 0) recent = recent.slice(firstUser);
+
+    const stream = await this.client.models.generateContentStream({
+      model: input.modelId || DIALOGUE_DEFAULT_MODEL,
+      contents: recent.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+      config: {
+        systemInstruction,
+        thinkingConfig: { thinkingBudget: input.thinkingBudget ?? DIALOGUE_DEFAULT_THINKING },
+      },
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.text) yield chunk.text;
+    }
   }
 
   private parseSpecResponse(raw: Record<string, any>): Record<string, SectionSpec> {

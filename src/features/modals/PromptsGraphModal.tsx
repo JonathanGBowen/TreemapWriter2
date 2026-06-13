@@ -66,6 +66,9 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     generatePersonasPrompt: 'PERSONA GENERATOR',
     suggestContentPrompt: 'CONTENT SUGGESTER',
     dependenciesPrompt: 'DEPENDENCY ESTIMATOR',
+    analysisPrompt: 'ANALYSIS ENGINE',
+    refactorAnalysisPrompt: 'REFACTOR SYNTHESIZER',
+    dialoguePrompt: 'SOCRATIC PARTNER',
   };
 
   const nodeDescriptions: Record<keyof PromptsConfig, string> = {
@@ -77,7 +80,10 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     coachPrompt: "The diagnostic framework used by the ADHD Coach to formulate actionable writing plans.",
     generatePersonasPrompt: "The creative engine that generates AI reviewer personas based on document sampling.",
     suggestContentPrompt: "The ghostwriter persona used when generating specific content suggestions based on section specs.",
-    dependenciesPrompt: "Logic for identifying structural prerequisites and references between different document sections."
+    dependenciesPrompt: "Logic for identifying structural prerequisites and references between different document sections.",
+    analysisPrompt: "Exegetical reconstruction of a section's argument: thesis, key concepts, premises, conclusion, objections.",
+    refactorAnalysisPrompt: "Synthesizes a Socratic dialogue back into a refined analysis version.",
+    dialoguePrompt: "The Socratic partner persona that interrogates parts of an analysis with the author.",
   };
 
   return (
@@ -101,27 +107,31 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
                MASTER DOCUMENT REPOSITORY
             </div>
 
-            {/* 3 Pillars */}
-            <div className="grid grid-cols-3 gap-8 w-full max-w-3xl relative mt-12">
+            {/* 4 Pillars */}
+            <div className="grid grid-cols-4 gap-8 w-full max-w-3xl relative mt-12">
               {/* Connecting lines via SVG */}
               <svg className="absolute -top-[50px] left-0 w-full h-[600px] pointer-events-none stroke-slate-700 stroke-2 fill-none" style={{ zIndex: 0 }}>
-                 {/* Hub to 3 pillars */}
-                 <path d="M 384 0 L 384 40 L 128 40 L 128 60" />
-                 <path d="M 384 0 L 384 40 L 384 60" />
-                 <path d="M 384 0 L 384 40 L 640 40 L 640 60" />
+                 {/* Hub to 4 pillars */}
+                 <path d="M 384 0 L 384 40 L 84 40 L 84 60" />
+                 <path d="M 384 0 L 384 40 L 284 40 L 284 60" />
+                 <path d="M 384 0 L 384 40 L 484 40 L 484 60" />
+                 <path d="M 384 0 L 384 40 L 684 40 L 684 60" />
                  
-                 {/* Pillar 1 lines */}
-                 <path d="M 128 120 L 128 140" />
-                 <path d="M 128 200 L 128 220" />
-                 <path d="M 128 280 L 128 300" />
+                 {/* Pillar 1 lines (Structural — 4 nodes) */}
+                 <path d="M 84 120 L 84 140" />
+                 <path d="M 84 200 L 84 220" />
+                 <path d="M 84 280 L 84 300" />
                  
-                 {/* Pillar 2 lines */}
-                 <path d="M 384 120 L 384 140" />
-                 <path d="M 384 200 L 384 220" />
+                 {/* Pillar 2 lines (Diagnostic — 3 nodes) */}
+                 <path d="M 284 120 L 284 140" />
+                 <path d="M 284 200 L 284 220" />
                  
-                 {/* Pillar 3 lines */}
-                 <path d="M 640 120 L 640 140" />
-                 <path d="M 640 200 L 640 220" />
+                 {/* Pillar 3 lines (Generative — 2 nodes) */}
+                 <path d="M 484 120 L 484 140" />
+
+                 {/* Pillar 4 lines (Exegesis — 3 nodes) */}
+                 <path d="M 684 120 L 684 140" />
+                 <path d="M 684 200 L 684 220" />
               </svg>
 
               {/* Structural Specification */}
@@ -146,6 +156,14 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
                 <div className="text-center text-purple-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-purple-500/30 pb-2">Generative Inference</div>
                 <Node id="suggestContentPrompt" label="Content Suggester" color="purple" type="process" />
                 <Node id="dependenciesPrompt" label="Dependency Estimator" color="purple" type="process" />
+              </div>
+
+              {/* Exegesis & Dialogue */}
+              <div className="flex flex-col gap-6 w-full z-10 relative">
+                <div className="text-center text-cyan-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-cyan-500/30 pb-2">Exegesis & Dialogue</div>
+                <Node id="analysisPrompt" label="Analysis Engine" color="cyan" type="process" />
+                <Node id="dialoguePrompt" label="Socratic Partner" color="cyan" type="process" />
+                <Node id="refactorAnalysisPrompt" label="Refactor Synthesizer" color="cyan" type="process" />
               </div>
             </div>
 

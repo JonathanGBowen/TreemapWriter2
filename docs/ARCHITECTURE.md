@@ -23,6 +23,7 @@
 |---|---|---|
 | Dissertation prose | `<project>/chapters/*.md` on disk (post-Phase 3) | SQLite `sections` table; Zustand `document-state` |
 | Section specs | `<project>/.twriter/specs/*.spec.yaml` | SQLite `specs` table |
+| Section analyses + dialogues | same `.spec.yaml` sidecar (`analysis:` key) | — |
 | History | `.git/` log of the project folder | — |
 | Diagnostics | SQLite (ephemeral, regenerable) | — |
 | UI state | Zustand `ui-state` (in memory) | — |

@@ -9,6 +9,9 @@ import refineSpecPrompt from './refine-spec.md?raw';
 import generatePersonasPrompt from './generate-personas.md?raw';
 import diagnosticInstruction from './diagnostic.md?raw';
 import dependenciesPrompt from './dependencies.md?raw';
+import analysisPrompt from './analysis.md?raw';
+import refactorAnalysisPrompt from './refactor-analysis.md?raw';
+import dialoguePrompt from './dialogue.md?raw';
 
 const stripTrailingNewline = (s: string) => s.replace(/\n+$/, '');
 
@@ -22,4 +25,17 @@ export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = {
   generatePersonasPrompt: stripTrailingNewline(generatePersonasPrompt),
   diagnosticInstruction: stripTrailingNewline(diagnosticInstruction),
   dependenciesPrompt: stripTrailingNewline(dependenciesPrompt),
+  analysisPrompt: stripTrailingNewline(analysisPrompt),
+  refactorAnalysisPrompt: stripTrailingNewline(refactorAnalysisPrompt),
+  dialoguePrompt: stripTrailingNewline(dialoguePrompt),
 };
+
+/**
+ * Hydration boundary for prompt configs. Persisted configs (project files,
+ * snapshots, the embedded demo) may predate newer prompt fields; merging over
+ * the defaults guarantees every field is populated, so downstream code (the
+ * provider) can trust `config.xPrompt` without per-call fallbacks.
+ */
+export const normalizePromptsConfig = (
+  raw: Partial<PromptsConfig> | null | undefined,
+): PromptsConfig => ({ ...DEFAULT_PROMPTS_CONFIG, ...(raw ?? {}) });

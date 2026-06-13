@@ -1,6 +1,22 @@
 import type { StateCreator } from 'zustand';
-import type { Dependency, Section, SectionSpec, Snapshot, TestSuite, TestSuiteEntry } from '../types';
+import type {
+  AnalysisVersion,
+  Dependency,
+  DialogueMessage,
+  Section,
+  SectionSpec,
+  Snapshot,
+  TestSuite,
+  TestSuiteEntry,
+} from '../types';
 import type { AppState } from '.';
+import {
+  withActiveAnalysisVersion,
+  withAnalysisVersion,
+  withClearedDialogue,
+  withDialogue,
+  withDialogueContext,
+} from '../lib/analysis-helpers';
 
 const blankEntry = (): TestSuiteEntry => ({
   goals: '',
@@ -56,6 +72,20 @@ export interface DocumentStateSlice {
 
   /** Toggle whether a section's text is visible in the focus-mode editor. */
   toggleSectionVisibility: (sectionId: string) => void;
+
+  /**
+   * Analysis/Dialogue mutators (Analysis + Dialogue tabs). No pre-ai-write
+   * snapshot here: versions only accumulate, nothing is overwritten.
+   * `addAnalysisVersion` deliberately does NOT clear the dialogue — only the
+   * refactor flow clears it (explicitly), so a plain re-analyze never
+   * destroys an in-progress conversation.
+   */
+  addAnalysisVersion: (sectionId: string, version: AnalysisVersion) => void;
+  setActiveAnalysisVersion: (sectionId: string, versionId: string) => void;
+  setDialogue: (sectionId: string, messages: DialogueMessage[]) => void;
+  /** Re-aim the dialogue at a new context; existing messages are preserved. */
+  startDialogue: (sectionId: string, context: string) => void;
+  clearDialogue: (sectionId: string) => void;
 }
 
 export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set, get) => ({
@@ -174,4 +204,21 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         ? state.hiddenSectionIds.filter((x) => x !== sectionId)
         : [...state.hiddenSectionIds, sectionId],
     })),
+
+  addAnalysisVersion: (sectionId, version) =>
+    set((state) => ({ testSuite: withAnalysisVersion(state.testSuite, sectionId, version) })),
+
+  setActiveAnalysisVersion: (sectionId, versionId) =>
+    set((state) => ({
+      testSuite: withActiveAnalysisVersion(state.testSuite, sectionId, versionId),
+    })),
+
+  setDialogue: (sectionId, messages) =>
+    set((state) => ({ testSuite: withDialogue(state.testSuite, sectionId, messages) })),
+
+  startDialogue: (sectionId, context) =>
+    set((state) => ({ testSuite: withDialogueContext(state.testSuite, sectionId, context) })),
+
+  clearDialogue: (sectionId) =>
+    set((state) => ({ testSuite: withClearedDialogue(state.testSuite, sectionId) })),
 });
