@@ -7,6 +7,7 @@
 import { GoogleGenAI } from '@google/genai';
 import type {
   Section,
+  SectionAnalysis,
   SectionFunction,
   RequiredMove,
   SectionSpec,
@@ -14,8 +15,14 @@ import type {
   DiagnosticResult,
   Dependency,
 } from '../types';
-import { buildDiagnosticPrompt } from '../lib/constants';
+import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
 import { safeJsonParse } from '../lib/utils';
+import {
+  buildAnalysisRequestText,
+  buildRefactorRequestText,
+  formatTranscript,
+  normalizeAnalysis,
+} from '../lib/analysis-helpers';
 import type {
   AIProvider,
   GenerateSpecsInput,
@@ -26,11 +33,23 @@ import type {
   GeneratePersonasInput,
   PersonaSuggestion,
   RefineSpecInput,
+  AnalyzeSectionInput,
+  RefactorAnalysisInput,
+  ContinueDialogueInput,
 } from './ai-provider';
 
 const PERSONAS_DEFAULT_MODEL = 'gemini-3-flash-preview';
 const REFINE_SPEC_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
 const REFINE_SPEC_DEFAULT_THINKING = 16000;
+const ANALYSIS_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
+const ANALYSIS_DEFAULT_THINKING = 16000;
+const DIALOGUE_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
+// Lower than analysis: the dialogue streams, and a deep thinking pass
+// before the first token makes the chat feel dead.
+const DIALOGUE_DEFAULT_THINKING = 8192;
+// Analysis reads the whole subtree (fullContent), so the cap is far above
+// the 12000/5000 of the targeted flows — it only guards pathological inputs.
+const ANALYSIS_INPUT_CAP = 60000;
 
 const VALID_FUNCTIONS: SectionFunction[] = [
   'introduce', 'explicate', 'argue', 'compare', 'critique',
@@ -400,6 +419,78 @@ USER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals f
     });
 
     return (response.text || '').trim();
+  }
+
+  async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
+    const prompt = buildAnalysisRequestText(
+      input.sectionTitle,
+      input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      input.config.analysisPrompt || DEFAULT_PROMPTS_CONFIG.analysisPrompt,
+    );
+
+    const response = await this.client.models.generateContent({
+      model: input.modelId || ANALYSIS_DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: input.thinkingBudget ?? ANALYSIS_DEFAULT_THINKING },
+      },
+    });
+
+    const analysis = normalizeAnalysis(safeJsonParse(response.text || '', null));
+    if (!analysis) throw new Error('Analysis response could not be parsed.');
+    return analysis;
+  }
+
+  async refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis> {
+    const prompt = buildRefactorRequestText({
+      sectionTitle: input.sectionTitle,
+      sectionText: input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      analysisJson: JSON.stringify(input.analysis, null, 2),
+      transcript: formatTranscript(input.dialogue, input.dialogueContext),
+      prompt: input.config.refactorAnalysisPrompt || DEFAULT_PROMPTS_CONFIG.refactorAnalysisPrompt,
+    });
+
+    const response = await this.client.models.generateContent({
+      model: input.modelId || ANALYSIS_DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: input.thinkingBudget ?? ANALYSIS_DEFAULT_THINKING },
+      },
+    });
+
+    const analysis = normalizeAnalysis(safeJsonParse(response.text || '', null));
+    if (!analysis) throw new Error('Refactored analysis could not be parsed.');
+    return analysis;
+  }
+
+  /**
+   * Stateless streaming chat: the full message history travels on every
+   * turn (the dialogue lives in the store, not in an SDK session), so a
+   * conversation survives reloads and the provider holds no state.
+   */
+  async *continueDialogue(input: ContinueDialogueInput): AsyncIterable<string> {
+    const systemInstruction = [
+      input.config.dialoguePrompt || DEFAULT_PROMPTS_CONFIG.dialoguePrompt,
+      `CONTEXT:\n${input.context}`,
+      input.analysis ? `CURRENT ANALYSIS (JSON):\n${JSON.stringify(input.analysis)}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const stream = await this.client.models.generateContentStream({
+      model: input.modelId || DIALOGUE_DEFAULT_MODEL,
+      contents: input.messages.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+      config: {
+        systemInstruction,
+        thinkingConfig: { thinkingBudget: input.thinkingBudget ?? DIALOGUE_DEFAULT_THINKING },
+      },
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.text) yield chunk.text;
+    }
   }
 
   private parseSpecResponse(raw: Record<string, any>): Record<string, SectionSpec> {

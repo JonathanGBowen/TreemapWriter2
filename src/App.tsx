@@ -806,7 +806,8 @@ export const App = () => {
             setMarkdown(snapshot.markdown);
             setTestSuite(snapshot.testSuite || {});
             if (snapshot.interpolationConfig) {
-              setPromptsConfig(snapshot.interpolationConfig);
+              // Merge over defaults: old snapshots predate newer prompt fields.
+              setPromptsConfig({ ...DEFAULT_PROMPTS_CONFIG, ...snapshot.interpolationConfig });
             }
             if (activeProjectId) {
               saveCurrentState();

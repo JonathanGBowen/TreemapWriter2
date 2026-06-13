@@ -1,0 +1,182 @@
+import React, { useEffect, useRef, useState } from "react";
+import { FlaskConical, MessagesSquare, Send } from "lucide-react";
+import type { DialogueMessage } from "../../types";
+import { useStore } from "../../state";
+import { useCurrentSection } from "./use-current-section";
+import { useAnalysisActions } from "./use-analysis-actions";
+
+const Bubble: React.FC<{ message: DialogueMessage }> = ({ message }) => (
+  <div
+    className={`max-w-[88%] p-[8px] border text-[10px] font-sans leading-[1.6] whitespace-pre-wrap ${
+      message.role === 'user'
+        ? 'ml-auto border-hld-cyan/30 bg-hld-cyan/5 text-hld-text'
+        : 'mr-auto border-hld-border bg-hld-surface2 text-hld-text'
+    }`}
+  >
+    {message.text}
+  </div>
+);
+
+/** Pre-first-chunk indicator: three pulsing status squares. */
+const TypingPulse: React.FC = () => (
+  <div className="flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface2">
+    {[0, 1, 2].map(i => (
+      <div
+        key={i}
+        className="w-[4px] h-[4px] rotate-45 bg-hld-cyan animate-pulse"
+        style={{ animationDelay: `${i * 150}ms` }}
+      />
+    ))}
+  </div>
+);
+
+const Transcript: React.FC<{
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  messages: DialogueMessage[];
+  isStreaming: boolean;
+  streamedText: string;
+}> = ({ scrollRef, messages, isStreaming, streamedText }) => (
+  <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-[8px]">
+    {messages.map((m, i) => (
+      <Bubble key={i} message={m} />
+    ))}
+    {isStreaming && (
+      streamedText
+        ? <Bubble message={{ role: 'model', text: streamedText }} />
+        : <TypingPulse />
+    )}
+  </div>
+);
+
+const DialogueEmptyState: React.FC<{ onOpenAnalysis: () => void }> = ({ onOpenAnalysis }) => (
+  <div className="flex-1 overflow-y-auto p-3 bg-[#080d13] flex flex-col items-center justify-center text-center text-hld-muted">
+    <MessagesSquare size={32} className="mb-2 opacity-50" />
+    <p className="font-mono uppercase tracking-[0.14em] text-[8px] mb-1">No dialogue</p>
+    <p className="text-[9px] font-sans text-hld-muted-text mb-3">Interrogate part of an analysis to begin.</p>
+    <button
+      onClick={onOpenAnalysis}
+      className="p-[8px_14px] bg-transparent border border-hld-border text-hld-muted font-mono uppercase tracking-[0.14em] text-[7px] font-bold hover:text-hld-cyan hover:border-hld-cyan transition-all"
+    >
+      From analysis
+    </button>
+  </div>
+);
+
+const DialogueComposer: React.FC<{
+  canSend: boolean;
+  canRefactor: boolean;
+  canClear: boolean;
+  isStreaming: boolean;
+  isProcessing: boolean;
+  onSend: (text: string) => void;
+  onRefactor: () => void;
+  onClear: () => void;
+}> = ({ canSend, canRefactor, canClear, isStreaming, isProcessing, onSend, onRefactor, onClear }) => {
+  const [input, setInput] = useState('');
+
+  const handleSend = () => {
+    if (!canSend || !input.trim()) return;
+    onSend(input);
+    setInput('');
+  };
+
+  return (
+    <div className="p-3 pt-0 space-y-[6px] shrink-0">
+      <div className="flex gap-[6px]">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+          placeholder="Critique or question..."
+          className="flex-1 min-w-0 p-[8px] text-[10px] border border-hld-border bg-[#080d13] text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!canSend || !input.trim()}
+          className="w-[32px] flex items-center justify-center border border-hld-border text-hld-muted hover:text-hld-cyan hover:bg-hld-cyan/10 hover:border-hld-cyan transition-all disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
+          title="Send"
+        >
+          <Send size={12} />
+        </button>
+      </div>
+      <div className="flex gap-[6px] items-center">
+        <button
+          onClick={onRefactor}
+          disabled={!canRefactor}
+          className="flex-1 p-[11px] bg-transparent border border-[rgba(255,16,96,0.3)] text-hld-magenta font-mono uppercase tracking-[0.14em] text-[8px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[rgba(255,16,96,0.06)] hover:shadow-[0_0_20px_rgba(255,16,96,0.3)] bracketed"
+          style={{"--br-color": "var(--tw-colors-hld-magenta)"} as React.CSSProperties}
+          title="Synthesize this dialogue into a new analysis version"
+        >
+          {isProcessing ? <>Refactoring...</> : <><FlaskConical size={10} /> Conclude & Refactor</>}
+        </button>
+        {canClear && (
+          <button
+            onClick={onClear}
+            disabled={isStreaming}
+            className="p-[11px] font-mono uppercase tracking-[0.14em] text-[7px] text-hld-muted-text hover:text-hld-magenta transition-colors disabled:opacity-35 shrink-0"
+            title="Clear this dialogue (recoverable from Version History)"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const DialogueTab: React.FC = () => {
+  const testSuite = useStore(s => s.testSuite);
+  const isProcessing = useStore(s => s.isProcessing);
+  const setTestsPanelTab = useStore(s => s.setTestsPanelTab);
+  const currentSection = useCurrentSection();
+  const { sendDialogueMessage, concludeAndRefactor, discardDialogue, streaming } = useAnalysisActions();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const state = currentSection ? testSuite[currentSection.id]?.analysis : undefined;
+  const messages = state?.dialogue ?? [];
+  const context = state?.dialogueContext ?? null;
+  const isStreaming = !!(streaming && currentSection && streaming.sectionId === currentSection.id);
+  const streamedText = isStreaming ? streaming.text : '';
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages.length, isStreaming, streamedText.length]);
+
+  if (!currentSection) return null;
+
+  if (!context && messages.length === 0) {
+    return <DialogueEmptyState onOpenAnalysis={() => setTestsPanelTab('analysis')} />;
+  }
+
+  const canRefactor =
+    !isStreaming && !isProcessing &&
+    messages.some(m => m.role === 'user') &&
+    messages.some(m => m.role === 'model');
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+      {/* Focus banner: what this dialogue is about */}
+      {context && (
+        <div className="m-3 mb-0 p-[8px] border border-hld-border bg-hld-surface2 shrink-0">
+          <div className="text-[6px] font-mono uppercase tracking-[0.15em] text-hld-cyan mb-[3px]">Focus</div>
+          <div className="text-[9px] text-hld-muted-text font-sans leading-[1.5] whitespace-pre-wrap line-clamp-3">
+            {context}
+          </div>
+        </div>
+      )}
+
+      <Transcript scrollRef={scrollRef} messages={messages} isStreaming={isStreaming} streamedText={streamedText} />
+
+      <DialogueComposer
+        canSend={!isStreaming}
+        canRefactor={canRefactor}
+        canClear={messages.length > 0 || !!context}
+        isStreaming={isStreaming}
+        isProcessing={isProcessing}
+        onSend={(text) => void sendDialogueMessage(text)}
+        onRefactor={() => void concludeAndRefactor()}
+        onClear={discardDialogue}
+      />
+    </div>
+  );
+};

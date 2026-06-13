@@ -44,6 +44,15 @@ pub struct PromptsConfig {
     pub generate_personas_prompt: String,
     pub diagnostic_instruction: String,
     pub dependencies_prompt: String,
+    // Analysis/Dialogue prompts (added later than the rest): `default` so
+    // prompts.json files written before these fields existed still load.
+    // The TS side merges DEFAULT_PROMPTS_CONFIG over the empty strings.
+    #[serde(default)]
+    pub analysis_prompt: String,
+    #[serde(default)]
+    pub refactor_analysis_prompt: String,
+    #[serde(default)]
+    pub dialogue_prompt: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,6 +124,10 @@ pub struct TestSuiteEntry {
     pub main_claim: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cached_suggestions: Option<CachedSuggestions>,
+    /// Per-section analysis workbench (versions + Socratic dialogue).
+    /// Schema-agnostic on the Rust side — the TS layer owns the shape.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub analysis: Option<serde_json::Value>,
     /// Diagnostic + lastResult fields are ephemeral; round-trip through
     /// SQLite cache, not the YAML sidecar. Stored here only when the
     /// in-memory shape needs them.
@@ -148,6 +161,10 @@ pub struct PersistedTestEntry {
     pub dependencies: Option<Vec<Dependency>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub main_claim: Option<String>,
+    /// Analysis versions + dialogue ARE persisted (intellectual work, like
+    /// specs) — they ride the YAML sidecar and therefore git history.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub analysis: Option<serde_json::Value>,
 }
 
 impl PersistedTestEntry {
@@ -158,6 +175,7 @@ impl PersistedTestEntry {
             history: entry.history.clone(),
             dependencies: entry.dependencies.clone(),
             main_claim: entry.main_claim.clone(),
+            analysis: entry.analysis.clone(),
         }
     }
 
@@ -173,6 +191,7 @@ impl PersistedTestEntry {
             dependencies: self.dependencies,
             main_claim: self.main_claim,
             cached_suggestions: None,
+            analysis: self.analysis,
             last_diagnostic: None,
             last_result: None,
         }

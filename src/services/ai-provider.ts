@@ -1,6 +1,8 @@
 import type {
   Section,
+  SectionAnalysis,
   SectionSpec,
+  DialogueMessage,
   DiagnosticResult,
   Persona,
   PromptsConfig,
@@ -12,10 +14,11 @@ import type {
  * AI provider boundary. Components and slices call this interface; only the
  * provider implementation imports `@google/genai`.
  *
- * Phase 5 polish will add streaming sibling methods (e.g.
- * `streamCoachAdvice(input): AsyncIterable<string>`) alongside the request /
- * response methods below. Don't preclude that — keep returns typed and don't
- * smuggle SDK objects across the boundary.
+ * `continueDialogue` is the first realized streaming method (the Phase-5
+ * shape anticipated here all along); further siblings (e.g.
+ * `streamCoachAdvice(input): AsyncIterable<string>`) follow the same
+ * pattern. Don't preclude that — keep returns typed and don't smuggle SDK
+ * objects across the boundary.
  */
 export interface AIProvider {
   generateSpecs(input: GenerateSpecsInput): Promise<void>;
@@ -29,6 +32,9 @@ export interface AIProvider {
     input: GeneratePersonasInput,
   ): Promise<PersonaSuggestion[]>;
   refineSpec(input: RefineSpecInput): Promise<string>;
+  analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis>;
+  refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis>;
+  continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
 }
 
 export interface GenerateSpecsInput {
@@ -95,6 +101,39 @@ export interface RefineSpecInput {
   fullSectionContent: string;
   parentGoals?: string;
   instruction: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+}
+
+export interface AnalyzeSectionInput {
+  sectionTitle: string;
+  /** section.fullContent (whole subtree), captured at call time. */
+  sectionText: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+}
+
+export interface RefactorAnalysisInput {
+  sectionTitle: string;
+  sectionText: string;
+  /** The analysis version the dialogue interrogated. */
+  analysis: SectionAnalysis;
+  dialogue: DialogueMessage[];
+  dialogueContext: string | null;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+}
+
+export interface ContinueDialogueInput {
+  /** What the dialogue is about (from the interrogate affordance). */
+  context: string;
+  /** Active analysis version, injected into the system instruction. */
+  analysis: SectionAnalysis | null;
+  /** Full history; the last message is the new user turn. */
+  messages: DialogueMessage[];
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

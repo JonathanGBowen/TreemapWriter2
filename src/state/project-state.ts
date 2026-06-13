@@ -175,7 +175,11 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       hiddenSectionIds: defaultProjectData.hiddenSectionIds || [],
       activePersonaId: defaultProjectData.activePersonaId || 'default',
       customPersonas: defaultProjectData.customPersonas || [],
-      promptsConfig: (defaultProjectData.promptsConfig as PromptsConfig) || DEFAULT_PROMPTS_CONFIG,
+      // Merge over defaults: the embedded demo config predates newer prompt
+      // fields (e.g. the analysis/dialogue prompts) and must not blank them.
+      promptsConfig: defaultProjectData.promptsConfig
+        ? { ...DEFAULT_PROMPTS_CONFIG, ...(defaultProjectData.promptsConfig as Partial<PromptsConfig>) }
+        : DEFAULT_PROMPTS_CONFIG,
       cachedCoachAdvice: defaultProjectData.cachedCoachAdvice || null,
       selectedId: null,
       activeLineIndex: null,
@@ -436,7 +440,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       testSuite: snapshot.testSuite || {},
     });
     if (snapshot.interpolationConfig) {
-      set({ promptsConfig: snapshot.interpolationConfig });
+      // Merge over defaults: snapshots taken before newer prompt fields
+      // existed would otherwise restore them as empty strings.
+      set({ promptsConfig: { ...DEFAULT_PROMPTS_CONFIG, ...snapshot.interpolationConfig } });
     }
     if (get().activeProjectId) {
       await get().saveCurrentState();

@@ -1208,3 +1208,83 @@ isolation and is recommended even if the rest is reverted.
 **Current state.** Storage: disk + SQLite + git + remote GitHub. Sync:
 pull/push automated, divergence now *resolvable* in-app. Conflict resolution
 no longer requires an external git client.
+
+---
+
+## 2026-06-13 — Feature: Analysis + Dialogue tabs in the right panel
+
+**What changed.** The right panel (`TestsPanel`) became a 3-tab surface —
+**Spec | Analysis | Dialogue** — porting ScribesGambit's structured analysis
+and Socratic dialogue/refactor loop per-section. The Spec tab is the original
+spec/diagnostic UI, moved verbatim; nothing about specs, diagnostics,
+dependencies, or personas changed.
+
+1. **Types.** `SectionAnalysis` (thesis / key concepts / argument
+   reconstruction with premises + implicit premises + conclusion / support /
+   objections), `AnalysisVersion` (versioned, newest-first, with `inputHash`
+   for the staleness badge and `sourceDialogue` provenance on refactors),
+   `DialogueMessage`, `SectionAnalysisState` — all in
+   [types/index.ts](../src/types/index.ts). `TestSuiteEntry` gained
+   `analysis?: SectionAnalysisState` (the per-section AI data container);
+   `PromptsConfig` gained `analysisPrompt`, `refactorAnalysisPrompt`,
+   `dialoguePrompt`.
+2. **Prompts.** Three new `.md` files in
+   [services/prompts/](../src/services/prompts/), registered in
+   `DEFAULT_PROMPTS_CONFIG` and editable in `PromptsGraphModal` (new
+   "Exegesis & Dialogue" pillar). The analysis prompt deliberately softens
+   premise-count rigidity: "use exactly as many premises as the argument
+   actually warrants — do not pad, merge, or force a count."
+3. **Provider.** `analyzeSection`, `refactorAnalysis`, and
+   `continueDialogue(input): AsyncIterable<string>` on `AIProvider` —
+   the first realized streaming method (the Phase-5 shape). Dialogue is
+   stateless: full message history travels per turn; no SDK objects cross
+   the boundary. Tolerant response normalization lives in
+   [lib/analysis-helpers.ts](../src/lib/analysis-helpers.ts) (pure,
+   unit-tested) alongside the testSuite updaters and prompt assembly.
+4. **State.** `testsPanelTab` in ui-state (ephemeral); five document-state
+   actions (`addAnalysisVersion`, `setActiveAnalysisVersion`, `setDialogue`,
+   `startDialogue`, `clearDialogue`). `addAnalysisVersion` does NOT clear
+   the dialogue — only the refactor flow clears it, explicitly, so a plain
+   re-analyze never destroys an in-progress conversation. No pre-ai-write
+   snapshot: versions only accumulate.
+5. **UI.** `TestsPanel` is now a shell (header + tab strip + resize);
+   the original content moved to `SpecTab` + `SpecDiagnostics` +
+   `SpecDependencies` (verbatim; gets each file under the 300-line cap).
+   New `AnalysisTab` (version selector, EDITED SINCE badge, five cards with
+   per-card interrogate glyphs, collapsible source dialogue, ANALYZE /
+   RE-ANALYZE) and `DialogueTab` (focus banner, streaming transcript,
+   CONCLUDE & REFACTOR, quiet CLEAR). Orchestration in
+   `use-analysis-actions.ts` (feature-colocated hook; not App.tsx).
+   Interrogate glyphs jump to the Dialogue tab seeded with that context;
+   a magenta diamond on the Dialogue tab marks an active dialogue.
+6. **Persistence.** Rust mirrors in
+   [src-tauri/src/types.rs](../src-tauri/src/types.rs): `analysis:
+   Option<serde_json::Value>` on `TestSuiteEntry` AND `PersistedTestEntry`
+   (schema-agnostic, like `last_diagnostic`), so analyses + dialogues ride
+   the per-section YAML sidecar into git history and snapshots. Browser
+   mode rides `StoredProjectData` wholesale (no change needed).
+   `PromptsConfig` (Rust) gained the three fields with `#[serde(default)]`
+   so pre-feature `prompts.json` files still load. Three promptsConfig
+   call sites now merge over `DEFAULT_PROMPTS_CONFIG` (demo-project load,
+   `restoreSnapshot`, VersionHistoryModal `onRestore`) so restoring old
+   snapshots can't blank the new prompts; the provider also falls back
+   per-prompt.
+
+**What to verify.** `npm test` (48 pass), `npm run typecheck`,
+`npm run lint` (0 errors), `npm run build`, `cargo check`. Manual: select a
+section → Spec tab identical to before → Analysis → ANALYZE → cards render;
+edit the section → EDITED SINCE appears; interrogate the thesis → Dialogue
+tab with FOCUS banner; send a message → streamed reply; CONCLUDE & REFACTOR →
+back on Analysis with "refactor 1" active, source dialogue collapsible,
+selector switches versions; reload → everything persists. Desktop: confirm
+the `analysis:` block in `.twriter/specs/<id>.spec.yaml` and that a
+pre-feature project (old prompts.json) still opens.
+
+**Rollback.** Revert the commit. Data written by the feature is additive
+(`analysis:` keys in spec YAML / IndexedDB blobs); old builds ignore unknown
+YAML fields on read (`PersistedTestEntry` is loose-by-construction), so no
+data migration is needed in either direction.
+
+**Current state.** The right panel hosts three surfaces. Spec & diagnostic
+capabilities are untouched underneath. Analysis/dialogue are per-section,
+versioned, persisted, and snapshot-restorable.

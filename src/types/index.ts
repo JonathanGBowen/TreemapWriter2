@@ -90,8 +90,61 @@ export interface DiagnosticResult {
   nextPriority: string;
 }
  
+// --- SECTION ANALYSIS SYSTEM ---
+
+/**
+ * Exegetical reconstruction of a section's argument. This is structural
+ * analysis, not summary: it recovers what the text actually argues —
+ * thesis, premises (stated and implicit), conclusion — grounded only in
+ * the section's own words.
+ */
+export interface SectionAnalysis {
+  centralThesis: string;
+  keyConcepts: { term: string; definition: string }[];
+  argument: {
+    premises: string[];
+    implicitPremises: string[];
+    conclusion: string;
+  };
+  supportingArguments: string[];
+  potentialObjections: string[];
+}
+
+export interface DialogueMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
+export interface AnalysisVersion {
+  id: string;
+  timestamp: number;
+  /** Generated, terse: "analysis 1", "refactor 2" */
+  label: string;
+  kind: 'analysis' | 'refactor';
+  result: SectionAnalysis;
+  /** Hash of section.fullContent at generation time — drives the stale badge. */
+  inputHash: string;
+  modelId?: string;
+  /** The dialogue that produced this version (refactors only). */
+  sourceDialogue?: DialogueMessage[];
+}
+
+/**
+ * Per-section analysis workbench state. Versions accumulate newest-first
+ * (they are history, never invalidated). The in-progress dialogue is
+ * persisted — never lose data — and cleared only by a successful refactor,
+ * which preserves the transcript on the new version's `sourceDialogue`.
+ */
+export interface SectionAnalysisState {
+  versions: AnalysisVersion[];
+  activeVersionId: string | null;
+  dialogue: DialogueMessage[];
+  /** What the dialogue is currently about (set by the interrogate affordance). */
+  dialogueContext: string | null;
+}
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
- 
+
 export interface TestResult {
   passed: boolean;
   critique: string;
@@ -128,6 +181,8 @@ export interface TestSuiteEntry {
     inputHash: string;
     suggestions: string;
   };
+  /** Per-section structured analysis + Socratic dialogue (Analysis/Dialogue tabs). */
+  analysis?: SectionAnalysisState;
 }
  
 export interface TestSuite {
@@ -175,6 +230,9 @@ export interface PromptsConfig {
   generatePersonasPrompt: string;
   diagnosticInstruction: string;
   dependenciesPrompt: string;
+  analysisPrompt: string;
+  refactorAnalysisPrompt: string;
+  dialoguePrompt: string;
 }
 
 // --- PHASE 4 SYNC TYPES ---

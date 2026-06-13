@@ -66,6 +66,9 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     generatePersonasPrompt: 'PERSONA GENERATOR',
     suggestContentPrompt: 'CONTENT SUGGESTER',
     dependenciesPrompt: 'DEPENDENCY ESTIMATOR',
+    analysisPrompt: 'ANALYSIS ENGINE',
+    refactorAnalysisPrompt: 'REFACTOR SYNTHESIZER',
+    dialoguePrompt: 'SOCRATIC PARTNER',
   };
 
   const nodeDescriptions: Record<keyof PromptsConfig, string> = {
@@ -77,7 +80,10 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     coachPrompt: "The diagnostic framework used by the ADHD Coach to formulate actionable writing plans.",
     generatePersonasPrompt: "The creative engine that generates AI reviewer personas based on document sampling.",
     suggestContentPrompt: "The ghostwriter persona used when generating specific content suggestions based on section specs.",
-    dependenciesPrompt: "Logic for identifying structural prerequisites and references between different document sections."
+    dependenciesPrompt: "Logic for identifying structural prerequisites and references between different document sections.",
+    analysisPrompt: "Exegetical reconstruction of a section's argument: thesis, key concepts, premises, conclusion, objections.",
+    refactorAnalysisPrompt: "Synthesizes a Socratic dialogue back into a refined analysis version.",
+    dialoguePrompt: "The Socratic partner persona that interrogates parts of an analysis with the author.",
   };
 
   return (
@@ -101,8 +107,8 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
                MASTER DOCUMENT REPOSITORY
             </div>
 
-            {/* 3 Pillars */}
-            <div className="grid grid-cols-3 gap-8 w-full max-w-3xl relative mt-12">
+            {/* 4 Pillars */}
+            <div className="grid grid-cols-4 gap-8 w-full max-w-3xl relative mt-12">
               {/* Connecting lines via SVG */}
               <svg className="absolute -top-[50px] left-0 w-full h-[600px] pointer-events-none stroke-slate-700 stroke-2 fill-none" style={{ zIndex: 0 }}>
                  {/* Hub to 3 pillars */}
@@ -146,6 +152,14 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
                 <div className="text-center text-purple-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-purple-500/30 pb-2">Generative Inference</div>
                 <Node id="suggestContentPrompt" label="Content Suggester" color="purple" type="process" />
                 <Node id="dependenciesPrompt" label="Dependency Estimator" color="purple" type="process" />
+              </div>
+
+              {/* Exegesis & Dialogue */}
+              <div className="flex flex-col gap-6 w-full z-10 relative">
+                <div className="text-center text-cyan-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-cyan-500/30 pb-2">Exegesis & Dialogue</div>
+                <Node id="analysisPrompt" label="Analysis Engine" color="cyan" type="process" />
+                <Node id="dialoguePrompt" label="Socratic Partner" color="cyan" type="process" />
+                <Node id="refactorAnalysisPrompt" label="Refactor Synthesizer" color="cyan" type="process" />
               </div>
             </div>
 

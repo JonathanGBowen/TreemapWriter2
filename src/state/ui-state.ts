@@ -17,6 +17,8 @@ export interface UIStateSlice {
   focusMode: boolean;
   runTutorial: boolean;
   activeTab: 'editor' | 'preview';
+  /** Which surface the right panel shows. Ephemeral, like activeTab. */
+  testsPanelTab: 'spec' | 'analysis' | 'dialogue';
 
   // In-flight indicators
   isProcessing: boolean;
@@ -59,6 +61,7 @@ export interface UIStateSlice {
   setFocusMode: (mode: boolean) => void;
   setRunTutorial: (run: boolean) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
+  setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue') => void;
   setIsProcessing: (proc: boolean) => void;
   setIsInterpolating: (interp: boolean) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;
@@ -90,6 +93,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   focusMode: true,
   runTutorial: false,
   activeTab: 'editor',
+  testsPanelTab: 'spec',
 
   isProcessing: false,
   isInterpolating: false,
@@ -123,6 +127,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setFocusMode: (mode) => set({ focusMode: mode }),
   setRunTutorial: (run) => set({ runTutorial: run }),
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setTestsPanelTab: (tab) => set({ testsPanelTab: tab }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
   setIsInterpolating: (interp) => set({ isInterpolating: interp }),
   setSyncStatus: (status) => set({ syncStatus: status }),

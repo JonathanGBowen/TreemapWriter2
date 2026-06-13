@@ -9,6 +9,9 @@ import refineSpecPrompt from './refine-spec.md?raw';
 import generatePersonasPrompt from './generate-personas.md?raw';
 import diagnosticInstruction from './diagnostic.md?raw';
 import dependenciesPrompt from './dependencies.md?raw';
+import analysisPrompt from './analysis.md?raw';
+import refactorAnalysisPrompt from './refactor-analysis.md?raw';
+import dialoguePrompt from './dialogue.md?raw';
 
 const stripTrailingNewline = (s: string) => s.replace(/\n+$/, '');
 
@@ -22,4 +25,7 @@ export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = {
   generatePersonasPrompt: stripTrailingNewline(generatePersonasPrompt),
   diagnosticInstruction: stripTrailingNewline(diagnosticInstruction),
   dependenciesPrompt: stripTrailingNewline(dependenciesPrompt),
+  analysisPrompt: stripTrailingNewline(analysisPrompt),
+  refactorAnalysisPrompt: stripTrailingNewline(refactorAnalysisPrompt),
+  dialoguePrompt: stripTrailingNewline(dialoguePrompt),
 };
