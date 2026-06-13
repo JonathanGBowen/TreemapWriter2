@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { Check, Copy } from "lucide-react";
 
 import { PromptsConfig } from "../../types";
 import { useStore } from "../../store";
@@ -8,6 +7,7 @@ import { ModalShell } from "./ModalShell";
 import { SegControl, type SegOption } from "./SegControl";
 import { Disclosure } from "../shared/Disclosure";
 import { Pip } from "../shared/Pip";
+import { CopyButton } from "../shared/CopyButton";
 import { resolveDepthChoice, tierOf, depthModelLabel } from "./depth-choice";
 import type { ModelTier } from "../../services/ai/model-catalog";
 import type { ModelChoice } from "../../services/ai/model-types";
@@ -30,28 +30,6 @@ const fieldClass =
   "w-full p-[9px] text-[11px] leading-relaxed border border-hld-border bg-hld-surface2 text-hld-text " +
   "focus:border-hld-cyan outline-none resize-none font-mono placeholder-hld-muted/50";
 
-/** Copies the prompt structure; flips to "Copied" briefly. Lives inside the disclosure. */
-function CopyPromptButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      title="Copy analysis prompt structure to clipboard"
-      onClick={() => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }}
-      className={`flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] px-2 py-1 border transition-colors ${
-        copied ? 'border-hld-green/50 text-hld-green' : 'border-hld-border text-hld-muted-text hover:text-hld-cyan'
-      }`}
-    >
-      {copied ? <Check size={12} /> : <Copy size={12} />}
-      {copied ? 'Copied' : 'Copy prompt'}
-    </button>
-  );
-}
-
 /** The three prompt editors, restyled to square/hairline; collapsed by default. */
 function PromptEditors({
   config,
@@ -70,7 +48,7 @@ function PromptEditors({
   return (
     <div className="flex flex-col gap-[12px]">
       <div className="flex justify-end">
-        <CopyPromptButton text={copyText} />
+        <CopyButton text={copyText} title="Copy analysis prompt structure to clipboard" />
       </div>
       {fields.map(([key, label]) => (
         <label key={key} className="block">
