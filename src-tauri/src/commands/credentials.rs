@@ -26,9 +26,22 @@ pub async fn credentials_set(service: String, value: String) -> AppResult<()> {
 pub async fn credentials_get(service: String) -> AppResult<Option<String>> {
     match entry(&service)?.get_password() {
         Ok(v) => Ok(Some(v)),
-        Err(keyring::Error::NoEntry) => Ok(None),
+        // Fall back to a process env var (loaded from src-tauri/.env.local at
+        // startup). This is the desktop fallback that makes `.env.local` work
+        // without re-entering the key each session, and keeps the secret out of
+        // the JS bundle. Only AI keys have a fallback; git PATs do not.
+        Err(keyring::Error::NoEntry) => Ok(env_fallback(&service)),
         Err(e) => Err(e.into()),
     }
+}
+
+fn env_fallback(service: &str) -> Option<String> {
+    let var = match service {
+        "gemini" => "GEMINI_API_KEY",
+        "anthropic" => "ANTHROPIC_API_KEY",
+        _ => return None,
+    };
+    std::env::var(var).ok().filter(|v| !v.is_empty())
 }
 
 #[tauri::command]

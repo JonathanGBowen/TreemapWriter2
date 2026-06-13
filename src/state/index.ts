@@ -4,6 +4,7 @@ import { createDocumentStateSlice, type DocumentStateSlice } from './document-st
 import { createEditorStateSlice, type EditorStateSlice } from './editor-state';
 import { createProjectStateSlice, type ProjectStateSlice } from './project-state';
 import { createUIStateSlice, type UIStateSlice } from './ui-state';
+import { setModelConfigSource } from '../services/ai-provider-registry';
 
 /**
  * The combined state of the application, partitioned by lifecycle:
@@ -31,3 +32,10 @@ export const useStore = create<AppState>()((...args) => ({
   ...createProjectStateSlice(...args),
   ...createAIStateSlice(...args),
 }));
+
+// Wire model resolution to live state without the registry importing the store
+// (avoids a cycle). The provider reads the active per-project + global config here.
+setModelConfigSource(() => {
+  const s = useStore.getState();
+  return { projectConfig: s.modelConfig, globalDefault: s.globalModelDefault };
+});

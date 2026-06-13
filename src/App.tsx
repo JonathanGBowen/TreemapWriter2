@@ -25,6 +25,7 @@ import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { normalizePromptsConfig } from "./lib/constants";
+import type { ModelChoice } from "./services/ai/model-types";
 import defaultProjectData from "./lib/defaultProject.json";
 import { Section, TestSuite, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
@@ -227,6 +228,9 @@ export const App = () => {
 
   // --- INITIALIZATION & MIGRATION ---
   useEffect(() => {
+    // Hydrate global AI prefs (default model, editable catalog, Ollama URL) and
+    // refresh the Ollama catalog. Non-blocking; independent of project load.
+    void useStore.getState().hydrateAIPreferences();
     loadInitialState().then(() => {
        isFirstRender.current = false;
     });
@@ -491,26 +495,24 @@ export const App = () => {
   };
 
   const handleInterpolateTasks = async (
-  modelId: string, 
-  thinkingBudget: number, 
+  choice: ModelChoice,
   config: PromptsConfig
 ) => {
   if (!sections || sections.length === 0) return;
   setShowInterpolationModal(false);
   setIsInterpolating(true);
-  
+
   try {
     // Create snapshot before destructive AI action
     await createSnapshot('pre-ai-write', 'all', config);
-    
+
     setPromptsConfig(config);
 
     await aiProvider.generateSpecs({
       sections,
       markdown,
       config,
-      modelId,
-      thinkingBudget,
+      modelChoice: choice,
       onBatchComplete: (specs) => {
         setTestSuite(prev => {
           const next = { ...prev };
@@ -527,7 +529,7 @@ export const App = () => {
                 {
                   timestamp: Date.now(),
                   goals: existing.goals,
-                  instruction: `Structured spec (${modelId})`,
+                  instruction: `Structured spec (${choice.model})`,
                   type: 'ai-generate' as const
                 }
               ]
@@ -550,8 +552,7 @@ export const App = () => {
 
   const handleRunTests = async (
   scope: 'segment' | 'parent' | 'full',
-  modelId: string,
-  thinkingBudget: number,
+  choice: ModelChoice,
   instruction: string
 ) => {
   setShowRunModal(false);
@@ -589,8 +590,7 @@ export const App = () => {
       section: currentSection,
       spec,
       scope,
-      modelId,
-      thinkingBudget,
+      modelChoice: choice,
       persona: activePersona,
       customInstruction: instruction,
       fullDocument: markdown,
@@ -675,8 +675,6 @@ export const App = () => {
       const depsMap = await aiProvider.estimateDependencies({
         sections,
         testSuite,
-        modelId: 'gemini-3.1-pro-preview',
-        thinkingBudget: 1024,
         config: promptsConfig,
       });
       

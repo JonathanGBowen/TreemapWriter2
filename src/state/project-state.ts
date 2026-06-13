@@ -5,6 +5,7 @@ import { DEFAULT_PROMPTS_CONFIG, normalizePromptsConfig } from '../lib/constants
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
 import { isTauri } from '../services/tauri-environment';
+import { normalizeModelConfig } from '../services/ai/model-config';
 import type { Dependency, ProjectMeta, PromptsConfig, Snapshot, TestSuite } from '../types';
 import type { AppState } from '.';
 
@@ -180,6 +181,11 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       promptsConfig: normalizePromptsConfig(
         defaultProjectData.promptsConfig as Partial<PromptsConfig> | undefined,
       ),
+      modelConfig: normalizeModelConfig(
+        (defaultProjectData as { modelsConfig?: unknown }).modelsConfig as
+          | Parameters<typeof normalizeModelConfig>[0]
+          | undefined,
+      ),
       cachedCoachAdvice: defaultProjectData.cachedCoachAdvice || null,
       selectedId: null,
       activeLineIndex: null,
@@ -230,6 +236,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       activePersonaId: 'default',
       customPersonas: [],
       promptsConfig: DEFAULT_PROMPTS_CONFIG,
+      modelConfig: {},
       cachedCoachAdvice: null,
       selectedId: null,
       activeLineIndex: null,
@@ -283,6 +290,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         promptsConfig: normalizePromptsConfig(
           (data.promptsConfig ?? data.interpolationConfig) as Partial<PromptsConfig> | undefined,
         ),
+        modelConfig: normalizeModelConfig(data.modelsConfig),
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
 
@@ -344,6 +352,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       activePersonaId: state.activePersonaId,
       customPersonas: state.customPersonas,
       promptsConfig: state.promptsConfig,
+      modelsConfig: state.modelConfig,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
       lastModified: Date.now(),

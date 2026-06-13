@@ -61,10 +61,11 @@ non-negotiable rules:
 | A new on-disk file in a project | Path goes in `src-tauri/src/project/layout.rs`. Read/write via `crate::fs_io::*` helpers (atomic write). If the file should be gitignored, update the `.gitignore` written by `project_create` in `src-tauri/src/commands/project.rs`. |
 | A new git local operation | New function in `src-tauri/src/git/mod.rs`. |
 | A new git remote operation | New function in `src-tauri/src/git/remote.rs`. Nothing outside `src-tauri/src/git/` touches `git2::*` directly. |
-| A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider` (`src/services/ai-provider.ts`), implementation in `gemini-provider.ts`, consumed via `aiProvider` from the registry |
-| A new OS-keyring secret | Add a `SecretService` literal in `src/services/credentials.ts`; the Rust side (`src-tauri/src/commands/credentials.rs`) is generic over the service name. |
+| A new AI flow | New prompt in `src/services/prompts/`, new method on `AIProvider` (`src/services/ai-provider.ts`), implementation in `src/services/ai/ai-provider.impl.ts` (provider-agnostic; calls an `LLMClient`), a new `AICallKind` + `DEFAULT_MODEL_CONFIG` entry in `src/services/ai/`, consumed via `aiProvider` from the registry |
+| A new AI provider | New `LLMClient` in `src/services/ai/clients/<name>-client.ts` — the ONE file importing that SDK. Wire its key + dispatch in `ai-provider-registry.ts`; seed it in `model-catalog.ts`. Components never import the SDK. |
+| A new OS-keyring secret | Add a `SecretService` literal in `src/services/credentials.ts`; the Rust side (`src-tauri/src/commands/credentials.rs`) is generic over the service name. AI keys (`gemini`/`anthropic`) also get an env fallback in `credentials.rs` so `.env.local` works without re-entry. |
 | A new sync trigger | Extend `src/services/sync-policy.ts`. Don't add network calls outside that module — sync-policy owns the debounce / throttle invariants. |
-| A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`) |
+| A new persisted field | Update `Repository` interface first (`src/services/repository.ts`), then both implementations, then the matching domain slice (`src/state/<name>-state.ts`). For Tauri, "both implementations" includes the Rust mirror (`types.rs`), an on-disk path (`layout.rs`), and read/write in `document.rs` — serde silently drops unknown fields, so land Rust + TS together (e.g. `modelsConfig` ↔ `.twriter/models.json`). Global, non-project settings go in `services/preferences.ts`, not the project file. |
 | A new domain mutation (testSuite, document, etc.) | Action on the appropriate state slice, NOT a `useCallback` in a component. Cross-slice mutations live in `project-state` and use `get().otherSliceAction()`. |
 | A new UI panel | New folder under `src/features/<panel-name>/` |
 | A new icon | `lucide-react`. Do not introduce a second icon library |
@@ -90,12 +91,19 @@ src/
 │   ├── tauri-repository.ts    Tauri impl (SQLite + markdown + git + sync)
 │   ├── repository-registry.ts DI: picks impl at module load
 │   ├── ai-provider.ts         AI provider interface
-│   ├── gemini-provider.ts     Gemini impl (the ONE file that imports @google/genai)
-│   ├── ai-provider-registry.ts DI for AI; also bg-loads Gemini key from keyring
+│   ├── ai/                    multi-provider model layer
+│   │   ├── clients/           one LLMClient per provider (sole SDK importers: gemini/anthropic/ollama)
+│   │   ├── ai-provider.impl.ts provider-agnostic impl — prompts + parsing, dispatch by ModelChoice
+│   │   ├── ai-provider.specs.ts spec-generation flow (split for size)
+│   │   ├── model-types.ts     ProviderId, AICallKind, ModelChoice, ModelConfig
+│   │   ├── model-catalog.ts   editable catalog (Gemini+Anthropic seed; Ollama auto-detected)
+│   │   ├── model-config.ts    DEFAULT_MODEL_CONFIG + normalizeModelConfig (sparse)
+│   │   └── resolve-model-choice.ts  per-kind resolution: project → global → default
+│   ├── ai-provider-registry.ts DI for AI; bg-loads Gemini+Anthropic keys from keyring; injects config source
 │   ├── credentials.ts         JS wrapper over OS-keyring Tauri commands
 │   ├── sync-policy.ts         debounced auto-push + focus-pull (Phase 4)
 │   ├── tauri-environment.ts   isTauri() runtime detector
-│   ├── preferences.ts         global app prefs (tutorial flag etc.)
+│   ├── preferences.ts         global app prefs (tutorial flag, default model, catalog, Ollama URL)
 │   └── prompts/               .md prompts + index.ts that assembles DEFAULT_PROMPTS_CONFIG
 ├── features/
 │   ├── sidebar/Sidebar.tsx

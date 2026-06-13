@@ -1360,3 +1360,128 @@ regression. Clearing a prompt to an empty string in the editor sends it empty
 
 **Rollback.** Revert the commit; all changes are code-only (no data shape or
 migration).
+
+## 2026-06-13 — Feature: multi-provider model selection (Gemini + Anthropic + Ollama)
+
+**Why.** Model/provider selection was ad-hoc and Gemini-only: four duplicated
+`MODELS` arrays across modals, several call kinds with no selector (silent
+provider defaults), obsolescing hardcoded ids, and a broken `.env.local` key
+fallback on Tauri. Goal: a thoughtful, provider-agnostic system where each of
+the ten AI call kinds is configurable, saved with the project, and extensible.
+
+**What changed.**
+
+1. **Two-layer AI architecture** under `src/services/ai/`. A low-level
+   transport interface `LLMClient` (`clients/llm-client.ts`) with one client per
+   provider — `GeminiClient` (`@google/genai`), `AnthropicClient`
+   (`@anthropic-ai/sdk`, new dep, `dangerouslyAllowBrowser`), `OllamaClient`
+   (`fetch`) — each the SOLE importer of its own SDK. Above it, one
+   provider-agnostic `MultiProviderAIProvider` (`ai-provider.impl.ts` +
+   `ai-provider.specs.ts`) holds ALL prompt-building/parsing (ported verbatim
+   from the deleted `gemini-provider.ts`) and dispatches per call kind. The
+   `AIProvider` interface is unchanged for consumers.
+2. **Model config types** (`model-types.ts`, `model-catalog.ts`,
+   `model-config.ts`, `resolve-model-choice.ts`): `ProviderId`, `AICallKind`
+   (the 10 kinds), `ModelChoice`, `ModelConfig`. `DEFAULT_MODEL_CONFIG`
+   reproduces the exact pre-refactor ids+budgets, so an un-configured project
+   behaves identically. `normalizeModelConfig` is a sparse pass-through (unlike
+   `normalizePromptsConfig`) so per-project files stay minimal and the global
+   default can seed unset kinds. Resolution: per-project per-kind → global
+   per-kind default → built-in default.
+3. **Persistence.** New per-project `modelConfig` in the `ai-state` slice,
+   `StoredProjectData.modelsConfig`, saved/loaded in `project-state.ts`
+   (`normalizeModelConfig` on load; excluded from snapshots — model choices are
+   infra, not document content). Tauri round-trips it through
+   `.twriter/models.json` (`types.rs` `models_config`, `layout.rs`
+   `models_json()`, `document.rs` read/write). Global prefs (default config,
+   editable catalog, Ollama base URL) live in `preferences.ts` (idb-keyval),
+   hydrated at boot via `hydrateAIPreferences`; the registry's config source is
+   wired to live state in `state/index.ts` (services never import the store →
+   no cycle).
+4. **UI.** `PersonaSettingsModal` retitled "AI & Personas" and now hosts
+   `AiSettingsSection` (provider keys incl. Anthropic, Ollama endpoint + detect,
+   the single "default model" knob, and a collapsed Advanced area with per-call
+   overrides + an editable catalog). New shared `ModelPicker` replaces the four
+   duplicated `MODELS` arrays in Interpolation/TestRunner/Coach/ContentSuggestions
+   modals; the Gemini-specific token-estimate/thinking UI is gated behind
+   `choice.provider === 'gemini'`.
+5. **Key fallback fix.** Root cause: `.env.local` sat in `src-tauri/` but Vite
+   read the project root, and the file used a non-standard quoted-key format.
+   Fixed: `vite.config.ts` now `loadEnv(mode, 'src-tauri', '')` + an
+   `ANTHROPIC_API_KEY` define; `.env.local` normalized to standard dotenv;
+   desktop adds a runtime Rust fallback — `credentials_get` returns the process
+   env var on keyring `NoEntry`, and `lib.rs::load_env_local` loads
+   `src-tauri/.env.local` at startup (hand-rolled, no new crate; never overrides
+   a real env var). Keeps the secret out of the JS bundle on desktop; the
+   keyring remains the durable path.
+
+**New dependencies.** `@anthropic-ai/sdk` (sanctioned by the user). No new Rust
+crate (the dotenv parse is hand-rolled).
+
+**What to verify.** `npm run typecheck`, `npm test` (68 pass — 20 new across
+`services/ai/`), `npm run build`, and `cargo check` (`src-tauri`) — all green.
+`npm run lint` is clean for every touched file (the 5 pre-existing errors in
+untouched modal files remain). Manual E2E: (1) with only `src-tauri/.env.local`
+set and no keyring entry, run an AI flow → no key re-entry (Gemini + Anthropic).
+(2) AI & Personas → Advanced → set Analyze to `claude-opus-4-8`, run analysis +
+dialogue. (3) Ollama running + `OLLAMA_ORIGINS` set → Detect populates the
+catalog → set a kind to a local model → it streams. (4) Set a per-project
+override, reload + reopen → persists (inspect `.twriter/models.json` on desktop,
+IndexedDB on browser). (5) Open a pre-existing project (no models.json) →
+behavior unchanged. (6) Restore an old snapshot → model config unchanged.
+
+**Known / out of scope.** Anthropic adaptive thinking is enabled only for the
+known Opus 4.x / Sonnet 4.6 ids and only for non-streaming calls (omitted on the
+dialogue stream to keep the first token snappy); the numeric Gemini thinking
+budget is never forwarded to Anthropic (it 400s on Opus). Ollama from the Tauri
+webview may need `OLLAMA_ORIGINS` set (surfaced as a hint in the settings UI).
+The secret in `src-tauri/.env.local` is gitignored (`*.local`) and was never
+committed; rotation is optional.
+
+**Rollback.** Revert the commit and run `npm install` (drops `@anthropic-ai/sdk`).
+Per-project `modelConfig` / `.twriter/models.json` is additive and tolerated on
+read by older code (sparse, ignored if unknown), so reverting loses the feature
+but no document data.
+
+## 2026-06-13 — Fix: code-review findings on multi-provider model selection
+
+An adversarial code-review pass (9 finder angles) surfaced four confirmed
+correctness/UI bugs in the multi-provider change above; all fixed here.
+
+1. **Configured model ignored for Coach & Content Suggestions.** Flow modals are
+   mounted unconditionally (they self-gate via `return null`), so a bare
+   `useState(() => resolveModelChoice(...))` initializer froze the choice at app
+   boot — before prefs hydrate or a project loads. Interpolation/TestRunner had a
+   reseed `useEffect([isOpen])`; Coach/ContentSuggestions did not, so they
+   permanently ran the boot-time default and ignored the user's configured model.
+   Fixed at the right altitude: a shared `useModelChoice(kind, isOpen)` hook
+   ([src/features/modals/use-model-choice.ts](../src/features/modals/use-model-choice.ts))
+   now backs all four modals (re-seeds on open), removing the 4× duplication that
+   caused the divergence.
+2. **ModelPicker display desync.** A controlled `<select>` whose value isn't in
+   the catalog (Ollama offline, model removed, hand-edited config) showed the
+   wrong row while state held the real choice. The picker now renders a
+   `"<provider>: <model> (unavailable)"` fallback option so the visible selection
+   always matches the actual choice.
+3. **Catalog `supportsThinking` vs adaptive-thinking mismatch.** The field means
+   "exposes a numeric budget knob," which no Anthropic model does (adaptive/
+   native), yet all three were marked `true` — contradicting the client's
+   `supportsAdaptiveThinking`. Set Anthropic rows to `false` so the two concepts
+   stop conflicting.
+4. **Anthropic default `max_tokens`.** Bumped the (currently-unreached) default
+   from 8192 → 16000 so a future caller that omits `maxTokens` can't have the
+   adaptive-thinking pass (counted inside `max_tokens`) truncate the JSON body.
+
+**Deferred (noted, not fixed).** The single "Default Model" knob flattens
+per-kind thinking budgets across all 10 kinds — a known tradeoff of a deliberately
+coarse knob (per-kind nuance survives via Advanced overrides or by leaving the
+knob on "Recommended"). Lower-severity items: registry boot keyring lookup can
+race a user key-save (narrow window; pre-existing pattern); Ollama fetches lack a
+timeout; auto-detected Ollama rows persist to prefs. The `thinkingBudget` field
+on the provider-agnostic `LLMRequest` is a deliberate pragmatic leak.
+
+**What to verify.** `npm run typecheck`, `npm test` (68 pass), `npm run build`,
+`cargo check` — all green. Manual: set a global default model, open Coach /
+Content Suggestions → they now use it (previously stuck on the boot default).
+
+**Rollback.** Revert this commit; the feature commit above stands on its own.

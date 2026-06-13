@@ -9,6 +9,7 @@ import type {
   Dependency,
   TestSuite,
 } from '../types';
+import type { ModelChoice } from './ai/model-types';
 
 /**
  * AI provider boundary. Components and slices call this interface; only the
@@ -41,8 +42,11 @@ export interface GenerateSpecsInput {
   sections: Section[];
   markdown: string;
   config: PromptsConfig;
-  modelId: string;
-  thinkingBudget: number;
+  /** Legacy per-call override (Gemini id). Prefer `modelChoice`. */
+  modelId?: string;
+  thinkingBudget?: number;
+  /** Per-call model override; falls back to the configured model for this kind. */
+  modelChoice?: ModelChoice;
   onBatchComplete: (specs: Record<string, SectionSpec>) => void;
   onError?: (error: Error) => void;
 }
@@ -51,8 +55,9 @@ export interface RunDiagnosticInput {
   section: Section;
   spec: SectionSpec;
   scope: 'segment' | 'parent' | 'full';
-  modelId: string;
-  thinkingBudget: number;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
   persona: Persona;
   customInstruction: string;
   fullDocument: string;
@@ -64,8 +69,9 @@ export interface RunDiagnosticInput {
 export interface EstimateDependenciesInput {
   sections: Section[];
   testSuite: TestSuite;
-  modelId: string;
-  thinkingBudget: number;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
   config: PromptsConfig;
 }
 
@@ -74,7 +80,8 @@ export interface CoachAdviceInput {
   sections: Section[];
   testSuite: TestSuite;
   config: PromptsConfig;
-  modelId: string;
+  modelId?: string;
+  modelChoice?: ModelChoice;
 }
 
 export interface ContentSuggestionsInput {
@@ -83,13 +90,15 @@ export interface ContentSuggestionsInput {
   fullSectionContent: string;
   parentGoals?: string;
   config: PromptsConfig;
-  modelId: string;
+  modelId?: string;
+  modelChoice?: ModelChoice;
 }
 
 export interface GeneratePersonasInput {
   documentContext: string;
   config: PromptsConfig;
   modelId?: string;
+  modelChoice?: ModelChoice;
 }
 
 /** Raw persona shape returned by the provider; caller assigns IDs. */
@@ -104,6 +113,7 @@ export interface RefineSpecInput {
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
+  modelChoice?: ModelChoice;
 }
 
 export interface AnalyzeSectionInput {
@@ -113,6 +123,7 @@ export interface AnalyzeSectionInput {
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
+  modelChoice?: ModelChoice;
 }
 
 export interface RefactorAnalysisInput {
@@ -125,6 +136,7 @@ export interface RefactorAnalysisInput {
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
+  modelChoice?: ModelChoice;
 }
 
 export interface ContinueDialogueInput {
@@ -137,4 +149,5 @@ export interface ContinueDialogueInput {
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
+  modelChoice?: ModelChoice;
 }

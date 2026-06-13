@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from "react";
-import { FileText, Layout, Book, BrainCircuit, Zap, Gauge, Check, Info, X, Play, Edit3, Clipboard } from "lucide-react";
+import { FileText, Layout, Book, Check, Info, X, Play, Edit3, Clipboard } from "lucide-react";
 import { Section, Persona } from "../../types";
 import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
+import { ModelPicker } from "./ModelPicker";
+import { useModelChoice } from "./use-model-choice";
+import type { ModelChoice } from "../../services/ai/model-types";
 
 interface TestRunnerModalProps {
-  onRun: (scope: 'segment' | 'parent' | 'full', modelId: string, thinkingBudget: number, instruction: string) => void;
+  onRun: (scope: 'segment' | 'parent' | 'full', choice: ModelChoice, instruction: string) => void;
   sectionTitle: string;
   currentSection: Section | null;
   currentSpec?: any;
@@ -18,45 +21,6 @@ interface TestRunnerModalProps {
   allSections: Section[];
   fullDocument: string;
 }
-
-const MODELS = [
-  {
-    id: 'gemini-3.1-flash-lite-preview',
-    name: 'Gemini Flash Lite',
-    desc: 'Fastest feedback. Good for quick checks.',
-    icon: Gauge,
-    thinkingBudget: 0,
-    defaultThinking: 0,
-    canThink: false
-  },
-  {
-    id: 'gemini-flash-latest',
-    name: 'Gemini Flash',
-    desc: 'Fast feedback loop. Good for quick grammar & clarity checks.',
-    icon: Zap,
-    thinkingBudget: 0,
-    defaultThinking: 0, 
-    canThink: false
-  },
-  {
-    id: 'gemini-3-flash-preview',
-    name: 'Gemini 3 Flash',
-    desc: 'Fast feedback loop. Good for quick grammar & clarity checks.',
-    icon: Zap,
-    thinkingBudget: 0,
-    defaultThinking: 0, 
-    canThink: false
-  },
-  {
-    id: 'gemini-3.1-pro-preview',
-    name: 'Gemini 3.1 Pro',
-    desc: 'Deep critique. Best for logic gaps and argumentation.',
-    icon: BrainCircuit,
-    thinkingBudget: 16000,
-    defaultThinking: 8000,
-    canThink: true
-  }
-];
 
 const SCOPES = [
   { id: 'segment', label: 'Current Segment', desc: 'Focus on immediate writing', icon: FileText },
@@ -78,19 +42,25 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   const setShow = useStore(s => s.setShowRunModal);
   const onClose = () => setShow(false);
   const [selectedScope, setSelectedScope] = useState<'segment' | 'parent' | 'full'>('segment');
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.1-flash-lite-preview');
+  const [choice, setChoice] = useModelChoice('runDiagnostic', isOpen);
   const [useThinking, setUseThinking] = useState(false);
   const [customInstruction, setCustomInstruction] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const selectedModel = useMemo(() => 
-    MODELS.find(m => m.id === selectedModelId) || MODELS[0]
-  , [selectedModelId]);
+  const catalogModel = useStore((s) =>
+    s.modelCatalog.find((m) => m.provider === choice.provider && m.id === choice.model),
+  );
+
+  const isGemini = choice.provider === 'gemini';
+  // The numeric thinking knob is Gemini-only; other providers manage reasoning themselves.
+  const canThink = isGemini && (catalogModel?.supportsThinking ?? false);
+  const thinkingBudget = canThink && useThinking ? catalogModel?.defaultThinkingBudget ?? 16000 : 0;
+  const runChoice: ModelChoice = { ...choice, thinkingBudget };
 
   // Estimates
   const estimates = useMemo(() => {
     let contextWords = 0;
-    
+
     if (currentSection) {
       if (selectedScope === 'segment') {
         contextWords = currentSection.fullContent.split(/\s+/).length;
@@ -103,16 +73,15 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
     }
 
     const inputTokens = Math.ceil(contextWords * 1.3);
-    const thinkingTokens = useThinking ? selectedModel.thinkingBudget : 0;
     // Output is usually just critique JSON
-    const outputTokens = 500; 
+    const outputTokens = 500;
 
     return {
       input: inputTokens,
-      thinking: thinkingTokens,
-      total: inputTokens + thinkingTokens + outputTokens
+      thinking: thinkingBudget,
+      total: inputTokens + thinkingBudget + outputTokens
     };
-  }, [selectedScope, selectedModel, useThinking, currentSection, documentStats]);
+  }, [selectedScope, thinkingBudget, currentSection, documentStats]);
 
   if (!isOpen) return null;
 
@@ -231,42 +200,15 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
           {/* 2. Model Selection */}
           <div className="space-y-3">
             <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted">AI Model</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {MODELS.map((model) => {
-                const isSelected = selectedModelId === model.id;
-                const Icon = model.icon;
-                return (
-                  <button
-                    key={model.id}
-                    onClick={() => {
-                       setSelectedModelId(model.id);
-                       if (model.id.includes('flash')) setUseThinking(false);
-                    }}
-                    className={`text-left p-3 rounded-xl border-2 transition-all flex items-start gap-3 ${
-                      isSelected
-                        ? 'border-hld-cyan bg-hld-cyan/10'
-                        : 'border-hld-border bg-hld-surface hover:border-hld-cyan/50'
-                    }`}
-                  >
-                     <div className={`p-2 rounded w-fit ${isSelected ? 'bg-hld-cyan/20 text-hld-cyan' : 'bg-hld-surface2 text-hld-muted'}`}>
-                        <Icon size={18} />
-                      </div>
-                      <div>
-                        <div className={`font-bold text-sm font-sans ${isSelected ? 'text-hld-cyan' : 'text-hld-text'}`}>
-                          {model.name}
-                        </div>
-                        <div className="text-xs text-hld-muted mt-1 font-sans">
-                          {model.desc}
-                        </div>
-                      </div>
-                  </button>
-                );
-              })}
-            </div>
+            <ModelPicker
+              value={choice}
+              onChange={(c) => c && setChoice(c)}
+              className="w-full bg-hld-bg border border-hld-border rounded-lg px-3 py-2.5 text-sm font-mono text-hld-text outline-none focus:border-hld-cyan"
+            />
           </div>
 
-          {/* 3. Thinking Toggle (If supported) */}
-          {selectedModel.canThink && (
+          {/* 3. Thinking Toggle (Gemini, if supported) */}
+          {canThink && (
              <div className={`p-4 rounded-lg border flex items-center gap-3 transition-all ${
                 useThinking 
                   ? 'bg-hld-cyan/10 border-hld-cyan/30' 
@@ -281,7 +223,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
                 <div className="flex-1">
                    <div className="text-sm font-bold text-hld-text font-sans">Enable Deep Thinking</div>
                    <div className="text-xs text-hld-muted font-sans">
-                     Allocates {selectedModel.thinkingBudget} tokens for reasoning. Slower, but more rigorous.
+                     Allocates {catalogModel?.defaultThinkingBudget ?? 16000} tokens for reasoning. Slower, but more rigorous.
                    </div>
                 </div>
              </div>
@@ -300,7 +242,8 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
              />
           </div>
 
-          {/* Estimates */}
+          {/* Estimates — token math is Gemini-specific. */}
+          {isGemini && (
           <div className="bg-hld-bg rounded-lg p-4 border border-hld-border grid grid-cols-3 gap-4">
              <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted">Context</div>
@@ -308,8 +251,8 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
              </div>
              <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted">Thinking</div>
-                <div className={`font-mono font-semibold ${useThinking ? 'text-hld-cyan' : 'text-hld-muted'}`}>
-                  {useThinking ? `~${(estimates.thinking / 1000).toFixed(1)}k tokens` : 'Disabled'}
+                <div className={`font-mono font-semibold ${thinkingBudget > 0 ? 'text-hld-cyan' : 'text-hld-muted'}`}>
+                  {thinkingBudget > 0 ? `~${(estimates.thinking / 1000).toFixed(1)}k tokens` : 'Disabled'}
                 </div>
              </div>
              <div>
@@ -317,6 +260,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
                 <div className="font-mono text-hld-cyan font-bold">~{(estimates.total / 1000).toFixed(1)}k tokens</div>
              </div>
           </div>
+          )}
 
         </div>
 
@@ -328,8 +272,8 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
           >
             Cancel
           </button>
-          <button 
-             onClick={() => onRun(selectedScope, selectedModelId, useThinking ? selectedModel.thinkingBudget : 0, customInstruction)}
+          <button
+             onClick={() => onRun(selectedScope, runChoice, customInstruction)}
              className="px-6 py-2 bg-hld-cyan hover:bg-hld-cyan/80 text-hld-bg rounded-lg text-[10px] font-mono uppercase tracking-widest font-bold shadow-md transition-all active:scale-95 flex items-center gap-2 hld-glow-cyan"
           >
              <Play size={16} fill="currentColor" /> Run Evaluation

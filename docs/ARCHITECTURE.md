@@ -85,8 +85,11 @@ same way: one source of truth, everything else is a projection.
 │   │   ├── repository.ts          ← interface
 │   │   ├── browser-repository.ts  ← legacy IndexedDB impl
 │   │   ├── tauri-repository.ts    ← Tauri impl (Phase 3+)
-│   │   ├── ai-provider.ts         ← interface
-│   │   ├── gemini-provider.ts
+│   │   ├── ai-provider.ts         ← interface (provider-agnostic)
+│   │   ├── ai/                     ← multi-provider model layer
+│   │   │   ├── clients/            ← one LLMClient per provider (sole SDK importers)
+│   │   │   ├── ai-provider.impl.ts ← prompts + parsing; dispatch by ModelChoice
+│   │   │   └── model-*.ts          ← catalog, config, resolution
 │   │   └── prompts/
 │   │       ├── system-instruction.md
 │   │       ├── generate-specs.md
@@ -199,7 +202,16 @@ search(query) -> Vec<SearchHit>                      // Phase 5
 
 Recommended crates: `rusqlite` (bundled feature, FTS5 included), `git2` for
 git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
-`keyring` for OS secret storage of the Gemini API key.
+`keyring` for OS secret storage of the Gemini + Anthropic API keys (with an
+env-var fallback loaded from `src-tauri/.env.local` at startup).
+
+AI calls go through one provider-agnostic `AIProvider` impl
+(`services/ai/ai-provider.impl.ts`) that resolves a per-call-kind `ModelChoice`
+and dispatches to a provider `LLMClient` (Gemini / Anthropic / Ollama — each the
+sole importer of its SDK). Per-project model choices persist in the project file
+(`.twriter/models.json`); the global default, editable catalog, and Ollama URL
+are app preferences (`services/preferences.ts`). API keys live only in the OS
+keyring — never in the project file.
 
 ## Phases
 

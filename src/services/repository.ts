@@ -10,6 +10,7 @@ import type {
   SyncState,
   TestSuite,
 } from '../types';
+import type { ModelConfig } from './ai/model-types';
 
 /**
  * The shape of a project as actually stored on disk. All fields are optional
@@ -27,6 +28,8 @@ export interface StoredProjectData {
   promptsConfig?: PromptsConfig;
   /** Pre-Phase-1 alias of promptsConfig. Honor on read; do not write. */
   interpolationConfig?: PromptsConfig;
+  /** Per-project, per-call model overrides. Sparse; resolves against the global default. */
+  modelsConfig?: ModelConfig;
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;
