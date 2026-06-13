@@ -1,282 +1,159 @@
-import React, { useMemo, useState } from "react";
-import {
-  CheckCircle, AlertCircle, Play, Sparkles, X, ChevronRight,
-  Lightbulb, ArrowRight, ArrowDown,
-} from "lucide-react";
-import { Section } from "../../types";
+import { useMemo } from "react";
+import type { CSSProperties } from "react";
+import { Section, SectionSpec, SectionFunction, TestSuiteEntry } from "../../types";
+import { SECTION_FUNCTIONS } from "../../lib/constants";
 import { useStore } from "../../state";
 import { useCurrentSection } from "./use-current-section";
-import { PersonaBanner } from "./PersonaBanner";
-import { SpecDiagnostics, STATUS_CONFIG } from "./SpecDiagnostics";
-import { SpecDependencies } from "./SpecDependencies";
+import { Zone } from "../shared/Zone";
+import { Disclosure } from "../shared/Disclosure";
+import { PanelHeader } from "./PanelHeader";
+import { MoveList } from "./MoveList";
+import { DependencyChips } from "./DependencyChips";
+import { PanelFooter } from "./PanelFooter";
+import { EmptyState } from "./EmptyState";
 
-/**
- * The original Spec & Diagnostic surface, moved verbatim out of TestsPanel
- * when the panel became tabbed. Rendered only when a section is selected.
- */
-export const SpecTab: React.FC = () => {
-  const sections = useStore(s => s.sections);
-  const testSuite = useStore(s => s.testSuite);
-  const updateSectionGoals = useStore(s => s.updateSectionGoals);
-  const updateDependencies = useStore(s => s.updateDependencies);
-  const updateMainClaim = useStore(s => s.updateMainClaim);
-  const updateSpec = useStore(s => s.updateSpec);
-  const isProcessing = useStore(s => s.isProcessing);
-  const setShowRunModal = useStore(s => s.setShowRunModal);
-  const setShowSpecModal = useStore(s => s.setShowSpecModal);
-  const setShowSuggestionsModal = useStore(s => s.setShowSuggestionsModal);
+function flatten(sections: Section[]) {
+  const flat: { id: string; title: string; level: number }[] = [];
+  const walk = (nodes: Section[]) => nodes.forEach((n) => { flat.push({ id: n.id, title: n.title, level: n.level }); walk(n.children); });
+  walk(sections);
+  return flat;
+}
 
+/** CLAIM zone: eyebrow + function picker chip + editable claim (left hairline). */
+function ClaimZone({ spec, onClaim, onFunction }: { spec: SectionSpec; onClaim: (t: string) => void; onFunction: (f: SectionFunction) => void }) {
+  return (
+    <div>
+      <Zone label="Claim">
+        <span className="inline-flex items-center gap-[3px]">
+          <select
+            value={spec.function}
+            onChange={(e) => onFunction(e.target.value as SectionFunction)}
+            title="Section function"
+            className="bg-transparent border-none outline-none font-mono text-[9px] font-bold tracking-[0.12em] uppercase text-hld-magenta cursor-pointer appearance-none"
+          >
+            {SECTION_FUNCTIONS.map((f) => <option key={f.id} value={f.id} className="bg-hld-surface text-hld-text normal-case">{f.label}</option>)}
+          </select>
+          <span className="text-hld-magenta text-[8px] pointer-events-none">▾</span>
+        </span>
+      </Zone>
+      <textarea
+        value={spec.mainClaim}
+        onChange={(e) => onClaim(e.target.value)}
+        rows={2}
+        placeholder="The core proposition — what makes this section necessary?"
+        className="w-full mt-[7px] pl-[9px] border-l-2 border-hld-border focus:border-hld-cyan text-[10px] leading-relaxed font-sans text-hld-text bg-transparent outline-none resize-none placeholder-hld-muted/50 min-h-[3.2em] transition-colors"
+      />
+    </div>
+  );
+}
+
+function NextCard({ text }: { text: string }) {
+  return (
+    <div className="bracketed hld-lit cursor-default px-[12px] py-[10px]" style={{ '--br-color': 'var(--color-hld-cyan)' } as CSSProperties}>
+      <div className="font-mono text-[8px] tracking-[0.18em] uppercase mb-[4px]">▸ Next</div>
+      <div className="text-[10px] leading-relaxed font-sans text-hld-cyan/90">{text}</div>
+    </div>
+  );
+}
+
+function ContextList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <div className="font-mono text-[8px] tracking-[0.12em] uppercase text-hld-muted-text mb-[4px]">{label}</div>
+      <div className="flex flex-col gap-[5px]">
+        {items.map((t, i) => <div key={i} className="text-[10px] leading-relaxed font-sans text-hld-text pl-[9px] border-l border-hld-border">{t}</div>)}
+      </div>
+    </div>
+  );
+}
+
+function ContextDisclosure({ spec, coherenceNotes }: { spec: SectionSpec; coherenceNotes: string[] }) {
+  const count = spec.incomingContext.length + spec.outgoingCommitments.length + coherenceNotes.length;
+  if (count === 0) return null;
+  return (
+    <Disclosure label="Context & commitments" count={count}>
+      <div className="flex flex-col gap-[10px]">
+        {spec.incomingContext.length > 0 && <ContextList label="Receives from prior" items={spec.incomingContext} />}
+        {spec.outgoingCommitments.length > 0 && <ContextList label="Must establish for later" items={spec.outgoingCommitments} />}
+        {coherenceNotes.length > 0 && (
+          <div>
+            <div className="font-mono text-[8px] tracking-[0.12em] uppercase text-hld-yellow mb-[4px]">Coherence</div>
+            <div className="flex flex-col gap-[5px]">
+              {coherenceNotes.map((n, i) => <div key={i} className="text-[10px] leading-relaxed font-sans text-hld-muted-text pl-[9px] border-l border-hld-border">{n}</div>)}
+            </div>
+          </div>
+        )}
+      </div>
+    </Disclosure>
+  );
+}
+
+function LegacyResult({ status, critique }: { status: string; critique?: string }) {
+  const pass = status === 'success';
+  return (
+    <div className={`p-[10px] border ${pass ? 'border-hld-green bg-hld-green/5' : 'border-hld-magenta bg-hld-magenta/5'}`}>
+      <div className="font-mono text-[9px] font-bold tracking-[0.14em] uppercase mb-[4px]" style={{ color: pass ? 'var(--color-hld-green)' : 'var(--color-hld-magenta)' }}>
+        {pass ? 'Pass' : 'Needs revision'}
+      </div>
+      <p className="text-[10px] leading-relaxed font-sans text-hld-text">{critique}</p>
+    </div>
+  );
+}
+
+/** The diagnosed-spec scroll body (only mounted when a spec exists). Owns the
+ *  spec-edit handlers, keeping the SpecTab orchestrator simple. */
+function SpecBody({ id, spec, entry, flatSections }: { id: string; spec: SectionSpec; entry: TestSuiteEntry; flatSections: ReturnType<typeof flatten> }) {
+  const testSuite = useStore((s) => s.testSuite);
+  const updateSpec = useStore((s) => s.updateSpec);
+  const updateMainClaim = useStore((s) => s.updateMainClaim);
+  const updateDependencies = useStore((s) => s.updateDependencies);
+  const setShowSpecModal = useStore((s) => s.setShowSpecModal);
+  const diagnostic = entry.lastDiagnostic;
+
+  const writeMoves = (requiredMoves: SectionSpec['requiredMoves']) => updateSpec(id, { ...spec, requiredMoves });
+  const editMove = (i: number, text: string) => writeMoves(spec.requiredMoves.map((m, idx) => (idx === i ? { ...m, description: text } : m)));
+  const addMove = () => writeMoves([...spec.requiredMoves, { id: `move-${spec.requiredMoves.length}`, description: '' }]);
+  const removeMove = (i: number) => writeMoves(spec.requiredMoves.filter((_, idx) => idx !== i));
+  const setClaim = (t: string) => { updateSpec(id, { ...spec, mainClaim: t }); updateMainClaim(id, t); };
+  const setFunction = (f: SectionFunction) => updateSpec(id, { ...spec, function: f });
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-[12px] flex flex-col gap-[14px]">
+      {diagnostic && <NextCard text={diagnostic.nextPriority} />}
+      <ClaimZone spec={spec} onClaim={setClaim} onFunction={setFunction} />
+      <MoveList spec={spec} diagnostic={diagnostic} onEdit={editMove} onAdd={addMove} onRemove={removeMove} onRefine={() => setShowSpecModal(true)} />
+      <DependencyChips sectionId={id} dependencies={entry.dependencies || []} flatSections={flatSections} testSuite={testSuite} onUpdate={(deps) => updateDependencies(id, deps)} />
+      <ContextDisclosure spec={spec} coherenceNotes={diagnostic?.coherenceNotes || []} />
+      {!diagnostic && entry.lastResult && <LegacyResult status={entry.status} critique={entry.lastResult.critique} />}
+    </div>
+  );
+}
+
+/** The Spec tab: orientation header → NEXT → the spec with verdicts on it → act. */
+export function SpecTab() {
+  const sections = useStore((s) => s.sections);
+  const testSuite = useStore((s) => s.testSuite);
+  const updateSectionGoals = useStore((s) => s.updateSectionGoals);
+  const setShowSpecModal = useStore((s) => s.setShowSpecModal);
   const currentSection = useCurrentSection();
-
-  const [showContext, setShowContext] = useState(false);
-
-  // Flatten sections for dropdown
-  const flatSections = useMemo(() => {
-    const flat: { id: string; title: string; level: number }[] = [];
-    const traverse = (nodes: Section[]) => {
-      nodes.forEach(n => {
-        flat.push({ id: n.id, title: n.title, level: n.level });
-        traverse(n.children);
-      });
-    };
-    traverse(sections);
-    return flat;
-  }, [sections]);
+  const flatSections = useMemo(() => flatten(sections), [sections]);
 
   if (!currentSection) return null;
 
-  const updateGoals = (text: string) => updateSectionGoals(currentSection.id, text, 'manual');
-  const onRunTests = () => setShowRunModal(true);
-  const onOpenSpecRefinement = () => setShowSpecModal(true);
-  const onOpenSuggestions = () => setShowSuggestionsModal(true);
-
-  const entry = testSuite[currentSection.id];
+  const id = currentSection.id;
+  const entry = testSuite[id];
   const spec = entry?.spec;
-  const diagnostic = entry?.lastDiagnostic;
-  const status = entry?.status || 'idle';
-  const currentDependencies = entry?.dependencies || [];
-
-  // Handle manual spec edits
-  const handleMoveEdit = (moveIndex: number, newDescription: string) => {
-    if (!spec) return;
-    const newMoves = [...spec.requiredMoves];
-    newMoves[moveIndex] = { ...newMoves[moveIndex], description: newDescription };
-    updateSpec(currentSection.id, { ...spec, requiredMoves: newMoves });
-  };
-
-  const handleAddMove = () => {
-    if (!spec) return;
-    const newMove = { id: `move-${spec.requiredMoves.length}`, description: '' };
-    updateSpec(currentSection.id, { ...spec, requiredMoves: [...spec.requiredMoves, newMove] });
-  };
-
-  const handleRemoveMove = (moveIndex: number) => {
-    if (!spec) return;
-    updateSpec(currentSection.id, { ...spec, requiredMoves: spec.requiredMoves.filter((_, i) => i !== moveIndex) });
-  };
+  const goals = entry?.goals || '';
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-[10px] bg-[#080d13]">
-
-      <PersonaBanner />
-
-      {/* === STRUCTURED SPEC DISPLAY === */}
-      {spec ? (
-        <div className="space-y-[14px]">
-          {/* Function + Claim header */}
-          <div className="bg-[#080d13] border border-hld-border p-[8px]">
-            <div className="flex items-center gap-[6px] mb-[6px] border-b border-hld-border/50 pb-[6px]">
-              <div className="text-[7px] font-mono font-bold tracking-[0.14em] uppercase text-hld-magenta flex items-center gap-[4px] shrink-0">
-                <div className="w-[4px] h-[4px] bg-hld-magenta rotate-45 shadow-[0_0_6px_var(--tw-colors-hld-magenta)]" />
-                {spec.function}
-              </div>
-              <div className="w-[1px] h-[8px] bg-slate-300 border-[#1e2f42]" />
-              <div className="text-[7px] font-mono tracking-[0.14em] text-hld-muted uppercase">The Core Claim</div>
-            </div>
-
-            <textarea
-              className="w-full text-[10px] bg-transparent text-hld-text font-sans leading-[1.6] outline-none resize-none placeholder-hld-muted/50"
-              placeholder="The core proposition — what makes this section necessary?"
-              value={spec.mainClaim}
-              style={{minHeight: "3.5em"}}
-              onChange={(e) => {
-                updateSpec(currentSection.id, { ...spec, mainClaim: e.target.value });
-                updateMainClaim(currentSection.id, e.target.value);
-              }}
-            />
-          </div>
-
-          {/* Required Moves */}
-          <div className="space-y-[14px]">
-            {spec.requiredMoves.map((move, i) => {
-              // Find matching diagnostic result if available
-              const diagResult = diagnostic?.moveResults.find(mr => mr.moveId === move.id);
-
-              return (
-                <div key={move.id} className="bg-[#080d13] border border-hld-border p-[8px]">
-                  <div className="flex justify-between items-center mb-[6px] border-b border-hld-border/50 pb-[6px]">
-                     <div className="text-[7px] font-mono font-bold tracking-[0.14em] uppercase text-hld-cyan flex items-center gap-[4px]">
-                       <div className="w-[4px] h-[4px] bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]" />
-                       Move {i + 1}
-                     </div>
-                     <button
-                       onClick={onOpenSpecRefinement}
-                       className="text-[6px] font-mono uppercase tracking-[0.15em] text-hld-cyan/70 hover:text-hld-cyan flex items-center gap-[4px] transition-colors"
-                     >
-                       <Sparkles size={8} /> refine
-                     </button>
-                  </div>
-
-                  <div className="flex items-start gap-2">
-                     {diagResult && (
-                       // After evaluation: show status icon
-                       <div className={`shrink-0 mt-1 ${STATUS_CONFIG[diagResult.status].color}`}>
-                         {React.createElement(STATUS_CONFIG[diagResult.status].icon, { size: 12 })}
-                       </div>
-                     )}
-                     <textarea
-                       value={move.description}
-                       onChange={(e) => handleMoveEdit(i, e.target.value)}
-                       rows={1}
-                       className="w-full text-[10px] bg-transparent text-hld-text font-sans leading-[1.6] outline-none resize-none placeholder-hld-muted/50"
-                       style={{minHeight: "2.5em"}}
-                       placeholder="Describe what this section must do..."
-                     />
-                     <button
-                       onClick={() => handleRemoveMove(i)}
-                       className="text-hld-muted/50 hover:text-hld-magenta transition-colors shrink-0 mt-0.5"
-                     >
-                       <X size={10} />
-                     </button>
-                  </div>
-                </div>
-              );
-            })}
-            <button
-              onClick={handleAddMove}
-              className="w-full p-[6px] bg-transparent border border-dashed border-hld-border text-[7px] font-mono uppercase tracking-[0.14em] text-hld-muted hover:text-hld-cyan hover:border-hld-cyan transition-all"
-            >
-              + Add move
-            </button>
-          </div>
-
-          {/* Incoming/Outgoing Context (collapsible) */}
-          {(spec.incomingContext.length > 0 || spec.outgoingCommitments.length > 0) && (
-            <div className="border-t border-hld-border pt-3">
-              <button
-                onClick={() => setShowContext(!showContext)}
-                className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted flex items-center gap-1 hover:text-hld-cyan transition-colors"
-              >
-                <ChevronRight size={12} className={`transition-transform ${showContext ? 'rotate-90' : ''}`} />
-                Context & Commitments
-              </button>
-              {showContext && (
-                <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 p-[8px]">
-                  {spec.incomingContext.length > 0 && (
-                    <div>
-                      <div className="text-[7px] font-mono uppercase tracking-[0.15em] font-bold text-hld-muted mb-1 flex items-center gap-1">
-                        <ArrowDown size={10} /> Receives from prior sections
-                      </div>
-                      <div className="space-y-1">
-                        {spec.incomingContext.map((ctx, i) => (
-                          <div key={i} className="text-[10px] text-hld-muted bg-transparent border border-hld-border px-2 py-1 font-sans">
-                            {ctx}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {spec.outgoingCommitments.length > 0 && (
-                    <div>
-                      <div className="text-[7px] font-mono uppercase tracking-[0.15em] font-bold text-hld-muted mb-1 flex items-center gap-1">
-                        <ArrowRight size={10} /> Must establish for later
-                      </div>
-                      <div className="space-y-1">
-                        {spec.outgoingCommitments.map((com, i) => (
-                          <div key={i} className="text-[10px] text-hld-muted bg-transparent border border-hld-border px-2 py-1 font-sans">
-                            {com}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+      <PanelHeader section={currentSection} status={entry?.status || 'idle'} diagnostic={entry?.lastDiagnostic} />
+      {spec && entry ? (
+        <SpecBody id={id} spec={spec} entry={entry} flatSections={flatSections} />
       ) : (
-        /* No spec yet — show legacy goals or prompt to generate */
-        <div className="space-y-2 mt-[12px]">
-          <label className="text-[7px] font-mono font-bold uppercase tracking-[0.15em] text-hld-muted">
-            Goals (run Interpolate Tasks to generate structured specs)
-          </label>
-          <textarea
-            className="w-full p-[10px] text-[10px] border border-hld-border bg-[#080d13] text-hld-text min-h-[6rem] focus:ring-1 focus:ring-hld-cyan/50 focus:border-hld-cyan outline-none resize-none font-sans leading-[1.6]"
-            placeholder="Define what this section should accomplish..."
-            value={entry?.goals || ''}
-            onChange={(e) => updateGoals(e.target.value)}
-          />
-        </div>
+        <EmptyState goals={goals} onGoalsChange={(t) => updateSectionGoals(id, t, 'manual')} onGenerate={() => setShowSpecModal(true)} />
       )}
-
-      <SpecDependencies
-        sectionId={currentSection.id}
-        dependencies={currentDependencies}
-        flatSections={flatSections}
-        testSuite={testSuite}
-        onUpdate={(deps) => updateDependencies(currentSection.id, deps)}
-      />
-
-      {/* Action Buttons */}
-      <div className="space-y-[6px] mt-4">
-        <button
-          onClick={onRunTests}
-          disabled={isProcessing || (!spec && !entry?.goals)}
-          className="w-full p-[11px] bg-transparent border border-[rgba(255,16,96,0.3)] text-hld-magenta font-mono uppercase tracking-[0.14em] text-[8px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[rgba(255,16,96,0.06)] hover:shadow-[0_0_20px_rgba(255,16,96,0.3)] bracketed"
-          style={{"--br-color": "var(--tw-colors-hld-magenta)"} as React.CSSProperties}
-        >
-          {isProcessing ? <>Evaluating...</> : <><Play size={10} fill="currentColor" /> Run Diagnostic</>}
-        </button>
-        <button
-          onClick={onOpenSuggestions}
-          disabled={isProcessing}
-          className="w-full p-[9px] bg-transparent border border-hld-border text-hld-muted font-mono uppercase tracking-[0.14em] text-[7px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-hld-surface2 hover:text-hld-text bracketed"
-          style={{"--br-color": "var(--tw-colors-hld-muted)"} as React.CSSProperties}
-        >
-          <Lightbulb size={10} className="text-hld-yellow" /> Content Suggestions
-        </button>
-      </div>
-
-      {/* === DIAGNOSTIC RESULTS === */}
-      {diagnostic && <SpecDiagnostics diagnostic={diagnostic} />}
-
-      {/* Legacy Results (backward compat) */}
-      {!diagnostic && entry?.lastResult && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className={`p-[10px] border ${
-            status === 'success'
-              ? 'bg-[rgba(0,232,112,0.05)] border-hld-green'
-              : 'bg-[#1a050f] border-hld-magenta'
-          }`}>
-            <div className="flex items-start gap-3 mb-2">
-              {status === 'success' ? (
-                <CheckCircle className="text-hld-green shrink-0 mt-1" size={16} />
-              ) : (
-                <AlertCircle className="text-hld-magenta shrink-0 mt-1" size={16} />
-              )}
-              <div>
-                <h4 className="font-bold font-mono uppercase tracking-[0.14em] text-[10px] mt-1 relative top-[-1px]">
-                  {status === 'success' ? 'Pass' : 'Needs Revision'}
-                </h4>
-                <p className="text-[10px] mt-1 text-hld-text font-sans leading-[1.6]">
-                  {entry.lastResult?.critique}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <PanelFooter runDisabled={!spec && !goals} />
     </div>
   );
-};
+}

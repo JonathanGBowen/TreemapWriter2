@@ -55,7 +55,7 @@ non-negotiable rules:
 
 | If you're adding... | It goes in... |
 |---|---|
-| A new modal | `src/features/modals/<Name>Modal.tsx`. Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. |
+| A new modal | `src/features/modals/<Name>Modal.tsx`. Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal must subscribe to its own openness flag via `useStore` — do not accept `isOpen` / `onClose` as props. Only orchestration handlers (e.g. `onRun`, `onConfirm`) should be props. Wrap the body in `modals/ModalShell` (the presentational HLD frame; it owns no openness — pass it `onClose`/`onPrimary`). For a model-depth control use `modals/SegControl` + `depth-choice.ts` rather than a raw model picker. |
 | A new editor command | `src/features/editor/commands/` |
 | A new Tauri IPC command | Add `#[tauri::command]` fn in the right `src-tauri/src/commands/<area>.rs`, register in `lib.rs::run`'s `tauri::generate_handler![...]`, expose a typed wrapper as a method on `tauriRepository` (`src/services/tauri-repository.ts`) or in a sibling service module. Components never call `invoke()` directly. |
 | A new on-disk file in a project | Path goes in `src-tauri/src/project/layout.rs`. Read/write via `crate::fs_io::*` helpers (atomic write). If the file should be gitignored, update the `.gitignore` written by `project_create` in `src-tauri/src/commands/project.rs`. |
@@ -106,21 +106,36 @@ src/
 │   ├── preferences.ts         global app prefs (tutorial flag, default model, catalog, Ollama URL)
 │   └── prompts/               .md prompts + index.ts that assembles DEFAULT_PROMPTS_CONFIG
 ├── features/
-│   ├── sidebar/Sidebar.tsx
+│   ├── shared/                  cross-feature HLD presentational primitives
+│   │   ├── Pip.tsx              the one diamond status vocabulary (.hld-pip*)
+│   │   ├── Zone.tsx             eyebrow + hairline rule (structure, not boxes)
+│   │   ├── Disclosure.tsx       collapsed open-one-at-a-time section
+│   │   └── CopyButton.tsx       quiet copy-to-clipboard affordance
+│   ├── sidebar/Sidebar.tsx      shell; composes ProjectMenu + MapZone + Dock
+│   │   ├── ProjectMenu.tsx      the ◇ menu (absorbed + replaced FileMenu)
+│   │   ├── Dock.tsx             CONTINUE (lit) + sprints + tools strip + caption
+│   │   ├── SectionRow.tsx       one section-tree row
+│   │   └── sync-status.ts       summarizeSync() → composite pip + label
 │   ├── treemap/Treemap.tsx
 │   ├── editor/EditorPanel.tsx
 │   ├── tests-panel/             right panel: Spec | Analysis | Dialogue tabs
-│   │   ├── TestsPanel.tsx       shell: header, tab strip, resize
-│   │   ├── SpecTab.tsx          spec editor + diagnostics (the original surface)
-│   │   ├── SpecDiagnostics.tsx  STATUS_CONFIG + diagnostic results rendering
-│   │   ├── SpecDependencies.tsx dependencies editor
-│   │   ├── AnalysisTab.tsx      per-section argument reconstruction + versions
+│   │   ├── TestsPanel.tsx       shell: accent line + tab strip + ⚙, resize
+│   │   ├── SpecTab.tsx          orientation → NEXT → spec-with-verdicts → act
+│   │   ├── PanelHeader.tsx      section + readiness pips
+│   │   ├── MoveList.tsx         merged moves (verdict pip inline; expand WHERE/ACTION)
+│   │   ├── DependencyChips.tsx  met/unmet chips + add popover
+│   │   ├── PanelFooter.tsx      persona chip + suggestions + lit RUN DIAGNOSTIC
+│   │   ├── EmptyState.tsx       no-spec lit GENERATE SPEC + manual goals
+│   │   ├── diagnostic-config.ts STATUS/READINESS → pip mappings
+│   │   ├── AnalysisTab.tsx      thesis spine + argument ladder + reading index
 │   │   ├── DialogueTab.tsx      Socratic dialogue (streaming) + refactor
+│   │   ├── PersonaBanner.tsx    evaluator banner (no-section empty state)
 │   │   ├── use-analysis-actions.ts  orchestration hook (provider + slice actions)
 │   │   └── use-current-section.ts   shared selectedId → Section derivation
 │   ├── tutorial/Tutorial.tsx
-│   └── modals/<Name>Modal.tsx (one file per modal; flat — sub-feature folders
-│                                may emerge in Phase 2+ as features mature)
+│   └── modals/<Name>Modal.tsx   one file per modal; flat. Shared frame:
+│       ModalShell.tsx (presentational, owns no openness) + SegControl.tsx
+│       + depth-choice.ts (DEPTH stop → model tier in the active provider)
 ├── lib/                       pure utilities — parseMarkdown, exportBackup,
 │                              defaultPersonas, etc. No React, no store.
 └── types/index.ts             domain types (Section, SectionSpec, Snapshot, …)

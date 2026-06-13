@@ -1,247 +1,206 @@
-import React, { useMemo, useState } from "react";
-import { ChevronRight, MessageSquareQuote, Network, RefreshCw } from "lucide-react";
+import { useMemo } from "react";
+import type { CSSProperties } from "react";
+import { Network, RefreshCw } from "lucide-react";
 import type { AnalysisVersion, DialogueMessage, SectionAnalysis } from "../../types";
 import { useStore } from "../../state";
 import { computeHash } from "../../lib/utils";
 import { interrogateContextFor } from "../../lib/analysis-helpers";
+import { Zone } from "../shared/Zone";
+import { Pip } from "../shared/Pip";
+import { Disclosure } from "../shared/Disclosure";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
 
-const versionStamp = (timestamp: number) =>
-  new Date(timestamp).toLocaleString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+const versionStamp = (ts: number) => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-const VersionRow: React.FC<{
-  versions: AnalysisVersion[];
-  active: AnalysisVersion;
-  edited: boolean;
-  onSelect: (versionId: string) => void;
-  onAskEntire: () => void;
-}> = ({ versions, active, edited, onSelect, onAskEntire }) => (
-  <div className="flex items-center gap-[6px]">
-    <div className="relative flex-1 min-w-0">
-      <select
-        className="w-full pl-2 pr-6 py-1.5 text-[8px] font-mono uppercase tracking-[0.14em] bg-hld-surface2 border border-hld-border rounded-none text-hld-text outline-none focus:border-hld-cyan appearance-none cursor-pointer"
-        value={active.id}
-        onChange={(e) => onSelect(e.target.value)}
-      >
-        {versions.map(v => (
-          <option key={v.id} value={v.id}>
-            {v.label} — {versionStamp(v.timestamp)}
-          </option>
-        ))}
-      </select>
-    </div>
-    {edited && (
-      <span
-        className="text-[7px] font-mono font-bold uppercase tracking-[0.14em] text-hld-yellow shrink-0"
-        title="The section text has changed since this version was generated"
-      >
-        Edited since
-      </span>
-    )}
-    <button
-      onClick={onAskEntire}
-      className="w-[26px] h-[26px] flex items-center justify-center border border-hld-border text-hld-muted hover:text-hld-cyan hover:bg-hld-cyan/10 hover:border-hld-cyan transition-all shrink-0"
-      title="Interrogate the entire analysis"
-    >
-      <MessageSquareQuote size={12} />
-    </button>
-  </div>
-);
-
-/** Collapsible read-only transcript of the dialogue that produced a refactor. */
-const SourceDialogue: React.FC<{ dialogue: DialogueMessage[] }> = ({ dialogue }) => {
-  const [open, setOpen] = useState(false);
+/** The one interrogation affordance — monochrome at rest, cyan on hover. */
+function Ask({ onAsk, label = '⊕ ask' }: { onAsk: () => void; label?: string }) {
   return (
-    <div className="border-t border-hld-border pt-3">
-      <button
-        onClick={() => setOpen(!open)}
-        className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted flex items-center gap-1 hover:text-hld-cyan transition-colors"
-      >
-        <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
-        Source Dialogue
-      </button>
-      {open && (
-        <div className="mt-2 space-y-[6px] animate-in fade-in slide-in-from-top-1 duration-200 p-[8px]">
-          {dialogue.map((m, i) => (
-            <div key={i} className="text-[10px] font-sans leading-[1.6] border border-hld-border px-2 py-1">
-              <span className={`text-[7px] font-mono uppercase tracking-[0.14em] mr-2 ${m.role === 'user' ? 'text-hld-cyan' : 'text-hld-muted'}`}>
-                {m.role === 'user' ? 'You' : 'Partner'}
-              </span>
-              <span className="text-hld-text whitespace-pre-wrap">{m.text}</span>
-            </div>
-          ))}
+    <button type="button" onClick={onAsk} title="Ask about this — opens a focused dialogue" className="font-mono text-[8.5px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-cyan transition-colors whitespace-nowrap shrink-0">
+      {label}
+    </button>
+  );
+}
+
+/** The argument promoted to hero: a logical ladder. */
+function ArgumentLadder({ argument }: { argument: SectionAnalysis['argument'] }) {
+  const pipStyle: CSSProperties = { position: 'absolute', left: -14, top: 5 };
+  return (
+    <div className="mt-[10px] relative pl-[14px]">
+      <div className="absolute left-[3px] top-[4px] bottom-[30px] w-px bg-hld-border" />
+      {argument.premises.map((p, i) => (
+        <div key={i} className="flex gap-[9px] items-start mb-[9px] relative">
+          <Pip status="cyan" size="sm" style={pipStyle} />
+          <span className="font-mono text-[8px] font-bold text-hld-muted-text shrink-0 mt-[2px] tracking-[0.06em]">P{i + 1}</span>
+          <span className="text-[10.5px] leading-relaxed font-sans text-hld-text">{p}</span>
+        </div>
+      ))}
+      {argument.implicitPremises.map((p, i) => (
+        <div key={i} className="flex gap-[9px] items-start mb-[12px] relative">
+          <Pip status="idle" size="sm" style={pipStyle} />
+          <span className="font-mono text-[7px] font-bold text-hld-muted shrink-0 mt-[3px] tracking-[0.1em] uppercase">impl</span>
+          <span className="text-[10px] leading-relaxed font-sans text-hld-muted-text italic">{p}</span>
+        </div>
+      ))}
+      <div className="flex gap-[9px] items-start relative">
+        <span className="absolute -left-[16px] top-0 text-hld-cyan text-[12px]">∴</span>
+        <div className="text-[10.5px] leading-relaxed font-sans text-hld-text font-semibold bg-hld-cyan/5 border-l-2 border-hld-cyan/40 px-[10px] py-[7px]">{argument.conclusion}</div>
+      </div>
+    </div>
+  );
+}
+
+function BulletList({ items, status }: { items: string[]; status: 'green' | 'magenta' }) {
+  return (
+    <div className="flex flex-col gap-[6px]">
+      {items.map((item, i) => (
+        <div key={i} className="flex gap-[8px] items-start">
+          <Pip status={status} size="sm" style={{ marginTop: 5 }} />
+          <span className="text-[10px] leading-relaxed font-sans text-hld-text">{item}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Read-only provenance transcript (the dialogue a refactor came from). */
+function SourceTranscript({ dialogue }: { dialogue: DialogueMessage[] }) {
+  return (
+    <div className="flex flex-col gap-[6px]">
+      {dialogue.map((m, i) => (
+        <div key={i} className="text-[10px] font-sans leading-relaxed border-l border-hld-border pl-[9px]">
+          <span className={`font-mono text-[7px] uppercase tracking-[0.14em] mr-2 ${m.role === 'user' ? 'text-hld-cyan' : 'text-hld-muted'}`}>{m.role === 'user' ? 'You' : 'Partner'}</span>
+          <span className="text-hld-text whitespace-pre-wrap">{m.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VersionLine({ versions, active, edited, onSelect }: { versions: AnalysisVersion[]; active: AnalysisVersion; edited: boolean; onSelect: (id: string) => void }) {
+  return (
+    <div>
+      <Zone label="Structural read">
+        <span className="inline-flex items-center gap-[3px]">
+          <select value={active.id} onChange={(e) => onSelect(e.target.value)} title="Analysis version" className="bg-transparent border-none outline-none font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-cyan cursor-pointer appearance-none text-right">
+            {versions.map((v) => <option key={v.id} value={v.id} className="bg-hld-surface text-hld-text normal-case">{v.label} — {versionStamp(v.timestamp)}</option>)}
+          </select>
+          <span className="text-hld-muted-text text-[8px] pointer-events-none">▾</span>
+        </span>
+      </Zone>
+      {edited && (
+        <div className="flex items-center gap-[7px] mt-[7px]">
+          <Pip status="yellow" size="sm" />
+          <span className="font-mono text-[8.5px] tracking-[0.1em] uppercase text-hld-muted-text">Section edited since — re-analyze to refresh</span>
         </div>
       )}
     </div>
   );
-};
+}
 
-/** One analysis section card: micro-label header + interrogate glyph + body. */
-const AnalysisCard: React.FC<{
-  label: string;
-  accent: string;
-  onAsk: () => void;
-  children: React.ReactNode;
-}> = ({ label, accent, onAsk, children }) => (
-  <div className="bg-[#080d13] border border-hld-border p-[8px]">
-    <div className="flex justify-between items-center mb-[6px] border-b border-hld-border/50 pb-[6px]">
-      <div className={`text-[7px] font-mono font-bold tracking-[0.14em] uppercase flex items-center gap-[4px] ${accent}`}>
-        <div className="w-[4px] h-[4px] bg-current rotate-45 shadow-[0_0_6px_currentColor]" />
-        {label}
-      </div>
-      <button
-        onClick={onAsk}
-        className="text-hld-muted/70 hover:text-hld-cyan transition-colors"
-        title={`Interrogate: ${label.toLowerCase()}`}
-      >
-        <MessageSquareQuote size={10} />
+function ReanalyzeFooter({ busy, onRun }: { busy: boolean; onRun: () => void }) {
+  return (
+    <div className="px-[14px] py-[12px] border-t border-hld-border shrink-0">
+      <button type="button" onClick={onRun} disabled={busy} className="w-full py-[10px] flex items-center justify-center gap-2 border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9px] tracking-[0.14em] uppercase disabled:opacity-40 transition-colors">
+        <RefreshCw size={11} /> {busy ? 'Analyzing…' : 'Re-analyze'}
       </button>
     </div>
-    {children}
-  </div>
-);
+  );
+}
 
-const ArgumentBody: React.FC<{ argument: SectionAnalysis['argument'] }> = ({ argument }) => (
-  <div className="space-y-[4px]">
-    {argument.premises.map((p, i) => (
-      <div key={i} className="flex gap-[6px] items-start">
-        <span className="text-[8px] font-mono font-bold text-hld-cyan shrink-0 mt-[2px]">P{i + 1}</span>
-        <span className="text-[10px] text-hld-text font-sans leading-[1.6]">{p}</span>
+function AnalysisEmpty({ busy, onRun }: { busy: boolean; onRun: () => void }) {
+  return (
+    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[16px] p-[24px] text-center bg-[#080d13]">
+      <span className="w-[22px] h-[22px] rotate-45 border border-hld-muted" />
+      <div className="text-[10.5px] leading-relaxed font-sans text-hld-muted-text max-w-[240px]">
+        No structural read yet. Analyze this section to surface its argument — the premises, the hidden assumption, and where it&apos;s open to objection.
       </div>
-    ))}
-    {argument.implicitPremises.length > 0 && (
-      <div className="pt-[4px]">
-        <div className="text-[6px] font-mono uppercase tracking-[0.15em] text-hld-purple mb-[3px]">Implicit</div>
-        {argument.implicitPremises.map((p, i) => (
-          <div key={i} className="flex gap-[6px] items-start">
-            <span className="text-[8px] font-mono font-bold text-hld-purple shrink-0 mt-[2px]">IP{i + 1}</span>
-            <span className="text-[10px] text-hld-text/90 font-sans leading-[1.6]">{p}</span>
-          </div>
-        ))}
-      </div>
-    )}
-    <div className="mt-[8px] border-l-2 border-hld-cyan pl-2 italic text-[10px] text-hld-text font-sans leading-[1.6]">
-      {argument.conclusion}
+      <button type="button" onClick={onRun} disabled={busy} style={{ '--br-color': 'var(--color-hld-cyan)' } as CSSProperties} className="bracketed hld-lit px-[22px] py-[11px] flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.14em] uppercase disabled:opacity-40">
+        <Network size={11} /> {busy ? 'Analyzing…' : 'Analyze'}
+      </button>
     </div>
-  </div>
-);
+  );
+}
 
-const BulletList: React.FC<{ items: string[]; marker: string }> = ({ items, marker }) => (
-  <div className="space-y-[4px]">
-    {items.map((item, i) => (
-      <div key={i} className="flex gap-[6px] items-start">
-        <div className={`w-[4px] h-[4px] rotate-45 shrink-0 mt-[6px] ${marker}`} />
-        <span className="text-[10px] text-hld-text font-sans leading-[1.6]">{item}</span>
-      </div>
-    ))}
-  </div>
-);
+/** Concepts · Support · Objections · Source — opened one at a time. */
+function ReadingIndex({ r, sourceDialogue, ask }: { r: SectionAnalysis; sourceDialogue?: DialogueMessage[]; ask: (ctx: string) => void }) {
+  return (
+    <div className="mt-[2px]">
+      {r.keyConcepts.length > 0 && (
+        <Disclosure label="Key concepts" count={r.keyConcepts.length}>
+          <div className="flex flex-col gap-[5px]">
+            {r.keyConcepts.map((c, i) => (
+              <div key={i} className="text-[10px] leading-relaxed font-sans"><span className="font-bold text-hld-text">{c.term}</span><span className="text-hld-muted-text"> — {c.definition}</span></div>
+            ))}
+            <div className="mt-[4px]"><Ask onAsk={() => ask(interrogateContextFor.concepts(r))} /></div>
+          </div>
+        </Disclosure>
+      )}
+      {r.supportingArguments.length > 0 && (
+        <Disclosure label="Support" count={r.supportingArguments.length}>
+          <BulletList items={r.supportingArguments} status="green" />
+          <div className="mt-[2px]"><Ask onAsk={() => ask(interrogateContextFor.support(r))} /></div>
+        </Disclosure>
+      )}
+      {r.potentialObjections.length > 0 && (
+        <Disclosure label="Objections" count={r.potentialObjections.length} pip="magenta" defaultOpen>
+          <BulletList items={r.potentialObjections} status="magenta" />
+          <div className="mt-[6px] flex justify-end">
+            <span className="inline-flex items-center px-[9px] py-[5px] border border-hld-cyan/25 bg-hld-cyan/[0.04]">
+              <Ask onAsk={() => ask(interrogateContextFor.objections(r))} label="⊕ take this objection to dialogue" />
+            </span>
+          </div>
+        </Disclosure>
+      )}
+      {sourceDialogue && sourceDialogue.length > 0 && (
+        <Disclosure label="Source dialogue" count={`${sourceDialogue.length} turns`}>
+          <SourceTranscript dialogue={sourceDialogue} />
+        </Disclosure>
+      )}
+    </div>
+  );
+}
 
-const AnalyzeButton: React.FC<{ hasVersion: boolean; busy: boolean; onRun: () => void }> = ({ hasVersion, busy, onRun }) => (
-  <button
-    onClick={onRun}
-    disabled={busy}
-    className="w-full p-[11px] bg-transparent border border-[rgba(0,232,245,0.3)] text-hld-cyan font-mono uppercase tracking-[0.14em] text-[8px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[rgba(0,232,245,0.06)] hover:shadow-[0_0_20px_rgba(0,232,245,0.25)] bracketed"
-    style={{"--br-color": "var(--tw-colors-hld-cyan)"} as React.CSSProperties}
-  >
-    {busy
-      ? <>Analyzing...</>
-      : hasVersion
-        ? <><RefreshCw size={10} /> Re-analyze</>
-        : <><Network size={10} /> Analyze</>}
-  </button>
-);
-
-export const AnalysisTab: React.FC = () => {
-  const testSuite = useStore(s => s.testSuite);
-  const isProcessing = useStore(s => s.isProcessing);
-  const setActiveAnalysisVersion = useStore(s => s.setActiveAnalysisVersion);
+export function AnalysisTab() {
+  const testSuite = useStore((s) => s.testSuite);
+  const isProcessing = useStore((s) => s.isProcessing);
+  const setActiveAnalysisVersion = useStore((s) => s.setActiveAnalysisVersion);
   const currentSection = useCurrentSection();
   const { runAnalysis, interrogate } = useAnalysisActions();
-  // Memoize the (linear) content hash so it isn't recomputed on every render —
-  // AnalysisTab re-renders on any testSuite change. Declared before the early
-  // return to satisfy the rules of hooks.
-  const contentHash = useMemo(
-    () => computeHash(currentSection?.fullContent ?? ''),
-    [currentSection?.fullContent],
-  );
+  const contentHash = useMemo(() => computeHash(currentSection?.fullContent ?? ''), [currentSection?.fullContent]);
 
   if (!currentSection) return null;
 
   const state = testSuite[currentSection.id]?.analysis;
   const versions = state?.versions ?? [];
-  const active = versions.find(v => v.id === state?.activeVersionId) ?? versions[0];
-  // Surfaced, never auto-invalidated: versions are history, not cache.
-  const edited = !!active && active.inputHash !== contentHash;
+  const active = versions.find((v) => v.id === state?.activeVersionId) ?? versions[0];
 
-  const analyzeButton = <AnalyzeButton hasVersion={!!active} busy={isProcessing} onRun={runAnalysis} />;
+  if (!active) return <AnalysisEmpty busy={isProcessing} onRun={runAnalysis} />;
 
-  if (!active) {
-    return (
-      <div className="flex-1 overflow-y-auto p-3 bg-[#080d13] flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center text-center text-hld-muted">
-          <Network size={32} className="mb-2 opacity-50" />
-          <p className="font-mono uppercase tracking-[0.14em] text-[8px]">No analysis</p>
-        </div>
-        {analyzeButton}
-      </div>
-    );
-  }
-
-  const result = active.result;
+  const r = active.result;
+  const ask = (ctx: string) => interrogate(ctx);
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-[10px] bg-[#080d13]">
-      <VersionRow
-        versions={versions}
-        active={active}
-        edited={edited}
-        onSelect={(versionId) => setActiveAnalysisVersion(currentSection.id, versionId)}
-        onAskEntire={() => interrogate(interrogateContextFor.entire(result))}
-      />
+    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+      <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-[12px] flex flex-col gap-[14px]">
+        <VersionLine versions={versions} active={active} edited={active.inputHash !== contentHash} onSelect={(id) => setActiveAnalysisVersion(currentSection.id, id)} />
 
-      <AnalysisCard label="Thesis" accent="text-hld-cyan" onAsk={() => interrogate(interrogateContextFor.thesis(result))}>
-        <p className="text-[10px] text-hld-text font-sans leading-[1.6]">{result.centralThesis}</p>
-      </AnalysisCard>
+        <div>
+          <Zone label="Thesis"><Ask onAsk={() => ask(interrogateContextFor.thesis(r))} /></Zone>
+          <div className="mt-[8px] px-[11px] py-[9px] bg-hld-surface2/60 border-t border-hld-border text-[11px] leading-relaxed font-sans text-hld-text">{r.centralThesis}</div>
+        </div>
 
-      {result.keyConcepts.length > 0 && (
-        <AnalysisCard label="Concepts" accent="text-hld-yellow" onAsk={() => interrogate(interrogateContextFor.concepts(result))}>
-          <div className="space-y-[4px]">
-            {result.keyConcepts.map((c, i) => (
-              <div key={i} className="text-[10px] font-sans leading-[1.6]">
-                <span className="font-bold text-hld-cyan">{c.term}</span>
-                <span className="text-hld-text"> — {c.definition}</span>
-              </div>
-            ))}
-          </div>
-        </AnalysisCard>
-      )}
+        <div>
+          <Zone label="Argument" meta={`${r.argument.premises.length} premises · ${r.argument.implicitPremises.length} implicit`}>
+            <Ask onAsk={() => ask(interrogateContextFor.argument(r))} />
+          </Zone>
+          <ArgumentLadder argument={r.argument} />
+        </div>
 
-      <AnalysisCard label="Argument" accent="text-hld-magenta" onAsk={() => interrogate(interrogateContextFor.argument(result))}>
-        <ArgumentBody argument={result.argument} />
-      </AnalysisCard>
+        <ReadingIndex r={r} sourceDialogue={active.sourceDialogue} ask={ask} />
+      </div>
 
-      {result.supportingArguments.length > 0 && (
-        <AnalysisCard label="Support" accent="text-hld-green" onAsk={() => interrogate(interrogateContextFor.support(result))}>
-          <BulletList items={result.supportingArguments} marker="bg-hld-green" />
-        </AnalysisCard>
-      )}
-
-      {result.potentialObjections.length > 0 && (
-        <AnalysisCard label="Objections" accent="text-hld-purple" onAsk={() => interrogate(interrogateContextFor.objections(result))}>
-          <BulletList items={result.potentialObjections} marker="bg-hld-magenta" />
-        </AnalysisCard>
-      )}
-
-      {/* Source dialogue (refactor provenance) */}
-      {active.sourceDialogue && active.sourceDialogue.length > 0 && (
-        <SourceDialogue dialogue={active.sourceDialogue} />
-      )}
-
-      {analyzeButton}
+      <ReanalyzeFooter busy={isProcessing} onRun={runAnalysis} />
     </div>
   );
-};
+}
