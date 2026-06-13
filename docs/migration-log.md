@@ -1485,3 +1485,66 @@ on the provider-agnostic `LLMRequest` is a deliberate pragmatic leak.
 Content Suggestions → they now use it (previously stuck on the boot default).
 
 **Rollback.** Revert this commit; the feature commit above stands on its own.
+
+---
+
+## 2026-06-13 — Design overhaul: Columns & Modals (HLD affordance grammar)
+
+**Scope.** A visual + IA overhaul of the left sidebar, the right Spec/Analysis/
+Dialogue panel, and the three worst-offender modals, implementing a Claude
+Design handoff. One **affordance grammar** applied everywhere: `.hld-lit` marks
+the single next action per surface; a diamond `Pip` is the one state vocabulary;
+hairlines (not boxes) delimit zones; a 2px left edge marks editable text; words
+appear on demand. No domain types, repository, AIProvider, sync-policy, or Rust
+were touched. No new persisted state. Eight independently-revertable commits
+(`ff52ae3`…`f3ed75b`) on branch `design/columns-modals-overhaul`.
+
+**What changed.**
+1. **Grammar primitives** (`src/index.css` `@layer components`): `.hld-lit` /
+   `.hld-lit-magenta` and `.hld-pip*`. New `src/features/shared/` holds the
+   cross-feature presentational primitives `Pip`, `Zone`, `Disclosure`,
+   `CopyButton`.
+2. **Shared modal kit** (`src/features/modals/`): presentational `ModalShell`
+   (square, top accent line, ESC/ENTER, self-mount-friendly) + `SegControl`
+   (the DEPTH/SCOPE instrument) + `depth-choice.ts`.
+3. **Three modals rebuilt** on the kit — Generate Specs (3-stop DEPTH +
+   prompts disclosure), Run Diagnostic (SCOPE + 2-stop DEPTH, persona chip),
+   Projects (section-list rows). Their store/prop contracts are unchanged.
+4. **Sidebar → variant B**: new `ProjectMenu` (◇ menu, absorbs & **replaces
+   FileMenu**), `Dock` (lit CONTINUE + sprints + tools strip + caption line),
+   `SectionRow`, `sync-status.ts`. `App.tsx` gains one `onContinue` prop.
+5. **Spec tab merge + split**: `PanelHeader`, `MoveList` (verdicts inline — the
+   separate "Move-by-Move Breakdown" is gone), `DependencyChips`, `PanelFooter`,
+   `EmptyState`, `diagnostic-config.ts`. `SpecDiagnostics.tsx` +
+   `SpecDependencies.tsx` dissolved.
+6. **Analysis declutter + Dialogue tidy**: thesis spine + argument ladder +
+   collapsed reading index + one "⊕ ask"; Dialogue gets the left-edge grammar +
+   lit "Conclude → new version".
+
+**Multi-provider reconciliation (the one behavior change).** The DEPTH control
+maps to a model *tier* within the user's configured provider (Gemini/Anthropic/
+Ollama), via `resolveDepthChoice` — it does NOT hardcode Gemini ids. The
+selected stop reflects the configured model's tier; the fine-print shows the
+resolved model name. Deep turns on thinking only where a numeric budget exists.
+Covered by `src/features/modals/__tests__/depth-choice.test.ts` (7 tests).
+
+**What to verify.** `npm run typecheck` (clean), `npm test` (75 pass), `npm run
+lint` (no new problems; net 199→182), `npm run build` (ok). Manual smoke
+(`npm run dev`): sidebar ◇ menu + CONTINUE + caption line + composite pip; Spec
+tab NEXT/moves/deps/empty; Analysis ladder + one-at-a-time disclosures + ⊕ ask;
+Dialogue conclude; each modal's DEPTH fine-print tracks the active provider (set
+it in AI settings and re-check). Acceptance: exactly one `.hld-lit*` per surface;
+glyph buttons carry `aria-label`; no `rounded-*` in the three modals;
+`Sidebar.tsx` (361→127) and the Spec-tab files all < 300 lines.
+
+**Rollback.** Each slice reverts independently (`git revert <sha>`); revert in
+reverse order for a clean tree. Reverting the whole branch restores the prior UI
+with no data implications (no schema/state changes).
+
+**Deferred / out of scope.** Other modals (Coach, SectionMap, DependencyGraph,
+PersonaSettings, Sprint, ProjectFile, PromptsGraph) still use their old frames —
+migrate to `ModalShell` in a later batch. Treemap status legend still
+owner-deferred. Section rows kept their square status marker (not the diamond
+pip) per the handoff's "rows unchanged" note. Pre-existing lint (5 errors / ~177
+warnings, incl. `DialogueTab` complexity, `use-analysis-actions` length) was
+left untouched.
