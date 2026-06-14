@@ -37,6 +37,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowPromptsGraphModal = useStore((s) => s.setShowPromptsGraphModal);
   const setShowProjectFileModal = useStore((s) => s.setShowProjectFileModal);
   const setShowCoachModal = useStore((s) => s.setShowCoachModal);
+  const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
 
   const continueLabel = (selectedId ? findTitleById(sections, selectedId) : null) ?? sections[0]?.title ?? 'Begin';
   const wordCount = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
@@ -56,6 +57,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
     { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
     { g: '◉', name: 'Coach — stuck? start here', aria: 'Coach', onClick: () => setShowCoachModal(true) },
+    { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
   ];
 
   return (
@@ -78,7 +80,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
           className="flex-1 py-[6px] border border-amber-500/25 text-amber-500 text-[12px] leading-none hover:bg-amber-500/10 transition-colors">»</button>
       </div>
 
-      <div className="grid grid-cols-6 gap-[2px]">
+      <div className="grid grid-cols-7 gap-[2px]">
         {tools.map((t) => (
           <button
             key={t.aria}

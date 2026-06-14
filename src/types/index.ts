@@ -143,6 +143,72 @@ export interface SectionAnalysisState {
   dialogueContext: string | null;
 }
 
+// --- GLASS BOX REVISION ENGINE ---
+
+/**
+ * The kind of edit a revision proposal makes. Mirrors the Glass Box engine's
+ * `revision_type` vocabulary; each maps to a chip color (revisionTypeColors.ts).
+ */
+export type RevisionType =
+  | 'Addition'
+  | 'Replacement'
+  | 'Deletion'
+  | 'Rewording'
+  | 'Citation'
+  | 'Tone Adjustment'
+  | 'Flow Improvement'
+  | 'Assembly';
+
+/** Revision (sharpen existing prose) vs Assembly (stitch sources into new prose). */
+export type RevisionMode = 'revision' | 'assembly';
+
+/** Assembly sub-mode: quote sources verbatim, or weave them into original prose. */
+export type AssemblySubMode = 'verbatim' | 'woven';
+
+/**
+ * A source document the revision engine may quote from. Ephemeral (session-only):
+ * the writer pastes advisor notes / reviewer reports / reading notes when revising;
+ * sources are NOT persisted to the project file.
+ */
+export interface SourceDocument {
+  id: string;
+  /** Short category, e.g. "Advisor", "Review", "Reading", "Voice". */
+  kind: string;
+  /** Human label shown on the chip. */
+  label: string;
+  /** A single glyph icon (HLD style). */
+  glyph: string;
+  /** The full source text the model may quote. */
+  content: string;
+}
+
+/**
+ * One auditable revision proposal. Every proposal carries a verbatim quote from a
+ * named source — the "glass box" guarantee: no claim without a receipt. Acceptance
+ * is a literal `original_text → proposed_text` replace (no fuzzy matching).
+ */
+export interface RevisionProposal {
+  id: string;
+  revision_type: RevisionType;
+  /** Human-readable section label the proposal targets. */
+  section: string;
+  /** Exact substring of the section the edit replaces. */
+  original_text: string;
+  /** The proposed replacement prose. */
+  proposed_text: string;
+  /** Why the edit is warranted, grounded in the source. */
+  rationale: string;
+  /** Which SourceDocument the receipt comes from. */
+  source_id: string;
+  /** The verbatim quote from that source justifying the edit. */
+  verbatim_source_quote: string;
+  /** Model confidence, 0–5. */
+  confidence_score: number;
+}
+
+/** Review lifecycle of a proposal within a session. */
+export type ProposalStatus = 'pending' | 'accepted' | 'rejected';
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
 
 export interface TestResult {
@@ -235,6 +301,8 @@ export interface PromptsConfig {
   analysisPrompt: string;
   refactorAnalysisPrompt: string;
   dialoguePrompt: string;
+  /** Glass Box revision engine: source-traceable proposal generation. */
+  generateRevisionsPrompt: string;
 }
 
 // --- PHASE 4 SYNC TYPES ---

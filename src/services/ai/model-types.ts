@@ -9,8 +9,8 @@
 export type ProviderId = 'gemini' | 'anthropic' | 'ollama';
 
 /**
- * The ten AI call kinds, named to match the AIProvider methods so the mapping
- * from "a call site" to "its configurable model" is one-to-one and obvious.
+ * The AI call kinds, named to match the AIProvider methods so the mapping from
+ * "a call site" to "its configurable model" is one-to-one and obvious.
  */
 export type AICallKind =
   | 'generateSpecs'
@@ -22,7 +22,8 @@ export type AICallKind =
   | 'refineSpec'
   | 'analyzeSection'
   | 'refactorAnalysis'
-  | 'continueDialogue';
+  | 'continueDialogue'
+  | 'generateRevisions';
 
 /** Every call kind, in display order. The single source of truth for "what is configurable". */
 export const AI_CALL_KINDS: AICallKind[] = [
@@ -36,6 +37,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'analyzeSection',
   'refactorAnalysis',
   'continueDialogue',
+  'generateRevisions',
 ];
 
 /** Short, glyph-light labels for the per-call override UI. No sentences (HLD). */
@@ -50,6 +52,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   analyzeSection: 'Analyze section',
   refactorAnalysis: 'Refactor analysis',
   continueDialogue: 'Dialogue',
+  generateRevisions: 'Generate revisions',
 };
 
 /**
