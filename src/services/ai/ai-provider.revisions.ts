@@ -47,6 +47,7 @@ const REVISIONS_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          section: { type: 'string' },
           revision_type: { type: 'string', enum: REVISION_TYPES },
           original_text: { type: 'string' },
           proposed_text: { type: 'string' },
@@ -56,6 +57,7 @@ const REVISIONS_JSON_SCHEMA = {
           confidence_score: { type: 'number' },
         },
         required: [
+          'section',
           'revision_type',
           'original_text',
           'proposed_text',
