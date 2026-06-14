@@ -83,6 +83,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const onSectionChange = useStore(s => s.setSelectedId);
   const projectName = useStore(s => s.projectName);
   const setShowHistoryModal = useStore(s => s.setShowHistoryModal);
+  const openRevisionWorkspace = useStore(s => s.openRevisionWorkspace);
 
   const toggleFocusMode = () => setFocusMode(!focusMode);
   const onOpenHistory = () => setShowHistoryModal(true);
@@ -302,6 +303,14 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                 ✕ Failing
               </span>
            )}
+
+           <button
+             onClick={openRevisionWorkspace}
+             className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
+             title="Revise — Glass Box revision workspace"
+           >
+             <span className="text-[12px] leading-none">⟐</span> Revise
+           </button>
 
            {/* Focus Mode Toggle */}
            <button

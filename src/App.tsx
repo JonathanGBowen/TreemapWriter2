@@ -18,6 +18,7 @@ import { CoachModal } from "./features/modals/CoachModal";
 import { ProjectFileModal } from "./features/modals/ProjectFileModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
+import { RevisionWorkspace } from "./features/revision/RevisionWorkspace";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
@@ -973,6 +974,8 @@ export const App = () => {
         <SyncConfigModal />
 
         <ConflictResolutionModal />
+
+        <RevisionWorkspace />
 
         <Toaster position="bottom-right" richColors />
       </div>

@@ -53,6 +53,8 @@ pub struct PromptsConfig {
     pub refactor_analysis_prompt: String,
     #[serde(default)]
     pub dialogue_prompt: String,
+    #[serde(default)]
+    pub generate_revisions_prompt: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

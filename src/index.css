@@ -13,6 +13,11 @@
   --color-hld-pink: #ff1060;
   --color-hld-purple: #aa00ff;
   --color-hld-orange: #ff8800;
+  /* Glass Box revision engine: confidence numerals (gold), assembly-mode accents,
+     and the Tone-Adjustment chip (indigo). */
+  --color-hld-gold: #ffcc00;
+  --color-hld-assembly: #e5ff00;
+  --color-hld-indigo: #7c8bff;
   --color-hld-text: #c5d8e8;
   /* Decorative only — dividers, idle status squares, rules (see --color-hld-muted-text for text). */
   --color-hld-muted: #3d5570;
@@ -159,6 +164,32 @@
   .editor-focus:focus {
     outline: none;
   }
+}
+
+/* Glass Box inline-preview decorations — applied to CodeMirror decoration spans
+   in the Revision Workspace master document. Preview = tentative (cyan); applied
+   = committed (green); active = focused (cyan glow). Preview never mutates the
+   saved draft — only Accept does. */
+.cm-prose-mark {
+  border-bottom: 1px dashed rgba(0, 232, 245, 0.3);
+  cursor: pointer;
+}
+.cm-prose-active {
+  background: rgba(0, 232, 245, 0.16);
+  border-bottom: 1px solid var(--color-hld-cyan);
+  box-shadow: 0 0 14px rgba(0, 232, 245, 0.15);
+  cursor: pointer;
+}
+.cm-prose-preview {
+  background: rgba(0, 232, 245, 0.13);
+  border-bottom: 1px solid var(--color-hld-cyan);
+  box-shadow: inset 0 -2px 0 rgba(0, 232, 245, 0.35);
+  color: #dffaff;
+  cursor: pointer;
+}
+.cm-prose-applied {
+  background: rgba(0, 232, 112, 0.12);
+  border-bottom: 1px solid rgba(0, 232, 112, 0.6);
 }
 
 /* Global HLD scrollbars — square, glyphic, dark-only (fix 01) */

@@ -20,6 +20,12 @@ export interface LLMRequest {
   systemInstruction?: string;
   /** Force JSON output where the provider can; tolerant parsing covers the rest. */
   json?: boolean;
+  /**
+   * A JSON Schema constraining the response shape. Gemini enforces it as
+   * structured output (the reliable way to pin field names + array shape);
+   * Anthropic/Ollama ignore it and lean on the prompt. Requires `json`.
+   */
+  responseJsonSchema?: unknown;
   /** Gemini numeric thinking budget. Anthropic maps coarsely; Ollama ignores. */
   thinkingBudget?: number;
   /** Required by Anthropic; ignored by Gemini/Ollama. Per-call default applies. */

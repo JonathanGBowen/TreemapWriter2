@@ -64,6 +64,9 @@ export class GeminiClient implements LLMClient {
   private config(req: LLMRequest): Record<string, unknown> | undefined {
     const config: Record<string, unknown> = {};
     if (req.json) config.responseMimeType = 'application/json';
+    // Structured output: when a schema is supplied, Gemini is constrained to it,
+    // which reliably pins field names + array shape (schema-less JSON mode drifts).
+    if (req.json && req.responseJsonSchema) config.responseJsonSchema = req.responseJsonSchema;
     if (req.systemInstruction) config.systemInstruction = req.systemInstruction;
     // Match the prior behavior: only send a thinkingConfig when the budget is
     // positive. A budget of 0 (flash-tier) means "no thinking", same as omitting.
