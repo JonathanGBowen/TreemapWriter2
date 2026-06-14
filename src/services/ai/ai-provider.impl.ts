@@ -88,8 +88,11 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {
+    // Whole-document (root) evaluation reads the entire document, uncapped (the
+    // caller has already verified it fits the model window).
+    const isWholeDocument = input.section.id === 'root';
     let contextContent = input.section.fullContent;
-    if (input.scope === 'full') {
+    if (isWholeDocument || input.scope === 'full') {
       contextContent = input.fullDocument;
     } else if (input.scope === 'parent' && input.section.parentId) {
       const parent = input.findSection(input.sections, input.section.parentId);
@@ -107,7 +110,7 @@ export class MultiProviderAIProvider implements AIProvider {
       incomingContext: input.spec.incomingContext,
       outgoingCommitments: input.spec.outgoingCommitments,
       scope: input.scope,
-      content: contextContent.slice(0, 12000),
+      content: isWholeDocument ? contextContent : contextContent.slice(0, 12000),
     });
 
     const choice = this.choose('runDiagnostic', input);
@@ -275,10 +278,16 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
+    // Whole-document analysis sends the full text uncapped (the caller has already
+    // verified it fits the model window); per-section analysis keeps the cap.
+    const text = input.wholeDocument
+      ? input.sectionText
+      : input.sectionText.slice(0, ANALYSIS_INPUT_CAP);
     const prompt = buildAnalysisRequestText(
       input.sectionTitle,
-      input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      text,
       input.config.analysisPrompt,
+      input.wholeDocument,
     );
     return this.generateAnalysis('analyzeSection', input, prompt);
   }

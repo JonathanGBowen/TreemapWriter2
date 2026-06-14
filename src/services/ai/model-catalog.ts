@@ -25,6 +25,12 @@ export interface CatalogModel {
   /** Budget applied when thinking is enabled (Gemini-only; 0 elsewhere). */
   defaultThinkingBudget: number;
   tier: ModelTier;
+  /**
+   * Approximate input context window in tokens. Used to guard whole-document
+   * (root-level) calls against silent truncation. Optional: unknown windows
+   * (e.g. detected Ollama models) are left unset and treated as "proceed but warn".
+   */
+  contextWindow?: number;
 }
 
 /**
@@ -33,7 +39,7 @@ export interface CatalogModel {
  * the AI Settings modal; Ollama rows are injected at runtime.
  */
 export const DEFAULT_CATALOG: CatalogModel[] = [
-  // --- Gemini ---
+  // --- Gemini --- (long-context: ~1M-token input window across the 3.x family)
   {
     provider: 'gemini',
     id: 'gemini-3.1-pro-preview',
@@ -42,6 +48,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: true,
     defaultThinkingBudget: 16000,
     tier: 'deep',
+    contextWindow: 1_000_000,
   },
   {
     provider: 'gemini',
@@ -51,6 +58,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: false,
     defaultThinkingBudget: 0,
     tier: 'balanced',
+    contextWindow: 1_000_000,
   },
   {
     provider: 'gemini',
@@ -60,6 +68,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: false,
     defaultThinkingBudget: 0,
     tier: 'fast',
+    contextWindow: 1_000_000,
   },
   {
     provider: 'gemini',
@@ -69,6 +78,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: false,
     defaultThinkingBudget: 0,
     tier: 'fast',
+    contextWindow: 1_000_000,
   },
   // --- Anthropic --- (thinking is adaptive/native; no numeric budget exposed)
   {
@@ -79,6 +89,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: false,
     defaultThinkingBudget: 0,
     tier: 'deep',
+    contextWindow: 200_000,
   },
   {
     provider: 'anthropic',
@@ -88,6 +99,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: false,
     defaultThinkingBudget: 0,
     tier: 'balanced',
+    contextWindow: 200_000,
   },
   {
     provider: 'anthropic',
@@ -97,6 +109,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     supportsThinking: false,
     defaultThinkingBudget: 0,
     tier: 'fast',
+    contextWindow: 200_000,
   },
 ];
 

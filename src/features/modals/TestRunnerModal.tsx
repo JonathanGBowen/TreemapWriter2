@@ -111,11 +111,15 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   const [choice, setChoice] = useModelChoice('runDiagnostic', isOpen);
   const [customInstruction, setCustomInstruction] = useState("");
 
+  const isRoot = currentSection?.id === 'root';
+  // Root evaluates the whole document; segment/parent are meaningless there.
+  const effScope: Scope = isRoot ? 'full' : scope;
+
   const thinkingBudget = choice.thinkingBudget ?? 0;
   const estimate = useMemo(() => {
-    const input = Math.ceil(scopeContextWords(scope, currentSection, documentStats.wordCount) * 1.3);
+    const input = Math.ceil(scopeContextWords(effScope, currentSection, documentStats.wordCount) * 1.3);
     return input + thinkingBudget + 500;
-  }, [scope, thinkingBudget, currentSection, documentStats]);
+  }, [effScope, thinkingBudget, currentSection, documentStats]);
 
   if (!isOpen) return null;
 
@@ -135,7 +139,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   }));
 
   const copyText = buildCopyText({
-    currentSection, scope, fullDocument, allSections, currentSpec,
+    currentSection, scope: effScope, fullDocument, allSections, currentSpec,
     personaInstruction: activePersona.instruction, customInstruction,
   });
 
@@ -150,13 +154,19 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
         </button>
       }
       onClose={onClose}
-      onPrimary={() => onRun(scope, choice, customInstruction)}
+      onPrimary={() => onRun(effScope, choice, customInstruction)}
       primaryLabel="▶ Run"
     >
       <div className="flex flex-col gap-[16px]">
         <div>
           <div className="font-mono text-[9px] font-bold tracking-[0.16em] uppercase text-hld-cyan mb-[8px]">Scope</div>
-          <SegControl ariaLabel="Evaluation scope" options={scopeOptions} value={SCOPE_IDS.indexOf(scope)} onChange={(i) => setScope(SCOPE_IDS[i])} />
+          {isRoot ? (
+            <div className="px-[10px] py-[8px] border border-hld-border bg-hld-surface2 font-mono text-[10px] tracking-[0.06em] text-hld-text">
+              Whole document — evaluates the entire draft
+            </div>
+          ) : (
+            <SegControl ariaLabel="Evaluation scope" options={scopeOptions} value={SCOPE_IDS.indexOf(scope)} onChange={(i) => setScope(SCOPE_IDS[i])} />
+          )}
         </div>
         <div>
           <div className="font-mono text-[9px] font-bold tracking-[0.16em] uppercase text-hld-cyan mb-[8px]">Depth</div>

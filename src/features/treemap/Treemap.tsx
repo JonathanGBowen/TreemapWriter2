@@ -234,7 +234,7 @@ export const Treemap: React.FC<TreemapProps> = ({
     if (e.points && e.points.length > 0) {
       const point = e.points[0];
       const id = point.id;
-      if (id && id !== 'root') {
+      if (id) {
         onSelect(id);
       }
     }

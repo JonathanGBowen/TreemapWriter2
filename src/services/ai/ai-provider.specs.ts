@@ -16,6 +16,41 @@ const VALID_FUNCTIONS: SectionFunction[] = [
 /** Output ceiling for Anthropic (Gemini/Ollama ignore it). Specs can be large. */
 const MAX_OUTPUT_TOKENS = 16000;
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Coerce one tolerant spec object (or bare string) into a SectionSpec. Shared by
+ * the per-id batch parser and the single-object document-level (root) pass.
+ */
+export function coerceSpec(data: any): SectionSpec {
+  if (typeof data === 'string') {
+    return {
+      function: 'argue',
+      mainClaim: data,
+      requiredMoves: [{ id: 'move-0', description: data }],
+      incomingContext: [],
+      outgoingCommitments: [],
+    };
+  }
+  const fn = VALID_FUNCTIONS.includes(data.function) ? data.function : 'argue';
+  const rawMoves = data.requiredMoves || data.required_moves || [];
+  const moves: RequiredMove[] = rawMoves.map((m: any, i: number) => {
+    if (typeof m === 'string') return { id: `move-${i}`, description: m };
+    return {
+      id: m.id || `move-${i}`,
+      description: m.description || m.text || String(m),
+      after: m.after,
+    };
+  });
+  return {
+    function: fn,
+    mainClaim: data.mainClaim || data.main_claim || '',
+    requiredMoves: moves,
+    incomingContext: data.incomingContext || data.incoming_context || [],
+    outgoingCommitments: data.outgoingCommitments || data.outgoing_commitments || [],
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export async function generateSpecs(
   client: LLMClient,
   model: string,
@@ -45,11 +80,64 @@ export async function generateSpecs(
   const call = (prompt: string) =>
     client.generateText({ model, prompt, json: true, thinkingBudget, maxTokens: MAX_OUTPUT_TOKENS });
 
+  // Top-level outline (chapter titles + their children) — the structural backbone
+  // of the document-level prompt and the L1 batch.
+  const topLevelOutline = sections.map((n) => ({
+    title: n.title,
+    level: n.level,
+    childTitles: n.children.map((c) => c.title),
+    wordCount: n.wordCount,
+  }));
+
+  // --- Phase 0: document-level (root) spec ---
+  // The whole-document pass runs FIRST and constrains the chapter pass below
+  // (top-down). It reads the full document text when it fits the model window;
+  // orchestration sets `rootFullText` false to degrade to the outline on overflow.
+  {
+    const rootPrompt = [
+      config.systemInstruction,
+      '',
+      'DOCUMENT STRUCTURE (top-level sections):',
+      JSON.stringify(topLevelOutline, null, 2),
+      '',
+      ...(input.rootFullText === false
+        ? ['(Full document text omitted — it exceeds the model context window; reconstruct the document-level spec from the structure above.)']
+        : ['FULL DOCUMENT TEXT:', '---', markdown, '---']),
+      '',
+      config.rootTaskInstruction,
+    ].join('\n');
+
+    const rootRaw = safeJsonParse((await call(rootPrompt)) || '{}') as Record<string, unknown>;
+    const rootData =
+      rootRaw && typeof rootRaw === 'object' && 'root' in rootRaw ? rootRaw.root : rootRaw;
+    if (rootData && typeof rootData === 'object') {
+      const rootSpec = coerceSpec(rootData);
+      specCache['root'] = rootSpec;
+      onBatchComplete({ root: rootSpec });
+    }
+  }
+
   const l1Nodes = byLevel[1] || [];
   if (l1Nodes.length > 0) {
+    // The document-level spec (Phase 0) constrains the chapters — top-down.
+    const rootCtx = specCache['root']
+      ? {
+          function: specCache['root'].function,
+          mainClaim: specCache['root'].mainClaim,
+          requiredMoves: specCache['root'].requiredMoves.map((m) => m.description),
+          outgoingCommitments: specCache['root'].outgoingCommitments,
+        }
+      : null;
     const batch1Prompt = [
       config.systemInstruction,
       '',
+      ...(rootCtx
+        ? [
+            'DOCUMENT-LEVEL SPEC (top-level pass — these chapters must be consistent with it):',
+            JSON.stringify(rootCtx, null, 2),
+            '',
+          ]
+        : []),
       'DOCUMENT PREVIEW (first 4000 chars):',
       markdown.slice(0, 4000),
       '...',
@@ -129,38 +217,7 @@ export function parseSpecResponse(raw: Record<string, any>): Record<string, Sect
   const specs: Record<string, SectionSpec> = {};
   for (const [id, data] of Object.entries(raw)) {
     if (id === 'root') continue;
-
-    if (typeof data === 'string') {
-      specs[id] = {
-        function: 'argue',
-        mainClaim: data,
-        requiredMoves: [{ id: 'move-0', description: data }],
-        incomingContext: [],
-        outgoingCommitments: [],
-      };
-      continue;
-    }
-
-    const fn = VALID_FUNCTIONS.includes(data.function) ? data.function : 'argue';
-    const rawMoves = data.requiredMoves || data.required_moves || [];
-    const moves: RequiredMove[] = rawMoves.map((m: any, i: number) => {
-      if (typeof m === 'string') {
-        return { id: `move-${i}`, description: m };
-      }
-      return {
-        id: m.id || `move-${i}`,
-        description: m.description || m.text || String(m),
-        after: m.after,
-      };
-    });
-
-    specs[id] = {
-      function: fn,
-      mainClaim: data.mainClaim || data.main_claim || '',
-      requiredMoves: moves,
-      incomingContext: data.incomingContext || data.incoming_context || [],
-      outgoingCommitments: data.outgoingCommitments || data.outgoing_commitments || [],
-    };
+    specs[id] = coerceSpec(data);
   }
   return specs;
 }

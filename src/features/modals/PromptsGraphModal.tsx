@@ -57,33 +57,35 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
   };
 
   const nodeLabels: Record<keyof PromptsConfig, string> = {
-    systemInstruction: 'SYS INSTRUCTION',
-    l1TaskInstruction: 'L1 TASK ESTIMATOR',
-    subTaskInstruction: 'SUB TASK ESTIMATOR',
+    systemInstruction: 'SYSTEM INSTRUCTION',
+    rootTaskInstruction: 'DOCUMENT SPEC',
+    l1TaskInstruction: 'CHAPTER SPEC',
+    subTaskInstruction: 'SUBSECTION SPEC',
     refineSpecPrompt: 'SPEC REFINER',
-    diagnosticInstruction: 'DIAGNOSTIC ENGINE',
-    coachPrompt: 'COACH DIAGNOSTIC',
+    diagnosticInstruction: 'DIAGNOSTIC',
+    coachPrompt: 'COACH',
     generatePersonasPrompt: 'PERSONA GENERATOR',
     suggestContentPrompt: 'CONTENT SUGGESTER',
     dependenciesPrompt: 'DEPENDENCY ESTIMATOR',
-    analysisPrompt: 'ANALYSIS ENGINE',
-    refactorAnalysisPrompt: 'REFACTOR SYNTHESIZER',
+    analysisPrompt: 'ANALYSIS',
+    refactorAnalysisPrompt: 'REFACTOR',
     dialoguePrompt: 'SOCRATIC PARTNER',
   };
 
   const nodeDescriptions: Record<keyof PromptsConfig, string> = {
-    systemInstruction: "Core personality and behavioral constraints for the specification engine.",
-    l1TaskInstruction: "Instructions for analyzing top-level document sections and generating their structural specs.",
-    subTaskInstruction: "Instructions for inheriting constraints from parent sections and specifying sub-tasks.",
-    refineSpecPrompt: "The refinement rules used when manually adjusting a section's specification.",
-    diagnosticInstruction: "Core instructions for assessing a section against its structured specification.",
-    coachPrompt: "The diagnostic framework used by the ADHD Coach to formulate actionable writing plans.",
-    generatePersonasPrompt: "The creative engine that generates AI reviewer personas based on document sampling.",
-    suggestContentPrompt: "The ghostwriter persona used when generating specific content suggestions based on section specs.",
-    dependenciesPrompt: "Logic for identifying structural prerequisites and references between different document sections.",
-    analysisPrompt: "Exegetical reconstruction of a section's argument: thesis, key concepts, premises, conclusion, objections.",
-    refactorAnalysisPrompt: "Synthesizes a Socratic dialogue back into a refined analysis version.",
-    dialoguePrompt: "The Socratic partner persona that interrogates parts of an analysis with the author.",
+    systemInstruction: "Core behavior and constraints shared by the spec-generation passes.",
+    rootTaskInstruction: "Document-level (root) pass: reconstructs the whole work's thesis and macro-arcs, which constrain the chapter specs below it.",
+    l1TaskInstruction: "How chapters (top-level sections) are specified — kept consistent with the document spec above.",
+    subTaskInstruction: "How subsections are specified, inheriting constraints from their parent section.",
+    refineSpecPrompt: "The rules used when manually refining a section's specification.",
+    diagnosticInstruction: "Assesses a section against its specification, move by move.",
+    coachPrompt: "The framework the ADHD Coach uses to turn diagnostics into an actionable writing plan.",
+    generatePersonasPrompt: "Generates AI reviewer personas from a sample of the document.",
+    suggestContentPrompt: "The ghostwriter used when generating content suggestions from a section's spec.",
+    dependenciesPrompt: "Identifies prerequisites and references between sections.",
+    analysisPrompt: "Reconstructs a section's argument: thesis, key concepts, premises, conclusion, objections.",
+    refactorAnalysisPrompt: "Folds a Socratic dialogue back into a refined analysis version.",
+    dialoguePrompt: "The Socratic partner that interrogates parts of an analysis with the author.",
   };
 
   return (
@@ -97,14 +99,14 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
           
           <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
             <Network className="text-hld-cyan" size={24} />
-            <h2 className="text-xl font-bold text-slate-100 font-mono tracking-widest uppercase text-shadow-hld">Signal Routing Map</h2>
+            <h2 className="text-xl font-bold text-slate-100 font-mono tracking-widest uppercase text-shadow-hld">Prompt Map</h2>
           </div>
 
           {/* Schematic Graph representing data flows */}
           <div className="z-10 flex flex-col items-center gap-8 select-none relative w-full max-w-4xl mt-12">
-            <div className="text-hld-muted font-mono text-[10px] uppercase tracking-widest absolute -top-8">Data Source</div>
+            <div className="text-hld-muted font-mono text-[10px] uppercase tracking-widest absolute -top-8">Input</div>
             <div className="w-full max-w-3xl py-4 border-2 border-slate-700 flex items-center justify-center bg-slate-900 text-slate-400 font-mono text-sm tracking-widest shadow-[0_0_20px_rgba(0,0,0,0.5)] z-20 relative">
-               MASTER DOCUMENT REPOSITORY
+               YOUR DOCUMENT
             </div>
 
             {/* 4 Pillars */}
@@ -117,10 +119,11 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
                  <path d="M 384 0 L 384 40 L 484 40 L 484 60" />
                  <path d="M 384 0 L 384 40 L 684 40 L 684 60" />
                  
-                 {/* Pillar 1 lines (Structural — 4 nodes) */}
+                 {/* Pillar 1 lines (Spec Generation — 5 nodes) */}
                  <path d="M 84 120 L 84 140" />
                  <path d="M 84 200 L 84 220" />
                  <path d="M 84 280 L 84 300" />
+                 <path d="M 84 360 L 84 380" />
                  
                  {/* Pillar 2 lines (Diagnostic — 3 nodes) */}
                  <path d="M 284 120 L 284 140" />
@@ -134,36 +137,37 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
                  <path d="M 684 200 L 684 220" />
               </svg>
 
-              {/* Structural Specification */}
+              {/* Spec Generation (top-down: document → chapter → subsection) */}
               <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-emerald-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-emerald-500/30 pb-2">Structural Interpolation</div>
+                <div className="text-center text-emerald-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-emerald-500/30 pb-2">Spec Generation</div>
                 <Node id="systemInstruction" label="System Instruction" color="emerald" type="process" />
-                <Node id="l1TaskInstruction" label="L1 Task Specifier" color="emerald" type="process" />
-                <Node id="subTaskInstruction" label="Sub-Task Specifier" color="emerald" type="process" />
+                <Node id="rootTaskInstruction" label="Document Spec" color="emerald" type="process" />
+                <Node id="l1TaskInstruction" label="Chapter Spec" color="emerald" type="process" />
+                <Node id="subTaskInstruction" label="Subsection Spec" color="emerald" type="process" />
                 <Node id="refineSpecPrompt" label="Spec Refiner" color="emerald" type="process" />
               </div>
 
-              {/* Diagnostics & Review */}
+              {/* Diagnostics & Coaching */}
               <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-amber-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-amber-500/30 pb-2">Diagnostic & Coaching</div>
-                <Node id="generatePersonasPrompt" label="Persona Engine" color="amber" type="process" />
-                <Node id="diagnosticInstruction" label="Diagnostic Engine" color="amber" type="process" />
-                <Node id="coachPrompt" label="Coach Evaluation" color="amber" type="process" />
+                <div className="text-center text-amber-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-amber-500/30 pb-2">Diagnostics & Coaching</div>
+                <Node id="generatePersonasPrompt" label="Persona Generator" color="amber" type="process" />
+                <Node id="diagnosticInstruction" label="Diagnostic" color="amber" type="process" />
+                <Node id="coachPrompt" label="Coach" color="amber" type="process" />
               </div>
 
-              {/* Generative Utilities */}
+              {/* Generation */}
               <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-purple-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-purple-500/30 pb-2">Generative Inference</div>
+                <div className="text-center text-purple-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-purple-500/30 pb-2">Generation</div>
                 <Node id="suggestContentPrompt" label="Content Suggester" color="purple" type="process" />
                 <Node id="dependenciesPrompt" label="Dependency Estimator" color="purple" type="process" />
               </div>
 
-              {/* Exegesis & Dialogue */}
+              {/* Analysis & Dialogue */}
               <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-cyan-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-cyan-500/30 pb-2">Exegesis & Dialogue</div>
-                <Node id="analysisPrompt" label="Analysis Engine" color="cyan" type="process" />
+                <div className="text-center text-cyan-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-cyan-500/30 pb-2">Analysis & Dialogue</div>
+                <Node id="analysisPrompt" label="Analysis" color="cyan" type="process" />
                 <Node id="dialoguePrompt" label="Socratic Partner" color="cyan" type="process" />
-                <Node id="refactorAnalysisPrompt" label="Refactor Synthesizer" color="cyan" type="process" />
+                <Node id="refactorAnalysisPrompt" label="Refactor" color="cyan" type="process" />
               </div>
             </div>
 
@@ -173,7 +177,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
         {/* Editor Sidebar */}
         <div className="w-[480px] bg-slate-900 border-l border-hld-border flex flex-col z-20 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
           <div className="flex items-center justify-between p-4 border-b border-hld-border bg-slate-800">
-            <h3 className="text-hld-text font-mono text-[12px] uppercase tracking-widest">Signal Configurator</h3>
+            <h3 className="text-hld-text font-mono text-[12px] uppercase tracking-widest">Prompt Editor</h3>
             <div className="flex items-center gap-2">
               <button onClick={handleReset} className="text-hld-muted hover:text-amber-400" title="Reset to Defaults"><RotateCcw size={16} /></button>
               <button onClick={handleSave} className="text-hld-cyan hover:text-white" title="Save Configuration"><Save size={16} /></button>
@@ -185,7 +189,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
             {!selectedNode ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 font-mono text-[12px] uppercase tracking-widest text-center">
                 <Network className="w-12 h-12 mb-4 opacity-50 text-slate-600" />
-                Select a node from the routing map <br/>to configure its signal prompt.
+                Select a node from the map <br/>to edit its prompt.
               </div>
             ) : (
               <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">

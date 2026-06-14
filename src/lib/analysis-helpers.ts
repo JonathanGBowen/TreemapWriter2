@@ -162,10 +162,24 @@ export const buildAnalysisRequestText = (
   sectionTitle: string,
   sectionText: string,
   prompt: string,
+  wholeDocument = false,
 ): string =>
-  [prompt, '', `SECTION: "${sectionTitle}"`, '', 'TEXT TO ANALYZE:', '---', sectionText, '---'].join(
-    '\n',
-  );
+  [
+    prompt,
+    ...(wholeDocument
+      ? [
+          '',
+          'NOTE: The text below is the ENTIRE document. Produce a DOCUMENT-LEVEL reconstruction — its overarching thesis, the macro-argument spanning chapters, and how the parts cohere into a whole — not a single section.',
+        ]
+      : []),
+    '',
+    `SECTION: "${sectionTitle}"`,
+    '',
+    'TEXT TO ANALYZE:',
+    '---',
+    sectionText,
+    '---',
+  ].join('\n');
 
 export const buildRefactorRequestText = (args: {
   sectionTitle: string;

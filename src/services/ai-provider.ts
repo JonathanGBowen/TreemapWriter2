@@ -41,6 +41,13 @@ export interface AIProvider {
 export interface GenerateSpecsInput {
   sections: Section[];
   markdown: string;
+  /**
+   * Whether the document-level (root) spec pass may include the full document
+   * text. Orchestration sets this false when the document exceeds the spec
+   * model's context window, degrading the root pass to the outline only (the
+   * chapter passes are unaffected). Defaults to full-text when omitted.
+   */
+  rootFullText?: boolean;
   config: PromptsConfig;
   /** Legacy per-call override (Gemini id). Prefer `modelChoice`. */
   modelId?: string;
@@ -120,6 +127,12 @@ export interface AnalyzeSectionInput {
   sectionTitle: string;
   /** section.fullContent (whole subtree), captured at call time. */
   sectionText: string;
+  /**
+   * Whole-document (root-level) analysis: send the full text uncapped and frame
+   * the request as a document-level reconstruction. The caller is responsible for
+   * the context-window pre-flight (see services/ai/context-budget).
+   */
+  wholeDocument?: boolean;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
