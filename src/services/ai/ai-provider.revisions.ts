@@ -10,6 +10,53 @@ import type { LLMClient } from './clients';
 
 const MAX_OUTPUT_TOKENS = 16000;
 
+const REVISION_TYPES = [
+  'Addition',
+  'Replacement',
+  'Deletion',
+  'Rewording',
+  'Citation',
+  'Tone Adjustment',
+  'Flow Improvement',
+  'Assembly',
+];
+
+/**
+ * Structured-output schema. Gemini is constrained to this exact shape, so the
+ * proposals always come back with the right field names — the reliable approach
+ * the prototype's bare JSON mode lacked.
+ */
+const REVISIONS_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    proposals: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          revision_type: { type: 'string', enum: REVISION_TYPES },
+          original_text: { type: 'string' },
+          proposed_text: { type: 'string' },
+          rationale: { type: 'string' },
+          source_id: { type: 'string' },
+          verbatim_source_quote: { type: 'string' },
+          confidence_score: { type: 'number' },
+        },
+        required: [
+          'revision_type',
+          'original_text',
+          'proposed_text',
+          'rationale',
+          'source_id',
+          'verbatim_source_quote',
+          'confidence_score',
+        ],
+      },
+    },
+  },
+  required: ['proposals'],
+};
+
 export async function generateRevisions(
   client: LLMClient,
   model: string,
@@ -30,6 +77,7 @@ export async function generateRevisions(
     model,
     prompt,
     json: true,
+    responseJsonSchema: REVISIONS_JSON_SCHEMA,
     thinkingBudget,
     maxTokens: MAX_OUTPUT_TOKENS,
   });
