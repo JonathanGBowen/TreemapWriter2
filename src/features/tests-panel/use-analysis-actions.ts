@@ -5,6 +5,7 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { computeHash } from '../../lib/utils';
 import { makeAnalysisVersion } from '../../lib/analysis-helpers';
+import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { checkContextFit } from '../../services/ai/context-budget';
 import { useCurrentSection } from './use-current-section';
@@ -93,11 +94,25 @@ export const useAnalysisActions = () => {
     // Capture at call time: edits or a section switch mid-flight must not
     // redirect where the result lands or what the inputHash describes.
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
-    const { testSuite, promptsConfig, isProcessing, modelCatalog, modelConfig, globalModelDefault } =
-      useStore.getState();
+    const {
+      testSuite,
+      promptsConfig,
+      isProcessing,
+      modelCatalog,
+      modelConfig,
+      globalModelDefault,
+      customSpells,
+      activeSpellId,
+    } = useStore.getState();
     // Mutually exclusive with a streaming dialogue turn for this section:
     // both would write the same sidecar and could otherwise race two saves.
     if (isProcessing || inFlight.has(sectionId)) return;
+
+    // The active lens, if any. Built-ins + the global custom library; null id
+    // means a plain exegetical reconstruction with no persona/lens overlay.
+    const spell = activeSpellId
+      ? [...DEFAULT_SPELLS, ...customSpells].find((s) => s.id === activeSpellId)
+      : undefined;
 
     // Whole-document analysis sends the entire document — never silently truncate.
     // If it would overflow the chosen model's window, abort and ask the user to
@@ -123,12 +138,14 @@ export const useAnalysisActions = () => {
         sectionText,
         config: promptsConfig,
         wholeDocument,
+        spell: spell ? { persona: spell.persona, lens: spell.lens } : undefined,
       });
       const version = makeAnalysisVersion({
         kind: 'analysis',
         prevVersions,
         result,
         inputHash: computeHash(sectionText),
+        spellName: spell?.name,
       });
       addAnalysisVersion(sectionId, version);
     } catch (e) {
