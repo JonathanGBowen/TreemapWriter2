@@ -2,6 +2,8 @@
 
 @theme {
   --color-hld-bg: #05090d;
+  /* Deeper-than-bg canvas for the Argument Topology map (ATLAS/SPINE). */
+  --color-hld-bgDeep: #03060a;
   --color-hld-surface: #0c1520;
   --color-hld-surface2: #111d2b;
   --color-hld-cyan: #00e8f5;
@@ -102,6 +104,22 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.35; }
   }
+
+  /* Scale+opacity pulse for the rotated "working" diamonds in the Argument
+     Topology overlays (OPTIMISING / ANALYSING). The rotate is baked into the
+     keyframe so the animation doesn't drop the inline rotate(45deg). */
+  @keyframes hld-pulse {
+    0%, 100% { opacity: 1;   transform: rotate(45deg) scale(1);   }
+    50%      { opacity: 0.45; transform: rotate(45deg) scale(1.35); }
+  }
+}
+
+/* Honour reduced-motion for CSS-driven pulses. NOTE: the rotating selection
+   halos in the topology map are SVG <animateTransform> (SMIL), which CSS media
+   queries cannot disable — those are gated in React via useReducedMotion(). */
+@media (prefers-reduced-motion: reduce) {
+  .hld-pip-pulse,
+  [style*="hld-pulse"] { animation: none !important; }
 }
 
 @layer utilities {

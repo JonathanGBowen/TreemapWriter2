@@ -1,27 +1,31 @@
-import React, { useEffect, useMemo, useCallback, useRef } from 'react';
-import {
-  ReactFlow,
-  MiniMap,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
-  Node,
-  Edge,
-  MarkerType,
-  Handle,
-  Position,
-  Panel,
-  BackgroundVariant,
-  Connection,
-  ConnectionMode
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import dagre from 'dagre';
+/* DependencyGraphModal.tsx — the Argument Topology modal.
+
+   A true modal over the dimmed editor (same framing as before). Two projections
+   of the same data, switchable from an ATLAS / SPINE toggle:
+     • ATLAS — sections as continents, dependencies as transit routes, with a
+       force-directed OPTIMISE that shortens routes (live ROUTE LENGTH +
+       CROSSINGS readout).
+     • SPINE — Parts as coloured metro lines, dependencies as directed arcs.
+
+   All dependency edits route through the existing updateDependencies action and
+   surface sonner toasts, exactly as the previous React-Flow modal did. The two
+   bespoke SVG surfaces, the data derivation, the force sim and the inspector
+   live under ./topo. */
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Section, TestSuite, Dependency } from '../../types';
-import { X, Network, RefreshCcw, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '../../store';
+
+import { deriveTopo } from './topo/topo-derive';
+import type { Metrics } from './topo/topo-sim-atlas';
+import { TopoLand } from './topo/TopoLand';
+import { TopoMap } from './topo/TopoMap';
+import { Inspector } from './topo/Inspector';
+import { LegendKey } from './topo/LegendKey';
+import { useReducedMotion } from './topo/useReducedMotion';
+import { TK } from './topo/tk';
+import { AtlasGlyph, CloseGlyph, NetworkGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -30,385 +34,557 @@ interface DependencyGraphModalProps {
   onEstimateDependencies?: () => Promise<void>;
 }
 
-const nodeWidth = 240;
-const nodeHeight = 90;
+const mono = 'JetBrains Mono, monospace';
+type Projection = 'atlas' | 'spine';
 
-const SectionNode = ({ data }: any) => {
-  const statusColors: Record<string, string> = {
-    success: 'text-hld-green',
-    fail: 'text-hld-magenta',
-    stale: 'text-hld-yellow',
-    running: 'text-hld-cyan cursor-wait',
-    idle: 'text-hld-muted'
+// ── header ──────────────────────────────────────────────────────────
+const ProjectionToggle: React.FC<{ mode: Projection; setMode: (m: Projection) => void }> = ({ mode, setMode }) => {
+  const opt = (id: Projection, label: string, glyph: React.ReactNode, title: string, border: boolean) => {
+    const on = mode === id;
+    return (
+      <button
+        onClick={() => setMode(id)}
+        title={title}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 11px',
+          cursor: 'pointer',
+          background: on ? `rgba(${TK.accentGlow},0.14)` : 'transparent',
+          border: 'none',
+          borderRight: border ? `1px solid ${TK.border}` : 'none',
+          color: on ? TK.accent : TK.muted,
+          fontFamily: mono,
+          fontSize: 8.5,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+        }}
+      >
+        {glyph} {label}
+      </button>
+    );
   };
-
-  const statusColor = statusColors[data.status] || 'text-hld-muted';
-
   return (
-    <div className="bg-hld-surface2 border border-hld-cyan hover:border-hld-cyan/100 shadow-[0_0_15px_rgba(0,240,255,0.15)] rounded p-3 w-[240px] h-[90px] font-sans flex flex-col relative group transition-all">
-      {/* Target Handle (Top) - Receives dependencies */}
-      <Handle 
-        type="target" 
-        position={Position.Top} 
-        className="w-16 h-2 rounded-none bg-hld-cyan border-none -top-1 transition-all hover:h-4 hover:-top-3 cursor-crosshair z-10" 
-        title="Receives Dependency (Dependent)"
-      />
-      
-      <div className="flex justify-between items-start mb-1">
-        <div className="text-[10px] uppercase font-mono tracking-widest text-hld-cyan truncate pr-2 max-w-[150px]">
-          {data.function}
-        </div>
-        <div className={`text-[9px] uppercase font-mono tracking-widest ${statusColor}`}>
-          [{data.status}]
-        </div>
-      </div>
-      
-      <div className="text-sm text-slate-200 mt-1 font-bold truncate line-clamp-2 leading-tight pointer-events-none">
-        {data.title}
-      </div>
-
-      {/* Source Handle (Bottom) - Provides dependencies */}
-      <Handle 
-        type="source" 
-        position={Position.Bottom} 
-        className="w-16 h-2 rounded-none bg-hld-magenta border-none -bottom-1 transition-all hover:h-4 hover:-bottom-3 cursor-crosshair z-10" 
-        title="Provides Dependency (Prerequisite/Ref)"
-      />
+    <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${TK.border}`, marginRight: 2 }}>
+      {opt('atlas', 'ATLAS', <AtlasGlyph c={mode === 'atlas' ? TK.accent : TK.muted} />, 'Sections as land, dependencies as routes', true)}
+      {opt('spine', 'SPINE', <SpineGlyph c={mode === 'spine' ? TK.accent : TK.muted} />, 'Parts as lines, dependencies as arcs', false)}
     </div>
   );
 };
 
-const nodeTypes = { sectionNode: SectionNode };
-
-const getLayoutedElements = (nodes: Node[], edges: Edge[], forceDirection?: 'TB' | 'LR') => {
-  const tryLayout = (dir: 'TB' | 'LR') => {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: dir, nodesep: 50, ranksep: 100 });
-
-    nodes.forEach((node) => {
-      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-    });
-
-    edges.forEach((edge) => {
-      dagreGraph.setEdge(edge.source, edge.target);
-    });
-
-    dagre.layout(dagreGraph);
-
-    const isHorizontal = dir === 'LR';
-    const newNodes = nodes.map((node) => {
-      const nodeWithPosition = dagreGraph.node(node.id);
-      return {
-        ...node,
-        targetPosition: isHorizontal ? Position.Left : Position.Top,
-        sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-        position: {
-          x: nodeWithPosition.x - nodeWidth / 2,
-          y: nodeWithPosition.y - nodeHeight / 2,
-        },
-      };
-    });
-
-    const graphInfo = dagreGraph.graph();
-    const width = graphInfo.width || 0;
-    const height = graphInfo.height || 0;
-    return { nodes: newNodes, edges, width, height, dir };
-  };
-
-  const tbLayout = tryLayout('TB');
-  const lrLayout = tryLayout('LR');
-
-  if (forceDirection) {
-    return forceDirection === 'TB' ? tbLayout : lrLayout;
-  }
-
-  // Choose the layout that best matches the screen's aspect ratio
-  const screenRatio = window.innerWidth / window.innerHeight;
-  const tbRatio = tbLayout.width / (tbLayout.height || 1);
-  const lrRatio = lrLayout.width / (lrLayout.height || 1);
-
-  // Compare which aspect ratio is closer to the screen's aspect ratio
-  const tbDiff = Math.abs(tbRatio - screenRatio);
-  const lrDiff = Math.abs(lrRatio - screenRatio);
-
-  return lrDiff < tbDiff ? lrLayout : tbLayout;
+const Header: React.FC<{
+  mode: Projection;
+  setMode: (m: Projection) => void;
+  estimating: boolean;
+  optimizing: boolean;
+  canEstimate: boolean;
+  onEstimate: () => void;
+  onOrganize: () => void;
+  onClose: () => void;
+}> = ({ mode, setMode, estimating, optimizing, canEstimate, onEstimate, onOrganize, onClose }) => {
+  const actBtn = (color: string): React.CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '7px 12px',
+    cursor: 'pointer',
+    background: 'transparent',
+    border: `1px solid ${color}`,
+    color,
+    fontFamily: mono,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: '0.14em',
+  });
+  return (
+    <header
+      style={{
+        flexShrink: 0,
+        height: 70,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 22px',
+        gap: 14,
+        borderBottom: `1px solid ${TK.border}`,
+        background: TK.surface,
+        position: 'relative',
+        zIndex: 20,
+      }}
+    >
+      <div
+        style={{
+          width: 46,
+          height: 46,
+          flexShrink: 0,
+          border: `1px solid rgba(${TK.accentGlow},0.4)`,
+          background: `rgba(${TK.accentGlow},0.08)`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: `0 0 ${10 * TK.glow.edge}px rgba(${TK.accentGlow},0.3)`,
+        }}
+      >
+        <NetworkGlyph c={TK.accent} size={24} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: mono, fontSize: 17, fontWeight: 800, color: TK.textHi, letterSpacing: '0.22em', textShadow: `0 0 10px rgba(${TK.accentGlow},0.4)` }}>
+          ARGUMENT TOPOLOGY
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 8, color: TK.accent, letterSpacing: '0.18em', marginTop: 4, opacity: 0.85 }}>
+          STRUCTURAL &amp; LOGICAL DEPENDENCIES
+        </div>
+      </div>
+      <ProjectionToggle mode={mode} setMode={setMode} />
+      {canEstimate && (
+        <button onClick={onEstimate} disabled={estimating} style={{ ...actBtn(TK.magenta), opacity: estimating ? 0.5 : 1 }} title="Auto-estimate dependencies via AI">
+          ESTIMATE <WandGlyph c={TK.magenta} />
+        </button>
+      )}
+      <button
+        onClick={onOrganize}
+        disabled={optimizing}
+        style={{
+          ...actBtn(TK.accent),
+          opacity: optimizing ? 0.5 : 1,
+          ...(mode === 'atlas' ? { background: `rgba(${TK.accentGlow},0.10)`, boxShadow: `0 0 ${10 * TK.glow.edge}px rgba(${TK.accentGlow},0.3)` } : {}),
+        }}
+        title={mode === 'atlas' ? 'Optimise the landscape against the dependency graph' : 'Re-run auto layout'}
+      >
+        {mode === 'atlas' ? 'OPTIMISE' : 'ORGANISE'} <RefreshGlyph c={TK.accent} />
+      </button>
+      <button
+        onClick={onClose}
+        title="Close (Esc)"
+        style={{ width: 36, height: 36, marginLeft: 2, cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.border}`, color: TK.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <CloseGlyph />
+      </button>
+    </header>
+  );
 };
+
+// ── filter bar ──────────────────────────────────────────────────────
+const RouteReadout: React.FC<{ land: Metrics }> = ({ land }) => {
+  const cell = (label: string, val: string | number, c: string) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.1 }}>
+      <span style={{ fontFamily: mono, fontSize: 6.5, color: TK.dim, letterSpacing: '0.14em', fontWeight: 700 }}>{label}</span>
+      <span style={{ fontFamily: mono, fontSize: 11, color: c, fontWeight: 800 }}>{val}</span>
+    </div>
+  );
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingRight: 2 }} title="Lower is better. OPTIMISE shortens routes and removes crossings.">
+      {cell('ROUTE LENGTH', land.len.toLocaleString() + 'u', TK.accent)}
+      {cell('CROSSINGS', land.cross, land.cross > 0 ? TK.yellow : TK.green)}
+    </div>
+  );
+};
+
+const MiniToggle: React.FC<{ on: boolean; setOn: (v: boolean) => void; label: string }> = ({ on, setOn, label }) => (
+  <button
+    onClick={() => setOn(!on)}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: '4px 9px',
+      cursor: 'pointer',
+      background: 'transparent',
+      border: `1px solid ${on ? `rgba(${TK.accentGlow},0.4)` : TK.border}`,
+      fontFamily: mono,
+      fontSize: 7.5,
+      fontWeight: 700,
+      letterSpacing: '0.12em',
+      color: on ? TK.accent : TK.muted,
+      flexShrink: 0,
+    }}
+  >
+    <span style={{ width: 16, height: 9, borderRadius: 5, background: on ? `rgba(${TK.accentGlow},0.3)` : TK.border, position: 'relative', display: 'inline-block' }}>
+      <span style={{ position: 'absolute', top: 1, left: on ? 8 : 1, width: 7, height: 7, borderRadius: '50%', background: on ? TK.accent : TK.muted, transition: 'left 0.2s', boxShadow: on ? `0 0 4px ${TK.accent}` : 'none' }} />
+    </span>
+    {label}
+  </button>
+);
+
+const FilterBar: React.FC<{
+  mode: Projection;
+  lines: { id: string; num: string; label: string; sub: string; color: string }[];
+  filter: string | null;
+  setFilter: (id: string | null) => void;
+  land: Metrics;
+  ghost: boolean;
+  setGhost: (v: boolean) => void;
+}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost }) => {
+  const atlas = mode === 'atlas';
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        height: 40,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 16px',
+        gap: 10,
+        borderBottom: `1px solid ${TK.border}`,
+        background: TK.surface2,
+        position: 'relative',
+        zIndex: 8,
+      }}
+    >
+      <div style={{ fontFamily: mono, fontSize: 8, color: TK.accent, letterSpacing: '0.18em', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ width: 5, height: 5, background: TK.accent, transform: 'rotate(45deg)', boxShadow: `0 0 4px ${TK.accent}` }} />
+        {atlas ? 'CONTINENTS' : 'LINES'}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, overflowX: 'auto' }}>
+        {lines.map((l) => {
+          const active = filter === l.id;
+          const off = !!filter && !active;
+          return (
+            <button
+              key={l.id}
+              onClick={() => setFilter(active ? null : l.id)}
+              title={l.sub}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '5px 10px',
+                cursor: 'pointer',
+                flexShrink: 0,
+                background: active ? `rgba(${TK.accentGlow},0.10)` : 'transparent',
+                border: `1px solid ${active ? l.color : TK.border}`,
+                opacity: off ? 0.4 : 1,
+              }}
+            >
+              {atlas ? (
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: l.color, boxShadow: `0 0 5px ${l.color}`, flexShrink: 0 }} />
+              ) : (
+                <svg width="20" height="8">
+                  <path d="M1 4 L19 4" stroke={l.color} strokeWidth="4" strokeLinecap="round" />
+                </svg>
+              )}
+              <span style={{ fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', color: active ? l.color : TK.muted }}>
+                {l.num} · {l.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ width: 1, height: 18, background: TK.border, flexShrink: 0 }} />
+      {atlas ? <RouteReadout land={land} /> : <MiniToggle on={ghost} setOn={setGhost} label="GHOST" />}
+    </div>
+  );
+};
+
+// ── overlays ────────────────────────────────────────────────────────
+const WorkingOverlay: React.FC<{ color: string; label: string }> = ({ color, label }) => (
+  <div style={{ position: 'absolute', inset: 0, zIndex: 7, background: 'rgba(5,9,13,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+    <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.2em', color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ width: 8, height: 8, background: color, transform: 'rotate(45deg)', animation: 'hld-pulse 1s ease-in-out infinite' }} />
+      {label}
+    </div>
+  </div>
+);
+
+// ── bracket corners ─────────────────────────────────────────────────
+const BracketCorners: React.FC = () => (
+  <>
+    {(
+      [
+        ['top', 'left'],
+        ['top', 'right'],
+        ['bottom', 'left'],
+        ['bottom', 'right'],
+      ] as [('top' | 'bottom'), ('left' | 'right')][]
+    ).map(([v, h], i) => {
+      const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            [v]: 0,
+            [h]: 0,
+            width: 12,
+            height: 12,
+            zIndex: 30,
+            pointerEvents: 'none',
+            [`border${cap(v)}`]: `2px solid ${TK.accent}`,
+            [`border${cap(h)}`]: `2px solid ${TK.accent}`,
+          } as React.CSSProperties}
+        />
+      );
+    })}
+  </>
+);
 
 export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   sections,
   testSuite,
   updateDependencies,
-  onEstimateDependencies
+  onEstimateDependencies,
 }) => {
-  const isOpen = useStore(s => s.showGraphModal);
-  const setShow = useStore(s => s.setShowGraphModal);
-  const onClose = () => setShow(false);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [rfInstance, setRfInstance] = React.useState<any>(null);
-  const prevSectionIds = useRef<string>('');
+  const isOpen = useStore((s) => s.showGraphModal);
+  const setShow = useStore((s) => s.setShowGraphModal);
+  const editorSelectedId = useStore((s) => s.selectedId);
+  const setEditorSelectedId = useStore((s) => s.setSelectedId);
+  const reduced = useReducedMotion();
 
-  const buildData = useCallback(() => {
-    const flatSections: Section[] = [];
-    const traverse = (nodesToTraverse: Section[]) => {
-      nodesToTraverse.forEach(n => {
-        flatSections.push(n);
-        traverse(n.children);
-      });
-    };
-    traverse(sections);
+  const model = useMemo(() => deriveTopo(sections, testSuite), [sections, testSuite]);
 
-    const newNodes: Node[] = flatSections.map(s => {
-      const entry = testSuite[s.id];
-      return {
-        id: s.id,
-        type: 'sectionNode',
-        data: {
-          title: s.title,
-          function: entry?.spec?.function || 'Unknown',
-          status: entry?.status || 'idle'
-        },
-        position: { x: 0, y: 0 },
-        deletable: false, // Prevent deleting nodes from graph
-      };
-    });
+  const [mode, setMode] = useState<Projection>('atlas');
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  const [selectedDepId, setSelectedDepId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [filterPartId, setFilterPartId] = useState<string | null>(null);
+  const [linkMode, setLinkMode] = useState(false);
+  const [ghostUnderlay, setGhostUnderlay] = useState(false);
+  const [land, setLand] = useState<Metrics>({ len: 0, cross: 0 });
+  const [optimizing, setOptimizing] = useState(false);
+  const [estimating, setEstimating] = useState(false);
+  const [fitNonce, setFitNonce] = useState(0);
+  const [organizeNonce, setOrganizeNonce] = useState(0);
 
-    const newEdges: Edge[] = [];
-    flatSections.forEach(s => {
-      const entry = testSuite[s.id];
-      
-      // Implicit parent-child dependency for structure
-      if (s.parentId) {
-         newEdges.push({
-           id: `e-parent-${s.parentId}-${s.id}`,
-           source: s.parentId,
-           target: s.id,
-           animated: false,
-           style: { stroke: 'rgba(255, 255, 255, 0.1)', strokeWidth: 1, strokeDasharray: '4 4' },
-           interactionWidth: 0, // Unselectable
-           deletable: false,
-         });
-      }
+  const onClose = useCallback(() => setShow(false), [setShow]);
 
-      if (entry?.dependencies) {
-        entry.dependencies.forEach(dep => {
-          const isPrereq = dep.type === 'prerequisite';
-          newEdges.push({
-            id: `e-${dep.id}-${s.id}`,
-            source: dep.id,
-            target: s.id,
-            animated: !isPrereq,
-            style: {
-              stroke: isPrereq ? '#00f0ff' : '#ff0055', // HLD Cyan / Magenta
-              strokeWidth: 2,
-            },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: isPrereq ? '#00f0ff' : '#ff0055',
-            },
-            interactionWidth: 20, // Easier to click/hover
-            deletable: true,
-          });
-        });
-      }
-    });
-
-    return { newNodes, newEdges, sectionIds: flatSections.map(s => s.id).join(',') };
-  }, [sections, testSuite]);
-
+  // Seed selection from the editor's current section when the modal opens.
   useEffect(() => {
     if (!isOpen) return;
+    setSelectedDepId(null);
+    setLinkMode(false);
+    setSelectedStationId((prev) => prev ?? (editorSelectedId && model.stationById[editorSelectedId] ? editorSelectedId : null));
+  }, [isOpen]);
 
-    const { newNodes, newEdges, sectionIds } = buildData();
+  // Esc: cancel link mode if active, else close.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (linkMode) setLinkMode(false);
+      else onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, linkMode, onClose]);
 
-    if (prevSectionIds.current !== sectionIds) {
-       // Deeply changed (number of sections), perform full layout
-       prevSectionIds.current = sectionIds;
-       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(newNodes, newEdges);
-       setNodes(layoutedNodes);
-       setEdges(layoutedEdges);
-       
-       if (rfInstance) {
-         setTimeout(() => rfInstance.fitView({ padding: 0.1, duration: 800 }), 50);
-       }
-    } else {
-       // Soft sync: preserve node positions, just update data + edges
-       setNodes(prev => prev.map(p => {
-           const nd = newNodes.find(n => n.id === p.id);
-           if (nd) return { ...p, data: nd.data };
-           return p;
-       }));
-       setEdges(newEdges);
-    }
-  }, [isOpen, buildData, setNodes, setEdges, rfInstance]);
-  
-  const forceLayout = useCallback(() => {
-    const { newNodes, newEdges } = buildData();
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(newNodes, newEdges);
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-    
-    if (rfInstance) {
-      setTimeout(() => rfInstance.fitView({ padding: 0.1, duration: 800 }), 50);
-    }
-    
-    toast.success("Graph Layout Optimized.");
-  }, [buildData, setNodes, setEdges, rfInstance]);
-
-  const onConnect = useCallback(
-    (params: Connection | Edge) => {
-      const { source, target } = params;
-      if (!source || !target || source === target) return;
-      
-      const targetEntry = testSuite[target];
-      const existingDeps = targetEntry?.dependencies || [];
-      if (existingDeps.some(d => d.id === source)) {
-         toast.info("Dependency already exists.");
-         return;
-      }
-
-      updateDependencies(target, [...existingDeps, { id: source, type: 'prerequisite' }]);
-      toast.success("Dependency Added.");
-    },
-    [testSuite, updateDependencies]
-  );
-
-  const onEdgesDelete = useCallback(
-    (edgesToDelete: Edge[]) => {
-      edgesToDelete.forEach(edge => {
-        if (edge.id.startsWith('e-parent-')) return; // Ignore structural edges
-        const { source, target } = edge;
-        const existingDeps = testSuite[target]?.dependencies || [];
-        updateDependencies(target, existingDeps.filter(d => d.id !== source));
-      });
-      toast.success("Dependency Removed.");
-    },
-    [testSuite, updateDependencies]
-  );
-
-  const onEdgeDoubleClick = useCallback(
-    (event: React.MouseEvent, edge: Edge) => {
-      if (edge.id.startsWith('e-parent-')) {
-        toast.info("Structural hierarchies cannot be modified here.");
+  const onSelect = useCallback(
+    (id: string | null) => {
+      if (linkMode && id && selectedStationId && id !== selectedStationId) {
+        // create a prerequisite: clicked station → currently-selected station
+        const target = selectedStationId;
+        const existing = testSuite[target]?.dependencies ?? [];
+        if (existing.some((d) => d.id === id)) {
+          toast.info('Dependency already exists.');
+          setLinkMode(false);
+          return;
+        }
+        updateDependencies(target, [...existing, { id, type: 'prerequisite' }]);
+        setLinkMode(false);
+        setSelectedDepId(`${id}->${target}`);
+        setSelectedStationId(null);
+        toast.success('Dependency Added.');
         return;
       }
-      const { source, target } = edge;
-      const existingDeps = testSuite[target]?.dependencies || [];
-      const newDeps: Dependency[] = existingDeps.map(d => 
-        d.id === source 
-          ? { ...d, type: d.type === 'prerequisite' ? ('reference' as const) : ('prerequisite' as const) } 
-          : d
-      );
-      updateDependencies(target, newDeps);
-      toast.success("Dependency Type Toggled.");
+      setSelectedStationId(id);
+      setSelectedDepId(null);
     },
-    [testSuite, updateDependencies]
+    [linkMode, selectedStationId, testSuite, updateDependencies],
   );
+
+  const onSelectDep = useCallback((id: string | null) => {
+    setSelectedDepId(id);
+    if (id) setSelectedStationId(null);
+  }, []);
+
+  const onSelectStationFromInspector = useCallback((id: string) => {
+    setSelectedStationId(id);
+    setSelectedDepId(null);
+  }, []);
+
+  const onToggleDep = useCallback(
+    (arcId: string) => {
+      const arc = model.arcs.find((a) => a.id === arcId);
+      if (!arc) return;
+      const existing = testSuite[arc.target]?.dependencies ?? [];
+      const next: Dependency[] = existing.map((d) =>
+        d.id === arc.source ? { ...d, type: d.type === 'prerequisite' ? ('reference' as const) : ('prerequisite' as const) } : d,
+      );
+      updateDependencies(arc.target, next);
+      toast.success('Dependency Type Toggled.');
+    },
+    [model, testSuite, updateDependencies],
+  );
+
+  const onRemoveDep = useCallback(
+    (arcId: string) => {
+      const arc = model.arcs.find((a) => a.id === arcId);
+      if (!arc) return;
+      const existing = testSuite[arc.target]?.dependencies ?? [];
+      updateDependencies(arc.target, existing.filter((d) => d.id !== arc.source));
+      setSelectedDepId(null);
+      toast.success('Dependency Removed.');
+    },
+    [model, testSuite, updateDependencies],
+  );
+
+  const onOpenInEditor = useCallback(
+    (id: string) => {
+      setEditorSelectedId(id);
+      onClose();
+    },
+    [setEditorSelectedId, onClose],
+  );
+
+  const onOrganize = useCallback(() => {
+    if (mode === 'atlas') setOrganizeNonce((n) => n + 1);
+    else {
+      setFitNonce((n) => n + 1);
+      toast.success('Graph Layout Optimized.');
+    }
+  }, [mode]);
+
+  const onOptRun = useCallback((running: boolean) => {
+    setOptimizing(running);
+    if (!running) toast.success('Topology Optimised — routes shortened.');
+  }, []);
+
+  const onEstimate = useCallback(async () => {
+    if (!onEstimateDependencies) return;
+    setEstimating(true);
+    try {
+      await onEstimateDependencies();
+    } finally {
+      setEstimating(false);
+    }
+  }, [onEstimateDependencies]);
 
   if (!isOpen) return null;
 
+  const station = selectedStationId ? model.stationById[selectedStationId] ?? null : null;
+  const arc = selectedDepId ? model.arcs.find((a) => a.id === selectedDepId) ?? null : null;
+  const linkTarget = linkMode && station ? station.sym : '';
+
   return (
-    <div className="fixed inset-0 bg-hld-bg/95 flex items-center justify-center z-50 p-4 font-sans backdrop-blur-md">
-      <div className="bg-hld-surface border border-hld-magenta/50 hover:border-hld-magenta shadow-[0_0_40px_rgba(255,0,85,0.15)] w-full max-w-[95vw] h-[90vh] flex flex-col relative overflow-hidden transition-all duration-300">
-        
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 bg-gradient-to-b from-hld-bg to-transparent pointer-events-none">
-          <div className="flex items-center gap-4">
-             <div className="p-3 bg-hld-cyan/10 border border-hld-cyan/30 rounded hld-glow-cyan">
-               <Network className="text-hld-cyan" size={24} />
-             </div>
-             <div>
-               <h3 className="text-2xl font-bold text-hld-text font-mono uppercase tracking-[0.2em] hld-text-glow">
-                 Argument Topology
-               </h3>
-               <p className="text-hld-cyan/70 text-[11px] font-mono uppercase tracking-[0.1em] mt-1">
-                 Structural & Logical Dependencies
-               </p>
-             </div>
-          </div>
-          <div className="flex items-center gap-3 pointer-events-auto">
-            {onEstimateDependencies && (
-              <button 
-                onClick={onEstimateDependencies} 
-                className="text-hld-magenta hover:text-hld-bg hover:bg-hld-magenta border border-hld-magenta rounded px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition-all hld-glow-magenta flex items-center gap-2"
-                title="Auto-estimate dependencies via AI"
-              >
-                Estimate <Wand2 size={14} />
-              </button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(5,9,13,0.78)', backdropFilter: 'blur(6px)', padding: 24, fontFamily: 'Inter, sans-serif', color: TK.text }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          width: '94vw',
+          maxWidth: 1480,
+          height: '90vh',
+          background: TK.surface,
+          border: `1px solid rgba(170,0,255,0.5)`,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: `0 0 60px rgba(170,0,255,0.18), 0 30px 80px rgba(0,0,0,0.6)`,
+        }}
+      >
+        <BracketCorners />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: TK.accent, boxShadow: `0 0 ${10 * TK.glow.edge}px ${TK.accent}`, zIndex: 25 }} />
+
+        <Header
+          mode={mode}
+          setMode={setMode}
+          estimating={estimating}
+          optimizing={optimizing}
+          canEstimate={!!onEstimateDependencies}
+          onEstimate={onEstimate}
+          onOrganize={onOrganize}
+          onClose={onClose}
+        />
+
+        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} />
+
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
+          <main style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            {model.stations.length === 0 ? (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TK.bgDeep, fontFamily: mono, fontSize: 11, letterSpacing: '0.14em', color: TK.muted }}>
+                NO SECTIONS YET — WRITE SOME HEADINGS TO MAP THE ARGUMENT.
+              </div>
+            ) : mode === 'atlas' ? (
+              <TopoLand
+                model={model}
+                selectedId={selectedStationId}
+                hoveredId={hoveredId}
+                editorId={editorSelectedId}
+                filter={filterPartId}
+                selectedDepId={selectedDepId}
+                organizeNonce={organizeNonce}
+                reduced={reduced}
+                onSelect={onSelect}
+                onSelectDep={onSelectDep}
+                onHover={setHoveredId}
+                onOpen={onOpenInEditor}
+                onMetrics={setLand}
+                onOptRun={onOptRun}
+              />
+            ) : (
+              <TopoMap
+                model={model}
+                selectedId={selectedStationId}
+                hoveredId={hoveredId}
+                editorId={editorSelectedId}
+                filter={filterPartId}
+                selectedDepId={selectedDepId}
+                fitNonce={fitNonce}
+                showGhost={ghostUnderlay}
+                reduced={reduced}
+                onSelect={onSelect}
+                onSelectDep={onSelectDep}
+                onHover={setHoveredId}
+                onOpen={onOpenInEditor}
+              />
             )}
-            <button 
-              onClick={forceLayout} 
-              className="text-hld-cyan hover:text-hld-bg hover:bg-hld-cyan border border-hld-cyan rounded px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] transition-all hld-glow-cyan flex items-center gap-2"
-              title="Re-run auto layout"
-            >
-              Organize Layout <RefreshCcw size={14} />
-            </button>
-            <button 
-              onClick={onClose} 
-              className="text-hld-muted hover:text-hld-magenta p-2 transition-colors"
-            >
-              <X size={32} />
-            </button>
-          </div>
-        </div>
 
-        {/* Legend */}
-        <div className="absolute bottom-6 left-6 z-10 bg-hld-surface2/90 border border-hld-border p-5 backdrop-blur shadow-lg flex flex-col gap-4 font-mono text-[10px] uppercase tracking-widest text-hld-text/70">
-           <div className="flex items-center gap-3">
-             <div className="w-8 h-0.5 bg-hld-cyan hld-glow-cyan"></div>
-             <span>Prerequisite (Structural)</span>
-           </div>
-           <div className="flex items-center gap-3">
-             <div className="w-8 h-0.5 border-t-2 border-dashed border-hld-magenta hld-glow-magenta"></div>
-             <span>Reference (Informational)</span>
-           </div>
-           <div className="flex items-center gap-3">
-             <div className="w-8 h-0.5 border-t border-dashed border-slate-500"></div>
-             <span>Hierarchy</span>
-           </div>
-           
-           {/* Interaction Hints */}
-           <div className="mt-2 text-[9px] text-hld-muted leading-relaxed space-y-1.5">
-             <div><strong className="text-hld-cyan">Drag</strong> Handles to connect</div>
-             <div><strong className="text-hld-cyan">Double-Click Edge</strong> to toggle type</div>
-             <div><strong className="text-hld-magenta">Select & Backspace</strong> to delete</div>
-           </div>
-        </div>
+            {model.stations.length > 0 && <LegendKey mode={mode} />}
 
-        {/* Graph Area */}
-        <div className="flex-1 w-full h-full pt-16">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onEdgesDelete={onEdgesDelete}
-            onEdgeDoubleClick={onEdgeDoubleClick}
-            nodeTypes={nodeTypes}
-            onInit={setRfInstance}
-            fitView
-            className="bg-hld-bg"
-            minZoom={0.1}
-            maxZoom={1.5}
-            connectionMode={ConnectionMode.Strict}
-            deleteKeyCode={['Backspace', 'Delete']}
-          >
-            <Background 
-               variant={BackgroundVariant.Dots} 
-               gap={24} 
-               size={1.5} 
-               color="rgba(0, 240, 255, 0.15)" 
-            />
-            <Controls 
-              className="fill-hld-text/70 border-none bg-hld-surface/80 shadow-none [&>button]:!bg-transparent [&>button]:border-b [&>button]:border-hld-border/50 hover:[&>button]:!bg-hld-cyan/20 [&>button]:transition-colors" 
-            />
-          </ReactFlow>
-        </div>
+            {linkMode && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: 14,
+                  transform: 'translateX(-50%)',
+                  zIndex: 6,
+                  padding: '8px 14px',
+                  background: TK.surface,
+                  border: `1px solid ${TK.accent}`,
+                  color: TK.accent,
+                  fontFamily: mono,
+                  fontSize: 9,
+                  letterSpacing: '0.14em',
+                  fontWeight: 700,
+                  boxShadow: `0 0 14px rgba(${TK.accentGlow},0.4)`,
+                }}
+              >
+                LINK MODE · click a station to make it a prerequisite of {linkTarget} · ESC to cancel
+              </div>
+            )}
 
-        {/* Screen Glitch / CRT lines (Optional Overlay) */}
-        <div className="absolute inset-0 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIi8+Cjwvc3ZnPg==')] opacity-50 mix-blend-overlay"></div>
+            {estimating && <WorkingOverlay color={TK.magenta} label="ANALYSING DEPENDENCIES…" />}
+            {optimizing && <WorkingOverlay color={TK.accent} label="OPTIMISING TOPOLOGY…" />}
+          </main>
+
+          <Inspector
+            model={model}
+            station={station}
+            arc={arc}
+            editorId={editorSelectedId}
+            linkMode={linkMode}
+            setLinkMode={setLinkMode}
+            onOpen={onOpenInEditor}
+            onSelectStation={onSelectStationFromInspector}
+            onToggleDep={onToggleDep}
+            onRemoveDep={onRemoveDep}
+          />
+        </div>
       </div>
     </div>
   );
