@@ -3,6 +3,7 @@ import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
 import { DEFAULT_OLLAMA_BASE_URL } from './ai/clients';
+import type { AnalysisSpell } from '../types';
 
 /**
  * Global, app-level preferences that are NOT tied to a specific project.
@@ -19,6 +20,7 @@ const TUTORIAL_SEEN_KEY = 'treemap_writer_tutorial_seen';
 const MODELS_GLOBAL_DEFAULT_KEY = 'treemap_writer_models_global_default';
 const MODELS_CATALOG_KEY = 'treemap_writer_models_catalog';
 const OLLAMA_BASE_URL_KEY = 'treemap_writer_ollama_base_url';
+const SPELLS_KEY = 'treemap_writer_spells';
 
 export async function hasSeenTutorial(): Promise<boolean> {
   return Boolean(await get(TUTORIAL_SEEN_KEY));
@@ -55,4 +57,18 @@ export async function getOllamaBaseUrl(): Promise<string> {
 
 export async function setOllamaBaseUrl(url: string): Promise<void> {
   await set(OLLAMA_BASE_URL_KEY, url);
+}
+
+/**
+ * User-created analytical "spells" (lenses). A global library shared across all
+ * projects, like the model catalog — the built-in defaults live in code
+ * (`lib/defaultSpells.ts`) and are NOT stored here. Empty array when none saved.
+ */
+export async function getSpells(): Promise<AnalysisSpell[]> {
+  const stored = await get<AnalysisSpell[]>(SPELLS_KEY);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export async function setSpells(spells: AnalysisSpell[]): Promise<void> {
+  await set(SPELLS_KEY, spells);
 }

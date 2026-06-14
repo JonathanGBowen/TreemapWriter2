@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import { DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
-import type { Persona, PromptsConfig } from '../types';
+import type { AnalysisSpell, Persona, PromptsConfig } from '../types';
 import type { AppState } from '.';
 import type { ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
@@ -24,6 +24,15 @@ export interface AIStateSlice {
   promptsConfig: PromptsConfig;
   cachedCoachAdvice: { inputHash: string; advice: string } | null;
 
+  /**
+   * User-created analytical lenses ("spells"). Global library (persisted in app
+   * preferences, shared across projects), like the model catalog. The built-in
+   * defaults live in code (`lib/defaultSpells.ts`) and are NOT stored here.
+   */
+  customSpells: AnalysisSpell[];
+  /** Which lens the next Analysis run uses. Session-only (never persisted); null = plain reconstruction. */
+  activeSpellId: string | null;
+
   /** Per-project per-kind model overrides. Sparse; resolves against the global default. */
   modelConfig: ModelConfig;
   /** Global default model config that seeds new projects (one "default model" knob). */
@@ -37,6 +46,10 @@ export interface AIStateSlice {
   setCustomPersonas: (personas: Persona[] | ((prev: Persona[]) => Persona[])) => void;
   setPromptsConfig: (config: PromptsConfig) => void;
   setCachedCoachAdvice: (advice: { inputHash: string; advice: string } | null) => void;
+
+  /** Replace (or update) the global spell library; writes through to preferences. */
+  setCustomSpells: (spells: AnalysisSpell[] | ((prev: AnalysisSpell[]) => AnalysisSpell[])) => void;
+  setActiveSpellId: (id: string | null) => void;
 
   setModelConfig: (config: ModelConfig) => void;
   setGlobalModelDefault: (config: ModelConfig) => void;
@@ -54,6 +67,9 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   promptsConfig: DEFAULT_PROMPTS_CONFIG,
   cachedCoachAdvice: null,
 
+  customSpells: [],
+  activeSpellId: null,
+
   modelConfig: {},
   globalModelDefault: {},
   modelCatalog: DEFAULT_CATALOG,
@@ -66,6 +82,13 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     })),
   setPromptsConfig: (config) => set({ promptsConfig: config }),
   setCachedCoachAdvice: (advice) => set({ cachedCoachAdvice: advice }),
+
+  setCustomSpells: (spells) => {
+    const next = typeof spells === 'function' ? spells(get().customSpells) : spells;
+    set({ customSpells: next });
+    void prefs.setSpells(next);
+  },
+  setActiveSpellId: (id) => set({ activeSpellId: id }),
 
   setModelConfig: (config) => set({ modelConfig: config }),
 
@@ -86,12 +109,13 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   },
 
   hydrateAIPreferences: async () => {
-    const [globalModelDefault, modelCatalog, ollamaBaseUrl] = await Promise.all([
+    const [globalModelDefault, modelCatalog, ollamaBaseUrl, customSpells] = await Promise.all([
       prefs.getGlobalModelDefault(),
       prefs.getModelCatalog(),
       prefs.getOllamaBaseUrl(),
+      prefs.getSpells(),
     ]);
-    set({ globalModelDefault, modelCatalog, ollamaBaseUrl });
+    set({ globalModelDefault, modelCatalog, ollamaBaseUrl, customSpells });
     applyOllamaBaseUrl(ollamaBaseUrl);
     // Non-blocking: surface locally-installed Ollama models if the server is up.
     void get().refreshOllamaCatalog();
