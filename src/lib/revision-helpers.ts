@@ -2,13 +2,7 @@
 // the AIProvider impl and the revision slice both lean on these so they stay
 // thin and testable. Mirrors lib/analysis-helpers.ts in spirit.
 
-import type {
-  AssemblySubMode,
-  RevisionMode,
-  RevisionProposal,
-  RevisionType,
-  SourceDocument,
-} from '../types';
+import type { RevisionProposal, RevisionType } from '../types';
 
 const VALID_REVISION_TYPES: RevisionType[] = [
   'Addition',
@@ -139,47 +133,4 @@ export const applyProposal = (
   const at = findProposalOffset(content, p.original_text);
   if (at < 0) return content;
   return content.slice(0, at) + p.proposed_text + content.slice(at + p.original_text.length);
-};
-
-const SOURCE_CONTENT_CAP = 8000;
-const SECTION_TEXT_CAP = 24000;
-
-/** Compose the request body: directive + mode + section + the quotable sources. */
-export const buildRevisionsRequestText = (args: {
-  prompt: string;
-  sectionTitle: string;
-  sectionText: string;
-  directive: string;
-  mode: RevisionMode;
-  subMode: AssemblySubMode;
-  sources: SourceDocument[];
-}): string => {
-  const sourceBlocks = args.sources
-    .map((s) =>
-      [
-        `SOURCE id=${s.id} kind="${s.kind}" label="${s.label}"`,
-        '"""',
-        s.content.slice(0, SOURCE_CONTENT_CAP),
-        '"""',
-      ].join('\n'),
-    )
-    .join('\n\n');
-
-  return [
-    args.prompt,
-    '',
-    `MODE: ${args.mode}${args.mode === 'assembly' ? ` (${args.subMode})` : ''}`,
-    '',
-    `DIRECTIVE: ${args.directive.trim() || '(none specified — improve the section using the sources)'}`,
-    '',
-    `SECTION: "${args.sectionTitle}"`,
-    '',
-    'SECTION TEXT (propose edits to this; original_text MUST be an exact substring):',
-    '---',
-    args.sectionText.slice(0, SECTION_TEXT_CAP),
-    '---',
-    '',
-    'SOURCE MATERIALS (quote ONLY from these):',
-    sourceBlocks || '(none provided)',
-  ].join('\n');
 };
