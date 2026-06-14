@@ -27,7 +27,6 @@ CRITICAL: You MUST include a key-value pair for EVERY single section ID passed t
 
 Return a JSON object:
 {
-  "root": { "mainClaim": "..." },
   "section-id": {
     "function": "introduce|explicate|argue|...",
     "mainClaim": "...",

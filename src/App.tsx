@@ -35,6 +35,7 @@ import { repository as repo } from './services/repository-registry';
 import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
+import { checkContextFit } from './services/ai/context-budget';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { isTauri } from './services/tauri-environment';
@@ -508,11 +509,22 @@ export const App = () => {
 
     setPromptsConfig(config);
 
+    // Pre-flight the document-level (root) spec pass: it reads the full document,
+    // so if that would overflow the chosen model's window we degrade the ROOT pass
+    // to the outline only (chapter passes are unaffected) rather than truncating.
+    const rootFit = checkContextFit(useStore.getState().modelCatalog, choice, markdown);
+    if (rootFit.overflow) {
+      toast.warning(
+        `Document (~${Math.round(rootFit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s window; the document-level spec will use the outline only. Pick a larger-context model to include the full text.`,
+      );
+    }
+
     await aiProvider.generateSpecs({
       sections,
       markdown,
       config,
       modelChoice: choice,
+      rootFullText: !rootFit.overflow,
       onBatchComplete: (specs) => {
         setTestSuite(prev => {
           const next = { ...prev };
@@ -559,6 +571,20 @@ export const App = () => {
   if (!currentSection) return;
   
   const testId = currentSection.id;
+
+  // Whole-document evaluation: force full scope and pre-flight the context window
+  // (never silently truncate — abort and ask the user to pick a larger model).
+  let effectiveScope: 'segment' | 'parent' | 'full' = scope;
+  if (testId === 'root') {
+    effectiveScope = 'full';
+    const fit = checkContextFit(useStore.getState().modelCatalog, choice, markdown);
+    if (fit.overflow) {
+      toast.error(
+        `The whole document (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s context window. Switch the diagnostic model to a larger-context one (e.g. Gemini 3.1 Pro) to evaluate the entire document without truncation.`,
+      );
+      return;
+    }
+  }
   
   try {
     // Create snapshot before destructive AI action
@@ -589,7 +615,7 @@ export const App = () => {
     const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,
       spec,
-      scope,
+      scope: effectiveScope,
       modelChoice: choice,
       persona: activePersona,
       customInstruction: instruction,

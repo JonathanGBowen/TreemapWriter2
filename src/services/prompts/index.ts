@@ -3,6 +3,7 @@ import type { PromptsConfig } from '../../types';
 import systemInstruction from './system-instruction.md?raw';
 import l1TaskInstruction from './l1-task.md?raw';
 import subTaskInstruction from './sub-task.md?raw';
+import rootTaskInstruction from './root-task.md?raw';
 import suggestContentPrompt from './suggest-content.md?raw';
 import coachPrompt from './coach.md?raw';
 import refineSpecPrompt from './refine-spec.md?raw';
@@ -19,6 +20,7 @@ export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = {
   systemInstruction: stripTrailingNewline(systemInstruction),
   l1TaskInstruction: stripTrailingNewline(l1TaskInstruction),
   subTaskInstruction: stripTrailingNewline(subTaskInstruction),
+  rootTaskInstruction: stripTrailingNewline(rootTaskInstruction),
   suggestContentPrompt: stripTrailingNewline(suggestContentPrompt),
   coachPrompt: stripTrailingNewline(coachPrompt),
   refineSpecPrompt: stripTrailingNewline(refineSpecPrompt),

@@ -14,6 +14,34 @@ export const computeHash = (str: string): string => {
   return hash.toString(16);
 };
 
+/**
+ * Build the synthetic document-root node. The parsed hierarchy has no persisted
+ * root — `parseMarkdown` constructs one as a parsing accumulator and then returns
+ * only its children — so callers that need to operate on the whole document
+ * (root-level select / spec / analyze / evaluate) materialize it on demand here.
+ *
+ * The id is the stable 'root' (matching `parseMarkdown` and the treemap), so any
+ * results stored under `testSuite['root']` persist across re-parses. `fullContent`
+ * is the entire markdown; `children` are the already-parsed top-level sections.
+ */
+export const buildRootSection = (
+  md: string,
+  children: Section[],
+  title = 'Document Root',
+): Section => ({
+  id: 'root',
+  title,
+  level: 0,
+  content: '',
+  fullContent: md,
+  startLine: 0,
+  endLine: md.split('\n').length,
+  startOffset: 0,
+  wordCount: md.split(/\s+/).filter((w) => w.length > 0).length,
+  children,
+  parentId: null,
+});
+
 // Markdown Parser
 export const parseMarkdown = (
   md: string, 
@@ -50,19 +78,7 @@ export const parseMarkdown = (
       currentOffset += line.length + 1; // +1 for the newline character
   }
 
-  const root: Section = {
-    id: 'root',
-    title: 'Document Root',
-    level: 0,
-    content: '',
-    fullContent: md,
-    startLine: 0,
-    endLine: lines.length,
-    startOffset: 0,
-    wordCount: 0,
-    children: [],
-    parentId: null
-  };
+  const root = buildRootSection(md, []);
 
   const stack: Section[] = [root];
 

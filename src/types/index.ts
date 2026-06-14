@@ -224,6 +224,8 @@ export interface PromptsConfig {
   systemInstruction: string;
   l1TaskInstruction: string;
   subTaskInstruction: string;
+  /** Document-level (root) spec pass — the top of the hierarchy, above chapters. */
+  rootTaskInstruction: string;
   suggestContentPrompt: string;
   coachPrompt: string;
   refineSpecPrompt: string;

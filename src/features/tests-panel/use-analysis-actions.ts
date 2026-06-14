@@ -5,6 +5,8 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { computeHash } from '../../lib/utils';
 import { makeAnalysisVersion } from '../../lib/analysis-helpers';
+import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
+import { checkContextFit } from '../../services/ai/context-budget';
 import { useCurrentSection } from './use-current-section';
 
 /**
@@ -91,10 +93,27 @@ export const useAnalysisActions = () => {
     // Capture at call time: edits or a section switch mid-flight must not
     // redirect where the result lands or what the inputHash describes.
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
-    const { testSuite, promptsConfig, isProcessing } = useStore.getState();
+    const { testSuite, promptsConfig, isProcessing, modelCatalog, modelConfig, globalModelDefault } =
+      useStore.getState();
     // Mutually exclusive with a streaming dialogue turn for this section:
     // both would write the same sidecar and could otherwise race two saves.
     if (isProcessing || inFlight.has(sectionId)) return;
+
+    // Whole-document analysis sends the entire document — never silently truncate.
+    // If it would overflow the chosen model's window, abort and ask the user to
+    // pick a larger-context model rather than slicing the text.
+    const wholeDocument = sectionId === 'root';
+    if (wholeDocument) {
+      const choice = resolveModelChoice('analyzeSection', modelConfig, globalModelDefault);
+      const fit = checkContextFit(modelCatalog, choice, sectionText);
+      if (fit.overflow) {
+        toast.error(
+          `The whole document (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s context window. Switch the "Analyze section" model to a larger-context one (e.g. Gemini 3.1 Pro) to analyze the entire document without truncation.`,
+        );
+        return;
+      }
+    }
+
     const prevVersions = testSuite[sectionId]?.analysis?.versions ?? [];
 
     setIsProcessing(true);
@@ -103,6 +122,7 @@ export const useAnalysisActions = () => {
         sectionTitle,
         sectionText,
         config: promptsConfig,
+        wholeDocument,
       });
       const version = makeAnalysisVersion({
         kind: 'analysis',

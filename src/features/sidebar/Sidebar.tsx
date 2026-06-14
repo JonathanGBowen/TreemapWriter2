@@ -4,6 +4,7 @@ import { useStore } from "../../store";
 import { Pip } from "../shared/Pip";
 import { ProjectMenu } from "./ProjectMenu";
 import { SectionRow } from "./SectionRow";
+import { buildRootSection } from "../../lib/utils";
 import { Dock } from "./Dock";
 import { summarizeSync } from "./sync-status";
 
@@ -13,6 +14,9 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   const selectedId = useStore((s) => s.selectedId);
   const hiddenSectionIds = useStore((s) => s.hiddenSectionIds);
   const testSuite = useStore((s) => s.testSuite);
+  const markdown = useStore((s) => s.markdown);
+  // Synthetic top row: selecting it operates on the whole document (id 'root').
+  const documentRow = sections.length > 0 ? buildRootSection(markdown, sections, 'Whole Document') : null;
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
       <div className="h-px bg-hld-border" />
@@ -21,6 +25,15 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
       </div>
       <div className="h-px bg-hld-border" />
       <div className="max-h-[160px] overflow-y-auto section-tree">
+        {documentRow && (
+          <SectionRow
+            key="root"
+            section={documentRow}
+            selected={selectedId === 'root'}
+            status={testSuite['root']?.status || 'idle'}
+            onSelect={onSelect}
+          />
+        )}
         {sections.map((sec) => (
           <SectionRow key={sec.id} section={sec} selected={selectedId === sec.id} status={testSuite[sec.id]?.status || 'idle'} onSelect={onSelect} />
         ))}
