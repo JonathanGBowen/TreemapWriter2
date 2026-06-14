@@ -12,6 +12,7 @@ import type {
   RevisionMode,
   AssemblySubMode,
   SourceDocument,
+  DirectiveSuggestion,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 
@@ -41,6 +42,7 @@ export interface AIProvider {
   refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis>;
   continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
+  suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
 }
 
 export interface GenerateSpecsInput {
@@ -169,6 +171,20 @@ export interface GenerateRevisionsInput {
   /** The sources the model may quote from (every proposal carries a receipt). */
   sources: SourceDocument[];
   config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface SuggestDirectivesInput {
+  sectionTitle: string;
+  /** The section prose to analyze (the "master document" for this pass). */
+  sectionText: string;
+  /** Optional sources to compare against; directives target the gaps. */
+  sources: SourceDocument[];
+  /** Active persona name + instruction, to flavor the strategic directives. */
+  personaName: string;
+  personaInstruction: string;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

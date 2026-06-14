@@ -1,5 +1,6 @@
 import { useStore } from '../../state';
 import type { AssemblySubMode, RevisionMode } from '../../types';
+import { DirectiveSuggestions } from './DirectiveSuggestions';
 
 const PRESETS = [
   'Tighten the argument; cut hedging.',
@@ -65,6 +66,8 @@ export function DirectiveComposer() {
         placeholder="What should this revision accomplish?"
         className="bg-hld-bg border border-hld-border focus:border-hld-cyan outline-none text-hld-text font-mono text-[12px] px-2.5 py-2 resize-none leading-[1.5] focus:shadow-[0_0_12px_rgba(0,232,245,0.2)]"
       />
+
+      <DirectiveSuggestions onPick={setDirective} />
 
       <div className="flex flex-wrap gap-1.5">
         {PRESETS.map((d) => (

@@ -209,6 +209,12 @@ export interface RevisionProposal {
 /** Review lifecycle of a proposal within a session. */
 export type ProposalStatus = 'pending' | 'accepted' | 'rejected';
 
+/** A suggested revision directive: a short title + the actionable instruction. */
+export interface DirectiveSuggestion {
+  title: string;
+  directive: string;
+}
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
 
 export interface TestResult {

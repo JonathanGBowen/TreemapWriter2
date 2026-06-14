@@ -12,6 +12,7 @@ import type {
   DiagnosticResult,
   Dependency,
   RevisionProposal,
+  DirectiveSuggestion,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
 import { safeJsonParse } from '../../lib/utils';
@@ -35,11 +36,13 @@ import type {
   RefactorAnalysisInput,
   ContinueDialogueInput,
   GenerateRevisionsInput,
+  SuggestDirectivesInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import type { LLMClient, LLMMessage } from './clients';
 import { generateSpecs } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
+import { suggestDirectives } from './ai-provider.suggest-directives';
 
 const MAX_OUTPUT_TOKENS = 16000;
 const ANALYSIS_INPUT_CAP = 60000;
@@ -334,6 +337,16 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]> {
     const choice = this.choose('generateRevisions', input);
     return generateRevisions(
+      this.clientFor(choice.provider),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]> {
+    const choice = this.choose('suggestDirectives', input);
+    return suggestDirectives(
       this.clientFor(choice.provider),
       choice.model,
       choice.thinkingBudget,

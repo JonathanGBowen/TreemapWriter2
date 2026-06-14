@@ -2,7 +2,7 @@
 // the AIProvider impl and the revision slice both lean on these so they stay
 // thin and testable. Mirrors lib/analysis-helpers.ts in spirit.
 
-import type { RevisionProposal, RevisionType } from '../types';
+import type { DirectiveSuggestion, RevisionProposal, RevisionType } from '../types';
 
 const VALID_REVISION_TYPES: RevisionType[] = [
   'Addition',
@@ -35,12 +35,15 @@ const pickRaw = (o: Record<string, unknown>, keys: string[]): unknown => {
 };
 const pickStr = (o: Record<string, unknown>, keys: string[]): string => str(pickRaw(o, keys)).trim();
 
-/** Pull the proposal array out of whatever envelope the model returned. */
-const extractArray = (raw: unknown): unknown[] | null => {
+/** Pull the result array out of whatever envelope the model returned. */
+const extractArray = (
+  raw: unknown,
+  keys = ['proposals', 'revisions', 'edits', 'results'],
+): unknown[] | null => {
   if (Array.isArray(raw)) return raw;
   if (raw && typeof raw === 'object') {
     const o = raw as Record<string, unknown>;
-    for (const key of ['proposals', 'revisions', 'edits', 'results']) {
+    for (const key of keys) {
       if (Array.isArray(o[key])) return o[key] as unknown[];
     }
   }
@@ -133,4 +136,23 @@ export const applyProposal = (
   const at = findProposalOffset(content, p.original_text);
   if (at < 0) return content;
   return content.slice(0, at) + p.proposed_text + content.slice(at + p.original_text.length);
+};
+
+/**
+ * Tolerant validator for the model's directive-suggestion JSON. Null only when no
+ * array is recoverable; drops entries with no `directive` text and titles each
+ * missing one.
+ */
+export const normalizeDirectiveSuggestions = (raw: unknown): DirectiveSuggestion[] | null => {
+  const arr = extractArray(raw, ['directives', 'suggestions', 'options', 'results']);
+  if (!arr) return null;
+  const out: DirectiveSuggestion[] = [];
+  arr.forEach((item, i) => {
+    if (!item || typeof item !== 'object') return;
+    const o = item as Record<string, unknown>;
+    const directive = pickStr(o, ['directive', 'text', 'body', 'content', 'instruction']);
+    if (!directive) return;
+    out.push({ title: pickStr(o, ['title', 'label', 'name']) || `Option ${i + 1}`, directive });
+  });
+  return out;
 };

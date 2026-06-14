@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyProposal, findProposalOffset, normalizeRevisions } from '../revision-helpers';
+import {
+  applyProposal,
+  findProposalOffset,
+  normalizeDirectiveSuggestions,
+  normalizeRevisions,
+} from '../revision-helpers';
 
 const valid = {
   revision_type: 'Replacement',
@@ -118,5 +123,33 @@ describe('applyProposal', () => {
     expect(applyProposal('cost is X', { original_text: 'X', proposed_text: '$5 (a $-amount)' })).toBe(
       'cost is $5 (a $-amount)',
     );
+  });
+});
+
+describe('normalizeDirectiveSuggestions', () => {
+  it('extracts from a {directives:[...]} envelope and titles untitled entries', () => {
+    const out = normalizeDirectiveSuggestions({
+      directives: [
+        { title: 'Tighten', directive: 'Cut the hedging.' },
+        { directive: 'Improve flow.' },
+      ],
+    });
+    expect(out).toHaveLength(2);
+    expect(out![0]).toEqual({ title: 'Tighten', directive: 'Cut the hedging.' });
+    expect(out![1].title).toBe('Option 2');
+  });
+
+  it('accepts a bare array and synonym fields, dropping empty directives', () => {
+    const out = normalizeDirectiveSuggestions([
+      { label: 'A', text: 'Do the thing.' },
+      { title: 'B', directive: '' },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out![0]).toEqual({ title: 'A', directive: 'Do the thing.' });
+  });
+
+  it('returns null when no array is recoverable', () => {
+    expect(normalizeDirectiveSuggestions(null)).toBeNull();
+    expect(normalizeDirectiveSuggestions({ nope: 1 })).toBeNull();
   });
 });

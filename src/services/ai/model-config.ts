@@ -30,6 +30,7 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   refactorAnalysis: g('gemini-3.1-pro-preview', 16000),
   continueDialogue: g('gemini-3.1-pro-preview', 8192),
   generateRevisions: g('gemini-3.1-pro-preview', 4000),
+  suggestDirectives: g('gemini-3.1-pro-preview', 2048),
 };
 
 /**
