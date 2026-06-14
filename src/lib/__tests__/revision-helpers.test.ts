@@ -69,6 +69,28 @@ describe('normalizeRevisions', () => {
     const out = normalizeRevisions([{ ...valid, source_id: '' }], { fallbackSourceId: 'only-src' })!;
     expect(out[0].source_id).toBe('only-src');
   });
+
+  it('tolerates field-name variance (camelCase + synonyms)', () => {
+    const out = normalizeRevisions([
+      {
+        type: 'Tone Adjustment',
+        original: 'old line.',
+        replacement: 'new line.',
+        reason: 'because',
+        sourceId: 'src-2',
+        quote: 'the receipt',
+        confidence: 4,
+      },
+    ]);
+    expect(out).toHaveLength(1);
+    const p = out![0];
+    expect(p.revision_type).toBe('Tone Adjustment');
+    expect(p.original_text).toBe('old line.');
+    expect(p.proposed_text).toBe('new line.');
+    expect(p.source_id).toBe('src-2');
+    expect(p.verbatim_source_quote).toBe('the receipt');
+    expect(p.confidence_score).toBe(4);
+  });
 });
 
 describe('findProposalOffset', () => {

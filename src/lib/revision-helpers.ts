@@ -34,6 +34,13 @@ const clampScore = (v: unknown): number => {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v));
 
+/** First non-null value among the candidate keys — tolerates the model's field-name variance. */
+const pickRaw = (o: Record<string, unknown>, keys: string[]): unknown => {
+  for (const k of keys) if (o[k] != null) return o[k];
+  return undefined;
+};
+const pickStr = (o: Record<string, unknown>, keys: string[]): string => str(pickRaw(o, keys)).trim();
+
 /** Pull the proposal array out of whatever envelope the model returned. */
 const extractArray = (raw: unknown): unknown[] | null => {
   if (Array.isArray(raw)) return raw;
@@ -58,22 +65,37 @@ const normalizeOne = (item: unknown, opts: NormalizeOpts): RevisionProposal | nu
   if (!item || typeof item !== 'object') return null;
   const o = item as Record<string, unknown>;
 
-  const original_text = str(o.original_text).trim();
-  const proposed_text = str(o.proposed_text).trim();
-  const verbatim_source_quote = str(o.verbatim_source_quote).trim();
+  // Tolerate the model's field-name variance (snake/camel, common synonyms) so a
+  // minor rename doesn't silently nuke every proposal.
+  const original_text = pickStr(o, ['original_text', 'originalText', 'original', 'target_text']);
+  const proposed_text = pickStr(o, [
+    'proposed_text',
+    'proposedText',
+    'proposed',
+    'replacement',
+    'revised_text',
+  ]);
+  const verbatim_source_quote = pickStr(o, [
+    'verbatim_source_quote',
+    'verbatimSourceQuote',
+    'source_quote',
+    'sourceQuote',
+    'verbatim_quote',
+    'quote',
+  ]);
   // The three guarantees: a span to replace, a replacement, and a receipt.
   if (!original_text || !proposed_text || !verbatim_source_quote) return null;
 
   return {
     id: `rev_${Date.now()}_${revSeq++}`,
-    revision_type: coerceType(o.revision_type),
-    section: str(o.section).trim() || opts.sectionLabel || '',
+    revision_type: coerceType(pickRaw(o, ['revision_type', 'revisionType', 'type'])),
+    section: pickStr(o, ['section', 'section_title']) || opts.sectionLabel || '',
     original_text,
     proposed_text,
-    rationale: str(o.rationale).trim(),
-    source_id: str(o.source_id).trim() || opts.fallbackSourceId || '',
+    rationale: pickStr(o, ['rationale', 'reason', 'justification']),
+    source_id: pickStr(o, ['source_id', 'sourceId']) || opts.fallbackSourceId || '',
     verbatim_source_quote,
-    confidence_score: clampScore(o.confidence_score),
+    confidence_score: clampScore(pickRaw(o, ['confidence_score', 'confidenceScore', 'confidence'])),
   };
 };
 

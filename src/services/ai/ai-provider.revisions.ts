@@ -39,6 +39,14 @@ export async function generateRevisions(
     sectionLabel: input.sectionTitle,
     fallbackSourceId: input.sources.length === 1 ? input.sources[0].id : undefined,
   });
-  if (proposals === null) throw new Error('Revision proposals could not be parsed.');
+  if (proposals === null) {
+    // Surface the raw response so an unparseable shape is diagnosable in devtools.
+    console.warn('[generateRevisions] unparseable model response:', (text || '').slice(0, 2000));
+    throw new Error('Revision proposals could not be parsed.');
+  }
+  if (proposals.length === 0) {
+    // Distinguish "model genuinely returned none" from "every item was filtered".
+    console.warn('[generateRevisions] no usable proposals. Raw response:', (text || '').slice(0, 2000));
+  }
   return proposals;
 }
