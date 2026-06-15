@@ -94,7 +94,7 @@ export function SprintRunner({
     >
       <div
         ref={panelRef}
-        className="relative w-full max-w-5xl h-[86vh] min-h-[480px] flex flex-col bg-hld-bgDeep border border-hld-border overflow-hidden"
+        className="relative w-full max-w-[95vw] h-[86vh] min-h-[480px] flex flex-col bg-hld-bgDeep border border-hld-border overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Reactive ambient hue — only when cues are on (transition CSS-gated by reduced-motion). */}
