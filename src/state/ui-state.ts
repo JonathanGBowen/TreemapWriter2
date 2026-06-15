@@ -40,6 +40,7 @@ export interface UIStateSlice {
   showProjectModal: boolean;
   showRunModal: boolean;
   showPersonaModal: boolean;
+  showGrimoireModal: boolean;
   showSpecModal: boolean;
   showSuggestionsModal: boolean;
   showInterpolationModal: boolean;
@@ -71,6 +72,7 @@ export interface UIStateSlice {
   setShowProjectModal: (show: boolean) => void;
   setShowRunModal: (show: boolean) => void;
   setShowPersonaModal: (show: boolean) => void;
+  setShowGrimoireModal: (show: boolean) => void;
   setShowSpecModal: (show: boolean) => void;
   setShowSuggestionsModal: (show: boolean) => void;
   setShowInterpolationModal: (show: boolean) => void;
@@ -107,6 +109,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showProjectModal: false,
   showRunModal: false,
   showPersonaModal: false,
+  showGrimoireModal: false,
   showSpecModal: false,
   showSuggestionsModal: false,
   showInterpolationModal: false,
@@ -137,6 +140,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowProjectModal: (show) => set({ showProjectModal: show }),
   setShowRunModal: (show) => set({ showRunModal: show }),
   setShowPersonaModal: (show) => set({ showPersonaModal: show }),
+  setShowGrimoireModal: (show) => set({ showGrimoireModal: show }),
   setShowSpecModal: (show) => set({ showSpecModal: show }),
   setShowSuggestionsModal: (show) => set({ showSuggestionsModal: show }),
   setShowInterpolationModal: (show) => set({ showInterpolationModal: show }),

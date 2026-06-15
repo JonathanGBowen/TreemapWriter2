@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
-import { Network, RefreshCw } from "lucide-react";
+import { Network, RefreshCw, Wand2 } from "lucide-react";
 import type { AnalysisVersion, DialogueMessage, SectionAnalysis } from "../../types";
 import { useStore } from "../../state";
 import { computeHash } from "../../lib/utils";
 import { interrogateContextFor } from "../../lib/analysis-helpers";
+import { DEFAULT_SPELLS } from "../../lib/defaultSpells";
 import { Zone } from "../shared/Zone";
 import { Pip } from "../shared/Pip";
 import { Disclosure } from "../shared/Disclosure";
@@ -18,6 +19,25 @@ function Ask({ onAsk, label = '⊕ ask' }: { onAsk: () => void; label?: string }
   return (
     <button type="button" onClick={onAsk} title="Ask about this — opens a focused dialogue" className="font-mono text-[8.5px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-cyan transition-colors whitespace-nowrap shrink-0">
       {label}
+    </button>
+  );
+}
+
+/** The active analytical lens, and a way into the Grimoire to change it. */
+function LensBar({ name, onOpen }: { name: string; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title="Choose an analytical lens — opens the Grimoire"
+      className="group flex items-center justify-between gap-2 w-full px-[11px] py-[7px] border border-hld-border hover:border-hld-cyan/40 transition-colors"
+    >
+      <span className="inline-flex items-center gap-[6px] min-w-0">
+        <Wand2 size={11} className="text-hld-muted-text group-hover:text-hld-cyan shrink-0 transition-colors" />
+        <span className="font-mono text-[8.5px] tracking-[0.12em] uppercase text-hld-muted-text shrink-0">Lens</span>
+        <span className="text-[10px] font-sans text-hld-text truncate">{name}</span>
+      </span>
+      <span className="font-mono text-[8px] tracking-[0.12em] uppercase text-hld-muted-text group-hover:text-hld-cyan shrink-0 transition-colors">Grimoire ▸</span>
     </button>
   );
 }
@@ -80,10 +100,10 @@ function SourceTranscript({ dialogue }: { dialogue: DialogueMessage[] }) {
 function VersionLine({ versions, active, edited, onSelect }: { versions: AnalysisVersion[]; active: AnalysisVersion; edited: boolean; onSelect: (id: string) => void }) {
   return (
     <div>
-      <Zone label="Structural read">
+      <Zone label="Structural read" meta={active.spellName ?? undefined}>
         <span className="inline-flex items-center gap-[3px]">
           <select value={active.id} onChange={(e) => onSelect(e.target.value)} title="Analysis version" className="bg-transparent border-none outline-none font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-cyan cursor-pointer appearance-none text-right">
-            {versions.map((v) => <option key={v.id} value={v.id} className="bg-hld-surface text-hld-text normal-case">{v.label} — {versionStamp(v.timestamp)}</option>)}
+            {versions.map((v) => <option key={v.id} value={v.id} className="bg-hld-surface text-hld-text normal-case">{v.label}{v.spellName ? ` · ${v.spellName}` : ''} — {versionStamp(v.timestamp)}</option>)}
           </select>
           <span className="text-hld-muted-text text-[8px] pointer-events-none">▾</span>
         </span>
@@ -108,16 +128,21 @@ function ReanalyzeFooter({ busy, onRun }: { busy: boolean; onRun: () => void }) 
   );
 }
 
-function AnalysisEmpty({ busy, onRun }: { busy: boolean; onRun: () => void }) {
+function AnalysisEmpty({ busy, onRun, lensName, onOpenGrimoire }: { busy: boolean; onRun: () => void; lensName: string; onOpenGrimoire: () => void }) {
   return (
-    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[16px] p-[24px] text-center bg-[#080d13]">
-      <span className="w-[22px] h-[22px] rotate-45 border border-hld-muted" />
-      <div className="text-[10.5px] leading-relaxed font-sans text-hld-muted-text max-w-[240px]">
-        No structural read yet. Analyze this section to surface its argument — the premises, the hidden assumption, and where it&apos;s open to objection.
+    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+      <div className="px-[14px] pt-[12px]">
+        <LensBar name={lensName} onOpen={onOpenGrimoire} />
       </div>
-      <button type="button" onClick={onRun} disabled={busy} style={{ '--br-color': 'var(--color-hld-cyan)' } as CSSProperties} className="bracketed hld-lit px-[22px] py-[11px] flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.14em] uppercase disabled:opacity-40">
-        <Network size={11} /> {busy ? 'Analyzing…' : 'Analyze'}
-      </button>
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[16px] p-[24px] text-center">
+        <span className="w-[22px] h-[22px] rotate-45 border border-hld-muted" />
+        <div className="text-[10.5px] leading-relaxed font-sans text-hld-muted-text max-w-[240px]">
+          No structural read yet. Analyze this section to surface its argument — the premises, the hidden assumption, and where it&apos;s open to objection.
+        </div>
+        <button type="button" onClick={onRun} disabled={busy} style={{ '--br-color': 'var(--color-hld-cyan)' } as CSSProperties} className="bracketed hld-lit px-[22px] py-[11px] flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.14em] uppercase disabled:opacity-40">
+          <Network size={11} /> {busy ? 'Analyzing…' : 'Analyze'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -165,17 +190,25 @@ export function AnalysisTab() {
   const testSuite = useStore((s) => s.testSuite);
   const isProcessing = useStore((s) => s.isProcessing);
   const setActiveAnalysisVersion = useStore((s) => s.setActiveAnalysisVersion);
+  const activeSpellId = useStore((s) => s.activeSpellId);
+  const customSpells = useStore((s) => s.customSpells);
+  const setShowGrimoireModal = useStore((s) => s.setShowGrimoireModal);
   const currentSection = useCurrentSection();
   const { runAnalysis, interrogate } = useAnalysisActions();
   const contentHash = useMemo(() => computeHash(currentSection?.fullContent ?? ''), [currentSection?.fullContent]);
 
   if (!currentSection) return null;
 
+  const activeSpellName = activeSpellId
+    ? [...DEFAULT_SPELLS, ...customSpells].find((s) => s.id === activeSpellId)?.name ?? 'Plain reconstruction'
+    : 'Plain reconstruction';
+  const openGrimoire = () => setShowGrimoireModal(true);
+
   const state = testSuite[currentSection.id]?.analysis;
   const versions = state?.versions ?? [];
   const active = versions.find((v) => v.id === state?.activeVersionId) ?? versions[0];
 
-  if (!active) return <AnalysisEmpty busy={isProcessing} onRun={runAnalysis} />;
+  if (!active) return <AnalysisEmpty busy={isProcessing} onRun={runAnalysis} lensName={activeSpellName} onOpenGrimoire={openGrimoire} />;
 
   const r = active.result;
   const ask = (ctx: string) => interrogate(ctx);
@@ -183,6 +216,7 @@ export function AnalysisTab() {
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
       <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-[12px] flex flex-col gap-[14px]">
+        <LensBar name={activeSpellName} onOpen={openGrimoire} />
         <VersionLine versions={versions} active={active} edited={active.inputHash !== contentHash} onSelect={(id) => setActiveAnalysisVersion(currentSection.id, id)} />
 
         <div>

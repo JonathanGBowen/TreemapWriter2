@@ -140,6 +140,11 @@ export interface AnalyzeSectionInput {
    * the context-window pre-flight (see services/ai/context-budget).
    */
   wholeDocument?: boolean;
+  /**
+   * Active analytical lens ("spell"): a persona + focus layered onto the base
+   * analysis prompt. Omitted for a plain exegetical reconstruction.
+   */
+  spell?: { persona: string; lens: string };
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
