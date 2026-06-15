@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Settings } from "lucide-react";
 import type { Section, DiagnosticResult } from "../../types";
+import { useStore } from "../../state";
 import { READINESS, type ReadinessInfo } from "./diagnostic-config";
 
 /** Four readiness diamonds, filled to `level`; hollow ◇◇◇◇ when undiagnosed.
@@ -26,10 +28,24 @@ function ReadinessMeter({ readiness }: { readiness: ReadinessInfo | null }) {
  *  (Spec: "{done} of {total} moves done"; Analysis: the version caption). */
 export function PanelHeader({ section, diagnostic, meta }: { section: Section; diagnostic?: DiagnosticResult; meta?: ReactNode }) {
   const readiness = diagnostic ? READINESS[diagnostic.overallReadiness] : null;
+  const setShowPersonaModal = useStore((s) => s.setShowPersonaModal);
   return (
     <div className="px-[16px] pt-[16px] pb-[14px] border-b border-hld-border shrink-0">
-      <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-hld-muted-text-2">Section</div>
-      <div className="text-[15px] font-semibold tracking-[-0.01em] text-hld-text mt-[3px] leading-tight truncate">{section.title}</div>
+      <div className="flex items-start gap-[10px]">
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-hld-muted-text-2">Section</div>
+          <div className="text-[15px] font-semibold tracking-[-0.01em] text-hld-text mt-[3px] leading-tight truncate">{section.title}</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowPersonaModal(true)}
+          title="Evaluator & AI settings"
+          aria-label="Evaluator and AI settings"
+          className="shrink-0 -mr-[2px] p-[2px] text-hld-muted-text-2 hover:text-hld-cyan transition-colors"
+        >
+          <Settings size={14} />
+        </button>
+      </div>
       <div className="mt-[12px] flex items-center gap-[10px]">
         <ReadinessMeter readiness={readiness} />
         {readiness && (
