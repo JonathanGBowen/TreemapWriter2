@@ -14,15 +14,15 @@ interface ZoneProps {
 
 export function Zone({ label, meta, children, className = '' }: ZoneProps) {
   return (
-    <div className={`flex items-center gap-[6px] ${className}`.trim()}>
+    <div className={`flex items-center gap-[10px] ${className}`.trim()}>
       {label && (
-        <span className="font-mono text-[9px] font-bold tracking-[0.16em] uppercase text-hld-cyan shrink-0">
+        <span className="font-mono text-[10px] font-semibold tracking-[0.14em] uppercase text-hld-muted-text-2 shrink-0">
           {label}
         </span>
       )}
       <span className="h-px flex-1 bg-hld-border" />
       {meta != null && (
-        <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text shrink-0">
+        <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-hld-muted-text shrink-0">
           {meta}
         </span>
       )}

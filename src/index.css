@@ -23,6 +23,9 @@
   --color-hld-muted: #3d5570;
   /* Readable muted TEXT — ~5.3:1 on hld-surface. Use for word-counts, eyebrows, captions. */
   --color-hld-muted-text: #6f8cab;
+  /* Calmer muted text for secondary CONTENT — ~6.3:1 on hld-surface. Use where 10px
+     muted-text reads as low-contrast body; keep --color-hld-muted-text for true captions. */
+  --color-hld-muted-text-2: #8aa6c4;
   --color-hld-border: #172335;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -34,6 +37,12 @@
   --text-ui-btn: 10px;    /* toolbar / AI button labels */
   --text-ui-meta: 9px;    /* word-counts, status eyebrows, breadcrumb */
   --text-ui-stat: 18px;   /* big Words / Sections numerals */
+
+  /* Reading-content floor — for prose the UI scale never sized (claim text, move
+     descriptions, ladder premises, dialogue bubbles, disclosure bodies). */
+  --text-ui-body: 13px;     /* primary reading content */
+  --text-ui-body-sm: 12px;  /* dense secondary content inside disclosures */
+  --text-ui-eyebrow: 9px;   /* eyebrow floor (was effectively 8px in many places) */
 }
 
 /* Dark theme is canonical and unconditional — light mode removed. */
@@ -48,11 +57,17 @@
       radial-gradient(circle, #1f3050 1px, transparent 1px);
     background-size: auto, auto, 22px 22px;
   }
-  body::after {
-    content: '';
-    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
-    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
-  }
+}
+
+/* Scanline overlay — opt-in per surface (was a global body::after that shimmered
+   over ALL text). Apply `.hld-scanline` to the canvas/chrome (editor, sidebar) to
+   keep the CRT effect; the right panel and modal bodies omit it so reading content
+   stays calm (P4). pointer-events:none keeps it non-blocking. */
+.hld-scanline { position: relative; }
+.hld-scanline::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
 }
 
 /* Affordance grammar primitives (Columns & Modals overhaul).

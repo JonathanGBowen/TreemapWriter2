@@ -148,18 +148,13 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
       accent="magenta"
       eyebrow="AI · Evaluation"
       title={`Run Diagnostic — ${sectionTitle}`}
-      sub={
-        <button type="button" onClick={() => setShowPersonaModal(true)} className="inline-flex items-center gap-1.5 hover:text-hld-magenta transition-colors">
-          <span className="text-hld-magenta">⧉</span> as {activePersona.name} <span className="opacity-60">▾</span>
-        </button>
-      }
       onClose={onClose}
       onPrimary={() => onRun(effScope, choice, customInstruction)}
       primaryLabel="▶ Run"
     >
       <div className="flex flex-col gap-[16px]">
         <div>
-          <div className="font-mono text-[9px] font-bold tracking-[0.16em] uppercase text-hld-cyan mb-[8px]">Scope</div>
+          <div className="font-mono text-[10px] font-semibold tracking-[0.14em] uppercase text-hld-muted-text-2 mb-[8px]">Scope</div>
           {isRoot ? (
             <div className="px-[10px] py-[8px] border border-hld-border bg-hld-surface2 font-mono text-[10px] tracking-[0.06em] text-hld-text">
               Whole document — evaluates the entire draft
@@ -169,7 +164,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
           )}
         </div>
         <div>
-          <div className="font-mono text-[9px] font-bold tracking-[0.16em] uppercase text-hld-cyan mb-[8px]">Depth</div>
+          <div className="font-mono text-[10px] font-semibold tracking-[0.14em] uppercase text-hld-muted-text-2 mb-[8px]">Depth</div>
           <SegControl ariaLabel="Evaluation depth" options={depthOptions} value={depthIndex} onChange={(i) => setChoice(resolveDepthChoice(catalog, choice, DEPTH_TIERS[i]))} />
         </div>
 
@@ -187,9 +182,19 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
           </div>
         </Disclosure>
 
-        <div className="flex items-center gap-[8px] font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text">
+        <div className="flex items-center gap-[8px] text-[11px] text-hld-muted-text-2">
           <Pip status="dim" size="sm" />
-          ≈ {(estimate / 1000).toFixed(1)}k tokens — estimate
+          <span className="shrink-0">Evaluator:</span>
+          <button
+            type="button"
+            onClick={() => setShowPersonaModal(true)}
+            title="Change evaluator persona"
+            className="truncate border-b border-hld-border hover:text-hld-cyan hover:border-hld-cyan/40 transition-colors"
+          >
+            {activePersona.name}
+          </button>
+          <span className="text-hld-muted shrink-0">·</span>
+          <span className="shrink-0">≈ {(estimate / 1000).toFixed(1)}k tokens</span>
         </div>
       </div>
     </ModalShell>

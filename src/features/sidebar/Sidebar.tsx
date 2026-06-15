@@ -93,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pipCaption = `Sync · ${sync.text}`;
 
   return (
-    <div style={{ width }} className="h-full flex-none relative border-r border-hld-border bg-hld-surface flex flex-col shadow-sm z-10">
+    <div style={{ width }} className="h-full flex-none relative border-r border-hld-border bg-hld-surface flex flex-col shadow-sm z-10 hld-scanline">
       {/* Header — ◇ menu · name · composite status pip */}
       <div className="px-[10px] py-[9px] border-b border-hld-border bg-hld-surface2 relative flex items-center gap-[9px]">
         <div className="absolute top-0 left-0 right-0 h-px bg-hld-cyan shadow-[0_0_12px_var(--color-hld-cyan)]" />

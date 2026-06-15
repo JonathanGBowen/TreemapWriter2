@@ -1,6 +1,7 @@
 import React from "react";
-import { Layout, Settings } from "lucide-react";
+import { Layout } from "lucide-react";
 import { useStore } from "../../state";
+import { Pip } from "../shared/Pip";
 import { useCurrentSection } from "./use-current-section";
 import { SpecTab } from "./SpecTab";
 import { AnalysisTab } from "./AnalysisTab";
@@ -38,7 +39,6 @@ export const TestsPanel: React.FC = () => {
   const tab = useStore((s) => s.testsPanelTab);
   const setTab = useStore((s) => s.setTestsPanelTab);
   const testSuite = useStore((s) => s.testSuite);
-  const setShowPersonaModal = useStore((s) => s.setShowPersonaModal);
 
   const currentSection = useCurrentSection();
   const analysisState = currentSection ? testSuite[currentSection.id]?.analysis : undefined;
@@ -55,31 +55,22 @@ export const TestsPanel: React.FC = () => {
         onMouseDown={(e) => startResize(e, width, setWidth)}
       />
 
-      {/* Chrome — magenta accent line + tab strip + persona settings */}
-      <div className="relative flex items-stretch border-b border-hld-border bg-[#080d13]">
-        <div className="absolute top-0 left-0 right-0 h-px bg-hld-magenta shadow-[0_0_12px_var(--color-hld-magenta)]" />
+      {/* Chrome — tab strip. The border-b is the only seam (no accent line). */}
+      <div className="flex items-stretch border-b border-hld-border bg-[#080d13]">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 relative py-[10px] font-mono uppercase tracking-[0.15em] text-[8px] font-bold border-b-2 transition-colors ${
-              tab === t.id ? 'text-hld-cyan border-hld-cyan bg-hld-cyan/5' : 'text-hld-muted-text border-transparent hover:text-hld-text'
+            className={`flex-1 pt-[13px] pb-[11px] font-mono uppercase tracking-[0.12em] text-[10px] font-semibold border-b-2 transition-colors ${
+              tab === t.id ? 'text-hld-cyan border-hld-cyan' : 'text-hld-muted-text-2 border-transparent hover:text-hld-text'
             }`}
           >
             {t.label}
             {t.id === 'dialogue' && dialogueActive && (
-              <span className="absolute top-[6px] right-[8px] w-[4px] h-[4px] rotate-45 bg-hld-magenta shadow-[0_0_6px_var(--color-hld-magenta)]" />
+              <Pip status="magenta" size="sm" className="ml-[7px] align-middle" title="Active dialogue" />
             )}
           </button>
         ))}
-        <button
-          onClick={() => setShowPersonaModal(true)}
-          className="w-[34px] flex items-center justify-center border-l border-hld-border text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/10 transition-colors shrink-0"
-          title="Persona / evaluator settings"
-          aria-label="Persona settings"
-        >
-          <Settings size={12} />
-        </button>
       </div>
 
       {currentSection ? (
@@ -93,7 +84,7 @@ export const TestsPanel: React.FC = () => {
           {tab === 'spec' && <PersonaBanner />}
           <div className="text-center text-hld-muted-text mt-10">
             <Layout size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="font-mono uppercase tracking-[0.14em] text-[8px]">Select a section</p>
+            <p className="font-mono uppercase tracking-[0.12em] text-[9px]">Select a section</p>
           </div>
         </div>
       )}

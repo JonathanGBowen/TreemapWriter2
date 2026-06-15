@@ -15,7 +15,7 @@ export function EmptyState({
   return (
     <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-[16px] p-[24px] text-center">
       <span className="w-[22px] h-[22px] rotate-45 border border-hld-muted" />
-      <div className="text-[10px] leading-relaxed font-sans text-hld-muted-text max-w-[230px]">
+      <div className="text-[13px] leading-relaxed font-sans text-hld-muted-text-2 max-w-[260px]">
         No spec yet. Generate one from the document — what this section must claim, and the moves that earn it.
       </div>
       <button
@@ -40,7 +40,7 @@ export function EmptyState({
           onChange={(e) => onGoalsChange(e.target.value)}
           autoFocus
           placeholder="Define what this section should accomplish…"
-          className="w-full mt-[4px] p-[10px] text-[10px] border border-hld-border bg-[#080d13] text-hld-text min-h-[6rem] focus:border-hld-cyan outline-none resize-none font-sans leading-relaxed text-left"
+          className="w-full mt-[4px] p-[10px] text-[13px] border border-hld-border bg-[#080d13] text-hld-text min-h-[6rem] focus:border-hld-cyan outline-none resize-none font-sans leading-relaxed text-left"
         />
       )}
     </div>
