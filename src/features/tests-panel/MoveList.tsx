@@ -29,9 +29,9 @@ function MoveRow({
         <textarea
           value={move.description}
           onChange={(e) => onEdit(index, e.target.value)}
-          rows={1}
+          rows={2}
           placeholder="Describe what this section must do…"
-          className={`flex-1 pl-[9px] border-l-2 border-hld-border focus:border-hld-cyan text-[13px] leading-relaxed font-sans bg-transparent outline-none resize-none placeholder-hld-muted/50 min-h-[2.4em] transition-colors ${done ? 'text-hld-muted-text-2' : 'text-hld-text'}`}
+          className={`flex-1 pl-[9px] border-l-2 border-hld-border focus:border-hld-cyan text-[13px] leading-relaxed font-sans bg-transparent outline-none resize-none placeholder-hld-muted/50 min-h-[4em] transition-colors ${done ? 'text-hld-muted-text-2' : 'text-hld-text'}`}
         />
         {diagResult && (
           <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text shrink-0 mt-[5px]">
