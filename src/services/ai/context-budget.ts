@@ -12,9 +12,9 @@ import { findCatalogModel } from './model-catalog';
 import type { ProviderId } from './model-types';
 
 /** Reserve room for the model's own output when computing usable input budget. */
-const OUTPUT_RESERVE_TOKENS = 16000;
+export const OUTPUT_RESERVE_TOKENS = 16000;
 /** Headroom for prompt scaffolding (instructions, JSON wrappers, spec context). */
-const SCAFFOLD_MARGIN_TOKENS = 4000;
+export const SCAFFOLD_MARGIN_TOKENS = 4000;
 
 /**
  * Rough token estimate. ~4 characters/token is the standard heuristic for English

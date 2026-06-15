@@ -5,15 +5,14 @@
 
 import { safeJsonParse } from '../../lib/utils';
 import { normalizeDirectiveSuggestions } from '../../lib/revision-helpers';
+import { formatSources } from './source-budget';
 import type { SuggestDirectivesInput } from '../ai-provider';
-import type { DirectiveSuggestion, SourceDocument } from '../../types';
+import type { DirectiveSuggestion } from '../../types';
 import type { LLMClient } from './clients';
 
 import template from '../prompts/suggest-directives.md?raw';
 
 const MAX_OUTPUT_TOKENS = 4000;
-const SECTION_TEXT_CAP = 24000;
-const SOURCE_CONTENT_CAP = 6000;
 
 const DIRECTIVES_JSON_SCHEMA = {
   type: 'object',
@@ -35,13 +34,6 @@ const sourceContext = (hasSources: boolean): string =>
     ? 'You also have SOURCE DOCUMENTS below. Ground your directives in the gaps between the Master Document and these sources.'
     : 'No source documents are provided; base your directives on the Master Document itself.';
 
-const formatSources = (sources: SourceDocument[]): string =>
-  sources.length
-    ? sources
-        .map((s) => `--- [${s.label}] ---\n${s.content.slice(0, SOURCE_CONTENT_CAP)}`)
-        .join('\n\n')
-    : '(none)';
-
 export async function suggestDirectives(
   client: LLMClient,
   model: string,
@@ -58,10 +50,10 @@ export async function suggestDirectives(
     `### SECTION ###\n${input.sectionTitle}`,
     '',
     '### MASTER_DOCUMENT ###',
-    input.sectionText.slice(0, SECTION_TEXT_CAP),
+    input.sectionText,
     '',
     '### SOURCE_DOCUMENTS ###',
-    formatSources(input.sources),
+    formatSources(input.sources, '(none)'),
   ].join('\n');
 
   const text = await client.generateText({

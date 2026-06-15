@@ -68,6 +68,8 @@ export class GeminiClient implements LLMClient {
     // which reliably pins field names + array shape (schema-less JSON mode drifts).
     if (req.json && req.responseJsonSchema) config.responseJsonSchema = req.responseJsonSchema;
     if (req.systemInstruction) config.systemInstruction = req.systemInstruction;
+    // Cap output (latency + cost). Every flow passes a maxTokens; it was ignored before.
+    if (typeof req.maxTokens === 'number') config.maxOutputTokens = req.maxTokens;
     // Match the prior behavior: only send a thinkingConfig when the budget is
     // positive. A budget of 0 (flash-tier) means "no thinking", same as omitting.
     if (typeof req.thinkingBudget === 'number' && req.thinkingBudget > 0) {

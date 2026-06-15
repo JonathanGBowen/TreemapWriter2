@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { applyProposal } from '../../lib/revision-helpers';
+import { budgetForModel } from './budget-preflight';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 import type { SessionProposal } from '../../state/revision-state';
 
@@ -41,8 +42,8 @@ export const useRevisionActions = () => {
     } = useStore.getState();
     if (isProcessing) return;
 
-    const sources = library.filter((s) => selectedSourceIds.includes(s.id));
-    if (sources.length === 0) {
+    const selected = library.filter((s) => selectedSourceIds.includes(s.id));
+    if (selected.length === 0) {
       toast.error('Select at least one source to cite from.');
       return;
     }
@@ -51,16 +52,19 @@ export const useRevisionActions = () => {
       return;
     }
 
+    // Pack the section + sources into the model's window (warns if it had to trim).
+    const budget = budgetForModel('generateRevisions', sectionText, selected);
+
     setRevisionPhase('generating');
     setIsProcessing(true);
     try {
       const proposals = await aiProvider.generateRevisions({
         sectionTitle,
-        sectionText,
+        sectionText: budget.sectionText,
         directive,
         mode: revisionMode,
         subMode: revisionSubMode,
-        sources,
+        sources: budget.sources,
         config: promptsConfig,
       });
       setProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));

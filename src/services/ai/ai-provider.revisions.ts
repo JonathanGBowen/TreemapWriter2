@@ -6,8 +6,9 @@
 
 import { safeJsonParse } from '../../lib/utils';
 import { normalizeRevisions } from '../../lib/revision-helpers';
+import { formatSources } from './source-budget';
 import type { GenerateRevisionsInput } from '../ai-provider';
-import type { RevisionProposal, SourceDocument } from '../../types';
+import type { RevisionProposal } from '../../types';
 import type { LLMClient } from './clients';
 
 // The engine's prompt strings as content artifacts (one .md each). The revision
@@ -20,8 +21,6 @@ import assemblyVerbatimTask from '../prompts/revision-assembly-verbatim-task.md?
 import assemblyWovenTask from '../prompts/revision-assembly-woven-task.md?raw';
 
 const MAX_OUTPUT_TOKENS = 16000;
-const SECTION_TEXT_CAP = 24000;
-const SOURCE_CONTENT_CAP = 8000;
 
 const REVISION_TYPES = [
   'Addition',
@@ -72,17 +71,11 @@ const REVISIONS_JSON_SCHEMA = {
   required: ['proposals'],
 };
 
-const formatSources = (sources: SourceDocument[]): string =>
-  sources.length
-    ? sources
-        .map(
-          (s) =>
-            `--- [Source ID: ${s.id}] ${s.label} (${s.kind}) ---\n${s.content.slice(0, SOURCE_CONTENT_CAP)}`,
-        )
-        .join('\n\n')
-    : '(none provided)';
-
-/** Compose the task instruction + DIRECTIVE + MASTER_DOCUMENT + SOURCE_DOCUMENTS. */
+/**
+ * Compose the task instruction + DIRECTIVE + MASTER_DOCUMENT + SOURCE_DOCUMENTS. The
+ * section + sources are already packed to the model's window by the caller (the
+ * orchestration hook, via source-budget.ts), so this just frames them.
+ */
 const buildUserPrompt = (task: string, input: GenerateRevisionsInput): string =>
   [
     task,
@@ -92,7 +85,7 @@ const buildUserPrompt = (task: string, input: GenerateRevisionsInput): string =>
       '(No explicit directive — apply the engine principles to improve this section.)',
     '',
     '### MASTER_DOCUMENT ###',
-    input.sectionText.slice(0, SECTION_TEXT_CAP),
+    input.sectionText,
     '',
     '### SOURCE_DOCUMENTS ###',
     formatSources(input.sources),

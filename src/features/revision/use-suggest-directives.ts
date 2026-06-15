@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { DEFAULT_PERSONAS } from '../../lib/defaultPersonas';
+import { budgetForModel } from './budget-preflight';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 import type { DirectiveSuggestion, Persona } from '../../types';
 
@@ -29,13 +30,14 @@ export const useSuggestDirectives = () => {
     const { title: sectionTitle, fullContent: sectionText } = currentSection;
     const { sources: library, selectedSourceIds, activePersonaId, customPersonas } =
       useStore.getState();
-    const sources = library.filter((s) => selectedSourceIds.includes(s.id));
+    const selected = library.filter((s) => selectedSourceIds.includes(s.id));
     const persona = resolveActivePersona(activePersonaId, customPersonas);
+    const budget = budgetForModel('suggestDirectives', sectionText, selected);
     try {
       return await aiProvider.suggestDirectives({
         sectionTitle,
-        sectionText,
-        sources,
+        sectionText: budget.sectionText,
+        sources: budget.sources,
         personaName: persona.name,
         personaInstruction: persona.instruction,
       });
