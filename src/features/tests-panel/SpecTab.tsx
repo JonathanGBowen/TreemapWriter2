@@ -152,6 +152,7 @@ export function SpecTab() {
   const testSuite = useStore((s) => s.testSuite);
   const updateSectionGoals = useStore((s) => s.updateSectionGoals);
   const setShowSpecModal = useStore((s) => s.setShowSpecModal);
+  const setShowPersonaModal = useStore((s) => s.setShowPersonaModal);
   const currentSection = useCurrentSection();
   const flatSections = useMemo(() => flatten(sections), [sections]);
 
@@ -164,7 +165,13 @@ export function SpecTab() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
-      <PanelHeader section={currentSection} diagnostic={entry?.lastDiagnostic} meta={movesMeta(spec, entry)} />
+      <PanelHeader
+        section={currentSection}
+        diagnostic={entry?.lastDiagnostic}
+        meta={movesMeta(spec, entry)}
+        onOpenSettings={() => setShowPersonaModal(true)}
+        settingsLabel="Evaluator & AI settings"
+      />
       {spec && entry ? (
         <SpecBody id={id} spec={spec} entry={entry} flatSections={flatSections} />
       ) : (

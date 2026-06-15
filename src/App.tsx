@@ -5,6 +5,7 @@ import { EditorPanel } from "./features/editor/EditorPanel";
 import { TestsPanel } from "./features/tests-panel/TestsPanel";
 import { TestRunnerModal } from "./features/modals/TestRunnerModal";
 import { PersonaSettingsModal } from "./features/modals/PersonaSettingsModal";
+import { GrimoireModal } from "./features/modals/GrimoireModal";
 import { SpecGeneratorModal } from "./features/modals/SpecGeneratorModal";
 import { InterpolationModal } from "./features/modals/InterpolationModal";
 import { SprintModal } from "./features/modals/BaseSprintModal";
@@ -857,6 +858,8 @@ export const App = () => {
           documentContext={markdown}
           promptsConfig={promptsConfig}
         />
+
+        <GrimoireModal />
 
         <SpecGeneratorModal
           sectionTitle={currentSection?.title || ""}

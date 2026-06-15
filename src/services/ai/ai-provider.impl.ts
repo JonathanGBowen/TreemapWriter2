@@ -294,6 +294,7 @@ export class MultiProviderAIProvider implements AIProvider {
       text,
       input.config.analysisPrompt,
       input.wholeDocument,
+      input.spell,
     );
     return this.generateAnalysis('analyzeSection', input, prompt);
   }

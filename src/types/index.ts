@@ -125,8 +125,25 @@ export interface AnalysisVersion {
   /** Hash of section.fullContent at generation time — drives the stale badge. */
   inputHash: string;
   modelId?: string;
+  /** The analytical lens (spell) that produced this version, if any — shown in the version picker. */
+  spellName?: string;
   /** The dialogue that produced this version (refactors only). */
   sourceDialogue?: DialogueMessage[];
+}
+
+/**
+ * An analytical "spell" (lens): a named reading stance applied to the Analysis
+ * pass. The base analysis prompt stays the schema backbone; a spell layers a
+ * persona (the role the model adopts) and a lens (the analytical focus) on top.
+ * Built-ins live in `lib/defaultSpells.ts`; custom spells form a global library.
+ */
+export interface AnalysisSpell {
+  id: string;
+  name: string;
+  /** The role the model adopts, e.g. "A strict logician trained in classical syllogisms." */
+  persona: string;
+  /** The analytical focus layered onto the base analysis prompt. */
+  lens: string;
 }
 
 /**

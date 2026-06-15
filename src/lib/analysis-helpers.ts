@@ -137,6 +137,7 @@ export const makeAnalysisVersion = (args: {
   prevVersions: AnalysisVersion[];
   result: SectionAnalysis;
   inputHash: string;
+  spellName?: string;
   sourceDialogue?: DialogueMessage[];
 }): AnalysisVersion => ({
   id: `av_${Date.now()}_${versionSeq++}`,
@@ -145,6 +146,7 @@ export const makeAnalysisVersion = (args: {
   kind: args.kind,
   result: args.result,
   inputHash: args.inputHash,
+  ...(args.spellName ? { spellName: args.spellName } : {}),
   ...(args.sourceDialogue ? { sourceDialogue: args.sourceDialogue } : {}),
 });
 
@@ -163,6 +165,8 @@ export const buildAnalysisRequestText = (
   sectionText: string,
   prompt: string,
   wholeDocument = false,
+  /** Active analytical lens, layered on top of the base prompt (persona + focus). */
+  spell?: { persona: string; lens: string },
 ): string =>
   [
     prompt,
@@ -171,6 +175,9 @@ export const buildAnalysisRequestText = (
           '',
           'NOTE: The text below is the ENTIRE document. Produce a DOCUMENT-LEVEL reconstruction — its overarching thesis, the macro-argument spanning chapters, and how the parts cohere into a whole — not a single section.',
         ]
+      : []),
+    ...(spell
+      ? ['', `ADOPT THIS PERSONA: ${spell.persona}`, `APPLY THIS ANALYTICAL LENS: ${spell.lens}`]
       : []),
     '',
     `SECTION: "${sectionTitle}"`,

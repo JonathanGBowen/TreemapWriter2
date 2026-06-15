@@ -190,6 +190,25 @@ describe('makeAnalysisVersion', () => {
     expect(refactor.label).toBe('refactor 1');
     expect(refactor.sourceDialogue).toEqual([{ role: 'user', text: 'q' }]);
   });
+
+  it('stamps spellName only when provided', () => {
+    const withSpell = makeAnalysisVersion({
+      kind: 'analysis',
+      prevVersions: [],
+      result: validPayload as SectionAnalysis,
+      inputHash: 'h',
+      spellName: 'Classical Logic',
+    });
+    expect(withSpell.spellName).toBe('Classical Logic');
+
+    const withoutSpell = makeAnalysisVersion({
+      kind: 'analysis',
+      prevVersions: [],
+      result: validPayload as SectionAnalysis,
+      inputHash: 'h',
+    });
+    expect(withoutSpell.spellName).toBeUndefined();
+  });
 });
 
 describe('prompt assembly', () => {
@@ -211,6 +230,24 @@ describe('prompt assembly', () => {
     expect(out).toContain('PROMPT');
     expect(out).toContain('SECTION: "Intro"');
     expect(out).toContain('Body text.');
+  });
+
+  it('buildAnalysisRequestText layers the persona + lens when a spell is given', () => {
+    const out = buildAnalysisRequestText('Intro', 'Body text.', 'PROMPT', false, {
+      persona: 'A strict logician.',
+      lens: 'Name the fallacies.',
+    });
+    expect(out).toContain('ADOPT THIS PERSONA: A strict logician.');
+    expect(out).toContain('APPLY THIS ANALYTICAL LENS: Name the fallacies.');
+    // The base prompt and section framing survive the overlay.
+    expect(out).toContain('PROMPT');
+    expect(out).toContain('SECTION: "Intro"');
+  });
+
+  it('buildAnalysisRequestText omits the lens block when no spell is given', () => {
+    const out = buildAnalysisRequestText('Intro', 'Body text.', 'PROMPT');
+    expect(out).not.toContain('ADOPT THIS PERSONA');
+    expect(out).not.toContain('APPLY THIS ANALYTICAL LENS');
   });
 
   it('buildRefactorRequestText contains all four blocks', () => {
