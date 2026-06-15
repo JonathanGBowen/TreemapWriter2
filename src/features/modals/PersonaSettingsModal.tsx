@@ -1,10 +1,12 @@
 import React, { useState, useRef } from "react";
-import { User, Sparkles, Plus, Trash2, Check, X, Bot, Download, Upload } from "lucide-react";
+import { Sparkles, Trash2, Check, Bot, Download, Upload } from "lucide-react";
 import { Persona, PromptsConfig } from "../../types";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
+import { ModalShell } from "./ModalShell";
+import { Disclosure } from "../shared/Disclosure";
 import { AiSettingsSection } from "./AiSettingsSection";
 
 interface PersonaSettingsModalProps {
@@ -15,6 +17,51 @@ interface PersonaSettingsModalProps {
   onDeletePersona: (id: string) => void;
   documentContext: string; // Used for generating relevant personas
   promptsConfig?: PromptsConfig;
+}
+
+/** One persona as a calm selectable row: square outline avatar, name + role,
+ *  cyan check when active, quiet hover-delete for custom personas. */
+function PersonaRow({ persona, isActive, onSelect, onDelete }: { persona: Persona; isActive: boolean; onSelect: () => void; onDelete?: () => void }) {
+  return (
+    <div className="relative group">
+      <button
+        type="button"
+        onClick={onSelect}
+        className={`w-full flex items-center gap-[12px] px-[14px] py-[13px] border text-left transition-colors ${
+          isActive ? 'border-hld-cyan/50 bg-hld-cyan/5' : 'border-hld-border hover:border-hld-cyan/40'
+        }`}
+      >
+        <span className={`w-[30px] h-[30px] flex items-center justify-center border shrink-0 ${isActive ? 'border-hld-cyan/40 text-hld-cyan' : 'border-hld-border text-hld-muted-text-2'}`}>
+          <Bot size={16} />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[14px] font-semibold text-hld-text truncate">{persona.name}</span>
+          <span className="block text-[12px] text-hld-muted-text-2 truncate mt-[2px]">{persona.role}</span>
+        </span>
+        {isActive && <Check size={16} className="text-hld-cyan shrink-0" />}
+      </button>
+      {!isActive && onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={`Delete ${persona.name}`}
+          className="absolute right-[14px] top-1/2 -translate-y-1/2 text-hld-muted hover:text-hld-magenta opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Labelled field for the create form (mono eyebrow + full-width control). */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text-2 mb-[5px]">{label}</label>
+      {children}
+    </div>
+  );
 }
 
 export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
@@ -30,9 +77,8 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   const setShow = useStore(s => s.setShowPersonaModal);
   const onClose = () => setShow(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [view, setView] = useState<'list' | 'create'>('list');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Create Form State
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
@@ -74,7 +120,6 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
     setNewName("");
     setNewRole("");
     setNewInstruction("");
-    setView('list');
   };
 
   const handleExport = () => {
@@ -119,176 +164,81 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
     }
   };
 
+  const inputClass = "w-full p-[9px] bg-[#080d13] border border-hld-border text-hld-text text-[13px] focus:border-hld-cyan outline-none font-sans";
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-      <div className="bg-hld-surface rounded-xl shadow-2xl w-full max-w-2xl border border-hld-border flex flex-col max-h-[85vh]">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-hld-border flex justify-between items-center bg-hld-surface2 rounded-t-xl">
-          <div>
-            <h3 className="text-xl font-bold text-hld-text flex items-center gap-2 font-sans">
-              <User size={20} className="text-hld-cyan" />
-              AI &amp; Personas
-            </h3>
-            <p className="text-sm text-hld-muted font-sans">Models, keys, and who reviews your work.</p>
-          </div>
-          <button onClick={onClose} className="text-hld-muted hover:text-hld-text p-2 transition-colors">
-            <X size={20} />
-          </button>
+    <ModalShell
+      accent="cyan"
+      eyebrow="Evaluator"
+      title="Choose a persona"
+      onClose={onClose}
+      onPrimary={onClose}
+      primaryLabel="Use persona"
+    >
+      <div className="flex flex-col gap-[14px]">
+        {/* Primary content: the persona list */}
+        <div className="flex flex-col gap-[8px]">
+          {personas.map((persona) => (
+            <PersonaRow
+              key={persona.id}
+              persona={persona}
+              isActive={persona.id === activePersonaId}
+              onSelect={() => onSelectPersona(persona.id)}
+              onDelete={persona.id !== 'default' ? () => onDeletePersona(persona.id) : undefined}
+            />
+          ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {view === 'list' ? (
-            <div className="space-y-4">
-              {/* AI providers, default model, per-task overrides, catalog */}
-              <AiSettingsSection />
+        {/* One quiet link — replaces the glowing auto-generate banner */}
+        <button
+          type="button"
+          onClick={handleGeneratePersonas}
+          disabled={isGenerating}
+          className="self-start inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.1em] uppercase text-hld-muted-text-2 hover:text-hld-cyan disabled:opacity-50 transition-colors"
+        >
+          {isGenerating ? <span className="animate-spin">✦</span> : <Sparkles size={12} />}
+          {isGenerating ? 'Analyzing draft…' : 'Suggest personas from my draft'}
+        </button>
 
-              {/* Generator Banner */}
-              <div className="bg-hld-cyan/10 border border-hld-cyan/30 rounded-lg p-4 flex items-center justify-between mb-6">
-                 <div>
-                   <h4 className="font-semibold text-hld-cyan text-sm font-sans">Need the perfect editor?</h4>
-                   <p className="text-[10px] font-mono uppercase tracking-widest text-hld-cyan/70 mt-1">AI can analyze your text and suggest bespoke personas.</p>
-                 </div>
-                 <button 
-                   onClick={handleGeneratePersonas}
-                   disabled={isGenerating}
-                   className="flex items-center gap-2 px-4 py-2 bg-hld-cyan text-hld-bg text-[10px] font-mono font-bold uppercase tracking-widest rounded-md shadow-sm hover:bg-hld-cyan/80 disabled:opacity-50 transition-all hld-glow-cyan"
-                 >
-                   {isGenerating ? <span className="animate-spin">✨</span> : <Sparkles size={14} />}
-                   {isGenerating ? "Analyzing..." : "Auto-Generate"}
-                 </button>
-              </div>
+        {/* Everything else folds away */}
+        <div>
+          <Disclosure label="AI model & API key">
+            <AiSettingsSection />
+          </Disclosure>
 
-              <div className="grid gap-3">
-                {personas.map(persona => {
-                  const isActive = persona.id === activePersonaId;
-                  return (
-                    <div 
-                      key={persona.id}
-                      onClick={() => onSelectPersona(persona.id)}
-                      className={`group relative p-4 rounded-lg border cursor-pointer transition-all ${
-                        isActive 
-                          ? 'border-hld-cyan bg-hld-cyan/10 ring-1 ring-hld-cyan' 
-                          : 'border-hld-border hover:border-hld-cyan/50 bg-hld-surface'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-3">
-                           <div className={`p-2 rounded-full ${isActive ? 'bg-hld-cyan/20 text-hld-cyan' : 'bg-hld-surface2 text-hld-muted'}`}>
-                             <Bot size={20} />
-                           </div>
-                           <div>
-                             <div className="font-bold text-hld-text text-sm font-sans">{persona.name}</div>
-                             <div className="text-[10px] font-mono uppercase tracking-widest text-hld-muted font-medium">{persona.role}</div>
-                           </div>
-                        </div>
-                        {isActive && <Check size={18} className="text-hld-cyan" />}
-                        {!isActive && persona.id !== 'default' && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onDeletePersona(persona.id); }}
-                            className="text-hld-muted hover:text-hld-magenta opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="mt-3 text-xs text-hld-muted bg-hld-bg p-2 rounded font-mono border border-hld-border line-clamp-2">
-                        {persona.instruction}
-                      </div>
-                    </div>
-                  );
-                })}
+          <Disclosure label="Create, import & export">
+            <div className="flex flex-col gap-[12px]">
+              <Field label="Name">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} className={inputClass} placeholder="e.g. The Harsh Critic" />
+              </Field>
+              <Field label="Role / Tagline">
+                <input value={newRole} onChange={(e) => setNewRole(e.target.value)} className={inputClass} placeholder="e.g. Senior Editor at Nature" />
+              </Field>
+              <Field label="System Instruction">
+                <textarea value={newInstruction} onChange={(e) => setNewInstruction(e.target.value)} className={`${inputClass} h-28 resize-none font-mono`} placeholder="You are an expert in..." />
+              </Field>
+              <div className="flex items-center gap-[14px]">
+                <button
+                  type="button"
+                  onClick={handleManualAdd}
+                  disabled={!newName || !newInstruction}
+                  className="px-[16px] py-[9px] border border-hld-cyan/40 text-hld-cyan font-mono text-[10px] font-bold tracking-[0.12em] uppercase hover:bg-hld-cyan/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add persona
+                </button>
+                <span className="w-px h-[16px] bg-hld-border" />
+                <button type="button" onClick={handleExport} className="inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.1em] uppercase text-hld-muted-text-2 hover:text-hld-cyan transition-colors">
+                  <Download size={13} /> Export
+                </button>
+                <label className="inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.1em] uppercase text-hld-muted-text-2 hover:text-hld-cyan cursor-pointer transition-colors">
+                  <Upload size={13} /> Import
+                  <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImport} />
+                </label>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div>
-                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted mb-1">Name</label>
-                <input 
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  className="w-full p-2 border border-hld-border rounded bg-transparent text-hld-text focus:border-hld-cyan focus:ring-1 focus:ring-hld-cyan outline-none font-sans"
-                  placeholder="e.g. The Harsh Critic"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted mb-1">Role / Tagline</label>
-                <input 
-                  value={newRole}
-                  onChange={e => setNewRole(e.target.value)}
-                  className="w-full p-2 border border-hld-border rounded bg-transparent text-hld-text focus:border-hld-cyan focus:ring-1 focus:ring-hld-cyan outline-none font-sans"
-                  placeholder="e.g. Senior Editor at Nature"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-hld-muted mb-1">System Instruction</label>
-                <textarea 
-                  value={newInstruction}
-                  onChange={e => setNewInstruction(e.target.value)}
-                  className="w-full p-2 border border-hld-border rounded bg-transparent text-hld-text h-32 focus:border-hld-cyan focus:ring-1 focus:ring-hld-cyan outline-none font-mono text-sm"
-                  placeholder="You are an expert in..."
-                />
-              </div>
-            </div>
-          )}
+          </Disclosure>
         </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-hld-border bg-hld-surface2 rounded-b-xl flex justify-between">
-          {view === 'list' ? (
-             <div className="flex items-center gap-4">
-               <button 
-                 onClick={() => setView('create')}
-                 className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest font-semibold text-hld-cyan hover:text-hld-cyan/80 transition-colors"
-               >
-                 <Plus size={16} /> Create Custom
-               </button>
-               <div className="h-4 w-px bg-hld-border"></div>
-               <button 
-                 onClick={handleExport}
-                 className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest font-semibold text-hld-muted hover:text-hld-text transition-colors"
-               >
-                 <Download size={16} /> Export
-               </button>
-               <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest font-semibold text-hld-muted hover:text-hld-text cursor-pointer transition-colors">
-                 <Upload size={16} /> Import
-                 <input 
-                   type="file" 
-                   accept=".json" 
-                   className="hidden" 
-                   ref={fileInputRef}
-                   onChange={handleImport} 
-                 />
-               </label>
-             </div>
-          ) : (
-             <button 
-               onClick={() => setView('list')}
-               className="text-[10px] font-mono uppercase tracking-widest font-semibold text-hld-muted hover:text-hld-text transition-colors"
-             >
-               Back to list
-             </button>
-          )}
-
-          <div className="flex gap-2">
-            {view === 'create' && (
-              <button 
-                onClick={handleManualAdd}
-                className="px-4 py-2 bg-hld-cyan text-hld-bg rounded-md text-[10px] font-mono uppercase tracking-widest font-bold shadow hover:bg-hld-cyan/80 transition-colors hld-glow-cyan"
-              >
-                Add Persona
-              </button>
-            )}
-            {view === 'list' && (
-              <button onClick={onClose} className="px-4 py-2 bg-hld-surface border border-hld-border rounded-md text-[10px] font-mono uppercase tracking-widest font-bold shadow-sm hover:bg-hld-border text-hld-text transition-colors">
-                Done
-              </button>
-            )}
-          </div>
-        </div>
-
       </div>
-    </div>
+    </ModalShell>
   );
 };
