@@ -24,14 +24,14 @@ export function Disclosure({ label, count, pip, defaultOpen = false, children, c
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-[8px] w-full border-t border-hld-border text-hld-muted-text hover:text-hld-cyan font-mono text-[9px] font-bold tracking-[0.14em] uppercase py-[9px] px-[2px] text-left transition-colors"
+        className="flex items-center gap-[10px] w-full border-t border-hld-border text-hld-muted-text-2 hover:text-hld-cyan font-mono text-[10px] font-semibold tracking-[0.12em] uppercase py-[13px] px-[2px] text-left transition-colors"
       >
-        <span className={`inline-block text-[8px] transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
+        <span className={`inline-block text-[9px] transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
         {pip && <Pip status={pip} size="sm" />}
         {label}
-        {count != null && <span className="ml-auto font-normal tracking-[0.1em]">{count}</span>}
+        {count != null && <span className="ml-auto font-normal text-hld-muted tracking-[0.1em]">{count}</span>}
       </button>
-      {open && <div className="px-[2px] pb-[12px] pt-[4px]">{children}</div>}
+      {open && <div className="px-[2px] pb-[16px] pt-[2px]">{children}</div>}
     </div>
   );
 }
