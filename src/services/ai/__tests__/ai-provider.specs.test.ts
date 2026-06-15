@@ -19,6 +19,7 @@ const config: PromptsConfig = {
   refactorAnalysisPrompt: '',
   dialoguePrompt: '',
   generateRevisionsPrompt: '',
+  generateSprintPlanPrompt: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */

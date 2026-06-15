@@ -13,6 +13,8 @@ import type {
   AssemblySubMode,
   SourceDocument,
   DirectiveSuggestion,
+  ArgumentShape,
+  SprintPlan,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 
@@ -43,6 +45,36 @@ export interface AIProvider {
   continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
+  generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
+}
+
+/** Compact, in-memory backlog summary shown as context chips in the Brief. */
+export interface SprintBacklog {
+  /** Unfinished paragraphs (heuristic count). */
+  unfinishedCount: number;
+  /** Days since the section was last touched; null when unknown. */
+  lastTouchedDays: number | null;
+  /** How many fragments were reattached for reinstatement. */
+  fragmentCount: number;
+}
+
+export interface GenerateSprintPlanInput {
+  sectionTitle: string;
+  /** The section being worked (the plan's target). */
+  targetSectionId: string;
+  /** The structured spec, if the section has one (folds into draft/marshal moves). */
+  spec?: SectionSpec;
+  /** The writer's stated aim for this session (free text from the Brief). */
+  sessionGoal: string;
+  /** The chosen shape skeleton to bend; null = freeform. */
+  shape: ArgumentShape | null;
+  /** Total minutes; the returned durations must sum to totalMin × 60. */
+  totalMin: number;
+  backlog: SprintBacklog;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
 }
 
 export interface GenerateSpecsInput {

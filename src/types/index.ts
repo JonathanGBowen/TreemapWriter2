@@ -326,6 +326,61 @@ export interface PromptsConfig {
   dialoguePrompt: string;
   /** Glass Box revision engine: source-traceable proposal generation. */
   generateRevisionsPrompt: string;
+  /** Living Sprints: bends an argument shape into a timed, section-specific plan. */
+  generateSprintPlanPrompt: string;
+}
+
+// --- LIVING SPRINTS TYPES ---
+// A sprint runs an ordered sequence of timed *moves* for one target section
+// (not a march over all sections). A move is mostly a RequiredMove + a clock +
+// concrete instructions. Plans are ephemeral run-state (never persisted);
+// shapes are read-only seed data in `lib/argumentShapes.ts`.
+
+/**
+ * Drives a move's accent + ambient hue (see the design token table):
+ * reinstate=green · frame=cyan · marshal=yellow · draft=cyan · stress=orange ·
+ * synthesize/bridge=purple.
+ */
+export type SprintMoveRole =
+  | 'reinstate'
+  | 'frame'
+  | 'marshal'
+  | 'draft'
+  | 'stress'
+  | 'synthesize'
+  | 'bridge';
+
+export interface SprintMove {
+  id: string;
+  /** Short imperative label, e.g. "Draft the reply". */
+  title: string;
+  /** Concrete instruction lines (the checklist). */
+  instructions: string[];
+  /** Seconds for this move; strict auto-advance fires at 0. */
+  durationSec: number;
+  /** Role drives the accent color + ambient hue. */
+  role: SprintMoveRole;
+  /** Optional link back to the SectionSpec move this realizes. */
+  fromRequiredMoveId?: string;
+}
+
+export interface SprintPlan {
+  /** Which ArgumentShape seeded it (null = freeform / AI / goal plan). */
+  shapeId: string | null;
+  /** The single section this sprint works. */
+  targetSectionId: string;
+  /** Total seconds — the sum of every move's durationSec. */
+  totalSec: number;
+  /** moves[0] is conventionally the Reinstate move. */
+  moves: SprintMove[];
+}
+
+export interface ArgumentShape {
+  id: string;
+  name: string;
+  description: string;
+  /** Move templates with *relative* weights; scaled to the chosen total at runtime. */
+  moves: Array<Omit<SprintMove, 'id' | 'durationSec'> & { weight: number }>;
 }
 
 // --- PHASE 4 SYNC TYPES ---

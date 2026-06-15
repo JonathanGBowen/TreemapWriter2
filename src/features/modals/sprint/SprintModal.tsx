@@ -1,0 +1,167 @@
+// Living Sprints — the orchestrator. Evolves the original Goal/Content sprint
+// modal: instead of marching every section, a sprint targets ONE section (the
+// active selection) and runs an ordered sequence of timed *moves*. It reads its
+// own openness from ui-state by `mode`, owns the phase (setup → brief → running)
+// and the in-flight plan (ephemeral — never persisted; the prose is saved
+// continuously via the existing onSaveContent/onSaveGoal path), and resolves the
+// reinstatement + backlog context the inner screens need. Each phase renders its
+// own overlay, so only one is mounted at a time. Public name/props unchanged so
+// App.tsx wiring is a one-line import swap.
+
+import { useEffect, useMemo, useState } from 'react';
+import { useStore } from '../../../store';
+import type { ArgumentShape, PromptsConfig, Section, SprintPlan, TestSuite } from '../../../types';
+import type { SprintBacklog } from '../../../services/ai-provider';
+import { buildReinstatement } from '../../../lib/reinstate';
+import { goalPlan, planFromShape } from '../../../lib/sprintPlan';
+import { SprintSetup } from './SprintSetup';
+import { SprintBrief } from './SprintBrief';
+import { SprintRunner } from './SprintRunner';
+
+export interface SprintModalProps {
+  sections: Section[];
+  testSuite: TestSuite;
+  mode: 'goal' | 'content';
+  onSaveContent?: (id: string, content: string) => void;
+  onSaveGoal?: (id: string, goal: string, type: 'manual') => void;
+  promptsConfig: PromptsConfig;
+}
+
+type Phase = 'setup' | 'brief' | 'running';
+
+function findById(nodes: Section[], id: string | null): Section | null {
+  if (!id) return null;
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    const found = findById(n.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function daysSince(ts: number | undefined): number | null {
+  if (!ts) return null;
+  return Math.max(0, Math.round((Date.now() - ts) / 86_400_000));
+}
+
+export function SprintModal({
+  sections,
+  testSuite,
+  mode,
+  onSaveContent,
+  onSaveGoal,
+  promptsConfig,
+}: SprintModalProps) {
+  const showGoal = useStore((s) => s.showGoalSprintModal);
+  const setShowGoal = useStore((s) => s.setShowGoalSprintModal);
+  const showContent = useStore((s) => s.showContentSprintModal);
+  const setShowContent = useStore((s) => s.setShowContentSprintModal);
+  const selectedId = useStore((s) => s.selectedId);
+
+  const isOpen = mode === 'goal' ? showGoal : showContent;
+
+  const [phase, setPhase] = useState<Phase>('setup');
+  const [plan, setPlan] = useState<SprintPlan | null>(null);
+  const [briefSeed, setBriefSeed] = useState<{ shape: ArgumentShape | null; totalMin: number }>({
+    shape: null,
+    totalMin: mode === 'content' ? 35 : 10,
+  });
+
+  // Target = the active section, falling back to the first.
+  const section = useMemo(
+    () => findById(sections, selectedId) ?? sections[0] ?? null,
+    [sections, selectedId],
+  );
+  const entry = section ? testSuite[section.id] : undefined;
+
+  const reinstatement = useMemo(() => buildReinstatement(section, entry), [section, entry]);
+  const lastTouchedDays = daysSince(entry?.history?.[entry.history.length - 1]?.timestamp);
+  const backlog: SprintBacklog = {
+    unfinishedCount: entry?.spec?.requiredMoves?.length ?? 0,
+    lastTouchedDays,
+    fragmentCount: reinstatement.fragments.length,
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setPhase('setup');
+      setPlan(null);
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !section) return null;
+
+  const onClose = () => {
+    if (mode === 'goal') setShowGoal(false);
+    else setShowContent(false);
+    setPhase('setup');
+    setPlan(null);
+  };
+
+  const initialText =
+    mode === 'content' ? section.content : entry?.goals || entry?.spec?.mainClaim || '';
+
+  const onSave = (text: string) => {
+    if (mode === 'content') onSaveContent?.(section.id, text);
+    else onSaveGoal?.(section.id, text, 'manual');
+  };
+
+  const startWithPlan = (p: SprintPlan) => {
+    setPlan(p);
+    setPhase('running');
+  };
+
+  const onStartSetup = (shape: ArgumentShape | null, totalMin: number) => {
+    const next =
+      mode === 'content' && shape
+        ? planFromShape(shape, { totalMin, targetSectionId: section.id })
+        : goalPlan(section.id, totalMin);
+    startWithPlan(next);
+  };
+
+  if (phase === 'running' && plan) {
+    return (
+      <SprintRunner
+        plan={plan}
+        mode={mode}
+        section={section}
+        reinstatement={reinstatement}
+        lastTouchedDays={lastTouchedDays}
+        initialText={initialText}
+        onSave={onSave}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (phase === 'brief') {
+    return (
+      <SprintBrief
+        isOpen={isOpen}
+        sectionTitle={section.title}
+        targetSectionId={section.id}
+        spec={entry?.spec}
+        shape={briefSeed.shape}
+        totalMin={briefSeed.totalMin}
+        backlog={backlog}
+        promptsConfig={promptsConfig}
+        onStart={startWithPlan}
+        onBack={() => setPhase('setup')}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <SprintSetup
+      mode={mode}
+      sectionTitle={section.title}
+      onStart={onStartSetup}
+      onBrief={(shape, totalMin) => {
+        setBriefSeed({ shape, totalMin });
+        setPhase('brief');
+      }}
+      onClose={onClose}
+    />
+  );
+}

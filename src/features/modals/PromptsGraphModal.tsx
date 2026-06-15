@@ -71,6 +71,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     refactorAnalysisPrompt: 'REFACTOR',
     dialoguePrompt: 'SOCRATIC PARTNER',
     generateRevisionsPrompt: 'REVISION ENGINE',
+    generateSprintPlanPrompt: 'SPRINT PLANNER',
   };
 
   const nodeDescriptions: Record<keyof PromptsConfig, string> = {
@@ -88,6 +89,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     refactorAnalysisPrompt: "Folds a Socratic dialogue back into a refined analysis version.",
     dialoguePrompt: "The Socratic partner that interrogates parts of an analysis with the author.",
     generateRevisionsPrompt: "The Glass Box engine: proposes source-traceable revision edits, each with a verbatim receipt.",
+    generateSprintPlanPrompt: "Living Sprints: bends an argument shape into a timed, section-specific plan of writing moves.",
   };
 
   return (

@@ -31,6 +31,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   continueDialogue: g('gemini-3.1-pro-preview', 8192),
   generateRevisions: g('gemini-3.1-pro-preview', 4000),
   suggestDirectives: g('gemini-3.1-pro-preview', 2048),
+  // Light/fast: a sprint plan is short and the Brief must feel quick (>200ms rule).
+  generateSprintPlan: g('gemini-3-flash-preview', 0),
 };
 
 /**
