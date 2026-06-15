@@ -39,6 +39,10 @@ impl Layout {
         self.twriter_dir().join("models.json")
     }
 
+    pub fn sources_json(&self) -> PathBuf {
+        self.twriter_dir().join("sources.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }

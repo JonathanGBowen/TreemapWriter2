@@ -18,7 +18,7 @@ export interface UIStateSlice {
   runTutorial: boolean;
   activeTab: 'editor' | 'preview';
   /** Which surface the right panel shows. Ephemeral, like activeTab. */
-  testsPanelTab: 'spec' | 'analysis' | 'dialogue';
+  testsPanelTab: 'spec' | 'analysis' | 'dialogue' | 'revise';
 
   // In-flight indicators
   isProcessing: boolean;
@@ -61,7 +61,7 @@ export interface UIStateSlice {
   setFocusMode: (mode: boolean) => void;
   setRunTutorial: (run: boolean) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
-  setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue') => void;
+  setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue' | 'revise') => void;
   setIsProcessing: (proc: boolean) => void;
   setIsInterpolating: (interp: boolean) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;

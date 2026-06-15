@@ -263,6 +263,10 @@ pub struct StoredProjectData {
     /// thinkingBudget per call kind). Holds model choices, never secrets.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub models_config: Option<serde_json::Value>,
+    /// Per-project source-document library (`.twriter/sources.json`). Schema-
+    /// agnostic on the Rust side — the TS layer owns the shape. Tracked in git.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub sources: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

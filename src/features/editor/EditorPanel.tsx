@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { Eye, Clock, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History } from "lucide-react";
 import { Section } from "../../types";
@@ -10,6 +10,7 @@ import { languages } from '@codemirror/language-data';
 import { GFM, Table } from '@lezer/markdown';
 import { hldExtensions, hldTheme } from '../../lib/editorTheme';
 import { livePreviewPlugin } from '../../lib/livePreview';
+import { revisionPreviewExtensions, setPreviewEffect, type PreviewPayload } from '../revision/revision-preview';
 import { EditorView, keymap, drawSelection, highlightSpecialChars, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
@@ -84,6 +85,12 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const projectName = useStore(s => s.projectName);
   const setShowHistoryModal = useStore(s => s.setShowHistoryModal);
   const openRevisionWorkspace = useStore(s => s.openRevisionWorkspace);
+  const revisionProposals = useStore(s => s.proposals);
+  const previewIds = useStore(s => s.previewIds);
+  const previewAll = useStore(s => s.previewAll);
+  const activeProposalId = useStore(s => s.activeProposalId);
+  const toggleProposalPreview = useStore(s => s.toggleProposalPreview);
+  const setActiveProposal = useStore(s => s.setActiveProposal);
 
   const toggleFocusMode = () => setFocusMode(!focusMode);
   const onOpenHistory = () => setShowHistoryModal(true);
@@ -227,6 +234,24 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     // Reset the skip flag
     skipNextScroll.current = false;
   }, [currentSection, focusMode]);
+
+  // Inline revision preview (Concept A): drive the same CodeMirror decorations the
+  // Workspace uses, so "◐ Preview in text" works in the normal three-column view.
+  const revisionPreview: PreviewPayload = useMemo(() => ({
+    proposals: revisionProposals.map((p) => ({
+      id: p.id,
+      original_text: p.original_text,
+      proposed_text: p.proposed_text,
+      status: p._status,
+      previewing: p._status === 'pending' && (previewAll || previewIds.includes(p.id)),
+      active: p.id === activeProposalId,
+    })),
+    onToggle: (id: string) => { toggleProposalPreview(id); setActiveProposal(id); },
+  }), [revisionProposals, previewIds, previewAll, activeProposalId, toggleProposalPreview, setActiveProposal]);
+
+  useEffect(() => {
+    cmRef.current?.view?.dispatch({ effects: setPreviewEffect.of(revisionPreview) });
+  }, [revisionPreview]);
 
   
   const handleMdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -402,7 +427,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                     }), 
                     ...hldExtensions, 
                     ...manualBasicSetup,
-                    livePreviewPlugin
+                    livePreviewPlugin,
+                    ...revisionPreviewExtensions
                   ]}
                   theme={hldTheme}
                   autoFocus
@@ -428,7 +454,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                     }), 
                     ...hldExtensions, 
                     ...manualBasicSetup,
-                    livePreviewPlugin
+                    livePreviewPlugin,
+                    ...revisionPreviewExtensions
                   ]}
                   basicSetup={false}
                 />

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useStore } from '../../state';
-import { makeSourceId } from '../../state/revision-state';
+import { makeSourceId } from '../../lib/source-helpers';
 import { Pip } from '../shared/Pip';
 
 /** Glyph cycle for pasted sources (HLD style; mirrors the prototype's source kinds). */
@@ -56,22 +56,24 @@ function AddSourceForm({ onAdd, onCancel }: { onAdd: (label: string, content: st
  * toggles selection; the engine quotes only from selected sources.
  */
 export function SourcePicker() {
-  const sources = useStore((s) => s.revisionSources);
+  const sources = useStore((s) => s.sources);
   const selectedIds = useStore((s) => s.selectedSourceIds);
   const toggleSource = useStore((s) => s.toggleRevisionSource);
-  const addSource = useStore((s) => s.addRevisionSource);
-  const removeSource = useStore((s) => s.removeRevisionSource);
+  const addSource = useStore((s) => s.addSource);
+  const removeSource = useStore((s) => s.removeSource);
   const [adding, setAdding] = useState(false);
 
   const submit = (label: string, content: string) => {
     if (!content.trim()) return;
+    const id = makeSourceId();
     addSource({
-      id: makeSourceId(),
+      id,
       kind: 'Source',
       label: label.trim() || 'Pasted source',
       glyph: GLYPHS[sources.length % GLYPHS.length],
       content: content.trim(),
     });
+    toggleSource(id); // select the newly added source for this pass
     setAdding(false);
   };
 

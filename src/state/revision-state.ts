@@ -1,12 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
-import type {
-  AssemblySubMode,
-  ProposalStatus,
-  RevisionMode,
-  RevisionProposal,
-  SourceDocument,
-} from '../types';
+import type { AssemblySubMode, ProposalStatus, RevisionMode, RevisionProposal } from '../types';
 
 /**
  * The Glass Box revision workflow, as an ephemeral slice. Unlike the rest of the
@@ -28,7 +22,7 @@ export interface RevisionSlice {
   revisionPhase: RevisionPhase;
   revisionMode: RevisionMode;
   revisionSubMode: AssemblySubMode;
-  revisionSources: SourceDocument[];
+  /** Per-pass selection into the persisted source library (document-state.sources). */
   selectedSourceIds: string[];
   directive: string;
   proposals: SessionProposal[];
@@ -39,8 +33,6 @@ export interface RevisionSlice {
 
   openRevisionWorkspace: () => void;
   closeRevisionWorkspace: () => void;
-  addRevisionSource: (source: SourceDocument) => void;
-  removeRevisionSource: (id: string) => void;
   toggleRevisionSource: (id: string) => void;
   setRevisionDirective: (directive: string) => void;
   setRevisionMode: (mode: RevisionMode) => void;
@@ -54,11 +46,7 @@ export interface RevisionSlice {
   resetRevision: () => void;
 }
 
-let srcSeq = 0;
-/** Monotonic id for a pasted source — Date.now alone can collide within a tick. */
-export const makeSourceId = (): string => `src_${Date.now()}_${srcSeq++}`;
-
-/** Cleared review state for a fresh pass (keeps sources/directive/mode). */
+/** Cleared review state for a fresh pass (keeps selection/directive/mode). */
 const CLEARED_PASS = {
   revisionPhase: 'config' as RevisionPhase,
   proposals: [] as SessionProposal[],
@@ -71,27 +59,15 @@ export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> 
   revisionWorkspaceOpen: false,
   revisionMode: 'revision',
   revisionSubMode: 'woven',
-  revisionSources: [],
   selectedSourceIds: [],
   directive: '',
   ...CLEARED_PASS,
 
   openRevisionWorkspace: () => set({ revisionWorkspaceOpen: true }),
-  // Close keeps the session's sources/directive (still ephemeral) but drops the
-  // in-flight pass, so reopening lands back on a clean config screen.
+  // Close keeps the session's selection/directive but drops the in-flight pass,
+  // so reopening lands back on a clean config screen.
   closeRevisionWorkspace: () => set({ revisionWorkspaceOpen: false, ...CLEARED_PASS }),
 
-  addRevisionSource: (source) =>
-    set((s) => ({
-      revisionSources: [...s.revisionSources, source],
-      // A freshly added source is selected by default — it's why you added it.
-      selectedSourceIds: [...s.selectedSourceIds, source.id],
-    })),
-  removeRevisionSource: (id) =>
-    set((s) => ({
-      revisionSources: s.revisionSources.filter((x) => x.id !== id),
-      selectedSourceIds: s.selectedSourceIds.filter((x) => x !== id),
-    })),
   toggleRevisionSource: (id) =>
     set((s) => ({
       selectedSourceIds: s.selectedSourceIds.includes(id)

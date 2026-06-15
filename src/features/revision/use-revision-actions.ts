@@ -31,7 +31,7 @@ export const useRevisionActions = () => {
     if (!currentSection) return;
     const { title: sectionTitle, fullContent: sectionText } = currentSection;
     const {
-      revisionSources,
+      sources: library,
       selectedSourceIds,
       directive,
       revisionMode,
@@ -41,7 +41,7 @@ export const useRevisionActions = () => {
     } = useStore.getState();
     if (isProcessing) return;
 
-    const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
+    const sources = library.filter((s) => selectedSourceIds.includes(s.id));
     if (sources.length === 0) {
       toast.error('Select at least one source to cite from.');
       return;

@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'zustand';
 import type { StateCreator } from 'zustand';
-import {
-  createRevisionSlice,
-  makeSourceId,
-  type RevisionSlice,
-  type SessionProposal,
-} from '../revision-state';
+import { createRevisionSlice, type RevisionSlice, type SessionProposal } from '../revision-state';
 
 // Standalone store: createRevisionSlice only uses `set`, and revision-state's
 // non-type imports are minimal, so this never loads the full app store graph
@@ -33,27 +28,10 @@ describe('revision slice', () => {
     store = makeStore();
   });
 
-  it('adds a source and selects it by default', () => {
-    const id = makeSourceId();
-    store.getState().addRevisionSource({ id, kind: 'Source', label: 'Notes', glyph: '✒', content: 'text' });
-    expect(store.getState().revisionSources).toHaveLength(1);
-    expect(store.getState().selectedSourceIds).toContain(id);
-  });
-
-  it('toggles source selection on and off', () => {
-    const s = store.getState();
-    s.addRevisionSource({ id: 'x', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
-    s.toggleRevisionSource('x');
-    expect(store.getState().selectedSourceIds).not.toContain('x');
+  it('toggles the per-pass source selection on and off', () => {
     store.getState().toggleRevisionSource('x');
     expect(store.getState().selectedSourceIds).toContain('x');
-  });
-
-  it('removing a source also deselects it', () => {
-    const s = store.getState();
-    s.addRevisionSource({ id: 'x', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
-    store.getState().removeRevisionSource('x');
-    expect(store.getState().revisionSources).toHaveLength(0);
+    store.getState().toggleRevisionSource('x');
     expect(store.getState().selectedSourceIds).not.toContain('x');
   });
 

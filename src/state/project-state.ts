@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand';
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import { DEFAULT_PROMPTS_CONFIG, normalizePromptsConfig } from '../lib/constants';
+import { normalizeSources } from '../lib/source-helpers';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
 import { isTauri } from '../services/tauri-environment';
@@ -187,6 +188,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
           | undefined,
       ),
       cachedCoachAdvice: defaultProjectData.cachedCoachAdvice || null,
+      sources: [],
+      selectedSourceIds: [],
       selectedId: null,
       activeLineIndex: null,
       activeProjectId: newId,
@@ -238,6 +241,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       promptsConfig: DEFAULT_PROMPTS_CONFIG,
       modelConfig: {},
       cachedCoachAdvice: null,
+      sources: [],
+      selectedSourceIds: [],
       selectedId: null,
       activeLineIndex: null,
       activeProjectId: newId,
@@ -271,6 +276,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         }
       });
 
+      const loadedSources = normalizeSources(data.sources);
+
       set({
         activeProjectId: id,
         hasOpenProject: true,
@@ -292,6 +299,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         ),
         modelConfig: normalizeModelConfig(data.modelsConfig),
         cachedCoachAdvice: data.cachedCoachAdvice || null,
+        sources: loadedSources,
+        // Default the per-pass selection to the whole library — usable immediately.
+        selectedSourceIds: loadedSources.map((s) => s.id),
       });
 
       if (data.uiState) {
@@ -304,6 +314,17 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
             data.uiState.activeLineIndex !== undefined ? data.uiState.activeLineIndex : get().activeLineIndex,
         });
       }
+      // Project switch: drop any stale ephemeral revision pass — its proposals
+      // reference the previous project's text.
+      set({
+        directive: '',
+        revisionPhase: 'config',
+        proposals: [],
+        activeProposalId: null,
+        previewIds: [],
+        previewAll: false,
+        revisionWorkspaceOpen: false,
+      });
       return true;
     } catch {
       return false;
@@ -353,6 +374,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       customPersonas: state.customPersonas,
       promptsConfig: state.promptsConfig,
       modelsConfig: state.modelConfig,
+      sources: state.sources,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
       lastModified: Date.now(),

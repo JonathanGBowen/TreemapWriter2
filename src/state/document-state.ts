@@ -6,6 +6,7 @@ import type {
   Section,
   SectionSpec,
   Snapshot,
+  SourceDocument,
   TestSuite,
   TestSuiteEntry,
 } from '../types';
@@ -40,6 +41,12 @@ export interface DocumentStateSlice {
   hiddenSectionIds: string[];
   revisions: Snapshot[];
   lastAutoSave: Date | null;
+  /**
+   * Persisted per-project library of source documents the Glass Box revision
+   * engine may quote from. Domain data (saved with the project), distinct from
+   * the ephemeral per-pass *selection* which lives in the revision slice.
+   */
+  sources: SourceDocument[];
 
   setMarkdown: (markdown: string) => void;
   setSections: (sections: Section[]) => void;
@@ -47,6 +54,11 @@ export interface DocumentStateSlice {
   setHiddenSectionIds: (ids: string[] | ((prev: string[]) => string[])) => void;
   setRevisions: (revs: Snapshot[] | ((prev: Snapshot[]) => Snapshot[])) => void;
   setLastAutoSave: (date: Date | null) => void;
+  setSources: (sources: SourceDocument[]) => void;
+  /** Add a source to the library and persist immediately. */
+  addSource: (source: SourceDocument) => void;
+  /** Remove a source from the library and persist immediately. */
+  removeSource: (id: string) => void;
 
   /**
    * Cache the AI's content suggestions for a given section. No-op if the
@@ -95,6 +107,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   hiddenSectionIds: [],
   revisions: [],
   lastAutoSave: null,
+  sources: [],
 
   setMarkdown: (markdown) => set({ markdown }),
   setSections: (sections) => set({ sections }),
@@ -111,6 +124,16 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
       revisions: typeof revs === 'function' ? revs(state.revisions) : revs,
     })),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
+
+  setSources: (sources) => set({ sources }),
+  addSource: (source) => {
+    set((state) => ({ sources: [...state.sources, source] }));
+    void (get() as AppState).saveCurrentState();
+  },
+  removeSource: (id) => {
+    set((state) => ({ sources: state.sources.filter((s) => s.id !== id) }));
+    void (get() as AppState).saveCurrentState();
+  },
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>
     set((state) => {

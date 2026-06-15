@@ -7,6 +7,7 @@ import type {
   Resolution,
   ResolveOutcome,
   Snapshot,
+  SourceDocument,
   SyncState,
   TestSuite,
 } from '../types';
@@ -30,6 +31,8 @@ export interface StoredProjectData {
   interpolationConfig?: PromptsConfig;
   /** Per-project, per-call model overrides. Sparse; resolves against the global default. */
   modelsConfig?: ModelConfig;
+  /** Per-project library of source documents (Glass Box revision). */
+  sources?: SourceDocument[];
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

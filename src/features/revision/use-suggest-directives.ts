@@ -27,9 +27,9 @@ export const useSuggestDirectives = () => {
   return useCallback(async (): Promise<DirectiveSuggestion[]> => {
     if (!currentSection) return [];
     const { title: sectionTitle, fullContent: sectionText } = currentSection;
-    const { revisionSources, selectedSourceIds, activePersonaId, customPersonas } =
+    const { sources: library, selectedSourceIds, activePersonaId, customPersonas } =
       useStore.getState();
-    const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
+    const sources = library.filter((s) => selectedSourceIds.includes(s.id));
     const persona = resolveActivePersona(activePersonaId, customPersonas);
     try {
       return await aiProvider.suggestDirectives({

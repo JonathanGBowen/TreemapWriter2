@@ -5,12 +5,14 @@ import { useCurrentSection } from "./use-current-section";
 import { SpecTab } from "./SpecTab";
 import { AnalysisTab } from "./AnalysisTab";
 import { DialogueTab } from "./DialogueTab";
+import { RevisePanel } from "./RevisePanel";
 import { PersonaBanner } from "./PersonaBanner";
 
 const TABS = [
   { id: 'spec', label: 'Spec' },
   { id: 'analysis', label: 'Analysis' },
   { id: 'dialogue', label: 'Dialogue' },
+  { id: 'revise', label: 'Revise' },
 ] as const;
 
 const startResize = (e: React.MouseEvent, startWidth: number, setWidth: (w: number) => void) => {
@@ -43,6 +45,7 @@ export const TestsPanel: React.FC = () => {
   const currentSection = useCurrentSection();
   const analysisState = currentSection ? testSuite[currentSection.id]?.analysis : undefined;
   const dialogueActive = !!analysisState && (analysisState.dialogue.length > 0 || !!analysisState.dialogueContext);
+  const revisePending = useStore((s) => s.proposals.some((p) => p._status === 'pending'));
 
   return (
     <div
@@ -70,6 +73,9 @@ export const TestsPanel: React.FC = () => {
             {t.id === 'dialogue' && dialogueActive && (
               <span className="absolute top-[6px] right-[8px] w-[4px] h-[4px] rotate-45 bg-hld-magenta shadow-[0_0_6px_var(--color-hld-magenta)]" />
             )}
+            {t.id === 'revise' && revisePending && (
+              <span className="absolute top-[6px] right-[8px] w-[4px] h-[4px] rotate-45 bg-hld-cyan shadow-[0_0_6px_var(--color-hld-cyan)]" />
+            )}
           </button>
         ))}
         <button
@@ -87,6 +93,7 @@ export const TestsPanel: React.FC = () => {
           {tab === 'spec' && <SpecTab />}
           {tab === 'analysis' && <AnalysisTab />}
           {tab === 'dialogue' && <DialogueTab />}
+          {tab === 'revise' && <RevisePanel />}
         </>
       ) : (
         <div className="flex-1 overflow-y-auto p-3 bg-[#080d13] space-y-[10px]">

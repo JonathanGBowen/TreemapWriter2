@@ -58,6 +58,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.prompts_json())?;
     let models_config: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.models_json())?;
+    let sources: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.sources_json())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -79,6 +81,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         prompts_config,
         interpolation_config: None, // legacy alias; importer normalizes
         models_config,
+        sources,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -111,6 +114,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(mc) = &data.models_config {
         crate::fs_io::write_json(&layout.models_json(), mc)?;
+    }
+    if let Some(srcs) = &data.sources {
+        crate::fs_io::write_json(&layout.sources_json(), srcs)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;

@@ -46,7 +46,7 @@ function ResolvedStrip({ proposal }: { proposal: SessionProposal }) {
 
 /** The glass-box receipt: progressively disclosed source id + verbatim quote. */
 function AuditTrail({ proposal, large }: { proposal: SessionProposal; large?: boolean }) {
-  const source = useStore((s) => s.revisionSources.find((x) => x.id === proposal.source_id));
+  const source = useStore((s) => s.sources.find((x) => x.id === proposal.source_id));
   const [open, setOpen] = useState(!!large);
   return (
     <div className="mb-3">
