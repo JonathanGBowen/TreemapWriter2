@@ -62,6 +62,7 @@ export function SprintRunner({
   const move = engine.move ?? plan.moves[0];
   const total = plan.moves.length;
   const isReinstate = move.role === 'reinstate';
+  const isLast = engine.moveIndex >= total - 1;
   const accentHex = mode === 'content' ? '#f59e0b' : '#00e8f5';
   const moveHue = roleHue(move.role);
 
@@ -98,7 +99,7 @@ export function SprintRunner({
       >
         {/* Reactive ambient hue — only when cues are on (transition CSS-gated by reduced-motion). */}
         <div
-          className="sprint-ambient absolute inset-0 z-0"
+          className="sprint-ambient pointer-events-none absolute inset-0 z-0"
           style={{
             background: cues.cuesOn
               ? `radial-gradient(ellipse 70% 80% at 25% 30%, ${hexA(moveHue, 0.14)} 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 90% 90%, ${hexA(moveHue, 0.1)} 0%, transparent 70%)`
@@ -147,7 +148,7 @@ export function SprintRunner({
         </div>
 
         {/* Body: countdown + move + checklist + editor | rail */}
-        <div className="relative z-[2] flex-1 grid grid-cols-1 md:grid-cols-[1.55fr_1fr] min-h-0">
+        <div className="relative z-[2] flex-1 grid grid-cols-1 md:grid-cols-[1.55fr_1fr] grid-rows-[minmax(0,1fr)] min-h-0">
           <div className="flex flex-col min-h-0 p-[18px]">
             <div
               className="sprint-clock font-mono text-[64px] font-light leading-none text-white tabular-nums"
@@ -181,10 +182,19 @@ export function SprintRunner({
           <SprintSequenceRail moves={plan.moves} currentIndex={engine.moveIndex} />
         </div>
 
-        {/* Strict-auto-advance note */}
-        <div className="relative z-[2] flex items-center gap-[9px] px-[16px] py-[9px] border-t border-hld-border bg-hld-bg/60 font-mono text-[9.5px] tracking-[0.08em] uppercase text-hld-muted-text">
-          <span className="text-hld-magenta">⏻</span>
-          Strict auto-advance — the timer forces the transition. No perfecting one move.
+        {/* Strict-auto-advance note + manual advance (Begin / Next / Finish) */}
+        <div className="relative z-[2] flex items-center justify-between gap-[12px] px-[16px] py-[9px] border-t border-hld-border bg-hld-bg/60">
+          <span className="flex items-center gap-[9px] font-mono text-[9.5px] tracking-[0.08em] uppercase text-hld-muted-text">
+            <span className="text-hld-magenta">⏻</span>
+            Strict auto-advance — the timer forces the transition. No perfecting one move.
+          </span>
+          <button
+            type="button"
+            onClick={engine.advance}
+            className="bracketed hld-lit shrink-0 px-[18px] py-[8px] font-mono text-[10px] font-bold tracking-[0.14em] uppercase"
+          >
+            {isReinstate ? 'Begin →' : isLast ? 'Finish →' : 'Next →'}
+          </button>
         </div>
       </div>
     </div>
