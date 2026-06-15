@@ -125,6 +125,8 @@
 @media (prefers-reduced-motion: reduce) {
   .hld-pip-pulse,
   [style*="hld-pulse"] { animation: none !important; }
+  /* Living Sprints: freeze the runner's ambient hue cross-fade. */
+  .sprint-ambient { transition: none !important; }
 }
 
 @layer utilities {
@@ -164,6 +166,13 @@
   .editor-focus:focus {
     outline: none;
   }
+
+  /* Living Sprints — the runner's reactive ambient hue (Direction D). The hue
+     itself is set inline per move; the slow cross-fade lives here so the
+     reduced-motion gate below can disable it. The big countdown gets the design
+     reference's tight tracking. */
+  .sprint-ambient { transition: background 900ms ease, opacity 900ms ease; }
+  .sprint-clock { letter-spacing: -0.03em; }
 }
 
 /* Glass Box inline-preview decorations — applied to CodeMirror decoration spans

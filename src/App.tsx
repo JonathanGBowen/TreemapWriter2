@@ -8,7 +8,7 @@ import { PersonaSettingsModal } from "./features/modals/PersonaSettingsModal";
 import { GrimoireModal } from "./features/modals/GrimoireModal";
 import { SpecGeneratorModal } from "./features/modals/SpecGeneratorModal";
 import { InterpolationModal } from "./features/modals/InterpolationModal";
-import { SprintModal } from "./features/modals/BaseSprintModal";
+import { SprintModal } from "./features/modals/sprint/SprintModal";
 import { ProjectManagerModal } from "./features/modals/ProjectManagerModal";
 import { VersionHistoryModal } from "./features/modals/VersionHistoryModal";
 import { ContentSuggestionsModal } from "./features/modals/ContentSuggestionsModal";
@@ -885,6 +885,7 @@ export const App = () => {
           testSuite={testSuite}
           mode="goal"
           onSaveGoal={updateSectionGoals}
+          promptsConfig={promptsConfig}
         />
 
         <SprintModal
@@ -892,6 +893,7 @@ export const App = () => {
           testSuite={testSuite}
           mode="content"
           onSaveContent={handleSaveContent}
+          promptsConfig={promptsConfig}
         />
 
         <ProjectManagerModal

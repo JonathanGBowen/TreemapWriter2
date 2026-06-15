@@ -21,6 +21,7 @@ const MODELS_GLOBAL_DEFAULT_KEY = 'treemap_writer_models_global_default';
 const MODELS_CATALOG_KEY = 'treemap_writer_models_catalog';
 const OLLAMA_BASE_URL_KEY = 'treemap_writer_ollama_base_url';
 const SPELLS_KEY = 'treemap_writer_spells';
+const SPRINT_CUES_KEY = 'treemap_writer_sprint_cues';
 
 export async function hasSeenTutorial(): Promise<boolean> {
   return Boolean(await get(TUTORIAL_SEEN_KEY));
@@ -71,4 +72,17 @@ export async function getSpells(): Promise<AnalysisSpell[]> {
 
 export async function setSpells(spells: AnalysisSpell[]): Promise<void> {
   await set(SPELLS_KEY, spells);
+}
+
+/**
+ * Living Sprints: whether the optional ambient hue + transition "ding" are on.
+ * Global, off by default (the quiet HLD surface is the default; cues are a
+ * sensory aid the writer opts into). Honored alongside `prefers-reduced-motion`.
+ */
+export async function getSprintCuesEnabled(): Promise<boolean> {
+  return Boolean(await get(SPRINT_CUES_KEY));
+}
+
+export async function setSprintCuesEnabled(enabled: boolean): Promise<void> {
+  await set(SPRINT_CUES_KEY, enabled);
 }

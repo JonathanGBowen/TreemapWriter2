@@ -1548,3 +1548,58 @@ owner-deferred. Section rows kept their square status marker (not the diamond
 pip) per the handoff's "rows unchanged" note. Pre-existing lint (5 errors / ~177
 warnings, incl. `DialogueTab` complexity, `use-analysis-actions` length) was
 left untouched.
+
+---
+
+## 2026-06-15 — Living Sprints
+
+**What changed.** Evolved the Goal/Content sprints (`BaseSprintModal.tsx`) into **Living
+Sprints**: a sprint now targets ONE section (the active selection) and runs a generated,
+ordered sequence of timed *moves* — opening with a context-**reinstatement** move, enforcing
+**strict auto-advance**, seeded by **argument shapes**, and finalized by an optional AI
+**brief**. Implements all four design directions (Reinstate / Runner / Shapes / Brief) plus
+optional ambient hue + audio cues, per `docs/living-sprints-plan.md` and the
+`design_handoff_living_sprints/` bundle.
+
+- **Types** (`src/types/index.ts`): added `SprintMoveRole`, `SprintMove`, `SprintPlan`,
+  `ArgumentShape`, and one `PromptsConfig` field `generateSprintPlanPrompt`. **No persisted field
+  added** — plans are ephemeral run-state; the prose is saved continuously through the existing
+  `onSaveContent`/`onSaveGoal` path; shapes are code; the cue toggle is a global pref.
+- **Pure logic** (`src/lib/`): `argumentShapes.ts` (5 read-only shapes), `sprintPlan.ts`
+  (weight→seconds scaling that sums to the total exactly, plan-from-shape, re-normalize, last
+  sentence, clock fmt), `sprintRoles.ts` (role→hue), `reinstate.ts` (in-memory reinstatement +
+  git/FTS seam), `ding.ts` (WebAudio). Tests: `argumentShapes`, `sprintPlan`, `sprintRoles`,
+  and `sprint/__tests__/use-sprint-engine` (the save-before-advance invariant). +23 tests
+  (162 total).
+- **UI** (`src/features/modals/sprint/`): `SprintModal` (orchestrator, replaces `BaseSprintModal`,
+  same export/props + `promptsConfig`), `SprintSetup`, `ShapeCard`, `SprintBrief`, `SprintRunner`,
+  `SprintSequenceRail`, `ReinstatePanel`, `SprintEditor`, `use-sprint-engine`, `use-sprint-cues`.
+  All files < 300 lines. Old `BaseSprintModal.tsx` deleted; `App.tsx` import swapped + threads
+  `promptsConfig`.
+- **AI flow** (Direction A): prompt `services/prompts/generate-sprint-plan.md`;
+  `AIProvider.generateSprintPlan` + `GenerateSprintPlanInput`/`SprintBacklog`; impl delegates to
+  `services/ai/ai-provider.sprint.ts` (structured output → validate → renormalize); new
+  `AICallKind 'generateSprintPlan'` + `DEFAULT_MODEL_CONFIG` (flash). Graceful fallback to the
+  shape default on error/no key.
+- **Cues** (Direction D, sensory): `preferences.ts` `getSprintCuesEnabled/setSprintCuesEnabled`
+  (off by default); `.sprint-ambient` cross-fade + transition flash gated by
+  `prefers-reduced-motion`.
+
+**Behavior change (intentional).** Sprints no longer march all sections; they work one section
+deeply via moves (handoff §11.1). Reinstate/runner/brief machinery is shared; Goal stays
+goal-shaped (reinstate → define-the-claim), Content stays draft-shaped (reinstate → shape moves).
+
+**What to verify.** `npm run typecheck` (clean), `npm test` (162 pass), `npm run lint` (no new
+errors — pre-existing 5 errors untouched; new files < 300 lines), `npm run build` (ok). Manual
+(`npm run dev`): Dock `»` → Reinstate card → pick a shape (or Generate brief) → runner
+countdown/checklist/sequence-rail; let the clock hit zero (text saved + advance, no confirm); +2m
+works; finish closes. Toggle cues → subtle per-move hue + ding; with reduced-motion the hue
+cross-fade is disabled. AI Brief without `GEMINI_API_KEY` degrades to the shape default.
+
+**Rollback.** Pure code; no schema/state changes. `git revert` the branch restores the prior
+sprint modal with no data implications.
+
+**Deferred / out of scope.** Multi-section/chapter sprints; persisting in-flight plans; a custom
+shape editor; drag-reorder/retime of the generated plan in the Brief (rows are read-only previews
+in v1; re-plan = regenerate); git/FTS fragment retrieval (seam only). Pre-existing lint
+(5 errors / ~197 warnings in unrelated files) left untouched.
