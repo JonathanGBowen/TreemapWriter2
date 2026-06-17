@@ -112,6 +112,12 @@ export interface RunDiagnosticInput {
   sections: Section[];
   config: PromptsConfig;
   findSection: (nodes: Section[], id: string) => Section | null;
+  /**
+   * Section-id → spec map (with `'root'` holding the document-level spec). When
+   * present, the diagnostic builds a structural surround so the section is judged
+   * as a part functioning in the whole rather than as an isolated piece.
+   */
+  specs?: Record<string, SectionSpec | undefined>;
 }
 
 export interface EstimateDependenciesInput {
@@ -179,6 +185,11 @@ export interface AnalyzeSectionInput {
    * analysis prompt. Omitted for a plain exegetical reconstruction.
    */
   spell?: { persona: string; lens: string };
+  /**
+   * Optional part-in-whole context, pre-formatted by `formatStructuralSurround`.
+   * Lets the reconstruction read the section as a part of the whole, not a piece.
+   */
+  structuralSurround?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

@@ -2074,3 +2074,56 @@ customPersonas) persists on Save. That STATUS item is now fully resolved.
 
 **Deferred.** The declared per-prompt `variables` metadata is surfaced for locked
 prompts but there's no variable-aware editing UI yet.
+
+---
+
+## 2026-06-17 — Gestalt: part-not-piece context (Tier 1)
+
+**Why.** A design pass reading the tool through Wertheimer's Gestalt theory (see the
+new [`gestalt-design.md`](gestalt-design.md)) found the tool violating its own
+"structure not summary" thesis at two points: it compressed context with character
+*prefixes* (a "piece torn from context"), and it judged a section with only its own
+spec — as a *piece*, never tested as a *part* inside its whole. Tier 1 fixes both.
+
+**What changed.** Front-end + prompt-assembly only. No schema, state, Rust, or
+on-disk change.
+
+- **New design doc.** [`docs/gestalt-design.md`](gestalt-design.md) — the *why*
+  (part/piece doctrine), the diagnosis of current part-handling, what shipped now,
+  and a roadmap (items 3–7) for the rest. Referenced from STATUS.md "Next".
+- **Killed prefix-truncation in spec generation.** `src/services/ai/ai-provider.specs.ts`
+  drops the redundant `markdown.slice(0, 4000)` document preview in the L1 batch; the
+  document-level spec reconstruction (`rootCtx`) + a structural outline now carry the
+  whole as a role-reconstruction, not a slice. The per-section `contentPreview` slice
+  is annotated with a TODO — unavoidable there (that pass *derives* the spec, so no
+  reconstruction yet exists); proper fix tracked as roadmap item 7.
+- **Structural surround.** New pure helpers `buildStructuralSurround` /
+  `formatStructuralSurround` in `src/lib/diagnostic-helpers.ts` derive a section's
+  *live* part-in-whole context (document claim, parent claim, preceding section's
+  outgoing commitments, following section's incoming needs) — role-reconstructions,
+  never prose. Threaded behind optional params into `buildDiagnosticPrompt`
+  (`src/lib/constants.ts`) and `buildAnalysisRequestText` (`src/lib/analysis-helpers.ts`);
+  `RunDiagnosticInput` gained an optional `specs` map and `AnalyzeSectionInput` an
+  optional `structuralSurround`. Wired at the diagnostic call (`src/App.tsx`), the
+  analysis call (`src/features/tests-panel/use-analysis-actions.ts`), and the modal's
+  prompt preview (`src/features/modals/TestRunnerModal.tsx`) so the preview matches the
+  sent prompt. The whole-document pass gets no surround (it is already the whole).
+- **Tests.** `src/lib/__tests__/diagnostic-helpers.structural-surround.test.ts`
+  (5 cases): middle/first/last sibling, unknown id, and "role-reconstructions only,
+  no prose."
+
+**What to verify.** `npx tsc --noEmit` (clean), `npx vitest run` (205 pass; +5 new),
+`npm run lint` (no new errors — the 5 are pre-existing in `livePreview.ts` /
+`SpecGeneratorModal.tsx`), `npm run build` (clean). Manual: load the default
+dissertation, generate specs, run a diagnostic on a mid-document subsection, open the
+Test Runner's prompt preview — it now carries a "STRUCTURAL SURROUND" block with the
+neighbours' claims and commitments.
+
+**Rollback.** Pure front-end (`git revert`). All new params are optional, so reverting
+the call-site wiring leaves the builders back-compatible.
+
+**Deferred (roadmap, see `gestalt-design.md` §IV).** Structural-truth (tF/fT) +
+commitment-mesh diagnostic (item 3); gap→vector next-actions (4); recentering /
+question-the-goal operation (5); argument whole-view on the treemap (6); boundary
+correctness + B-reaction guardrails, which also resolves the `contentPreview` slice
+(7).

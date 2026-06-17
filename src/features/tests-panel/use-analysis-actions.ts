@@ -5,6 +5,7 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { computeHash } from '../../lib/utils';
 import { makeAnalysisVersion } from '../../lib/analysis-helpers';
+import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { checkContextFit } from '../../services/ai/context-budget';
@@ -96,6 +97,7 @@ export const useAnalysisActions = () => {
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
     const {
       testSuite,
+      sections,
       promptsConfig,
       isProcessing,
       modelCatalog,
@@ -131,6 +133,16 @@ export const useAnalysisActions = () => {
 
     const prevVersions = testSuite[sectionId]?.analysis?.versions ?? [];
 
+    // Read this section as a part of the whole: its neighbours' claims and
+    // commitments (role-reconstructions, never prose). The whole-document pass is
+    // already the whole, so it gets no surround.
+    const specs = Object.fromEntries(
+      Object.entries(testSuite).map(([id, e]) => [id, e?.spec]),
+    );
+    const structuralSurround = wholeDocument
+      ? undefined
+      : formatStructuralSurround(buildStructuralSurround(sectionId, sections, specs)) || undefined;
+
     setIsProcessing(true);
     try {
       const result = await aiProvider.analyzeSection({
@@ -139,6 +151,7 @@ export const useAnalysisActions = () => {
         config: promptsConfig,
         wholeDocument,
         spell: spell ? { persona: spell.persona, lens: spell.lens } : undefined,
+        structuralSurround,
       });
       const version = makeAnalysisVersion({
         kind: 'analysis',

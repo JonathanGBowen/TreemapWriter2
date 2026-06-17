@@ -27,6 +27,15 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Next (felt priorities)
 
+- **Gestalt roadmap (items 3–7).** Tier 1 shipped 2026-06-17 — part-not-piece
+  context: prefix-truncation killed in spec generation, and a *structural surround*
+  (a section's live part-in-whole relations) now threads into the diagnostic and
+  analysis prompts. The design and the remaining levers live in
+  [`docs/gestalt-design.md`](docs/gestalt-design.md): structural-truth (tF/fT) +
+  commitment-mesh diagnostic; gap→vector next-actions; a recentering /
+  question-the-goal operation; an argument whole-view on the treemap; and boundary
+  correctness + B-reaction guardrails (which also retires the last `contentPreview`
+  char-slice). Several depend on stable section IDs (below) for clean part alignment.
 - **Streaming AI in a sidebar coach panel.** The `AIProvider` interface accepts
   sibling streaming methods; none implemented yet. Target a
   `streamCoachAdvice(section): AsyncIterable<string>` on the provider, consumed

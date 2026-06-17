@@ -17,6 +17,7 @@ import type {
   VersionComparison,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
+import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
 import { safeJsonParse } from '../../lib/utils';
 import {
   buildAnalysisRequestText,
@@ -111,6 +112,17 @@ export class MultiProviderAIProvider implements AIProvider {
       if (parent) contextContent = parent.fullContent;
     }
 
+    // A part is what it is by its role in the whole (Wertheimer, On Truth). When the
+    // caller supplies the spec map, judge this section inside its live surround —
+    // parent/sibling claims and commitments — rather than as an isolated piece. The
+    // whole-document pass is already the whole, so it needs no surround.
+    const structuralSurround =
+      !isWholeDocument && input.specs
+        ? formatStructuralSurround(
+            buildStructuralSurround(input.section.id, input.sections, input.specs),
+          )
+        : '';
+
     const prompt = buildDiagnosticPrompt({
       baseInstruction: input.config.diagnosticInstruction,
       personaInstruction: input.persona.instruction,
@@ -123,6 +135,7 @@ export class MultiProviderAIProvider implements AIProvider {
       outgoingCommitments: input.spec.outgoingCommitments,
       scope: input.scope,
       content: isWholeDocument ? contextContent : contextContent.slice(0, 12000),
+      structuralSurround,
     });
 
     const choice = this.choose('runDiagnostic', input);
@@ -301,6 +314,7 @@ export class MultiProviderAIProvider implements AIProvider {
       input.config.analysisPrompt,
       input.wholeDocument,
       input.spell,
+      input.structuralSurround,
     );
     return this.generateAnalysis('analyzeSection', input, prompt);
   }
