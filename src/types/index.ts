@@ -372,6 +372,23 @@ export interface Snapshot {
   testSuite: TestSuite;
   interpolationConfig?: PromptsConfig;
 }
+
+/**
+ * Lightweight commit metadata — the blob-free projection of a `Snapshot` (no
+ * markdown/testSuite), as returned by the Rust `snapshot_list` command. Lets us
+ * index deep history cheaply (e.g. the Version Compare day picker) without
+ * reading file blobs; full content is fetched lazily per selected commit via
+ * `Repository.readSnapshot`. `trigger` is a raw string (parsed from the commit
+ * message) — treat unknown values as routine autosaves.
+ */
+export interface SnapshotMeta {
+  id: string;
+  timestamp: number;
+  trigger: string;
+  affectedScope: 'all' | { sectionIds: string[] };
+  contentHash: string;
+  message: string;
+}
  
 export interface ProjectMeta {
   id: string;

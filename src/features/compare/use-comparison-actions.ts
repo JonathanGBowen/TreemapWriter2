@@ -1,33 +1,14 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useStore } from '../../state';
-import type { VersionRef } from '../../state/comparison-state';
-import type { Snapshot } from '../../types';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { DEFAULT_COMPARE_LENSES } from '../../lib/defaultCompareLenses';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
-import { sharedTitles } from '../../lib/compareHelpers';
+import { resolveOperand, sharedTitles } from '../../lib/compareHelpers';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { checkContextFit } from '../../services/ai/context-budget';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
-
-interface Operand {
-  markdown: string;
-  label: string;
-}
-
-/** Resolve a version ref to its markdown + a human label, or null if it's gone. */
-export const operandFor = (
-  ref: VersionRef | null,
-  revisions: Snapshot[],
-  localContent: string,
-): Operand | null => {
-  if (ref === 'current' || ref === null) return { markdown: localContent, label: 'Current Draft' };
-  const rev = revisions.find((r) => r.id === ref);
-  if (!rev) return null;
-  return { markdown: rev.markdown, label: new Date(rev.timestamp).toLocaleString() };
-};
 
 /**
  * Orchestration for the Version Compare workspace: resolve the two operands +
@@ -44,10 +25,11 @@ export const useComparisonActions = () => {
 
   const runComparison = useCallback(async () => {
     const {
-      revisions,
       localContent,
       versionAId,
       versionBId,
+      loadedA,
+      loadedB,
       activeCompareLensId,
       comparisonStatus,
       promptsConfig,
@@ -59,10 +41,10 @@ export const useComparisonActions = () => {
 
     if (comparisonStatus === 'running') return;
 
-    const a = operandFor(versionAId, revisions, localContent);
-    const b = operandFor(versionBId, revisions, localContent);
+    const a = resolveOperand(versionAId, loadedA, localContent);
+    const b = resolveOperand(versionBId, loadedB, localContent);
     if (!a || !b) {
-      toast.error('One of the selected versions is no longer available.');
+      toast.error('That version is still loading — try again in a moment.');
       return;
     }
     if (a.markdown === b.markdown) {

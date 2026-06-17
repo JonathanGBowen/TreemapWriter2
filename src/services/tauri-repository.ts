@@ -17,22 +17,21 @@ import type {
   Resolution,
   ResolveOutcome,
   Snapshot,
+  SnapshotMeta,
   SyncState,
 } from '../types';
 import type { Repository, StoredProjectData } from './repository';
 
-/** Lightweight commit metadata returned by the Rust `snapshot_list` command. */
-interface SnapshotMeta {
-  id: string;
-  timestamp: number;
-  trigger: string;
-  affectedScope: 'all' | { sectionIds: string[] };
-  contentHash: string;
-  message: string;
-}
-
 /** Number of commits eagerly fetched into in-memory `revisions` on project open. */
 const REVISIONS_WINDOW = 20;
+
+/**
+ * How far back `listSnapshotMeta` reaches by default. Generous because the walk
+ * is blob-free (metadata only); the Version Compare picker groups these by day.
+ * If a real project ever exceeds this, a parameterless `snapshot_list_all` is a
+ * trivial follow-up.
+ */
+const COMPARE_INDEX_LIMIT = 2000;
 
 /**
  * Cache of `path` keyed by project `id`. `getMeta` populates it; `getProject`
@@ -144,6 +143,27 @@ export const tauriRepository: Repository = {
       trigger,
       affectedScope,
     });
+  },
+
+  async listSnapshotMeta(limit?: number): Promise<SnapshotMeta[]> {
+    try {
+      return await invoke<SnapshotMeta[]>('snapshot_list', {
+        limit: limit ?? COMPARE_INDEX_LIMIT,
+      });
+    } catch (e) {
+      // Fresh project (no commits) — snapshot_list errors; an empty index is fine.
+      console.warn('snapshot_list failed (probably empty repo):', e);
+      return [];
+    }
+  },
+
+  async readSnapshot(id: string): Promise<Snapshot | null> {
+    try {
+      return await invoke<Snapshot>('snapshot_read', { commitId: id });
+    } catch (e) {
+      console.warn('snapshot_read failed:', e);
+      return null;
+    }
   },
 
   async migrateVeryOldLegacy(): Promise<null> {

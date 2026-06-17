@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
-import type { VersionComparison } from '../types';
+import type { Snapshot, SnapshotMeta, VersionComparison } from '../types';
 
 /**
  * The Version Compare workspace, as an ephemeral slice. Like the Glass Box
@@ -15,6 +15,9 @@ import type { VersionComparison } from '../types';
  */
 export type ComparisonStatus = 'idle' | 'running' | 'error';
 
+/** Load state of the deep, blob-free snapshot index. */
+export type IndexStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 /** A comparison operand: a snapshot id, or the live unsaved draft. */
 export type VersionRef = string | 'current';
 
@@ -28,6 +31,15 @@ export interface ComparisonSlice {
   comparison: VersionComparison | null;
   comparisonStatus: ComparisonStatus;
 
+  /** Deep, blob-free history index (newest first), loaded lazily when the workspace opens. */
+  snapshotIndex: SnapshotMeta[];
+  indexStatus: IndexStatus;
+  /** Full content for the two selected operands, fetched lazily by id (null = current draft or not-yet-loaded). */
+  loadedA: Snapshot | null;
+  loadedB: Snapshot | null;
+  /** Picker mode: false folds routine autosaves to day-start + checkpoints; true shows every save. */
+  showAllSaves: boolean;
+
   openCompare: () => void;
   closeCompare: () => void;
   setVersionA: (ref: VersionRef) => void;
@@ -35,6 +47,11 @@ export interface ComparisonSlice {
   setCompareLens: (id: string | null) => void;
   setComparison: (c: VersionComparison | null) => void;
   setComparisonStatus: (s: ComparisonStatus) => void;
+  setSnapshotIndex: (metas: SnapshotMeta[]) => void;
+  setIndexStatus: (s: IndexStatus) => void;
+  setLoadedA: (snap: Snapshot | null) => void;
+  setLoadedB: (snap: Snapshot | null) => void;
+  setShowAllSaves: (on: boolean) => void;
 }
 
 export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSlice> = (set) => ({
@@ -44,6 +61,11 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   activeCompareLensId: null,
   comparison: null,
   comparisonStatus: 'idle',
+  snapshotIndex: [],
+  indexStatus: 'idle',
+  loadedA: null,
+  loadedB: null,
+  showAllSaves: false,
 
   openCompare: () => set({ comparisonOpen: true }),
   // Closing keeps the selections + last report (regenerable, cheap to keep) but
@@ -54,4 +76,9 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   setCompareLens: (id) => set({ activeCompareLensId: id }),
   setComparison: (c) => set({ comparison: c }),
   setComparisonStatus: (s) => set({ comparisonStatus: s }),
+  setSnapshotIndex: (metas) => set({ snapshotIndex: metas }),
+  setIndexStatus: (s) => set({ indexStatus: s }),
+  setLoadedA: (snap) => set({ loadedA: snap }),
+  setLoadedB: (snap) => set({ loadedB: snap }),
+  setShowAllSaves: (on) => set({ showAllSaves: on }),
 });

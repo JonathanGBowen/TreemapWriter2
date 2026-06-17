@@ -4,6 +4,8 @@ import type {
   PullOutcome,
   PushOutcome,
   ResolveOutcome,
+  Snapshot,
+  SnapshotMeta,
   SyncState,
 } from '../types';
 import type { Repository, StoredProjectData } from './repository';
@@ -11,6 +13,13 @@ import type { Repository, StoredProjectData } from './repository';
 const STORAGE_PREFIX = 'socratic_p_';
 const META_KEY = 'socratic_meta_v1';
 const VERY_OLD_LEGACY_KEY = 'socratic_project_v1';
+
+/**
+ * The last project handed to `getProject`. The browser has no "open project"
+ * concept on the Rust side, so the parameterless snapshot reads resolve against
+ * this — keeping `listSnapshotMeta` / `readSnapshot` symmetric with Tauri.
+ */
+let lastOpenedId: string | null = null;
 
 const wordCountOf = (text: string): number => {
   const trimmed = text.trim();
@@ -65,6 +74,7 @@ export const browserRepository: Repository = {
     }
 
     if (!data) return null;
+    lastOpenedId = id;
     return parseIfString<StoredProjectData>(data);
   },
 
@@ -95,6 +105,26 @@ export const browserRepository: Repository = {
     // setProject. The TauriRepository overrides this to make a real
     // git commit.
     return null;
+  },
+
+  async listSnapshotMeta(): Promise<SnapshotMeta[]> {
+    // No git: project the stored `revisions` (full, capped at 50) to metadata.
+    if (!lastOpenedId) return [];
+    const proj = await browserRepository.getProject(lastOpenedId);
+    return (proj?.revisions ?? []).map((r) => ({
+      id: r.id,
+      timestamp: r.timestamp,
+      trigger: r.trigger,
+      affectedScope: r.affectedScope,
+      contentHash: r.contentHash,
+      message: '',
+    }));
+  },
+
+  async readSnapshot(id: string): Promise<Snapshot | null> {
+    if (!lastOpenedId) return null;
+    const proj = await browserRepository.getProject(lastOpenedId);
+    return proj?.revisions?.find((r) => r.id === id) ?? null;
   },
 
   async migrateVeryOldLegacy() {

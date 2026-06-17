@@ -1,22 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useStore } from '../../state';
 import type { VersionRef } from '../../state/comparison-state';
-import type { Snapshot } from '../../types';
+import type { SnapshotMeta } from '../../types';
 import { DEFAULT_COMPARE_LENSES } from '../../lib/defaultCompareLenses';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
+import { groupSnapshotsByDay, type DayGroup } from '../../lib/compareHelpers';
 import { useComparisonActions } from './use-comparison-actions';
 
-/** A styled <select> over { Current Draft, …loaded snapshots }. */
+/** A styled <select> over { Current Draft, …days → snapshots }. */
 function VersionSelect({
   value,
   onChange,
-  revisions,
+  groups,
   accent,
   label,
 }: {
   value: VersionRef | null;
   onChange: (ref: VersionRef) => void;
-  revisions: Snapshot[];
+  groups: DayGroup[];
   accent: 'magenta' | 'green';
   label: string;
 }) {
@@ -30,24 +31,29 @@ function VersionSelect({
       <select
         value={value ?? 'current'}
         onChange={(e) => onChange(e.target.value as VersionRef)}
-        className={`max-w-[220px] truncate font-mono text-[10px] px-2 py-1 rounded border outline-none cursor-pointer ${ring}`}
+        className={`max-w-[230px] truncate font-mono text-[10px] px-2 py-1 rounded border outline-none cursor-pointer ${ring}`}
       >
         <option value="current">Current Draft</option>
-        {revisions.map((r) => (
-          <option key={r.id} value={r.id}>
-            {new Date(r.timestamp).toLocaleString()}
-            {r.trigger ? ` · ${r.trigger}` : ''}
-          </option>
+        {groups.map((g) => (
+          <optgroup key={g.dateKey} label={g.dayLabel}>
+            {g.options.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </label>
   );
 }
 
-/** Header: Done · ≈ Version Compare · A vs B pickers · lens selector · Run. */
+/** Header: Done · ≈ Version Compare · A→B day pickers · lens · Run. */
 export function CompareTopBar() {
   const close = useStore((s) => s.closeCompare);
   const revisions = useStore((s) => s.revisions);
+  const snapshotIndex = useStore((s) => s.snapshotIndex);
+  const indexStatus = useStore((s) => s.indexStatus);
+  const showAllSaves = useStore((s) => s.showAllSaves);
+  const setShowAllSaves = useStore((s) => s.setShowAllSaves);
   const versionAId = useStore((s) => s.versionAId);
   const versionBId = useStore((s) => s.versionBId);
   const setVersionA = useStore((s) => s.setVersionA);
@@ -58,12 +64,27 @@ export function CompareTopBar() {
   const customSpells = useStore((s) => s.customSpells);
   const { runComparison } = useComparisonActions();
 
-  // Sensible defaults on first open: A = newest snapshot (or current if none),
-  // B = the live draft. The user reassigns either freely.
+  // The deep index drives the picker; fall back to the in-memory recent
+  // revisions until it loads, so the picker is never empty.
+  const groups = useMemo<DayGroup[]>(() => {
+    const metas: SnapshotMeta[] = snapshotIndex.length
+      ? snapshotIndex
+      : revisions.map((r) => ({
+          id: r.id,
+          timestamp: r.timestamp,
+          trigger: r.trigger,
+          affectedScope: r.affectedScope,
+          contentHash: r.contentHash,
+          message: '',
+        }));
+    return groupSnapshotsByDay(metas, { showAll: showAllSaves });
+  }, [snapshotIndex, revisions, showAllSaves]);
+
+  // Default on first open: A = start of the most recent day, B = the live draft.
   useEffect(() => {
-    if (versionAId === null) setVersionA(revisions[0]?.id ?? 'current');
+    if (versionAId === null && groups.length) setVersionA(groups[0].startId);
     if (versionBId === null) setVersionB('current');
-  }, [versionAId, versionBId, revisions, setVersionA, setVersionB]);
+  }, [versionAId, versionBId, groups, setVersionA, setVersionB]);
 
   const running = status === 'running';
 
@@ -84,9 +105,24 @@ export function CompareTopBar() {
       </div>
 
       <div className="flex items-center gap-3 min-w-0">
-        <VersionSelect value={versionAId} onChange={setVersionA} revisions={revisions} accent="magenta" label="A" />
+        <VersionSelect value={versionAId} onChange={setVersionA} groups={groups} accent="magenta" label="A" />
         <span className="text-hld-muted-text text-[11px]">→</span>
-        <VersionSelect value={versionBId} onChange={setVersionB} revisions={revisions} accent="green" label="B" />
+        <VersionSelect value={versionBId} onChange={setVersionB} groups={groups} accent="green" label="B" />
+        <button
+          type="button"
+          onClick={() => setShowAllSaves(!showAllSaves)}
+          title="Show every autosave, not just day-starts and key checkpoints"
+          className={`px-2 py-1 border font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
+            showAllSaves
+              ? 'border-hld-cyan/40 text-hld-cyan bg-hld-cyan/10'
+              : 'border-hld-border text-hld-muted-text hover:text-hld-text'
+          }`}
+        >
+          {showAllSaves ? '◉ all saves' : '◐ all saves'}
+        </button>
+        {indexStatus === 'loading' && (
+          <span className="font-mono text-[8px] uppercase tracking-[0.1em] text-hld-muted-text">indexing…</span>
+        )}
       </div>
 
       <div className="ml-auto flex items-center gap-3 shrink-0">

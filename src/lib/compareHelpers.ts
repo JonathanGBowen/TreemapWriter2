@@ -8,6 +8,8 @@ import type {
   ComparisonDirection,
   ComparisonReceipt,
   SectionComparisonNote,
+  Snapshot,
+  SnapshotMeta,
   VersionComparison,
 } from '../types';
 
@@ -140,4 +142,133 @@ export const normalizeComparison = (
     sectionNotes,
     ...(lensName ? { lensName } : {}),
   };
+};
+
+// --- day grouping for the version picker -----------------------------------
+// Frequent autosaves make raw history noisy. We coarsen it for the picker using
+// ONLY cheap metadata (timestamp + trigger): group by local calendar day, and
+// per day surface the "start of day" plus the meaningful checkpoints (manual /
+// pre-ai-write), folding routine autosaves away (unless `showAll`).
+
+export interface DaySnapshotOption {
+  id: string;
+  /** "Start of day", or a time-of-day (optionally tagged with the save type). */
+  label: string;
+  trigger: string;
+  isDayStart: boolean;
+}
+
+export interface DayGroup {
+  /** Local YYYY-MM-DD key. */
+  dateKey: string;
+  /** Human day label: "Today", "Yesterday", or e.g. "Jun 15". */
+  dayLabel: string;
+  /** The day's earliest snapshot id — its "start of day" reference. */
+  startId: string;
+  options: DaySnapshotOption[];
+}
+
+const CHECKPOINT_TRIGGERS = new Set(['manual', 'pre-ai-write']);
+
+const dateKeyOf = (ts: number): string => {
+  const d = new Date(ts);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+const timeLabelOf = (ts: number): string =>
+  new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const triggerTag = (trigger: string): string =>
+  trigger === 'manual' ? 'manual' : trigger === 'pre-ai-write' ? 'pre-AI' : '';
+
+const dayLabelOf = (dateKey: string, now: number): string => {
+  if (dateKey === dateKeyOf(now)) return 'Today';
+  if (dateKey === dateKeyOf(now - 86400000)) return 'Yesterday';
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+/**
+ * Group snapshot metadata into day buckets (newest day first) for the picker.
+ * Each day lists its "Start of day" first, then — by default — only the
+ * meaningful checkpoints; `showAll` reveals every save. Consecutive saves with
+ * an identical tree (`contentHash`) collapse to one.
+ */
+export const groupSnapshotsByDay = (
+  metas: SnapshotMeta[],
+  opts: { showAll?: boolean; now?: number } = {},
+): DayGroup[] => {
+  const now = opts.now ?? Date.now();
+  const sorted = [...metas].sort((a, b) => b.timestamp - a.timestamp); // newest first
+
+  const byDay = new Map<string, SnapshotMeta[]>();
+  for (const m of sorted) {
+    const key = dateKeyOf(m.timestamp);
+    const arr = byDay.get(key);
+    if (arr) arr.push(m);
+    else byDay.set(key, [m]);
+  }
+
+  const groups: DayGroup[] = [];
+  for (const [dateKey, daySnaps] of byDay) {
+    // daySnaps is newest-first; the earliest (last) is the day's start.
+    const start = daySnaps[daySnaps.length - 1];
+
+    // Collapse consecutive identical trees. Walk chronologically so "consecutive"
+    // means "adjacent in time".
+    const deduped: SnapshotMeta[] = [];
+    let prevHash: string | null = null;
+    for (let i = daySnaps.length - 1; i >= 0; i--) {
+      const m = daySnaps[i];
+      if (m.contentHash && m.contentHash === prevHash) continue;
+      prevHash = m.contentHash;
+      deduped.push(m);
+    }
+    deduped.reverse(); // back to newest-first for display
+
+    const options: DaySnapshotOption[] = [
+      { id: start.id, label: 'Start of day', trigger: start.trigger, isDayStart: true },
+    ];
+    for (const m of deduped) {
+      if (m.id === start.id) continue;
+      if (!opts.showAll && !CHECKPOINT_TRIGGERS.has(m.trigger)) continue;
+      const tag = triggerTag(m.trigger);
+      options.push({
+        id: m.id,
+        label: tag ? `${timeLabelOf(m.timestamp)} · ${tag}` : timeLabelOf(m.timestamp),
+        trigger: m.trigger,
+        isDayStart: false,
+      });
+    }
+
+    groups.push({ dateKey, dayLabel: dayLabelOf(dateKey, now), startId: start.id, options });
+  }
+  return groups;
+};
+
+// --- operand resolution -----------------------------------------------------
+
+export interface CompareOperand {
+  markdown: string;
+  label: string;
+}
+
+/**
+ * Resolve a selected version ref to its content + label. `'current'`/null is the
+ * live draft (`localContent`). A snapshot ref resolves only once its full
+ * content has been lazily loaded (`loaded.id === ref`); until then this returns
+ * null and the UI shows a brief loading state.
+ */
+export const resolveOperand = (
+  ref: string | null,
+  loaded: Snapshot | null,
+  localContent: string,
+): CompareOperand | null => {
+  if (ref === 'current' || ref === null) return { markdown: localContent, label: 'Current Draft' };
+  if (loaded && loaded.id === ref) {
+    return { markdown: loaded.markdown, label: new Date(loaded.timestamp).toLocaleString() };
+  }
+  return null;
 };

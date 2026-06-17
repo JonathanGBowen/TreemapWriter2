@@ -80,14 +80,19 @@ when synced, magenta on error) surfaces status without distraction.
   file. No single decomposition unblocks anything else.
 
 - **Version Compare follow-ups.** Shipped 2026-06-17 (see
-  [`docs/migration-log.md`](docs/migration-log.md)). Three deliberate v1 limits, by
-  mood: (a) only the loaded **20-commit window** is selectable — lifting it means a
-  larger `REVISIONS_WINDOW` or a lazy `readSnapshot(id)` repository method; (b)
+  [`docs/migration-log.md`](docs/migration-log.md)); deep day-grained history +
+  Dock launcher added the same day. Remaining deliberate limits, by mood: (a) the
+  deep index reaches back `COMPARE_INDEX_LIMIT = 2000` snapshots
+  ([`src/services/tauri-repository.ts`](src/services/tauri-repository.ts)) — ample
+  for one dissertation; a parameterless `snapshot_list_all` Rust command + a
+  "load older" affordance is the trivial lift if a project ever exceeds it; (b)
   comparison **reports are ephemeral** — a `.twriter/comparisons/<a>..<b>.yaml`
   sidecar (Repository + both impls + `layout.rs`) would persist/export them; (c)
   comparison is **whole-document text-level** with section notes aligned by *title*
   — strict section-by-section alignment by id waits on the stable-section-ID work
-  above (so renames/reorders don't mis-pair sections).
+  above (so renames/reorders don't mis-pair sections). (The original 20-commit
+  selection limit is resolved: a blob-free metadata index loads lazily on open and
+  full content is fetched per chosen version via `readSnapshot`.)
 
 ## Non-goals (out of scope by design — do not pre-build)
 

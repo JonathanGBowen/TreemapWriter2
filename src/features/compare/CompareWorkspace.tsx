@@ -3,6 +3,7 @@ import { useStore } from '../../state';
 import { CompareTopBar } from './CompareTopBar';
 import { CompareDiff } from './CompareDiff';
 import { CompareReport } from './CompareReport';
+import { useCompareOperands } from './use-compare-operands';
 
 /**
  * The Version Compare workspace. A full-screen mode (like the Revision
@@ -13,6 +14,7 @@ import { CompareReport } from './CompareReport';
 export function CompareWorkspace() {
   const open = useStore((s) => s.comparisonOpen);
   const close = useStore((s) => s.closeCompare);
+  useCompareOperands();
 
   useEffect(() => {
     if (!open) return;

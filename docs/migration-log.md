@@ -1876,3 +1876,63 @@ from defaults, so older project files keep loading either way.
 loaded 20-commit window; reports are ephemeral (a `.twriter/comparisons/` sidecar
 would persist them); strict section-by-section alignment by id awaits the stable
 section-ID work.
+
+---
+
+## 2026-06-17 — Feature: Version Compare iteration 2 (Dock launcher + deep, day-grained history)
+
+**Why.** Two follow-ups: (1) make Compare reachable from the Dock (bottom of the
+left column) alongside the other tools, not only the project menu; (2) let Compare
+reach far past the last 20 commits without UI noise or a project-open slowdown.
+Frequent autosaves make raw history both deep and repetitive.
+
+**Key enabler.** `snapshot_list` (commit metadata) is **blob-free**;
+`snapshot_read` (full content) is only needed for the two operands actually
+compared. Both Rust commands already exist and are registered, so this is
+**TypeScript-only — no Rust change.**
+
+**What changed.**
+
+- **Dock launcher.** `src/features/sidebar/Dock.tsx` — added an 8th tool
+  (`≈`, calls the existing `openCompare`) and widened the grid `grid-cols-7` →
+  `grid-cols-8`. The iteration-1 project-menu entry stays.
+- **Data layer (no Rust change).** Promoted `SnapshotMeta` to a shared type in
+  `src/types/index.ts`. Added two methods to the `Repository` interface + both
+  impls: `listSnapshotMeta(limit?)` (Tauri → `snapshot_list` with
+  `COMPARE_INDEX_LIMIT = 2000`; browser → maps in-memory `revisions`) and
+  `readSnapshot(id)` (Tauri → `snapshot_read`; browser → finds in `revisions`,
+  resolved against a cached `lastOpenedId`).
+- **Lazy loading.** New hook `src/features/compare/use-compare-operands.ts`
+  (mounted by `CompareWorkspace`): loads the blob-free index when the workspace
+  opens, and resolves the two selected operands' full content on demand
+  (fast-pathing the already-loaded recent `revisions`, else `readSnapshot`). The
+  eager 20-full-snapshot load in `getProject`, `VersionHistoryModal`, and restore
+  are untouched — **normal project-open cost is unchanged**; deep reads happen
+  only inside Compare.
+- **Day/checkpoint picker.** `src/lib/compareHelpers.ts` gained pure
+  `groupSnapshotsByDay(metas, { showAll, now })` (groups by local day, surfaces
+  "Start of day" + `manual`/`pre-ai-write` checkpoints, collapses identical-tree
+  saves, folds routine autosaves unless `showAll`) and `resolveOperand(...)`
+  (replaces the old `operandFor`; resolves a ref against the lazily-loaded
+  snapshot or the live draft). `CompareTopBar.tsx` now renders day `<optgroup>`s
+  with a "show every save" toggle and defaults A = start of the most recent day,
+  B = Current Draft. `CompareDiff.tsx` reads the loaded operands and shows a brief
+  "Loading version…" state.
+- **State.** `src/state/comparison-state.ts` gained `snapshotIndex`,
+  `indexStatus`, `loadedA`/`loadedB`, `showAllSaves` (+ setters).
+
+**What to verify.** `npm test` (188 pass, +7 new for `groupSnapshotsByDay` /
+`resolveOperand`), `npm run typecheck` (clean), `npm run build` (ok). No Rust
+change ⇒ no `cargo` step. Manual: Dock `≈` opens Compare; the A/B pickers show
+day groups (Today/Yesterday/date) with start-of-day + checkpoints, autosaves
+folded; "show every save" reveals the rest; pick a deep day for A and Current
+Draft for B → diff + evaluation load after a brief "Loading version…"; confirm a
+normal project open does no extra snapshot reads until Compare opens.
+
+**Rollback.** Pure additive TypeScript; `git revert`. No schema/state migration,
+no on-disk format change.
+
+**Deferred / follow-up (tracked in `STATUS.md`).** The deep index reaches back
+`COMPARE_INDEX_LIMIT = 2000` snapshots — a parameterless `snapshot_list_all` Rust
+command + a "load older" affordance is the trivial lift beyond that. Ephemeral
+reports and strict section-by-section alignment remain as before.

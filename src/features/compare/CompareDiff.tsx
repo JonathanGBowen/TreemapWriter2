@@ -2,27 +2,30 @@ import { useMemo, useState } from 'react';
 import { diffLines, diffWords, type Change } from 'diff';
 import { useStore } from '../../state';
 import { SegControl } from '../modals/SegControl';
-import { operandFor } from './use-comparison-actions';
+import { resolveOperand } from '../../lib/compareHelpers';
 
 /**
  * The textual diff between the two selected versions — the same green/magenta
  * unified diff the Version History modal shows, lifted here and given a
  * line/word granularity toggle. A is the earlier draft, B the later one.
+ * Operands resolve from the lazily-loaded snapshots (`loadedA`/`loadedB`); a
+ * deep version shows a brief loading state until its content arrives.
  */
 export function CompareDiff() {
-  const revisions = useStore((s) => s.revisions);
   const localContent = useStore((s) => s.localContent);
   const versionAId = useStore((s) => s.versionAId);
   const versionBId = useStore((s) => s.versionBId);
+  const loadedA = useStore((s) => s.loadedA);
+  const loadedB = useStore((s) => s.loadedB);
   const [mode, setMode] = useState(0); // 0 = lines, 1 = words
 
-  const a = operandFor(versionAId, revisions, localContent);
-  const b = operandFor(versionBId, revisions, localContent);
+  const a = resolveOperand(versionAId, loadedA, localContent);
+  const b = resolveOperand(versionBId, loadedB, localContent);
 
   const diff = useMemo<Change[] | null>(() => {
     if (!a || !b) return null;
     return mode === 0 ? diffLines(a.markdown, b.markdown) : diffWords(a.markdown, b.markdown);
-  }, [a, b, mode]);
+  }, [a?.markdown, b?.markdown, mode]);
 
   return (
     <>
@@ -48,7 +51,7 @@ export function CompareDiff() {
       <div className="flex-1 overflow-y-auto p-6 font-mono text-[13px] whitespace-pre-wrap leading-relaxed">
         {!diff ? (
           <div className="text-hld-muted-text text-[10px] uppercase tracking-[0.14em]">
-            One of the selected versions is unavailable.
+            Loading version…
           </div>
         ) : diff.length === 1 && !diff[0].added && !diff[0].removed ? (
           <div className="text-hld-muted-text text-[10px] uppercase tracking-[0.14em]">
