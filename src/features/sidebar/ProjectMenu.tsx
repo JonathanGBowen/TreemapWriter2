@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { exportAllProjects } from "../../lib/exportBackup";
 import { useStore } from "../../store";
+import { isTauri } from "../../services/tauri-environment";
 import { Pip } from "../shared/Pip";
 import { summarizeSync } from "./sync-status";
 
@@ -68,6 +69,7 @@ export function ProjectMenu({
   const projectCount = useStore((s) => s.projectList.length);
   const setShowProjectModal = useStore((s) => s.setShowProjectModal);
   const setShowSyncConfigModal = useStore((s) => s.setShowSyncConfigModal);
+  const setShowRemoteProjectModal = useStore((s) => s.setShowRemoteProjectModal);
   const sync = summarizeSync(
     useStore((s) => s.syncStatus),
     useStore((s) => s.syncError),
@@ -105,6 +107,9 @@ export function ProjectMenu({
       {open && (
         <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-[220px] bg-hld-surface2 border border-[rgba(0,232,245,0.25)] shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
           <MenuRow label="New project" onClick={() => run(onResetProject)} />
+          {isTauri() && (
+            <MenuRow label="New from remote…" onClick={() => run(() => setShowRemoteProjectModal(true))} />
+          )}
           <MenuRow label="Open projects…" meta={projectCount || undefined} onClick={() => run(() => setShowProjectModal(true))} />
           <Divider />
           <MenuRow label="Import markdown" onClick={() => run(() => mdInputRef.current?.click())} />

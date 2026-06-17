@@ -70,7 +70,7 @@ pub async fn sync_configure_remote(
     })
 }
 
-fn read_git_token() -> AppResult<String> {
+pub(crate) fn read_git_token() -> AppResult<String> {
     let entry = keyring::Entry::new("treemap-writer", GIT_TOKEN_SERVICE)?;
     match entry.get_password() {
         Ok(token) => Ok(token),

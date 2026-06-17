@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { Eye, Clock, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History } from "lucide-react";
+import { Eye, Clock, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History, GitBranch } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
+import { isTauri } from "../../services/tauri-environment";
 import { useCurrentSection } from "../tests-panel/use-current-section";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -84,6 +85,16 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const projectName = useStore(s => s.projectName);
   const setShowHistoryModal = useStore(s => s.setShowHistoryModal);
   const openRevisionWorkspace = useStore(s => s.openRevisionWorkspace);
+
+  // Project lifecycle, for the no-project empty state (desktop only). On the
+  // desktop demo/preview there is no on-disk handle, so nothing the user types
+  // is saved and no version history accrues — steer them to create/open a real
+  // project rather than into the in-memory editor.
+  const hasOpenProject = useStore(s => s.hasOpenProject);
+  const createNewProject = useStore(s => s.createNewProject);
+  const openExistingProject = useStore(s => s.openExistingProject);
+  const setShowRemoteProjectModal = useStore(s => s.setShowRemoteProjectModal);
+  const needsProject = isTauri() && !hasOpenProject;
 
   const toggleFocusMode = () => setFocusMode(!focusMode);
   const onOpenHistory = () => setShowHistoryModal(true);
@@ -359,27 +370,47 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           {isEmptyState && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10 pointer-events-none opacity-100 animate-in fade-in duration-700">
                <div className="text-center pointer-events-auto bg-[#0c1520]/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
-                 <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Ready to Write?</h2>
-                 <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Upload a markdown file to visualize its structure, or start typing to create something new.</p>
-                 <div className="space-y-3">
-                   <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
-                     <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
-                     <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Import Markdown</span>
-                   </button>
-                   <button onClick={() => projectInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(255,16,96,0.2)] text-hld-magenta hover:bg-[rgba(255,16,96,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(255,16,96,0.2)] hover:border-[rgba(255,16,96,0.4)]" style={{"--br-color": "var(--tw-colors-hld-magenta)"} as any}>
-                     <FolderOpen size={16} className="group-hover:scale-110 transition-transform"/>
-                     <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Open Project</span>
-                   </button>
-                   <div className="pt-4 text-center">
-                      <button onClick={() => {
-                        if (cmRef.current?.view) {
-                           cmRef.current.view.focus();
-                        }
-                      }} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
-                         <PenTool size={12} /> Start with a blank page
-                      </button>
-                   </div>
-                 </div>
+                 {needsProject ? (
+                   <>
+                     <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Start a Project</h2>
+                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.</p>
+                     <div className="space-y-3">
+                       <button onClick={() => { void createNewProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
+                         <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
+                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">New Project</span>
+                       </button>
+                       <button onClick={() => { void openExistingProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(255,16,96,0.2)] text-hld-magenta hover:bg-[rgba(255,16,96,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(255,16,96,0.2)] hover:border-[rgba(255,16,96,0.4)]" style={{"--br-color": "var(--tw-colors-hld-magenta)"} as any}>
+                         <FolderOpen size={16} className="group-hover:scale-110 transition-transform"/>
+                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Open Project</span>
+                       </button>
+                       <div className="pt-4 text-center">
+                          <button onClick={() => setShowRemoteProjectModal(true)} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
+                             <GitBranch size={12} /> Clone from a remote
+                          </button>
+                       </div>
+                     </div>
+                   </>
+                 ) : (
+                   <>
+                     <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Ready to Write?</h2>
+                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Import a markdown file to visualize its structure, or just start typing.</p>
+                     <div className="space-y-3">
+                       <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
+                         <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
+                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Import Markdown</span>
+                       </button>
+                       <div className="pt-4 text-center">
+                          <button onClick={() => {
+                            if (cmRef.current?.view) {
+                               cmRef.current.view.focus();
+                            }
+                          }} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
+                             <PenTool size={12} /> Start with a blank page
+                          </button>
+                       </div>
+                     </div>
+                   </>
+                 )}
                </div>
                <input type="file" ref={mdInputRef} className="hidden" accept=".md,.markdown,.txt" onChange={handleMdChange} />
                <input type="file" ref={projectInputRef} className="hidden" accept=".json,.socratic" onChange={handleProjectChange} />

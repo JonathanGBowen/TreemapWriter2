@@ -93,6 +93,7 @@ pub fn run() {
             // commands/project.rs
             commands::project::project_create,
             commands::project::project_open,
+            commands::project::project_clone,
             commands::project::project_close,
             commands::project::project_list_recent,
             commands::project::project_delete_recent,

@@ -73,6 +73,15 @@ export interface Repository {
   openProjectAt(path: string): Promise<ProjectMeta>;
 
   /**
+   * Desktop only: clone an existing TreemapWriter project from `url` (HTTPS +
+   * the PAT in the OS keyring) into the empty folder `path`, then open it as the
+   * current handle. Throws if the remote isn't a TreemapWriter project (empty,
+   * or missing project.md / .twriter/) — the caller routes to Create + publish.
+   * Browser throws.
+   */
+  cloneProject(url: string, path: string): Promise<ProjectMeta>;
+
+  /**
    * One-time migration of the very old `socratic_project_v1` localStorage
    * key. Returns the imported meta + data, or null if nothing to migrate.
    * The caller is responsible for adding the meta to the active list.

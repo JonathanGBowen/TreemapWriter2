@@ -33,23 +33,29 @@ npm run tauri:build  # installer (.app / .dmg / .exe / .deb / .AppImage)
 
 ## Multi-machine sync
 
-Phase 4 wires the local git repo to a private GitHub remote so you can
-write on multiple machines. To set it up:
+The local git repo syncs to a private GitHub remote so you can write on
+multiple machines. First, the prerequisites (once per machine):
 
 1. Create an empty private GitHub repo (no README, no `.gitignore`).
 2. Generate a fine-grained Personal Access Token scoped to that repo with
    read/write Contents permission.
-3. Open the project in TreemapWriter2 → Sidebar → Configure Sync icon →
-   paste the URL + PAT → Test & Save.
+
+Then there are three ways to connect, all from the Sidebar `◇` menu:
+
+- **Existing local project** → "Sync" (Configure Sync): paste the URL + PAT
+  → Test & Save. Pushes your project up to the empty repo.
+- **Brand-new project to a fresh repo** → "New from remote…" → **Create**:
+  pick a folder, paste URL + PAT, and it scaffolds the project and publishes
+  the first commit.
+- **Second machine / existing remote** → "New from remote…" → **Clone**:
+  paste the URL + PAT, pick an empty folder, and it clones the project down
+  and opens it — content from the start. (No CLI `git clone` needed.)
 
 The token lives in the OS keyring (Credential Manager / Keychain /
 Secret Service); it never sits on disk. After the initial push, every
 autosave commit pushes automatically (debounced 5s); focusing the
 window pulls (throttled 60s). The sidebar header has a small cyan dot
 when synced, magenta on error.
-
-On a second machine: `git clone <url>`, open the cloned folder in
-TreemapWriter2 like any other project, run Configure Sync again.
 
 ## Architecture & contributing
 

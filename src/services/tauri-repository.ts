@@ -126,6 +126,14 @@ export const tauriRepository: Repository = {
     return meta;
   },
 
+  async cloneProject(url: string, path: string): Promise<ProjectMeta> {
+    // project_clone clones with the keyring PAT, validates the layout, and
+    // installs it as the current handle (or errors + cleans up the folder).
+    const meta = await invoke<ProjectMeta>('project_clone', { url, path });
+    if (meta.path) idToPath.set(meta.id, meta.path);
+    return meta;
+  },
+
   async commitSnapshot(
     message: string,
     trigger: 'manual' | 'autosave' | 'pre-ai-write',

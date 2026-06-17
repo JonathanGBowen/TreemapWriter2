@@ -23,6 +23,7 @@ import { RevisionWorkspace } from "./features/revision/RevisionWorkspace";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
+import { RemoteProjectModal } from "./features/modals/RemoteProjectModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -977,6 +978,8 @@ export const App = () => {
         <MigrationModal />
 
         <SyncConfigModal />
+
+        <RemoteProjectModal />
 
         <ConflictResolutionModal />
 

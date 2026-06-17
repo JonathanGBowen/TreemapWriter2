@@ -88,24 +88,41 @@ pub async fn project_open(
         ));
     }
 
-    state.open_at(path.clone())?;
+    open_and_register(&state, path)
+}
 
-    let path_str = path.to_string_lossy().to_string();
-    let now = epoch_ms_now();
+/// Clone an existing TreemapWriter project from a remote URL into `path`, then
+/// open it as the current project. `path` must be empty or non-existent. Auth
+/// uses the GitHub PAT in the OS keyring (global — no project need be open).
+///
+/// If the cloned repo isn't a TreemapWriter project (an empty remote, or one
+/// without `project.md` / `.twriter/`), the clone is removed and the error
+/// routes the user to "Create + publish" instead.
+#[tauri::command]
+pub async fn project_clone(
+    state: State<'_, AppState>,
+    url: String,
+    path: PathBuf,
+) -> AppResult<ProjectMeta> {
+    validate_create_target(&path)?;
 
-    // Update or insert the recent-projects row.
-    let (id, name, word_count) = {
-        let global = state.global.lock().expect("global DB lock");
-        upsert_recent_project(&global, &path_str, now)?
-    };
+    let token = crate::commands::sync::read_git_token()?;
+    if let Err(e) = crate::git::remote::clone(&url, &path, &token) {
+        // Don't leave a half-cloned folder behind (the target was empty).
+        let _ = std::fs::remove_dir_all(&path);
+        return Err(e);
+    }
 
-    Ok(ProjectMeta {
-        id,
-        name,
-        last_modified: now,
-        word_count,
-        path: Some(path_str),
-    })
+    if !Layout::looks_like_project(&path) {
+        let _ = std::fs::remove_dir_all(&path);
+        return err(format!(
+            "{} isn't a TreemapWriter project (an empty repo, or missing project.md / .twriter/). \
+             To start a new project on this remote, use Create + publish instead.",
+            url
+        ));
+    }
+
+    open_and_register(&state, path)
 }
 
 /// Drop the active project handle.
@@ -162,6 +179,27 @@ pub async fn project_delete_recent(
 }
 
 // --- internals -----------------------------------------------------------
+
+/// Open a validated project folder as the current handle and upsert it into the
+/// recent-projects DB. Shared tail of `project_open` and `project_clone`.
+fn open_and_register(state: &AppState, path: PathBuf) -> AppResult<ProjectMeta> {
+    state.open_at(path.clone())?;
+
+    let path_str = path.to_string_lossy().to_string();
+    let now = epoch_ms_now();
+    let (id, name, word_count) = {
+        let global = state.global.lock().expect("global DB lock");
+        upsert_recent_project(&global, &path_str, now)?
+    };
+
+    Ok(ProjectMeta {
+        id,
+        name,
+        last_modified: now,
+        word_count,
+        path: Some(path_str),
+    })
+}
 
 fn validate_create_target(path: &std::path::Path) -> AppResult<()> {
     if path.exists() {

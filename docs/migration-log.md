@@ -1603,3 +1603,95 @@ sprint modal with no data implications.
 shape editor; drag-reorder/retime of the generated plan in the Brief (rows are read-only previews
 in v1; re-plan = regenerate); git/FTS fragment retrieval (seam only). Pre-existing lint
 (5 errors / ~197 warnings in unrelated files) left untouched.
+
+## Hotfix — git sync HTTPS transport (2026-06-16)
+
+**The bug.** Phase 4 git sync (push/pull to a private GitHub remote) was never actually
+functional against a real remote. `src-tauri/Cargo.toml` declared
+`git2 = { ..., default-features = false, features = ["vendored-libgit2"] }`. Turning off
+default features dropped git2's `https` feature, so libgit2 was compiled **without an HTTPS
+transport**. Every `https://github.com/...` fetch/push failed at transport lookup
+("unsupported URL protocol") *before* the (correct) PAT credential callback in
+`git/remote.rs` ever ran. This stayed hidden because every prior test and the Phase 5C
+conflict work used local/`file://`/`tempfile` remotes, which use libgit2's *local*
+transport and need no `https` feature.
+
+**The fix.** Add `https` to the git2 feature list in `src-tauri/Cargo.toml`. On Windows this
+builds libgit2 against WinHTTP; on macOS, SecureTransport — neither needs OpenSSL. (Linux note:
+`https` there pulls in system OpenSSL; if `.deb`/`.AppImage` bundles are ever produced, add a
+`[target.'cfg(target_os = "linux")'.dependencies]` git2 entry with `vendored-openssl` to keep
+the build self-contained.)
+
+**Second bug, found by the new regression test.** `git/remote.rs::pull()` fast-forward path
+moved the branch ref to the fetched commit and *then* ran a `.safe()` checkout — which left the
+working tree on the old content, so a fast-forward pull advanced the ref but never wrote the
+pulled changes to `project.md`. Switched to `.force()` (the tree is already verified clean by
+the `WorkingTreeDirty` guard at the top of `pull()`), matching `merge::finalize`.
+
+**Tests.** New `git::remote::tests` (4): `https_transport_is_compiled_in` probes an https
+`.invalid` host (RFC 6761, offline) and fails iff the transport is missing — the guard for the
+Cargo regression; `configure_push_pull_roundtrip` drives a local bare repo through configure →
+push → second-clone push → fast-forward pull and asserts the content lands on disk;
+`outcomes_report_no_remote_before_configure`; `pull_refuses_dirty_working_tree`. 8 Rust tests
+total. **Caveat:** local-transport fixtures cannot detect the `https`-feature regression — that
+is solely what `https_transport_is_compiled_in` guards.
+
+**What to verify.** `cd src-tauri && cargo test` (8 pass), `npm test` (166 pass),
+`npm run typecheck` (clean), `npm run build` (ok). The only thing local fixtures can't prove is
+a real TLS handshake: confirm with one Configure Sync → push against a throwaway private GitHub
+repo + fine-grained PAT.
+
+**Rollback.** Revert the `Cargo.toml` line and the `remote.rs` changes. Note reverting the
+Cargo line reintroduces the silent no-HTTPS failure.
+
+## Remote-aware project entry — Clone + Create-and-publish (2026-06-17)
+
+**Why.** Sync could only be *attached* to an already-open local project via `SyncConfigModal`
+(push-first, so it rejects any non-empty remote), and there was no in-app way to **load** a
+project from a remote — the README told second-machine users to `git clone` from the CLI. This
+adds the two missing remote-aware project entry points: **Create + publish** (new local project →
+empty remote) and **Clone** (load an existing project from a remote, pulling from the start).
+
+**Backend.**
+- `git::remote::clone(url, into, token)` (`src-tauri/src/git/remote.rs`) — authenticated clone via
+  `git2::build::RepoBuilder` + the same `Cred::userpass_plaintext("x-access-token", token)`
+  callback as `pull`/`push`. After checkout it re-applies `ensure_line_ending_policy` and
+  force-checks-out HEAD (guarded on unborn HEAD) to normalize a fresh clone to LF — the Windows
+  CRLF "permanently dirty" guard, here for clones.
+- `project_clone(state, url, path)` (`commands/project.rs`) — `validate_create_target` → `clone`
+  (removes the folder on any clone error) → if `!looks_like_project` remove the folder and reject
+  with a message routing to Create + publish → otherwise the shared `open_and_register` tail
+  (extracted from `project_open`: `state.open_at` + `upsert_recent_project` + `ProjectMeta`).
+  Registered in `lib.rs`. `read_git_token` in `commands/sync.rs` is now `pub(crate)` so the clone
+  command reuses it (the PAT is global/keyring — available with no project open).
+
+**Frontend.**
+- `Repository.cloneProject(url, path)` (`repository.ts`) → `invoke('project_clone')` in
+  `tauri-repository.ts`; browser impl throws (desktop-only).
+- `project-state.ts`: thunks `cloneRemoteProject` and `createProjectWithRemote` (the latter composes
+  the existing `createProjectAt` + `configureRemote` + `syncPush`). Both resolve `true` on success,
+  `false` if the folder picker was cancelled, and throw on failure for the modal to surface. New
+  `pickFolder` helper. `createProjectWithRemote` throws "use Clone" on a `nonFastForward` push.
+- `RemoteProjectModal.tsx` — one modal, `SegControl` [Clone | Create]; mirrors `SyncConfigModal`'s
+  frame/fields (not `ModalShell`, matching its sibling). Opened from `ProjectMenu` → "New from
+  remote…" (desktop-only item); rendered unconditionally in `App.tsx`. New `showRemoteProjectModal`
+  flag in `ui-state.ts`.
+
+**Edge cases (all routed, non-destructive).** Empty remote or non-TreemapWriter repo → Clone
+rejects + removes the folder + suggests Create; Create + publish to a non-empty remote → push
+`nonFastForward` → modal says "use Clone" (the local project is still created/loaded — it degrades
+to the existing attach-remote state). `SyncConfigModal` is unchanged (third case: attach a remote
+to the project already open).
+
+**Tests.** Two new `git::remote::tests`: `clone_seeded_project_opens_and_validates` (clone a local
+bare repo seeded with `project.md` + `.twriter/` → content lands + `looks_like_project`) and
+`clone_empty_remote_is_not_a_project` (empty remote → rejected). 10 Rust tests total. Local
+transport needs no PAT, so these run offline.
+
+**What to verify.** `cd src-tauri && cargo test` (10 pass), `npm test` (166), `npm run typecheck`
+(clean), `npm run build` (ok). Manual (desktop): Create + publish to an empty private GitHub repo,
+then Clone it into a second folder and confirm the document comes down and opens.
+
+**Rollback.** Revert the listed files. `project_clone`/`cloneProject` are additive; removing the
+`project-state` thunks + `RemoteProjectModal` + the `ProjectMenu` item restores the prior entry
+flow. `SyncConfigModal` was untouched.
