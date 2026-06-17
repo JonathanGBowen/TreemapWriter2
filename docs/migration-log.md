@@ -2067,7 +2067,10 @@ change — every slice action and tier already existed.
 
 **Rollback.** Pure front-end (`git revert`). No schema/state/on-disk change.
 
-**Deferred / follow-up (tracked in `STATUS.md`).** `ProjectFileModal`'s
-`customPersonas` edits are still dropped on save (the only remaining piece of the
-old "global save" item). The declared per-prompt `variables` metadata is surfaced
-for locked prompts but there's no variable-aware editing UI yet.
+**Follow-up (same day).** Wired the last piece of the old `ProjectFileModal`
+"global save" item: `onSaveData` now also applies `customPersonas`, so every field
+the raw-JSON editor exposes (projectName / testSuite / promptsConfig /
+customPersonas) persists on Save. That STATUS item is now fully resolved.
+
+**Deferred.** The declared per-prompt `variables` metadata is surfaced for locked
+prompts but there's no variable-aware editing UI yet.

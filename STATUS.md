@@ -47,11 +47,6 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
-- **`ProjectFileModal` `customPersonas` global save.** The raw-JSON editor's
-  `projectName` / `testSuite` / `promptsConfig` edits now persist on Save (prompts
-  land as a per-project override; see migration-log 2026-06-17 UI pass), but
-  `customPersonas` edits there are still dropped by App's `onSaveData` handler.
-  Wire it or drop the field from the editor.
 - **Re-enable App.tsx test-suite cleanup.** A `useEffect` is commented out
   ("Disabled to prevent deleting data when section titles change") — a data-loss
   bug was found and the feature disabled rather than fixed. Design a safer cleanup

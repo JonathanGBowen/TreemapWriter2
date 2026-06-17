@@ -950,12 +950,13 @@ export const App = () => {
           markdown={markdown}
           promptsConfig={promptsConfig}
           customPersonas={customPersonas}
-          onSaveData={({ testSuite: newTestSuite, projectName: newProjectName, promptsConfig: newPrompts }) => {
+          onSaveData={({ testSuite: newTestSuite, projectName: newProjectName, promptsConfig: newPrompts, customPersonas: newPersonas }) => {
             if (newTestSuite) setTestSuite(newTestSuite);
             if (newProjectName) setProjectName(newProjectName);
             // Raw-JSON prompt edits land as a per-project override (same path as
-            // the Prompts map's project scope). customPersonas stays a separate item.
+            // the Prompts map's project scope).
             if (newPrompts) setPromptsConfig(newPrompts);
+            if (newPersonas) setCustomPersonas(newPersonas);
             void saveCurrentState();
           }}
         />
