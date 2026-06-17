@@ -3,6 +3,14 @@
 Append-only record of architectural phase transitions. The most recent entry
 at the bottom is the current state.
 
+> **Doc map (2026-06-15 reorg).** This log is *history*. For the current backlog
+> see [`../STATUS.md`](../STATUS.md); for how the app is built today see
+> [`../AGENTS.md`](../AGENTS.md); for the principles see [`VISION.md`](VISION.md).
+> On 2026-06-15 the docs were reorganized — `ARCHITECTURE.md` was split (now a
+> tombstone) and `refactor-plan.md` / `phase-5.md` / `living-sprints-plan.md`
+> were frozen in place. Entries below reference those docs at their original
+> paths; that is the historical record and is intentionally not rewritten.
+
 ## Format
 
 Each entry: date, phase entered, summary of what changed, what to verify
@@ -1603,3 +1611,99 @@ sprint modal with no data implications.
 shape editor; drag-reorder/retime of the generated plan in the Brief (rows are read-only previews
 in v1; re-plan = regenerate); git/FTS fragment retrieval (seam only). Pre-existing lint
 (5 errors / ~197 warnings in unrelated files) left untouched.
+
+---
+
+## 2026-06-15 — Documentation reconciliation (docs-only)
+
+**Why.** The doc set had drifted: it mixed timeless principles, current-state
+inventories (file trees, counts), and history in the same files, so any stale
+fact — 5-vs-6 slices, "14 modals", Gemini-only AI, `chapters/*.md`,
+`section_save`/`search`, "300-line cap enforced" — undermined the whole document.
+An 18-agent excavation produced a contradiction matrix; this change reconciles it.
+
+**What changed (no application code touched).**
+
+- **Role-separated the living docs** so each has one job and one change-trigger:
+  [`VISION.md`](VISION.md) (*why* — new), [`../AGENTS.md`](../AGENTS.md) (*how* —
+  now also holds the current architecture absorbed from `ARCHITECTURE.md`),
+  [`../STATUS.md`](../STATUS.md) (*now* — new living backlog), this log
+  (*history*), and a thin [`../CLAUDE.md`](../CLAUDE.md) dispatch carrying a
+  canonical-source-per-fact rule ("inventories live in code; prose states rules").
+- **Retired phase numbering.** `phase-5.md`'s live items moved into `STATUS.md`.
+- **Froze the plan docs in place** with banners (`refactor-plan.md`, `phase-5.md`,
+  `living-sprints-plan.md`) rather than relocating them — moving would have broken
+  ~30 relative links and forced retro-edits to this append-only log.
+- **Tombstoned `docs/ARCHITECTURE.md`** (kept at its path so inbound links
+  resolve); its current-state went to `AGENTS.md`, its principles to `VISION.md`.
+- **Fixed the contradictions:** 6 state slices; multi-provider AI everywhere (the
+  `@google/genai`-only language is gone); `project.md` as the single source of
+  truth (the `chapters/*.md` target recorded as considered-but-not-shipped); the
+  real Tauri command families (no `section_save`/`search`); the 300-line cap
+  documented honestly as a warning-level target; env keys in
+  `src-tauri/.env.local`; a vocabulary map for the four type subsystems (with
+  `TestSuite` flagged as a legacy umbrella, not unit tests). Aligned the aesthetic
+  to "no light mode required" (per the user's edit). Updated `metadata.json`.
+
+**What to verify.** Docs-only: `git diff --stat` shows only `*.md` +
+`metadata.json`. `npm test` / `npm run typecheck` / `npm run build` /
+`npm run lint` unchanged from the branch base. Cross-reference check: every
+doc-to-doc link resolves; no two living docs assert the same fact.
+
+**Rollback.** `git revert` the commit; documentation only, no data or behavior.
+
+**Definition of done (replaces the end-of-phase ritual).** Shipping a feature now
+requires, in the same change: an entry here + a `STATUS.md` update, and
+`AGENTS.md` / `VISION.md` only if a convention or principle changed. See
+`AGENTS.md` → "Definition of done".
+
+---
+
+## 2026-06-16 — Fix: desktop autosave now persists the live draft (data-loss bugfix)
+
+**Why.** A user lost hours of dissertation prose. Read-only forensics on the
+affected project (`git` log/reflog/fsck + the sqlite cache) showed `project.md`
+byte-identical across *dozens* of `autosave` commits: on desktop the 60-second
+autosave wrote `state.markdown` (the "committed" copy), which only ever advanced
+on a *manual* save, while the user's typing lived solely in the live editor buffer
+(`localContent`). The desktop read drops `local_draft` (`document.rs` returns
+`local_draft: None`), so when the WebView2 webview reloaded on wake-from-sleep it
+re-hydrated the editor from the frozen `project.md` and silently reverted
+everything since the last manual save. This broke VISION principle 5 ("the local
+draft persists separately from the committed copy") on the desktop path only — the
+browser path (which persists `localDraft` to IndexedDB) was unaffected. The lost
+work was never written to disk in any form and was unrecoverable.
+
+**What changed (TypeScript only; no schema/Rust change).**
+
+- `saveCurrentState` (`src/state/project-state.ts`) now persists the **live**
+  buffer: it writes `localContent` into both the on-disk `markdown` field and
+  `localDraft`, and converges the in-memory committed `markdown` to match. Because
+  `createSnapshot` calls `saveCurrentState` before `repo.commitSnapshot`, every
+  autosave now both writes *and* git-commits the user's actual text.
+- Added a safety guard: `saveCurrentState` refuses to overwrite a non-empty saved
+  document with a transient empty buffer (the project-switch / load window).
+- Simplified `handleManualSave` (`src/App.tsx`) — dropped the redundant,
+  mis-ordered `setMarkdown(localContent)` that ran *after* the commit, so manual
+  save had also been committing the stale copy.
+- Added a regression test (`src/state/__tests__/persistence.test.ts`):
+  edit → `saveCurrentState` → simulated desktop reload (`loadProject` with
+  `localDraft` dropped) → asserts the live text survives and the persisted
+  `markdown` equals it.
+
+**What to verify.** `npm test` (169 pass, incl. 3 new), `npm run typecheck`
+(clean), `npm run build` (ok). Manual (desktop, `npm run tauri:dev`): type prose,
+wait > 60 s, hard-reload the window (Ctrl+R) → edits persist (pre-fix they
+reverted); `git -C <project> log -p -1 -- project.md` shows the new text in the
+latest autosave commit.
+
+**Rollback.** Pure code; no schema/state migration. `git revert` restores the
+prior behavior (and the bug). The on-disk format is unchanged — desktop simply now
+writes the live text into the existing `project.md` / `localDraft` fields.
+
+**Deferred / follow-up.** A separately-persisted, gitignored `.twriter/draft.md`
+(round-tripping `local_draft` through Rust `document.rs` / `layout.rs` +
+`.gitignore`) would also cover the < 60 s window and a hard crash before the first
+autosave, fully restoring the draft/committed split on desktop. Tracked in
+`STATUS.md`. The unrelated section-ID-orphan item ("re-enable App.tsx test-suite
+cleanup") is untouched.

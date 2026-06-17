@@ -1,241 +1,27 @@
-# TreemapWriter2 — Architecture
+<!-- TOMBSTONE 2026-06-15 -->
+# docs/ARCHITECTURE.md — split into role-separated docs
 
-> The full plan lives at [`refactor-plan.md`](refactor-plan.md). This file
-> is the in-repo, agent-readable summary. Update both when reality drifts.
+> **This file was split on 2026-06-15.** Its content was reorganized so that no
+> single document mixes timeless principles with fast-changing current-state —
+> the mix that had caused `ARCHITECTURE.md` to drift.
 
-## Vocabulary
+The architecture documentation now lives in role-separated files:
 
-- **Presentation layer / view layer** — React components that render pixels.
-  UI concern only.
-- **Application state / view-model** — ephemeral runtime state that drives
-  the view (selection, modal openness, panel widths). Lost on reload, fine.
-- **Domain model / domain state** — what the user persists (the dissertation
-  text, specs, diagnostics, history). The "nouns" of the application.
-- **Persistence layer / repository layer** — code that durably stores and
-  retrieves the domain model. Ignorant of React.
-- **Service layer** — orchestrators composing persistence + external calls
-  (AI providers) into use-cases.
-- **Infrastructure** — runtime, database engine, IPC, build tooling.
+- **Why** the app is built this way — principles, the layer vocabulary as
+  concepts, the source-of-truth model → [`VISION.md`](VISION.md)
+- **How** it's built today — current architecture, the real Tauri command
+  surface, SQLite-as-cache, the `Repository`/`AIProvider` seams, where-to-put-X
+  → [`../AGENTS.md`](../AGENTS.md)
+- **What's next** and what's out of scope → [`../STATUS.md`](../STATUS.md)
+- The **dated history** of what shipped → [`migration-log.md`](migration-log.md)
 
-## Source of truth
+## Why this tombstone exists
 
-| Data | Authoritative location | Cache |
-|---|---|---|
-| Dissertation prose | `<project>/chapters/*.md` on disk (post-Phase 3) | SQLite `sections` table; Zustand `document-state` |
-| Section specs | `<project>/.twriter/specs/*.spec.yaml` | SQLite `specs` table |
-| Section analyses + dialogues | same `.spec.yaml` sidecar (`analysis:` key) | — |
-| History | `.git/` log of the project folder | — |
-| Diagnostics | SQLite (ephemeral, regenerable) | — |
-| UI state | Zustand `ui-state` (in memory) | — |
-
-Pre-Phase 3, the authoritative location is the IndexedDB blob. Treat it the
-same way: one source of truth, everything else is a projection.
-
-## Principles
-
-1. **Separation of concerns** — a module has one reason to change.
-2. **Single source of truth** — every piece of state has exactly one
-   canonical location.
-3. **Persistence ignorance / dependency inversion** — domain logic depends
-   on a `Repository` interface; storage implementations depend on it.
-4. **Content-addressable, append-only history** — past states are immutable;
-   git is the substrate.
-5. **Minimum cognitive surface area** — files cap at 300 lines; folder
-   structure answers "where does X go?" in 5 seconds.
-6. **Agent-legibility** — the codebase teaches an AI agent how to extend it
-   correctly without re-deriving design intent each session.
-7. **Reversibility and durability proportional to stakes** — three
-   recovery paths: SQLite, plain markdown on disk, git history pushed to
-   a private GitHub remote.
-
-## Target layout (end state, Phase 4 complete)
-
-```
-<project-folder>/                  ← user-chosen, e.g. ~/Dissertation
-├── .git/                          ← real git repo, pushed to private GitHub
-├── .twriter/
-│   ├── index.sqlite               ← derived cache (FTS5 search, queries)
-│   ├── settings.json              ← project-local settings
-│   └── specs/
-│       └── <section-id>.spec.yaml ← structured specs as YAML sidecars
-├── chapters/
-│   ├── 01-introduction.md         ← prose, source of truth
-│   └── ...
-└── README.md
-```
-
-```
-<repo>/                            ← this codebase
-├── AGENTS.md
-├── docs/
-│   ├── ARCHITECTURE.md            ← this file
-│   ├── refactor-plan.md           ← design archive (Phases 0–4)
-│   ├── migration-log.md           ← append-only phase log
-│   └── phase-5.md                 ← deferred + Phase 5 work tracker
-├── src/
-│   ├── App.tsx                    ← target: ~150 lines, layout shell only
-│   ├── index.tsx
-│   ├── state/
-│   │   ├── ui-state.ts
-│   │   ├── editor-state.ts
-│   │   ├── document-state.ts
-│   │   ├── project-state.ts
-│   │   └── ai-state.ts
-│   ├── services/
-│   │   ├── repository.ts          ← interface
-│   │   ├── browser-repository.ts  ← legacy IndexedDB impl
-│   │   ├── tauri-repository.ts    ← Tauri impl (Phase 3+)
-│   │   ├── ai-provider.ts         ← interface (provider-agnostic)
-│   │   ├── ai/                     ← multi-provider model layer
-│   │   │   ├── clients/            ← one LLMClient per provider (sole SDK importers)
-│   │   │   ├── ai-provider.impl.ts ← prompts + parsing; dispatch by ModelChoice
-│   │   │   └── model-*.ts          ← catalog, config, resolution
-│   │   └── prompts/
-│   │       ├── system-instruction.md
-│   │       ├── generate-specs.md
-│   │       └── ...
-│   ├── features/
-│   │   ├── sidebar/Sidebar.tsx        ← chrome + project tree
-│   │   ├── treemap/Treemap.tsx        ← Plotly hierarchical view
-│   │   ├── editor/EditorPanel.tsx     ← CodeMirror surface + focus mode
-│   │   ├── tests-panel/TestsPanel.tsx ← spec / diagnostic / dependency UI
-│   │   ├── tutorial/Tutorial.tsx      ← onboarding (react-joyride)
-│   │   ├── modals/*.tsx               ← 14 self-mounting modals (flat)
-│   │   ├── migration/             ← Phase 3
-│   │   └── sync/                  ← Phase 4
-│   ├── lib/                       ← pure utilities (parser, hash, defaults)
-│   └── types/
-├── src-tauri/                     ← Phase 2+
-│   └── src/
-│       ├── commands.rs
-│       ├── db/{mod.rs,schema.sql}
-│       └── git.rs
-└── package.json
-```
-
-## SQLite schema (Phase 3 cache, never authoritative)
-
-```sql
-CREATE TABLE projects (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  path TEXT NOT NULL UNIQUE,
-  last_opened INTEGER NOT NULL,
-  word_count INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE sections (
-  id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  parent_id TEXT REFERENCES sections(id),
-  title TEXT NOT NULL,
-  level INTEGER NOT NULL,
-  ordinal INTEGER NOT NULL,
-  source_file TEXT NOT NULL,
-  start_line INTEGER NOT NULL,
-  end_line INTEGER NOT NULL,
-  word_count INTEGER NOT NULL DEFAULT 0,
-  content_hash TEXT NOT NULL
-);
-CREATE INDEX sections_project ON sections(project_id);
-CREATE INDEX sections_parent  ON sections(parent_id);
-
-CREATE TABLE specs (
-  section_id TEXT PRIMARY KEY REFERENCES sections(id) ON DELETE CASCADE,
-  function TEXT NOT NULL,
-  main_claim TEXT NOT NULL,
-  required_moves_json TEXT NOT NULL,
-  incoming_context_json TEXT NOT NULL,
-  outgoing_commitments_json TEXT NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-
-CREATE TABLE diagnostics (
-  section_id TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
-  generated_at INTEGER NOT NULL,
-  readiness TEXT NOT NULL,
-  next_priority TEXT,
-  move_results_json TEXT NOT NULL,
-  coherence_notes_json TEXT NOT NULL,
-  input_hash TEXT NOT NULL,
-  PRIMARY KEY (section_id, generated_at)
-);
-
-CREATE TABLE dependencies (
-  from_section TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
-  to_section   TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
-  kind TEXT NOT NULL,
-  PRIMARY KEY (from_section, to_section, kind)
-);
-
-CREATE VIRTUAL TABLE sections_fts USING fts5(
-  section_id UNINDEXED,
-  title,
-  body,
-  content='',
-  tokenize='porter unicode61'
-);
-```
-
-Rebuild policy: drop & recreate `sections`, `specs`, `dependencies`,
-`sections_fts` on project open if the cache is older than `.git/HEAD` mtime.
-`projects` and `diagnostics` survive rebuilds.
-
-## Tauri command surface (Phase 2+)
-
-```rust
-project_open(path) -> ProjectMeta
-project_list_recent() -> Vec<ProjectMeta>
-section_save(section_id, markdown, spec) -> ()
-snapshot_commit(message, trigger) -> CommitId
-snapshot_list(limit) -> Vec<CommitMeta>
-snapshot_read(commit_id) -> Snapshot
-sync_state() -> SyncState                            // Phase 4
-sync_pull() -> PullOutcome                           // Phase 4
-sync_push() -> PushOutcome                           // Phase 4
-sync_configure_remote(url) -> ()                     // Phase 4
-credentials_set(service, value) -> ()                // Phase 4
-credentials_get(service) -> Option<String>           // Phase 4
-credentials_delete(service) -> ()                    // Phase 4
-search(query) -> Vec<SearchHit>                      // Phase 5
-```
-
-Recommended crates: `rusqlite` (bundled feature, FTS5 included), `git2` for
-git operations, `serde` + `serde_yaml` for sidecar IO, `tokio` for async,
-`keyring` for OS secret storage of the Gemini + Anthropic API keys (with an
-env-var fallback loaded from `src-tauri/.env.local` at startup).
-
-AI calls go through one provider-agnostic `AIProvider` impl
-(`services/ai/ai-provider.impl.ts`) that resolves a per-call-kind `ModelChoice`
-and dispatches to a provider `LLMClient` (Gemini / Anthropic / Ollama — each the
-sole importer of its SDK). Per-project model choices persist in the project file
-(`.twriter/models.json`); the global default, editable catalog, and Ollama URL
-are app preferences (`services/preferences.ts`). API keys live only in the OS
-keyring — never in the project file.
-
-## Phases
-
-| Phase | Goal | Storage at end | Status |
-|---|---|---|---|
-| 0 | Foundations: AGENTS.md, ESLint, Vitest, backup export button | IndexedDB (unchanged) | ✅ done |
-| 1 | Decompose: split store, extract features, prompts to .md | IndexedDB (unchanged) | ✅ done |
-| 2 | Tauri shell wraps existing UI; verify desktop build | IndexedDB (unchanged) | ✅ done |
-| 3 | TauriRepository: SQLite + markdown-on-disk + git init; importer migrates legacy data | Disk + SQLite + git | ✅ done |
-| 3.5 | AI provider abstraction (deferred Phase 1 deliverable); commit master plan to repo | Disk + SQLite + git | ✅ done |
-| 4 | Sync: git pull/push wired into chrome; OS-keyring credentials for git PAT + Gemini key | Disk + SQLite + git + remote | ✅ done |
-| 5 | Polish: streaming AI, FTS5 search, conflict resolution UI, optionally SSH auth | — | ⏳ next — see [`phase-5.md`](phase-5.md) |
-
-Current phase is recorded in [`docs/migration-log.md`](migration-log.md);
-next work is itemized in [`docs/phase-5.md`](phase-5.md).
-
-## Anti-patterns
-
-See `AGENTS.md`. Listed here too:
-
-- Adding state to the wrong slice.
-- Calling `idb-keyval`, `fs`, `git2`, or `@google/genai` from a React component.
-- Inlining a prompt string in TypeScript.
-- "Simplifying" the domain types in `src/types/index.ts`.
-- Adding a confirmation modal for a non-destructive action.
-- Adding a configuration knob without a sensible default.
-- Adding a feature flag for a hypothetical user.
+`ARCHITECTURE.md` had drifted: it described a *target* state as if it were
+current — a `chapters/*.md` prose layout that was never built (the shipped design
+is a single `project.md`), and a command surface listing `section_save` and
+`search` that do not exist. Separating *vision* (changes ≈never) from
+*current-state* (changes every feature) removes the class of contradiction that
+produced the drift. The original `ARCHITECTURE.md` — including the SQLite DDL,
+the phases table, and the aspirational layouts — remains in git history. See the
+2026-06-15 reconciliation entry in [`migration-log.md`](migration-log.md).

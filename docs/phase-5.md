@@ -1,3 +1,8 @@
+<!-- FROZEN 2026-06-15 -->
+> **FROZEN — superseded by [`../STATUS.md`](../STATUS.md) (2026-06-15).** Phase
+> numbering has been retired; this tracker's live items moved into `STATUS.md`.
+> Kept for historical reference only.
+
 # Phase 5 — Polish
 
 > Single source of truth for everything deferred past Phase 4. When Phase 5

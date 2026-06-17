@@ -1,6 +1,13 @@
+<!-- FROZEN 2026-06-15 -->
+> **FROZEN — feature design handoff** for Living Sprints (shipped 2026-06-15).
+> Not live guidance. Current docs: [`VISION.md`](VISION.md) ·
+> [`../AGENTS.md`](../AGENTS.md) · [`../STATUS.md`](../STATUS.md).
+
 # Living Sprints — design & integration plan
 
-> The Phase-0 design doc mandated by the design handoff (`design_handoff_living_sprints/`).
+> The Phase-0 design doc for the Living Sprints feature. (Originally mandated by a
+> `design_handoff_living_sprints/` brief that has since been removed; this file is
+> the surviving record.)
 > A fresh agent should be able to re-derive intent from this file alone.
 
 ## Why

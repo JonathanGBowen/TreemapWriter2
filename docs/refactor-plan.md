@@ -1,3 +1,10 @@
+<!-- FROZEN 2026-06-15 -->
+> **FROZEN — design archive.** This is the master plan that built Phases 0–4. It
+> is *not* live guidance and is no longer maintained. For *why* the app is shaped
+> this way see [`VISION.md`](VISION.md); for *how* it's built today see
+> [`../AGENTS.md`](../AGENTS.md); for *what's next* see [`../STATUS.md`](../STATUS.md).
+> Kept for the reasoning behind the original decisions.
+
 # TreemapWriter2 — Architectural Refactor Plan
 
 > **Status:** Phases 0–4 shipped. See [migration-log.md](migration-log.md)

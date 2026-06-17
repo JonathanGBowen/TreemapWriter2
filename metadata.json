@@ -1,5 +1,5 @@
 {
-  "description": "Starting a new repository for the consolidated writing app.",
+  "description": "Single-user assistive-writing tool for a philosopher with ADHD finishing a dissertation. Treemap-driven document structure with AI structural (not summary) analysis of academic argument; Hyper Light Drifter aesthetic.",
   "requestFramePermissions": [],
   "name": "TreeMap Writer 2.0"
 }

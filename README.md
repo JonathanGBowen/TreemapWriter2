@@ -11,7 +11,9 @@ recovery paths for the user's prose.
 
 ## Run locally
 
-Prerequisites: Node.js 20+. Set `GEMINI_API_KEY` in `.env.local`.
+Prerequisites: Node.js 20+. Set `GEMINI_API_KEY` and/or `ANTHROPIC_API_KEY` in
+`src-tauri/.env.local` (Ollama needs no key). Keys can also be stored in the OS
+keyring from inside the app.
 
 ```
 npm install
@@ -33,7 +35,7 @@ npm run tauri:build  # installer (.app / .dmg / .exe / .deb / .AppImage)
 
 ## Multi-machine sync
 
-Phase 4 wires the local git repo to a private GitHub remote so you can
+The local git repo can sync to a private GitHub remote so you can
 write on multiple machines. To set it up:
 
 1. Create an empty private GitHub repo (no README, no `.gitignore`).
@@ -56,7 +58,8 @@ TreemapWriter2 like any other project, run Configure Sync again.
 This codebase is co-developed with AI coding agents and is designed to be
 agent-legible. Before touching code, read:
 
-- [`AGENTS.md`](AGENTS.md) — operating guide; anti-patterns; where-to-put-X table.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, principles, target shape.
-- [`docs/refactor-plan.md`](docs/refactor-plan.md) — the multi-phase master plan.
-- [`docs/migration-log.md`](docs/migration-log.md) — what each phase changed.
+- [`docs/VISION.md`](docs/VISION.md) — why the app is shaped this way: the user, principles, aesthetic.
+- [`AGENTS.md`](AGENTS.md) — how it's built today; anti-patterns; where-to-put-X table.
+- [`STATUS.md`](STATUS.md) — what's being worked on next, and what's out of scope.
+- [`docs/migration-log.md`](docs/migration-log.md) — the dated history of what shipped.
+- [`docs/FOUNDING.md`](docs/FOUNDING.md) — the founding brief + original AI Studio system prompt (frozen origin record).

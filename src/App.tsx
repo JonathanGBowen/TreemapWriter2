@@ -269,11 +269,13 @@ export const App = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Manual trigger wrapper for save button
+  // Manual trigger wrapper for save button. createSnapshot -> saveCurrentState
+  // now persists the live draft (localContent) and converges the committed
+  // copy, so an explicit setMarkdown is no longer needed (and the old ordering
+  // — commit before setMarkdown — silently committed the stale copy).
   const handleManualSave = () => {
     if (activeProjectId) {
-      createSnapshot('manual');
-      setMarkdown(localContent); // Commit draft
+      void createSnapshot('manual');
     }
   };
 

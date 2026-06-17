@@ -343,10 +343,22 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     // In-progress edits remain in editor-state and flush once the merge resolves.
     if (state.pendingMerge) return;
 
+    // The live editor buffer is the source of truth for the prose. Persist IT
+    // (not the lagging committed `markdown`, which only advanced on manual
+    // save) so the 60s autosave durably writes — and git-commits — what the
+    // user is actually typing. Before this fix a reload re-hydrated from a
+    // frozen project.md and silently reverted hours of work (migration-log
+    // 2026-06-16).
+    const liveProse = state.localContent;
+
+    // Safety guard: never let a transient empty buffer (mid project-switch or
+    // load) blank a non-empty saved document. git history is the only backstop.
+    if (liveProse.trim() === '' && state.markdown.trim() !== '') return;
+
     const data = {
       projectName: state.projectName,
-      markdown: state.markdown,
-      localDraft: state.localContent,
+      markdown: liveProse,
+      localDraft: liveProse,
       testSuite: state.testSuite,
       hiddenSectionIds: state.hiddenSectionIds,
       activePersonaId: state.activePersonaId,
@@ -367,7 +379,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
 
     await repo.setProject(state.activeProjectId, data);
 
-    const wordCount = state.localContent.trim() === '' ? 0 : state.localContent.trim().split(/\s+/).length;
+    const wordCount = liveProse.trim() === '' ? 0 : liveProse.trim().split(/\s+/).length;
     const metaEntry: ProjectMeta = {
       id: state.activeProjectId,
       name: state.projectName,
@@ -378,7 +390,10 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     const currentList = Array.isArray(state.projectList) ? state.projectList : [];
     const others = currentList.filter((p) => p.id !== state.activeProjectId);
     const updated = [metaEntry, ...others];
-    set({ projectList: updated, lastAutoSave: new Date() });
+    // Converge the in-memory committed copy so `markdown` consumers (AI
+    // fullDocument, the sidebar word count) reflect current text, not a frozen
+    // snapshot.
+    set({ markdown: liveProse, projectList: updated, lastAutoSave: new Date() });
     repo.setMeta(updated).catch(console.error);
   },
 
