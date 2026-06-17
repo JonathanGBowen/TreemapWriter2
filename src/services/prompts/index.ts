@@ -21,6 +21,8 @@ export type {
 } from './registry';
 export { interpolate, renderPrompt } from './interpolate';
 
+import type { EditablePromptKey } from './registry';
+
 /** Built-in defaults — the bottom tier. Derived from the editable registry entries. */
 export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = Object.fromEntries(
   EDITABLE_PROMPTS.map((e) => [e.key, e.defaultText]),
@@ -70,3 +72,18 @@ export const diffPromptsConfig = (
   });
   return out;
 };
+
+/** Which tier owns a prompt's effective value. */
+export type PromptTier = 'default' | 'global' | 'project';
+
+/**
+ * Provenance of a prompt's effective value, given the (sparse) project and
+ * global override layers. A key present in an override layer means that layer
+ * owns it (project wins over global wins over the built-in default).
+ */
+export const promptSource = (
+  key: EditablePromptKey,
+  project?: Partial<PromptsConfig> | null,
+  global?: Partial<PromptsConfig> | null,
+): PromptTier =>
+  project && key in project ? 'project' : global && key in global ? 'global' : 'default';

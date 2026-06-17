@@ -47,21 +47,11 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
-- **Prompt management UI ↔ registry + global tier.** The backend shipped
-  2026-06-17 (see [`docs/migration-log.md`](docs/migration-log.md)): one prompt
-  registry ([`src/services/prompts/registry.ts`](src/services/prompts/registry.ts))
-  is the single source of truth, a three-tier resolver (built-in ◁ global ◁
-  project, sparse overrides) is in `ai-state`, and `setGlobalPromptsConfig`
-  persists a global tier. **Deferred (UI):** (a) `PromptsGraphModal` still
-  hardcodes its `nodeLabels`/`nodeDescriptions`/pillar layout — drive them from
-  the registry's `label`/`description`/`category` instead; (b) no UI yet
-  distinguishes "save to project" vs "save to global" or surfaces the locked
-  engine-internal prompts read-only; (c) `editability: 'locked'` and the declared
-  `variables` metadata are ready but unused by any surface.
-- **`ProjectFileModal` global save.** JSON edits to `projectName`, `testSuite`,
-  `promptsConfig`, `customPersonas` apply to component state but never persist
-  back (the modal shows "Applied successfully (Not yet saved globally)"). Either
-  wire the save path or remove the misleading UI.
+- **`ProjectFileModal` `customPersonas` global save.** The raw-JSON editor's
+  `projectName` / `testSuite` / `promptsConfig` edits now persist on Save (prompts
+  land as a per-project override; see migration-log 2026-06-17 UI pass), but
+  `customPersonas` edits there are still dropped by App's `onSaveData` handler.
+  Wire it or drop the field from the editor.
 - **Re-enable App.tsx test-suite cleanup.** A `useEffect` is commented out
   ("Disabled to prevent deleting data when section titles change") — a data-loss
   bug was found and the feature disabled rather than fixed. Design a safer cleanup

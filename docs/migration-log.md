@@ -2017,3 +2017,57 @@ data migration is needed either way.
 a future prompt-settings surface) to read groups/labels/descriptions from the
 registry, expose the global vs. project save distinction, and surface locked
 prompts read-only.
+
+---
+
+## 2026-06-17 — Prompt management UI: registry-driven map + tiered editing
+
+**Why.** The backend prompt centralization (same date, prior entry) deliberately
+left the UI untouched. `PromptsGraphModal` still hardcoded its inventory
+(`nodeLabels`/`nodeDescriptions`, four pillar columns, a pixel-positioned SVG) —
+duplicating what the registry now owns and, in fact, only drawing 13 of the 16
+editable prompts (revisions / sprint-plan / compare were in the label maps but
+never rendered). The new global tier was unreachable from any UI, and the raw
+JSON editor's prompt edits were silently dropped on save.
+
+**What changed.**
+
+- **`PromptsGraphModal` is now registry-driven.** It reads `PROMPT_REGISTRY`
+  (label / description / category / editability) and renders one column per
+  category in `CATEGORY_ORDER`; presentation (titles + accent colors) is a small
+  static map in the component (Tailwind v4 can't see dynamically-built class
+  names, so every accent is a literal string — this also retires the old
+  `bg-${color}` interpolation that never reliably generated). All 16 editable
+  prompts now appear; the 5 locked engine-internal prompts render read-only with
+  a lock icon, making the map a complete inventory.
+- **Project-vs-global scope toggle.** A `This project / Global defaults` segmented
+  control selects which tier the edits + Save target. Project scope seeds the
+  buffer from the effective config and saves via `setPromptsConfig` (derives the
+  sparse project override) + `saveCurrentState`; Global scope seeds from
+  `default ◁ global` (no project tier, so project-specific values can't leak in)
+  and saves `diffPromptsConfig(buffer, DEFAULT)` via `setGlobalPromptsConfig`. A
+  per-prompt provenance badge (Default / Global / Project) shows where the current
+  value comes from. Reset clears the in-scope tier (project → inherit; global →
+  built-ins). The modal now reads everything from the store; its
+  `promptsConfig`/`setPromptsConfig` props were dropped.
+- **Raw JSON editor save wired.** `App.tsx`'s `ProjectFileModal` `onSaveData` now
+  applies `promptsConfig` (as a per-project override, same path as the map's
+  project scope) and calls `saveCurrentState`. The misleading "Applied… (Not yet
+  saved globally)" toast became "Applied locally — click Save to persist."
+- **New pure helper.** `promptSource(key, project, global)` in
+  `src/services/prompts/index.ts` returns the owning tier
+  (`'default' | 'global' | 'project'`) — the badge logic, unit-tested.
+
+**What to verify.** `npm run typecheck` (clean), `npm test` (200 pass; +2
+`promptSource` cases), `npm run lint` (no new errors — the 5 are pre-existing in
+`livePreview.ts` / `SpecGeneratorModal.tsx`; warnings dropped by one),
+`npm run build` (clean — confirmed all 7 category color classes, incl. the new
+rose/yellow/sky, are emitted into the bundled CSS). No backend, state, or Rust
+change — every slice action and tier already existed.
+
+**Rollback.** Pure front-end (`git revert`). No schema/state/on-disk change.
+
+**Deferred / follow-up (tracked in `STATUS.md`).** `ProjectFileModal`'s
+`customPersonas` edits are still dropped on save (the only remaining piece of the
+old "global save" item). The declared per-prompt `variables` metadata is surfaced
+for locked prompts but there's no variable-aware editing UI yet.

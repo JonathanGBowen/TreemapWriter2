@@ -4,6 +4,7 @@ import {
   resolvePromptsConfig,
   normalizePromptsConfig,
   diffPromptsConfig,
+  promptSource,
   interpolate,
   renderPrompt,
   PROMPT_REGISTRY,
@@ -96,6 +97,23 @@ describe('three-tier resolution', () => {
     // ...while a genuinely customized field is preserved.
     const legacy = { ...DEFAULT_PROMPTS_CONFIG, coachPrompt: 'CUSTOM' };
     expect(diffPromptsConfig(legacy, DEFAULT_PROMPTS_CONFIG)).toEqual({ coachPrompt: 'CUSTOM' });
+  });
+});
+
+describe('promptSource (badge provenance)', () => {
+  it('reports project over global over default', () => {
+    const global = { coachPrompt: 'G', analysisPrompt: 'G' };
+    const project = { coachPrompt: 'P' };
+    expect(promptSource('coachPrompt', project, global)).toBe('project');
+    expect(promptSource('analysisPrompt', project, global)).toBe('global');
+    expect(promptSource('systemInstruction', project, global)).toBe('default');
+  });
+
+  it('treats a missing/empty tier as not owning the value', () => {
+    expect(promptSource('coachPrompt', {}, {})).toBe('default');
+    expect(promptSource('coachPrompt', null, { coachPrompt: 'G' })).toBe('global');
+    // In global-editing scope the project tier is passed as undefined.
+    expect(promptSource('coachPrompt', undefined, { coachPrompt: 'G' })).toBe('global');
   });
 });
 

@@ -74,7 +74,7 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
       if (parsed.testSuite) setLocalTestSuite(parsed.testSuite);
       if (parsed.promptsConfig) setLocalPrompts(parsed.promptsConfig);
       if (parsed.customPersonas) setLocalPersonas(parsed.customPersonas);
-      setJsonError("Applied successfully (Not yet saved globally).");
+      setJsonError("Applied locally — click Save to persist.");
       setTimeout(() => setJsonError(""), 3000);
     } catch (e) {
       setJsonError("Invalid JSON structure.");
