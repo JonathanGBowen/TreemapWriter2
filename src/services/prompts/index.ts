@@ -1,49 +1,72 @@
+// Public barrel for prompts. The INVENTORY lives in ./registry.ts; this file
+// derives the runtime config artifacts from it and exposes the tier-resolution
+// helpers. Nothing here hand-maintains a prompt list — that would re-introduce
+// the drift the registry exists to kill.
+
 import type { PromptsConfig } from '../../types';
+import { EDITABLE_PROMPTS } from './registry';
 
-import systemInstruction from './system-instruction.md?raw';
-import l1TaskInstruction from './l1-task.md?raw';
-import subTaskInstruction from './sub-task.md?raw';
-import rootTaskInstruction from './root-task.md?raw';
-import suggestContentPrompt from './suggest-content.md?raw';
-import coachPrompt from './coach.md?raw';
-import refineSpecPrompt from './refine-spec.md?raw';
-import generatePersonasPrompt from './generate-personas.md?raw';
-import diagnosticInstruction from './diagnostic.md?raw';
-import dependenciesPrompt from './dependencies.md?raw';
-import analysisPrompt from './analysis.md?raw';
-import refactorAnalysisPrompt from './refactor-analysis.md?raw';
-import dialoguePrompt from './dialogue.md?raw';
-import generateRevisionsPrompt from './generate-revisions.md?raw';
-import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
-import compareVersionsPrompt from './compare-versions.md?raw';
+export {
+  PROMPT_REGISTRY,
+  EDITABLE_PROMPTS,
+  getPromptEntry,
+  getPromptText,
+} from './registry';
+export type {
+  PromptEntry,
+  PromptVariable,
+  PromptCategory,
+  PromptEditability,
+  EditablePromptKey,
+} from './registry';
+export { interpolate, renderPrompt } from './interpolate';
 
-const stripTrailingNewline = (s: string) => s.replace(/\n+$/, '');
-
-export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = {
-  systemInstruction: stripTrailingNewline(systemInstruction),
-  l1TaskInstruction: stripTrailingNewline(l1TaskInstruction),
-  subTaskInstruction: stripTrailingNewline(subTaskInstruction),
-  rootTaskInstruction: stripTrailingNewline(rootTaskInstruction),
-  suggestContentPrompt: stripTrailingNewline(suggestContentPrompt),
-  coachPrompt: stripTrailingNewline(coachPrompt),
-  refineSpecPrompt: stripTrailingNewline(refineSpecPrompt),
-  generatePersonasPrompt: stripTrailingNewline(generatePersonasPrompt),
-  diagnosticInstruction: stripTrailingNewline(diagnosticInstruction),
-  dependenciesPrompt: stripTrailingNewline(dependenciesPrompt),
-  analysisPrompt: stripTrailingNewline(analysisPrompt),
-  refactorAnalysisPrompt: stripTrailingNewline(refactorAnalysisPrompt),
-  dialoguePrompt: stripTrailingNewline(dialoguePrompt),
-  generateRevisionsPrompt: stripTrailingNewline(generateRevisionsPrompt),
-  generateSprintPlanPrompt: stripTrailingNewline(generateSprintPlanPrompt),
-  compareVersionsPrompt: stripTrailingNewline(compareVersionsPrompt),
-};
+/** Built-in defaults — the bottom tier. Derived from the editable registry entries. */
+export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = Object.fromEntries(
+  EDITABLE_PROMPTS.map((e) => [e.key, e.defaultText]),
+) as PromptsConfig;
 
 /**
- * Hydration boundary for prompt configs. Persisted configs (project files,
- * snapshots, the embedded demo) may predate newer prompt fields; merging over
- * the defaults guarantees every field is populated, so downstream code (the
- * provider) can trust `config.xPrompt` without per-call fallbacks.
+ * Resolve the effective prompts config from the three tiers. Later tiers win:
+ * built-in defaults ◁ global user overrides ◁ per-project overrides. Both
+ * override layers are sparse (only the fields they actually change), so a global
+ * edit shows through for any field a project hasn't overridden.
+ */
+export const resolvePromptsConfig = (
+  project?: Partial<PromptsConfig> | null,
+  global?: Partial<PromptsConfig> | null,
+): PromptsConfig => ({
+  ...DEFAULT_PROMPTS_CONFIG,
+  ...(global ?? {}),
+  ...(project ?? {}),
+});
+
+/**
+ * Hydration boundary for persisted configs (project files, snapshots, the demo)
+ * that may predate newer prompt fields or store a full blob. Merging over the
+ * defaults guarantees every field is populated. This is the two-tier
+ * (defaults ◁ raw) special case of `resolvePromptsConfig`; existing callers that
+ * don't know about the global tier keep working unchanged.
  */
 export const normalizePromptsConfig = (
-  raw: Partial<PromptsConfig> | null | undefined,
-): PromptsConfig => ({ ...DEFAULT_PROMPTS_CONFIG, ...(raw ?? {}) });
+  raw?: Partial<PromptsConfig> | null,
+): PromptsConfig => resolvePromptsConfig(raw, undefined);
+
+/**
+ * Reduce a (possibly full) config to a SPARSE override: only the fields whose
+ * value differs from `base`. This is how a project/global override is derived
+ * from an effective config, and how legacy full blobs collapse to `{}` when they
+ * never actually customized anything (letting the global tier show through).
+ */
+export const diffPromptsConfig = (
+  candidate: Partial<PromptsConfig> | null | undefined,
+  base: PromptsConfig,
+): Partial<PromptsConfig> => {
+  const out: Partial<PromptsConfig> = {};
+  if (!candidate) return out;
+  (Object.keys(candidate) as (keyof PromptsConfig)[]).forEach((k) => {
+    const value = candidate[k];
+    if (value !== undefined && value !== base[k]) out[k] = value;
+  });
+  return out;
+};

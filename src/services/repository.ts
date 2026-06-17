@@ -26,7 +26,12 @@ export interface StoredProjectData {
   hiddenSectionIds?: string[];
   activePersonaId?: string;
   customPersonas?: Persona[];
-  promptsConfig?: PromptsConfig;
+  /**
+   * Per-project prompt override. Stored SPARSE — only the fields that differ
+   * from the built-in defaults (resolves against the global tier on load).
+   * Tolerated full or sparse on read; the store diffs it back to sparse.
+   */
+  promptsConfig?: Partial<PromptsConfig>;
   /** Pre-Phase-1 alias of promptsConfig. Honor on read; do not write. */
   interpolationConfig?: PromptsConfig;
   /** Per-project, per-call model overrides. Sparse; resolves against the global default. */

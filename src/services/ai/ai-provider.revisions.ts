@@ -10,14 +10,11 @@ import type { GenerateRevisionsInput } from '../ai-provider';
 import type { RevisionProposal, SourceDocument } from '../../types';
 import type { LLMClient } from './clients';
 
-// The engine's prompt strings as content artifacts (one .md each). The revision
-// SYSTEM instruction is the user-editable one (config.generateRevisionsPrompt);
-// the assembly system + the three task instructions are engine internals
-// ("do not soften these") imported raw.
-import assemblySystemInstruction from '../prompts/revision-assembly-system.md?raw';
-import revisionTask from '../prompts/revision-task.md?raw';
-import assemblyVerbatimTask from '../prompts/revision-assembly-verbatim-task.md?raw';
-import assemblyWovenTask from '../prompts/revision-assembly-woven-task.md?raw';
+// The revision SYSTEM instruction is the user-editable one
+// (config.generateRevisionsPrompt); the assembly system + the three task
+// instructions are engine internals ("do not soften these") — locked registry
+// entries pulled by key, not per-project overridable.
+import { getPromptText } from '../prompts';
 
 const MAX_OUTPUT_TOKENS = 16000;
 const SECTION_TEXT_CAP = 24000;
@@ -109,13 +106,13 @@ export async function generateRevisions(
   const assembly = input.mode === 'assembly';
   // System instruction by mode; task instruction by mode + assembly sub-mode.
   const systemInstruction = assembly
-    ? assemblySystemInstruction
+    ? getPromptText('revisionAssemblySystem')
     : input.config.generateRevisionsPrompt;
   const task = !assembly
-    ? revisionTask
+    ? getPromptText('revisionTask')
     : input.subMode === 'verbatim'
-      ? assemblyVerbatimTask
-      : assemblyWovenTask;
+      ? getPromptText('revisionAssemblyVerbatimTask')
+      : getPromptText('revisionAssemblyWovenTask');
 
   const text = await client.generateText({
     model,

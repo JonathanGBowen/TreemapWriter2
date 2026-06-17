@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import { DEFAULT_PROMPTS_CONFIG } from '../lib/constants';
+import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from '../lib/constants';
 import type { AnalysisSpell, Persona, PromptsConfig } from '../types';
 import type { AppState } from '.';
 import type { ModelConfig } from '../services/ai/model-types';
@@ -13,15 +13,26 @@ import { setOllamaBaseUrl as applyOllamaBaseUrl, detectOllamaModels } from '../s
  * AI configuration: which persona is active, custom personas, the prompts used
  * for AI flows, and the per-call model configuration.
  *
- * Per-project (persisted in the project file): `promptsConfig`, `modelConfig`.
- * Global (persisted in app preferences, shared across projects, NEVER in the
- * git-tracked project file): `globalModelDefault`, `modelCatalog`,
- * `ollamaBaseUrl`. API keys live in the OS keyring, not here.
+ * Per-project (persisted in the project file): `projectPromptsOverride`,
+ * `modelConfig`. Global (persisted in app preferences, shared across projects,
+ * NEVER in the git-tracked project file): `globalPromptsConfig`,
+ * `globalModelDefault`, `modelCatalog`, `ollamaBaseUrl`. API keys live in the OS
+ * keyring, not here.
+ *
+ * `promptsConfig` is the EFFECTIVE config AI flows read — resolved from three
+ * tiers (built-in defaults ◁ global ◁ per-project), recomputed whenever any tier
+ * changes. The two override layers are stored sparse so a global edit shows
+ * through for any field a project hasn't overridden.
  */
 export interface AIStateSlice {
   activePersonaId: string;
   customPersonas: Persona[];
+  /** Effective (resolved) prompts the AI flows consume. Never persisted directly. */
   promptsConfig: PromptsConfig;
+  /** Per-project sparse override (persisted in the project file). */
+  projectPromptsOverride: Partial<PromptsConfig>;
+  /** Global user sparse override (persisted in app preferences). */
+  globalPromptsConfig: Partial<PromptsConfig>;
   cachedCoachAdvice: { inputHash: string; advice: string } | null;
 
   /**
@@ -44,7 +55,12 @@ export interface AIStateSlice {
 
   setActivePersonaId: (id: string) => void;
   setCustomPersonas: (personas: Persona[] | ((prev: Persona[]) => Persona[])) => void;
+  /** Set the effective config (e.g. from the editor UI); derives + stores the per-project override. */
   setPromptsConfig: (config: PromptsConfig) => void;
+  /** Set the per-project sparse override directly (e.g. on project load / snapshot restore). */
+  setProjectPromptsOverride: (override: Partial<PromptsConfig>) => void;
+  /** Set the global sparse override; writes through to preferences. */
+  setGlobalPromptsConfig: (config: Partial<PromptsConfig>) => void;
   setCachedCoachAdvice: (advice: { inputHash: string; advice: string } | null) => void;
 
   /** Replace (or update) the global spell library; writes through to preferences. */
@@ -65,6 +81,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   activePersonaId: 'default',
   customPersonas: [],
   promptsConfig: DEFAULT_PROMPTS_CONFIG,
+  projectPromptsOverride: {},
+  globalPromptsConfig: {},
   cachedCoachAdvice: null,
 
   customSpells: [],
@@ -80,7 +98,28 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     set((state) => ({
       customPersonas: typeof personas === 'function' ? personas(state.customPersonas) : personas,
     })),
-  setPromptsConfig: (config) => set({ promptsConfig: config }),
+  setPromptsConfig: (config) =>
+    set((s) => ({
+      promptsConfig: config,
+      // The override is what this project changes relative to (defaults ◁ global),
+      // so a future global edit still propagates to fields the project left alone.
+      projectPromptsOverride: diffPromptsConfig(
+        config,
+        resolvePromptsConfig(undefined, s.globalPromptsConfig),
+      ),
+    })),
+  setProjectPromptsOverride: (override) =>
+    set((s) => ({
+      projectPromptsOverride: override,
+      promptsConfig: resolvePromptsConfig(override, s.globalPromptsConfig),
+    })),
+  setGlobalPromptsConfig: (config) => {
+    set((s) => ({
+      globalPromptsConfig: config,
+      promptsConfig: resolvePromptsConfig(s.projectPromptsOverride, config),
+    }));
+    void prefs.setGlobalPromptsDefault(config);
+  },
   setCachedCoachAdvice: (advice) => set({ cachedCoachAdvice: advice }),
 
   setCustomSpells: (spells) => {
@@ -109,13 +148,24 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   },
 
   hydrateAIPreferences: async () => {
-    const [globalModelDefault, modelCatalog, ollamaBaseUrl, customSpells] = await Promise.all([
-      prefs.getGlobalModelDefault(),
-      prefs.getModelCatalog(),
-      prefs.getOllamaBaseUrl(),
-      prefs.getSpells(),
-    ]);
-    set({ globalModelDefault, modelCatalog, ollamaBaseUrl, customSpells });
+    const [globalModelDefault, modelCatalog, ollamaBaseUrl, customSpells, globalPromptsConfig] =
+      await Promise.all([
+        prefs.getGlobalModelDefault(),
+        prefs.getModelCatalog(),
+        prefs.getOllamaBaseUrl(),
+        prefs.getSpells(),
+        prefs.getGlobalPromptsDefault(),
+      ]);
+    // Re-resolve the effective config against the just-loaded global tier — a
+    // project may already be open by the time prefs hydrate.
+    set((s) => ({
+      globalModelDefault,
+      modelCatalog,
+      ollamaBaseUrl,
+      customSpells,
+      globalPromptsConfig,
+      promptsConfig: resolvePromptsConfig(s.projectPromptsOverride, globalPromptsConfig),
+    }));
     applyOllamaBaseUrl(ollamaBaseUrl);
     // Non-blocking: surface locally-installed Ollama models if the server is up.
     void get().refreshOllamaCatalog();

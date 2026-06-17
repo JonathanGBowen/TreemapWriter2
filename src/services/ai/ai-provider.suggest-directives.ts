@@ -9,7 +9,7 @@ import type { SuggestDirectivesInput } from '../ai-provider';
 import type { DirectiveSuggestion, SourceDocument } from '../../types';
 import type { LLMClient } from './clients';
 
-import template from '../prompts/suggest-directives.md?raw';
+import { renderPrompt } from '../prompts';
 
 const MAX_OUTPUT_TOKENS = 4000;
 const SECTION_TEXT_CAP = 24000;
@@ -49,10 +49,11 @@ export async function suggestDirectives(
   input: SuggestDirectivesInput,
 ): Promise<DirectiveSuggestion[]> {
   const hasSources = input.sources.length > 0;
-  const systemInstruction = template
-    .replace('{{PERSONA_NAME}}', input.personaName || 'Academic Advisor')
-    .replace('{{PERSONA_DESCRIPTION}}', input.personaInstruction || 'A rigorous academic editor.')
-    .replace('{{SOURCE_CONTEXT_INSTRUCTION}}', sourceContext(hasSources));
+  const systemInstruction = renderPrompt('suggestDirectivesTemplate', {
+    PERSONA_NAME: input.personaName || 'Academic Advisor',
+    PERSONA_DESCRIPTION: input.personaInstruction || 'A rigorous academic editor.',
+    SOURCE_CONTEXT_INSTRUCTION: sourceContext(hasSources),
+  });
 
   const prompt = [
     `### SECTION ###\n${input.sectionTitle}`,
