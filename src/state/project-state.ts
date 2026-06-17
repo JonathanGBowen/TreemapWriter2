@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
-import { DEFAULT_PROMPTS_CONFIG, normalizePromptsConfig } from '../lib/constants';
+import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from '../lib/constants';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
 import { setSecret } from '../services/credentials';
@@ -206,10 +206,19 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       hiddenSectionIds: defaultProjectData.hiddenSectionIds || [],
       activePersonaId: defaultProjectData.activePersonaId || 'default',
       customPersonas: defaultProjectData.customPersonas || [],
-      // Normalized at the hydration boundary: the embedded demo config predates
-      // newer prompt fields (the analysis/dialogue prompts) and must not blank them.
-      promptsConfig: normalizePromptsConfig(
+      // Diffed to a sparse override against the built-in defaults, then resolved
+      // over the global tier — the embedded demo config predates newer prompt
+      // fields and must neither blank them nor shadow global overrides.
+      projectPromptsOverride: diffPromptsConfig(
         defaultProjectData.promptsConfig as Partial<PromptsConfig> | undefined,
+        DEFAULT_PROMPTS_CONFIG,
+      ),
+      promptsConfig: resolvePromptsConfig(
+        diffPromptsConfig(
+          defaultProjectData.promptsConfig as Partial<PromptsConfig> | undefined,
+          DEFAULT_PROMPTS_CONFIG,
+        ),
+        get().globalPromptsConfig,
       ),
       modelConfig: normalizeModelConfig(
         (defaultProjectData as { modelsConfig?: unknown }).modelsConfig as
@@ -265,7 +274,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       hiddenSectionIds: [],
       activePersonaId: 'default',
       customPersonas: [],
-      promptsConfig: DEFAULT_PROMPTS_CONFIG,
+      projectPromptsOverride: {},
+      promptsConfig: resolvePromptsConfig(undefined, get().globalPromptsConfig),
       modelConfig: {},
       cachedCoachAdvice: null,
       selectedId: null,
@@ -323,6 +333,14 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       const data = await repo.getProject(id);
       if (!data) throw new Error('Project data not found');
 
+      // Diff the stored config (full legacy blob or already-sparse) down to a
+      // sparse override against built-in defaults; uncustomized fields collapse
+      // away so the global tier shows through. Then resolve the effective config.
+      const projectPromptsOverride = diffPromptsConfig(
+        (data.promptsConfig ?? data.interpolationConfig) as Partial<PromptsConfig> | undefined,
+        DEFAULT_PROMPTS_CONFIG,
+      );
+
       const loadedTestSuite: TestSuite = data.testSuite || {};
       Object.keys(loadedTestSuite).forEach((key) => {
         const entry = loadedTestSuite[key];
@@ -351,9 +369,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         })),
         activePersonaId: data.activePersonaId || 'default',
         customPersonas: Array.isArray(data.customPersonas) ? data.customPersonas : [],
-        promptsConfig: normalizePromptsConfig(
-          (data.promptsConfig ?? data.interpolationConfig) as Partial<PromptsConfig> | undefined,
-        ),
+        projectPromptsOverride,
+        promptsConfig: resolvePromptsConfig(projectPromptsOverride, get().globalPromptsConfig),
         modelConfig: normalizeModelConfig(data.modelsConfig),
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
@@ -427,7 +444,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       hiddenSectionIds: state.hiddenSectionIds,
       activePersonaId: state.activePersonaId,
       customPersonas: state.customPersonas,
-      promptsConfig: state.promptsConfig,
+      // Persist the SPARSE per-project override (not the resolved effective
+      // config), so global-tier edits keep flowing into untouched fields.
+      promptsConfig: state.projectPromptsOverride,
       modelsConfig: state.modelConfig,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
@@ -526,9 +545,11 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       testSuite: snapshot.testSuite || {},
     });
     if (snapshot.interpolationConfig) {
-      // Normalized: snapshots taken before newer prompt fields existed would
-      // otherwise restore them as empty strings.
-      set({ promptsConfig: normalizePromptsConfig(snapshot.interpolationConfig) });
+      // Diff to a sparse override so the restore re-resolves over the current
+      // global tier (and so pre-newer-field snapshots don't restore blanks).
+      get().setProjectPromptsOverride(
+        diffPromptsConfig(snapshot.interpolationConfig, DEFAULT_PROMPTS_CONFIG),
+      );
     }
     if (get().activeProjectId) {
       await get().saveCurrentState();

@@ -120,7 +120,16 @@ Full-text `search` is **not yet implemented** (see [STATUS.md](STATUS.md)).
    in `project-state` via `get().otherSliceAction()`.
 5. **Prompts are content, not code.** They live as standalone `.md` files under
    `src/services/prompts/`, one per file, imported as raw strings. Never inline a
-   prompt string in TypeScript.
+   prompt string in TypeScript. The `.md` files are catalogued in one registry —
+   `src/services/prompts/registry.ts` — the single source of truth for the prompt
+   *inventory* and its metadata (label, description, category, flow, whether a
+   user may edit it, declared `{{variables}}`). `PromptsConfig`,
+   `DEFAULT_PROMPTS_CONFIG`, and the tier resolver are **derived** from it; do not
+   hand-maintain a parallel prompt list. Effective prompt text resolves through
+   three tiers — built-in defaults ◁ global user overrides ◁ per-project overrides
+   (`resolvePromptsConfig`); both override layers are stored **sparse**. Engine
+   internals are registry entries marked `editability: 'locked'`: catalogued, but
+   never persisted or user-editable.
 6. **Files trend small (~300-line target).** ESLint surfaces violations as a
    **warning, not an error** (`max-lines: warn` in `eslint.config.js`), so lint
    passes even when a file is over. The cap is a cognitive-load *target*: split a
@@ -158,7 +167,7 @@ the name as historical; do not "simplify" the structure.
 | A new on-disk file in a project | Path goes in `src-tauri/src/project/layout.rs`. Read/write via `crate::fs_io::*` helpers (atomic write). If it should be gitignored, update the `.gitignore` written by `project_create` in `src-tauri/src/commands/project.rs`. |
 | A new git local / remote operation | Local: `src-tauri/src/git/mod.rs`. Remote: `src-tauri/src/git/remote.rs`. Nothing outside `src-tauri/src/git/` touches `git2::*` directly. |
 | A new project-entry flow (create / open / clone) | Command in `src-tauri/src/commands/project.rs`; reuse the `open_and_register` tail (it installs the handle via `state.open_at` and upserts the recent-projects row). Expose it on the `Repository` interface + both impls, then drive it from a `project-state.ts` thunk (folder picker via the `pickFolder` helper). The remote-aware entries (clone existing / create-and-publish) are the `RemoteProjectModal`; attaching a remote to the already-open project stays in `SyncConfigModal`. |
-| A new AI flow | New prompt `.md` in `src/services/prompts/`, new method on `AIProvider` (`src/services/ai-provider.ts`), implementation in `src/services/ai/` (provider-agnostic; calls an `LLMClient`), a new `AICallKind` + `DEFAULT_MODEL_CONFIG` entry, consumed via `aiProvider` from the registry. |
+| A new AI flow | New prompt `.md` in `src/services/prompts/` + **one entry in `src/services/prompts/registry.ts`** (the type, defaults, and normalizer derive from it — no other prompt-wiring edit needed), a new method on `AIProvider` (`src/services/ai-provider.ts`), implementation in `src/services/ai/` (provider-agnostic; calls an `LLMClient`; read editable prompts via `input.config.<key>`, locked ones via `getPromptText(key)`, templated ones via `renderPrompt(key, vars)`), a new `AICallKind` + `DEFAULT_MODEL_CONFIG` entry, consumed via `aiProvider` from the registry. |
 | A new AI provider | New `LLMClient` in `src/services/ai/clients/<name>-client.ts` — the ONE file importing that SDK. Wire its key + dispatch in `ai-provider-registry.ts`; seed it in `model-catalog.ts`. Components never import the SDK. |
 | A new OS-keyring secret | Add a `SecretService` literal in `src/services/credentials.ts`; the Rust side (`src-tauri/src/commands/credentials.rs`) is generic over the service name. AI keys also get an env fallback so `src-tauri/.env.local` works without re-entry. |
 | A new sync trigger | Extend `src/services/sync-policy.ts`. Don't add network calls outside it — sync-policy owns the debounce / throttle invariants. |
@@ -177,7 +186,7 @@ src/
 ├── services/            persistence + external APIs
 │   ├── repository*.ts   interface + browser/tauri impls + registry
 │   ├── ai/              provider-agnostic impl, clients/ (one SDK each), model-*
-│   └── prompts/         one .md per AI flow + index that assembles the config
+│   └── prompts/         one .md per prompt + registry (inventory/metadata) + index (derives config)
 ├── features/            one folder per UI panel (sidebar, treemap, editor,
 │                        tests-panel, revision, tutorial, modals/, shared/, …)
 ├── lib/                 pure utilities — no React, no store

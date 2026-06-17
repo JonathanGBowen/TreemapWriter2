@@ -1936,3 +1936,141 @@ no on-disk format change.
 `COMPARE_INDEX_LIMIT = 2000` snapshots — a parameterless `snapshot_list_all` Rust
 command + a "load older" affordance is the trivial lift beyond that. Ephemeral
 reports and strict section-by-section alignment remain as before.
+
+---
+
+## 2026-06-17 — Centralized prompt registry + three-tier resolution (backend)
+
+**Why.** Prompt management was half-built and inconsistent. There were 21 prompt
+`.md` files but only 16 lived in `PromptsConfig`; five "engine-internal" prompts
+(the revision assembly system + three task variants, and `suggest-directives`)
+were imported ad-hoc via `?raw` inside provider files, invisible to any
+management surface. The inventory had no single home — labels, descriptions, and
+groupings were hardcoded in `PromptsGraphModal`, and adding a prompt meant a
+hand-synced edit across the `.md` import, `DEFAULT_PROMPTS_CONFIG`, the
+`PromptsConfig` interface, and `normalizePromptsConfig`. Only two config tiers
+existed (built-in + per-project), and the per-project blob was stored *full*, so
+a global tier would have been fully shadowed. Template variables were substituted
+by chained `.replace()` (first-occurrence-only — a latent bug). This is the
+backend pass; the UI is deferred (see `STATUS.md`).
+
+**What changed.**
+
+- **Single source of truth.** New `src/services/prompts/registry.ts` catalogues
+  all 21 prompts as `PromptEntry` objects (`key`, `defaultText` from the `?raw`
+  `.md`, `label`, `description`, `category`, `flow`, `editability`, declared
+  `variables`). `PROMPT_REGISTRY` is `as const satisfies readonly PromptEntry[]`,
+  so the editable keys derive a literal union `EditablePromptKey`.
+- **Everything derives from the registry.** `PromptsConfig` in
+  `src/types/index.ts` became `Record<EditablePromptKey, string>` (was a
+  hand-written interface). `src/services/prompts/index.ts` now derives
+  `DEFAULT_PROMPTS_CONFIG` from `EDITABLE_PROMPTS`, and adds `resolvePromptsConfig`
+  (three-tier) + `diffPromptsConfig` (sparse override). `normalizePromptsConfig`
+  is retained as the two-tier special case so existing callers are unchanged. The
+  type→registry edge is one-directional (no cycle).
+- **Locked engine internals.** The five orphans are registry entries with
+  `editability: 'locked'`: catalogued for legibility but excluded from
+  `PromptsConfig`, never persisted, always rendered from `defaultText`.
+  `ai-provider.revisions.ts` reads them via `getPromptText('revision…')` instead
+  of `?raw` imports.
+- **Central interpolation.** New `src/services/prompts/interpolate.ts`:
+  `interpolate` (single global-regex pass — replaces *all* `{{TOKEN}}`
+  occurrences, fixing the chained-`.replace` first-only bug) and `renderPrompt`
+  (validates a prompt's declared required variables, then interpolates).
+  `ai-provider.suggest-directives.ts` now calls
+  `renderPrompt('suggestDirectivesTemplate', { PERSONA_NAME, … })`.
+  `buildDiagnosticPrompt` stays structural assembly (deliberately not routed
+  through `{{}}`).
+- **Global tier (new).** `src/services/preferences.ts` gained
+  `get/setGlobalPromptsDefault` (idb-keyval, sparse, `{}` = use built-ins),
+  mirroring `getGlobalModelDefault`/`getSpells`. `ai-state` now holds
+  `globalPromptsConfig` + `projectPromptsOverride` (both sparse), recomputes the
+  effective `promptsConfig` via `resolvePromptsConfig` whenever any tier changes
+  (`setPromptsConfig` derives the project override; `setProjectPromptsOverride`;
+  `setGlobalPromptsConfig` writes through to prefs; `hydrateAIPreferences`
+  re-resolves on boot).
+- **Sparse persistence + migration.** `project-state` now persists the *sparse*
+  project override (`saveCurrentState`) and, on load/demo/restore, diffs the
+  stored blob against the defaults — old *full* blobs collapse to `{}` when never
+  customized (so the global tier shows through) while genuine customizations
+  survive. `StoredProjectData.promptsConfig` relaxed to `Partial<PromptsConfig>`.
+
+**No Rust change.** `promptsConfig` is an opaque passthrough blob; no persisted
+key was added or renamed (sparse vs. full is within the object), so `types.rs` /
+`layout.rs` / `document.rs` are untouched.
+
+**What to verify.** `npm run typecheck` (clean — proves the derived
+`PromptsConfig` is exact and every `config.<field>` site resolves), `npm test`
+(198 pass; +10 new in `src/services/prompts/__tests__/registry.test.ts` covering
+the historical-key guard, locked-key exclusion, three-tier precedence, the
+legacy-full-blob diff round-trip, and interpolation). `npm run lint` adds only
+`max-lines`/complexity *warnings* (the 5 pre-existing errors live in unrelated
+files). Backward-compat round-trips in `persistence.test.ts` and
+`importer.test.ts` stay green.
+
+**Rollback.** `git revert`. The on-disk JSON shape is unchanged (still a
+`{ key: string }` object under `promptsConfig` / legacy `interpolationConfig`);
+reverted code reads new sparse blobs fine (they normalize over defaults), so no
+data migration is needed either way.
+
+**Deferred / follow-up (tracked in `STATUS.md`).** Wire `PromptsGraphModal` (and
+a future prompt-settings surface) to read groups/labels/descriptions from the
+registry, expose the global vs. project save distinction, and surface locked
+prompts read-only.
+
+---
+
+## 2026-06-17 — Prompt management UI: registry-driven map + tiered editing
+
+**Why.** The backend prompt centralization (same date, prior entry) deliberately
+left the UI untouched. `PromptsGraphModal` still hardcoded its inventory
+(`nodeLabels`/`nodeDescriptions`, four pillar columns, a pixel-positioned SVG) —
+duplicating what the registry now owns and, in fact, only drawing 13 of the 16
+editable prompts (revisions / sprint-plan / compare were in the label maps but
+never rendered). The new global tier was unreachable from any UI, and the raw
+JSON editor's prompt edits were silently dropped on save.
+
+**What changed.**
+
+- **`PromptsGraphModal` is now registry-driven.** It reads `PROMPT_REGISTRY`
+  (label / description / category / editability) and renders one column per
+  category in `CATEGORY_ORDER`; presentation (titles + accent colors) is a small
+  static map in the component (Tailwind v4 can't see dynamically-built class
+  names, so every accent is a literal string — this also retires the old
+  `bg-${color}` interpolation that never reliably generated). All 16 editable
+  prompts now appear; the 5 locked engine-internal prompts render read-only with
+  a lock icon, making the map a complete inventory.
+- **Project-vs-global scope toggle.** A `This project / Global defaults` segmented
+  control selects which tier the edits + Save target. Project scope seeds the
+  buffer from the effective config and saves via `setPromptsConfig` (derives the
+  sparse project override) + `saveCurrentState`; Global scope seeds from
+  `default ◁ global` (no project tier, so project-specific values can't leak in)
+  and saves `diffPromptsConfig(buffer, DEFAULT)` via `setGlobalPromptsConfig`. A
+  per-prompt provenance badge (Default / Global / Project) shows where the current
+  value comes from. Reset clears the in-scope tier (project → inherit; global →
+  built-ins). The modal now reads everything from the store; its
+  `promptsConfig`/`setPromptsConfig` props were dropped.
+- **Raw JSON editor save wired.** `App.tsx`'s `ProjectFileModal` `onSaveData` now
+  applies `promptsConfig` (as a per-project override, same path as the map's
+  project scope) and calls `saveCurrentState`. The misleading "Applied… (Not yet
+  saved globally)" toast became "Applied locally — click Save to persist."
+- **New pure helper.** `promptSource(key, project, global)` in
+  `src/services/prompts/index.ts` returns the owning tier
+  (`'default' | 'global' | 'project'`) — the badge logic, unit-tested.
+
+**What to verify.** `npm run typecheck` (clean), `npm test` (200 pass; +2
+`promptSource` cases), `npm run lint` (no new errors — the 5 are pre-existing in
+`livePreview.ts` / `SpecGeneratorModal.tsx`; warnings dropped by one),
+`npm run build` (clean — confirmed all 7 category color classes, incl. the new
+rose/yellow/sky, are emitted into the bundled CSS). No backend, state, or Rust
+change — every slice action and tier already existed.
+
+**Rollback.** Pure front-end (`git revert`). No schema/state/on-disk change.
+
+**Follow-up (same day).** Wired the last piece of the old `ProjectFileModal`
+"global save" item: `onSaveData` now also applies `customPersonas`, so every field
+the raw-JSON editor exposes (projectName / testSuite / promptsConfig /
+customPersonas) persists on Save. That STATUS item is now fully resolved.
+
+**Deferred.** The declared per-prompt `variables` metadata is surfaced for locked
+prompts but there's no variable-aware editing UI yet.

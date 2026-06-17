@@ -1,4 +1,9 @@
-export { DEFAULT_PROMPTS_CONFIG, normalizePromptsConfig } from "../services/prompts";
+export {
+  DEFAULT_PROMPTS_CONFIG,
+  normalizePromptsConfig,
+  resolvePromptsConfig,
+  diffPromptsConfig,
+} from "../services/prompts";
 
 export const SECTION_FUNCTIONS = [
   { id: 'introduce', label: 'Introduce', desc: 'Sets up problem space, motivates what follows' },

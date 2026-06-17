@@ -1,182 +1,212 @@
-import React, { useState } from 'react';
-import { PromptsConfig } from '../../types';
-import { X, Network, Save, RotateCcw } from 'lucide-react';
-import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
+import React, { useEffect, useState } from 'react';
+import { X, Network, Save, RotateCcw, Lock } from 'lucide-react';
+import {
+  DEFAULT_PROMPTS_CONFIG,
+  resolvePromptsConfig,
+  diffPromptsConfig,
+  promptSource,
+  PROMPT_REGISTRY,
+  getPromptEntry,
+} from '../../services/prompts';
+import type { PromptCategory, PromptEntry, EditablePromptKey } from '../../services/prompts';
+import type { PromptsConfig } from '../../types';
 import { ConfirmModal } from './ConfirmModal';
 import { useStore } from '../../store';
 
-interface PromptsGraphModalProps {
-  promptsConfig: PromptsConfig;
-  setPromptsConfig: (config: PromptsConfig) => void;
-}
+type Scope = 'project' | 'global';
 
-export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
-  promptsConfig,
-  setPromptsConfig
-}) => {
-  const isOpen = useStore(s => s.showPromptsGraphModal);
-  const setShow = useStore(s => s.setShowPromptsGraphModal);
-  const onClose = () => setShow(false);
-  const [localConfig, setLocalConfig] = useState<PromptsConfig>(promptsConfig);
-  const [selectedNode, setSelectedNode] = useState<keyof PromptsConfig | null>(null);
-  const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});
+// Column order + styling for the map. The *inventory* (which prompts, their
+// labels/descriptions/grouping) lives in the registry; only presentation lives
+// here. Tailwind v4 cannot see dynamically-built class names, so every accent is
+// a literal string.
+const CATEGORY_ORDER: PromptCategory[] = [
+  'spec-generation',
+  'diagnostics-coaching',
+  'generation',
+  'analysis-dialogue',
+  'revision-engine',
+  'sprints',
+  'comparison',
+];
+
+const CATEGORY_PRESENTATION: Record<
+  PromptCategory,
+  { title: string; eyebrow: string; selected: string }
+> = {
+  'spec-generation': {
+    title: 'Spec Generation',
+    eyebrow: 'text-emerald-500/70 border-emerald-500/30',
+    selected: 'bg-emerald-500/20 border-emerald-400 text-emerald-300',
+  },
+  'diagnostics-coaching': {
+    title: 'Diagnostics & Coaching',
+    eyebrow: 'text-amber-500/70 border-amber-500/30',
+    selected: 'bg-amber-500/20 border-amber-400 text-amber-300',
+  },
+  generation: {
+    title: 'Generation',
+    eyebrow: 'text-purple-500/70 border-purple-500/30',
+    selected: 'bg-purple-500/20 border-purple-400 text-purple-300',
+  },
+  'analysis-dialogue': {
+    title: 'Analysis & Dialogue',
+    eyebrow: 'text-cyan-500/70 border-cyan-500/30',
+    selected: 'bg-cyan-500/20 border-cyan-400 text-cyan-300',
+  },
+  'revision-engine': {
+    title: 'Revision Engine',
+    eyebrow: 'text-rose-500/70 border-rose-500/30',
+    selected: 'bg-rose-500/20 border-rose-400 text-rose-300',
+  },
+  sprints: {
+    title: 'Living Sprints',
+    eyebrow: 'text-yellow-500/70 border-yellow-500/30',
+    selected: 'bg-yellow-500/20 border-yellow-400 text-yellow-300',
+  },
+  comparison: {
+    title: 'Version Compare',
+    eyebrow: 'text-sky-500/70 border-sky-500/30',
+    selected: 'bg-sky-500/20 border-sky-400 text-sky-300',
+  },
+};
+
+const TIER_BADGE: Record<'default' | 'global' | 'project', { label: string; className: string }> = {
+  project: { label: 'Project', className: 'text-hld-cyan border-hld-cyan/40' },
+  global: { label: 'Global', className: 'text-amber-300 border-amber-400/40' },
+  default: { label: 'Default', className: 'text-slate-400 border-slate-600' },
+};
+
+export const PromptsGraphModal: React.FC = () => {
+  const isOpen = useStore((s) => s.showPromptsGraphModal);
+  const setShow = useStore((s) => s.setShowPromptsGraphModal);
+  const globalPromptsConfig = useStore((s) => s.globalPromptsConfig);
+  const projectPromptsOverride = useStore((s) => s.projectPromptsOverride);
+  const setPromptsConfig = useStore((s) => s.setPromptsConfig);
+  const setGlobalPromptsConfig = useStore((s) => s.setGlobalPromptsConfig);
+  const saveCurrentState = useStore((s) => s.saveCurrentState);
+
+  const [scope, setScope] = useState<Scope>('project');
+  const [localValues, setLocalValues] = useState<PromptsConfig>(DEFAULT_PROMPTS_CONFIG);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, message: '', onConfirm: () => {} });
+
+  // The editable baseline for a scope: 'project' shows the effective config
+  // (default ◁ global ◁ project); 'global' shows default ◁ global (no project
+  // tier), so editing + saving Global never bakes in project-specific values.
+  const baseFor = (s: Scope): PromptsConfig =>
+    s === 'project'
+      ? resolvePromptsConfig(projectPromptsOverride, globalPromptsConfig)
+      : resolvePromptsConfig(undefined, globalPromptsConfig);
+
+  // Re-seed the working buffer when the modal opens or the scope changes.
+  // (Intentionally keyed only on open/scope, not the override layers.)
+  useEffect(() => {
+    if (isOpen) setLocalValues(baseFor(scope));
+  }, [isOpen, scope]);
 
   if (!isOpen) return null;
 
+  const onClose = () => setShow(false);
+
   const handleSave = () => {
-    setPromptsConfig(localConfig);
+    if (scope === 'project') {
+      setPromptsConfig(localValues);
+      void saveCurrentState();
+    } else {
+      setGlobalPromptsConfig(diffPromptsConfig(localValues, DEFAULT_PROMPTS_CONFIG));
+    }
     onClose();
   };
 
   const handleReset = () => {
     setConfirmState({
       isOpen: true,
-      message: "Are you sure you want to reset all prompts to defaults?",
+      message:
+        scope === 'project'
+          ? "Reset this project's prompts to the inherited defaults? This clears the project's overrides (you still inherit any global defaults)."
+          : 'Reset the global prompt defaults back to the built-in defaults?',
       onConfirm: () => {
-        setLocalConfig(DEFAULT_PROMPTS_CONFIG);
-        setConfirmState(prev => ({ ...prev, isOpen: false }));
-      }
+        setLocalValues(
+          scope === 'project' ? resolvePromptsConfig(undefined, globalPromptsConfig) : DEFAULT_PROMPTS_CONFIG,
+        );
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+      },
     });
   };
 
-  const Node = ({ id, label, color, type }: { id: keyof PromptsConfig, label: string, color: string, type: 'input'|'process'|'output' }) => {
-    const isSelected = selectedNode === id;
+  const groups = CATEGORY_ORDER.map((cat) => ({
+    cat,
+    entries: PROMPT_REGISTRY.filter((e) => e.category === cat),
+  })).filter((g) => g.entries.length > 0);
+
+  const selectedEntry = selectedKey ? getPromptEntry(selectedKey) : null;
+  const selectedLocked = selectedEntry?.editability === 'locked';
+
+  const Node = ({ entry }: { entry: PromptEntry }) => {
+    const isSelected = selectedKey === entry.key;
+    const locked = entry.editability === 'locked';
+    const selectedClass = CATEGORY_PRESENTATION[entry.category].selected;
     return (
-      <div 
-        onClick={() => setSelectedNode(id)}
-        className={`
-          relative cursor-pointer transition-all duration-200 p-3 flex flex-col items-center justify-center
-          border-2 font-mono text-[10px] uppercase tracking-widest w-full text-center
-          ${isSelected ? `bg-${color}-500/20 border-${color}-400 text-${color}-300 shadow-[0_0_15px_rgba(var(--tw-colors-${color}-500),0.5)]` 
-                        : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}
-        `}
+      <button
+        onClick={() => setSelectedKey(entry.key)}
+        className={`relative cursor-pointer transition-all duration-200 p-3 flex items-center justify-center gap-1.5 border-2 font-mono text-[10px] uppercase tracking-widest w-full text-center ${
+          isSelected ? selectedClass : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'
+        }`}
       >
-        <span className={isSelected ? 'font-bold' : ''}>{label}</span>
-      </div>
+        {locked && <Lock size={10} className="opacity-70 shrink-0" />}
+        <span className={isSelected ? 'font-bold' : ''}>{entry.label}</span>
+      </button>
     );
-  };
-
-  const nodeLabels: Record<keyof PromptsConfig, string> = {
-    systemInstruction: 'SYSTEM INSTRUCTION',
-    rootTaskInstruction: 'DOCUMENT SPEC',
-    l1TaskInstruction: 'CHAPTER SPEC',
-    subTaskInstruction: 'SUBSECTION SPEC',
-    refineSpecPrompt: 'SPEC REFINER',
-    diagnosticInstruction: 'DIAGNOSTIC',
-    coachPrompt: 'COACH',
-    generatePersonasPrompt: 'PERSONA GENERATOR',
-    suggestContentPrompt: 'CONTENT SUGGESTER',
-    dependenciesPrompt: 'DEPENDENCY ESTIMATOR',
-    analysisPrompt: 'ANALYSIS',
-    refactorAnalysisPrompt: 'REFACTOR',
-    dialoguePrompt: 'SOCRATIC PARTNER',
-    generateRevisionsPrompt: 'REVISION ENGINE',
-    generateSprintPlanPrompt: 'SPRINT PLANNER',
-    compareVersionsPrompt: 'VERSION COMPARE',
-  };
-
-  const nodeDescriptions: Record<keyof PromptsConfig, string> = {
-    systemInstruction: "Core behavior and constraints shared by the spec-generation passes.",
-    rootTaskInstruction: "Document-level (root) pass: reconstructs the whole work's thesis and macro-arcs, which constrain the chapter specs below it.",
-    l1TaskInstruction: "How chapters (top-level sections) are specified — kept consistent with the document spec above.",
-    subTaskInstruction: "How subsections are specified, inheriting constraints from their parent section.",
-    refineSpecPrompt: "The rules used when manually refining a section's specification.",
-    diagnosticInstruction: "Assesses a section against its specification, move by move.",
-    coachPrompt: "The framework the ADHD Coach uses to turn diagnostics into an actionable writing plan.",
-    generatePersonasPrompt: "Generates AI reviewer personas from a sample of the document.",
-    suggestContentPrompt: "The ghostwriter used when generating content suggestions from a section's spec.",
-    dependenciesPrompt: "Identifies prerequisites and references between sections.",
-    analysisPrompt: "Reconstructs a section's argument: thesis, key concepts, premises, conclusion, objections.",
-    refactorAnalysisPrompt: "Folds a Socratic dialogue back into a refined analysis version.",
-    dialoguePrompt: "The Socratic partner that interrogates parts of an analysis with the author.",
-    generateRevisionsPrompt: "The Glass Box engine: proposes source-traceable revision edits, each with a verbatim receipt.",
-    generateSprintPlanPrompt: "Living Sprints: bends an argument shape into a timed, section-specific plan of writing moves.",
-    compareVersionsPrompt: "Version Compare: an exegetical A/B evaluation of two saved versions — drift, improvements, and possible losses.",
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex bg-black/90 backdrop-blur-sm shadow-2xl p-6 font-sans">
       <div className="flex w-full h-full border-2 border-hld-border bg-hld-bg relative overflow-hidden">
-        
         {/* Graph Area */}
-        <div className="flex-1 relative flex flex-col items-center justify-center p-8 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0f14] to-black">
+        <div className="flex-1 relative flex flex-col p-8 overflow-y-auto bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0f14] to-black">
           {/* Background grid */}
-          <div className="absolute inset-0 z-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#00e8f5 1px, transparent 1px), linear-gradient(90deg, #00e8f5 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
-          
-          <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
+          <div
+            className="absolute inset-0 z-0 opacity-10 pointer-events-none"
+            style={{
+              backgroundImage:
+                'linear-gradient(#00e8f5 1px, transparent 1px), linear-gradient(90deg, #00e8f5 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          />
+
+          <div className="z-10 flex items-center gap-3 mb-8">
             <Network className="text-hld-cyan" size={24} />
-            <h2 className="text-xl font-bold text-slate-100 font-mono tracking-widest uppercase text-shadow-hld">Prompt Map</h2>
+            <h2 className="text-xl font-bold text-slate-100 font-mono tracking-widest uppercase text-shadow-hld">
+              Prompt Map
+            </h2>
           </div>
 
-          {/* Schematic Graph representing data flows */}
-          <div className="z-10 flex flex-col items-center gap-8 select-none relative w-full max-w-4xl mt-12">
-            <div className="text-hld-muted font-mono text-[10px] uppercase tracking-widest absolute -top-8">Input</div>
-            <div className="w-full max-w-3xl py-4 border-2 border-slate-700 flex items-center justify-center bg-slate-900 text-slate-400 font-mono text-sm tracking-widest shadow-[0_0_20px_rgba(0,0,0,0.5)] z-20 relative">
-               YOUR DOCUMENT
-            </div>
+          {/* Input banner */}
+          <div className="z-10 w-full max-w-3xl mx-auto py-4 mb-8 border-2 border-slate-700 flex items-center justify-center bg-slate-900 text-slate-400 font-mono text-sm tracking-widest shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+            YOUR DOCUMENT
+          </div>
 
-            {/* 4 Pillars */}
-            <div className="grid grid-cols-4 gap-8 w-full max-w-3xl relative mt-12">
-              {/* Connecting lines via SVG */}
-              <svg className="absolute -top-[50px] left-0 w-full h-[600px] pointer-events-none stroke-slate-700 stroke-2 fill-none" style={{ zIndex: 0 }}>
-                 {/* Hub to 4 pillars */}
-                 <path d="M 384 0 L 384 40 L 84 40 L 84 60" />
-                 <path d="M 384 0 L 384 40 L 284 40 L 284 60" />
-                 <path d="M 384 0 L 384 40 L 484 40 L 484 60" />
-                 <path d="M 384 0 L 384 40 L 684 40 L 684 60" />
-                 
-                 {/* Pillar 1 lines (Spec Generation — 5 nodes) */}
-                 <path d="M 84 120 L 84 140" />
-                 <path d="M 84 200 L 84 220" />
-                 <path d="M 84 280 L 84 300" />
-                 <path d="M 84 360 L 84 380" />
-                 
-                 {/* Pillar 2 lines (Diagnostic — 3 nodes) */}
-                 <path d="M 284 120 L 284 140" />
-                 <path d="M 284 200 L 284 220" />
-                 
-                 {/* Pillar 3 lines (Generative — 2 nodes) */}
-                 <path d="M 484 120 L 484 140" />
-
-                 {/* Pillar 4 lines (Exegesis — 3 nodes) */}
-                 <path d="M 684 120 L 684 140" />
-                 <path d="M 684 200 L 684 220" />
-              </svg>
-
-              {/* Spec Generation (top-down: document → chapter → subsection) */}
-              <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-emerald-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-emerald-500/30 pb-2">Spec Generation</div>
-                <Node id="systemInstruction" label="System Instruction" color="emerald" type="process" />
-                <Node id="rootTaskInstruction" label="Document Spec" color="emerald" type="process" />
-                <Node id="l1TaskInstruction" label="Chapter Spec" color="emerald" type="process" />
-                <Node id="subTaskInstruction" label="Subsection Spec" color="emerald" type="process" />
-                <Node id="refineSpecPrompt" label="Spec Refiner" color="emerald" type="process" />
-              </div>
-
-              {/* Diagnostics & Coaching */}
-              <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-amber-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-amber-500/30 pb-2">Diagnostics & Coaching</div>
-                <Node id="generatePersonasPrompt" label="Persona Generator" color="amber" type="process" />
-                <Node id="diagnosticInstruction" label="Diagnostic" color="amber" type="process" />
-                <Node id="coachPrompt" label="Coach" color="amber" type="process" />
-              </div>
-
-              {/* Generation */}
-              <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-purple-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-purple-500/30 pb-2">Generation</div>
-                <Node id="suggestContentPrompt" label="Content Suggester" color="purple" type="process" />
-                <Node id="dependenciesPrompt" label="Dependency Estimator" color="purple" type="process" />
-              </div>
-
-              {/* Analysis & Dialogue */}
-              <div className="flex flex-col gap-6 w-full z-10 relative">
-                <div className="text-center text-cyan-500/70 font-mono text-[10px] uppercase tracking-widest mb-2 border-b border-cyan-500/30 pb-2">Analysis & Dialogue</div>
-                <Node id="analysisPrompt" label="Analysis" color="cyan" type="process" />
-                <Node id="dialoguePrompt" label="Socratic Partner" color="cyan" type="process" />
-                <Node id="refactorAnalysisPrompt" label="Refactor" color="cyan" type="process" />
-              </div>
-            </div>
-
+          {/* Category columns (registry-driven) */}
+          <div className="z-10 flex flex-wrap gap-6 justify-center items-start">
+            {groups.map(({ cat, entries }) => {
+              const pres = CATEGORY_PRESENTATION[cat];
+              return (
+                <div key={cat} className="flex flex-col gap-4 w-44">
+                  <div
+                    className={`text-center font-mono text-[10px] uppercase tracking-widest pb-2 border-b ${pres.eyebrow}`}
+                  >
+                    {pres.title}
+                  </div>
+                  {entries.map((entry) => (
+                    <Node key={entry.key} entry={entry} />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -185,43 +215,110 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
           <div className="flex items-center justify-between p-4 border-b border-hld-border bg-slate-800">
             <h3 className="text-hld-text font-mono text-[12px] uppercase tracking-widest">Prompt Editor</h3>
             <div className="flex items-center gap-2">
-              <button onClick={handleReset} className="text-hld-muted hover:text-amber-400" title="Reset to Defaults"><RotateCcw size={16} /></button>
-              <button onClick={handleSave} className="text-hld-cyan hover:text-white" title="Save Configuration"><Save size={16} /></button>
-              <button onClick={onClose} className="text-hld-muted hover:text-hld-magenta ml-2"><X size={20} /></button>
+              <button onClick={handleReset} className="text-hld-muted hover:text-amber-400" title="Reset to Defaults">
+                <RotateCcw size={16} />
+              </button>
+              <button onClick={handleSave} className="text-hld-cyan hover:text-white" title="Save Configuration">
+                <Save size={16} />
+              </button>
+              <button onClick={onClose} className="text-hld-muted hover:text-hld-magenta ml-2">
+                <X size={20} />
+              </button>
             </div>
           </div>
-          
+
+          {/* Scope toggle — which tier the edits + Save target */}
+          <div className="p-4 border-b border-hld-border bg-slate-800/50">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-hld-muted mb-2">Editing scope</div>
+            <div className="flex bg-[#0b0c10] p-1 rounded border border-hld-border">
+              {(['project', 'global'] as Scope[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setScope(s)}
+                  className={`flex-1 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest transition-colors ${
+                    scope === s ? 'bg-hld-cyan/20 text-hld-cyan font-bold border border-hld-cyan/40' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {s === 'project' ? 'This project' : 'Global defaults'}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-hld-muted mt-2 font-sans leading-relaxed">
+              {scope === 'project'
+                ? 'Edits apply to the current project only (overrides the global default).'
+                : 'Edits become your default across all projects (a project can still override).'}
+            </p>
+          </div>
+
           <div className="flex-1 p-6 flex flex-col gap-4 overflow-y-auto">
-            {!selectedNode ? (
+            {!selectedEntry ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 font-mono text-[12px] uppercase tracking-widest text-center">
                 <Network className="w-12 h-12 mb-4 opacity-50 text-slate-600" />
-                Select a node from the map <br/>to edit its prompt.
+                Select a node from the map <br />
+                to edit its prompt.
               </div>
             ) : (
               <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-slate-100 font-mono text-sm tracking-widest uppercase">{nodeLabels[selectedNode]}</h4>
-                  <span className="text-[10px] px-2 py-1 bg-black text-hld-cyan font-mono border border-hld-cyan/30 rounded">ACTIVE</span>
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h4 className="text-slate-100 font-mono text-sm tracking-widest uppercase">{selectedEntry.label}</h4>
+                  {selectedLocked ? (
+                    <span className="text-[10px] px-2 py-1 bg-black text-slate-400 font-mono border border-slate-600 rounded flex items-center gap-1">
+                      <Lock size={10} /> LOCKED
+                    </span>
+                  ) : (
+                    (() => {
+                      const tier = promptSource(
+                        selectedEntry.key as EditablePromptKey,
+                        scope === 'project' ? projectPromptsOverride : undefined,
+                        globalPromptsConfig,
+                      );
+                      const badge = TIER_BADGE[tier];
+                      return (
+                        <span
+                          className={`text-[10px] px-2 py-1 bg-black font-mono border rounded ${badge.className}`}
+                          title="Where this prompt's current value comes from"
+                        >
+                          {badge.label}
+                        </span>
+                      );
+                    })()
+                  )}
                 </div>
                 <div className="text-[11px] text-slate-400 mb-4 font-sans leading-relaxed">
-                  {nodeDescriptions[selectedNode]}
+                  {selectedEntry.description}
                 </div>
-                <textarea
-                  value={localConfig[selectedNode]}
-                  onChange={e => setLocalConfig(prev => ({ ...prev, [selectedNode]: e.target.value }))}
-                  className="flex-1 w-full bg-[#05080f] text-[#00e8f5] font-mono text-[13px] p-4 border border-hld-border focus:border-[#00e8f5] focus:outline-none focus:ring-1 focus:ring-[#00e8f5] focus:shadow-[0_0_15px_rgba(0,232,245,0.2)] resize-none rounded-sm selection:bg-[#00e8f5] selection:text-black leading-relaxed shadow-inner"
-                  spellCheck={false}
-                />
+                {selectedLocked ? (
+                  <>
+                    <div className="text-[10px] text-slate-500 mb-2 font-mono uppercase tracking-widest">
+                      Engine internal — read only
+                    </div>
+                    <textarea
+                      value={selectedEntry.defaultText}
+                      readOnly
+                      className="flex-1 w-full bg-[#05080f] text-slate-400 font-mono text-[13px] p-4 border border-hld-border resize-none rounded-sm leading-relaxed shadow-inner cursor-not-allowed"
+                      spellCheck={false}
+                    />
+                  </>
+                ) : (
+                  <textarea
+                    value={localValues[selectedEntry.key as EditablePromptKey]}
+                    onChange={(e) =>
+                      setLocalValues((prev) => ({ ...prev, [selectedEntry.key]: e.target.value }))
+                    }
+                    className="flex-1 w-full bg-[#05080f] text-[#00e8f5] font-mono text-[13px] p-4 border border-hld-border focus:border-[#00e8f5] focus:outline-none focus:ring-1 focus:ring-[#00e8f5] focus:shadow-[0_0_15px_rgba(0,232,245,0.2)] resize-none rounded-sm selection:bg-[#00e8f5] selection:text-black leading-relaxed shadow-inner"
+                    spellCheck={false}
+                  />
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={confirmState.isOpen}
         message={confirmState.message}
         onConfirm={confirmState.onConfirm}
-        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

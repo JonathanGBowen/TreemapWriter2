@@ -3,7 +3,7 @@ import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
 import { DEFAULT_OLLAMA_BASE_URL } from './ai/clients';
-import type { AnalysisSpell } from '../types';
+import type { AnalysisSpell, PromptsConfig } from '../types';
 
 /**
  * Global, app-level preferences that are NOT tied to a specific project.
@@ -22,6 +22,7 @@ const MODELS_CATALOG_KEY = 'treemap_writer_models_catalog';
 const OLLAMA_BASE_URL_KEY = 'treemap_writer_ollama_base_url';
 const SPELLS_KEY = 'treemap_writer_spells';
 const SPRINT_CUES_KEY = 'treemap_writer_sprint_cues';
+const PROMPTS_GLOBAL_DEFAULT_KEY = 'treemap_writer_prompts_global_default';
 
 export async function hasSeenTutorial(): Promise<boolean> {
   return Boolean(await get(TUTORIAL_SEEN_KEY));
@@ -85,4 +86,19 @@ export async function getSprintCuesEnabled(): Promise<boolean> {
 
 export async function setSprintCuesEnabled(enabled: boolean): Promise<void> {
   await set(SPRINT_CUES_KEY, enabled);
+}
+
+/**
+ * User-level prompt overrides — the global tier shared across all projects. The
+ * built-in defaults live in code (the prompt registry), so this is stored SPARSE
+ * (only the fields the user changed); `{}` means "use built-ins everywhere".
+ * Resolution: built-in defaults ◁ this ◁ per-project overrides.
+ */
+export async function getGlobalPromptsDefault(): Promise<Partial<PromptsConfig>> {
+  const stored = await get<Partial<PromptsConfig>>(PROMPTS_GLOBAL_DEFAULT_KEY);
+  return stored && typeof stored === 'object' ? stored : {};
+}
+
+export async function setGlobalPromptsDefault(config: Partial<PromptsConfig>): Promise<void> {
+  await set(PROMPTS_GLOBAL_DEFAULT_KEY, config);
 }

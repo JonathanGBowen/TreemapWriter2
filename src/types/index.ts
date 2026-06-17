@@ -1,4 +1,5 @@
- 
+import type { EditablePromptKey } from '../services/prompts/registry';
+
 export interface Section {
   id: string;
   title: string;
@@ -403,28 +404,16 @@ export interface ProjectMeta {
   path?: string;
 }
  
-export interface PromptsConfig {
-  systemInstruction: string;
-  l1TaskInstruction: string;
-  subTaskInstruction: string;
-  /** Document-level (root) spec pass — the top of the hierarchy, above chapters. */
-  rootTaskInstruction: string;
-  suggestContentPrompt: string;
-  coachPrompt: string;
-  refineSpecPrompt: string;
-  generatePersonasPrompt: string;
-  diagnosticInstruction: string;
-  dependenciesPrompt: string;
-  analysisPrompt: string;
-  refactorAnalysisPrompt: string;
-  dialoguePrompt: string;
-  /** Glass Box revision engine: source-traceable proposal generation. */
-  generateRevisionsPrompt: string;
-  /** Living Sprints: bends an argument shape into a timed, section-specific plan. */
-  generateSprintPlanPrompt: string;
-  /** Version Compare: exegetical A/B evaluation of two saved versions. */
-  compareVersionsPrompt: string;
-}
+/**
+ * The user-editable prompts, keyed by their persisted field names. Derived from
+ * the prompt registry (the single source of truth for the inventory) so adding a
+ * prompt is a one-place edit there. Each editable registry entry contributes one
+ * `string` field whose key is the entry's `key`. Locked engine-internal prompts
+ * are deliberately excluded — they are never persisted or user-overridable.
+ *
+ * See `src/services/prompts/registry.ts` for the inventory and metadata.
+ */
+export type PromptsConfig = Record<EditablePromptKey, string>;
 
 // --- LIVING SPRINTS TYPES ---
 // A sprint runs an ordered sequence of timed *moves* for one target section

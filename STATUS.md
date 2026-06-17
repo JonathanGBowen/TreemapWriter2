@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-16.** Update this file whenever a feature ships or is
+> **Current as of 2026-06-17.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)).
 
 ## Where things stand
@@ -47,10 +47,6 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
-- **`ProjectFileModal` global save.** JSON edits to `projectName`, `testSuite`,
-  `promptsConfig`, `customPersonas` apply to component state but never persist
-  back (the modal shows "Applied successfully (Not yet saved globally)"). Either
-  wire the save path or remove the misleading UI.
 - **Re-enable App.tsx test-suite cleanup.** A `useEffect` is commented out
   ("Disabled to prevent deleting data when section titles change") — a data-loss
   bug was found and the feature disabled rather than fixed. Design a safer cleanup
