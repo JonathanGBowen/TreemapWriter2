@@ -25,7 +25,8 @@ export type AICallKind =
   | 'continueDialogue'
   | 'generateRevisions'
   | 'suggestDirectives'
-  | 'generateSprintPlan';
+  | 'generateSprintPlan'
+  | 'compareVersions';
 
 /** Every call kind, in display order. The single source of truth for "what is configurable". */
 export const AI_CALL_KINDS: AICallKind[] = [
@@ -42,6 +43,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'generateRevisions',
   'suggestDirectives',
   'generateSprintPlan',
+  'compareVersions',
 ];
 
 /** Short, glyph-light labels for the per-call override UI. No sentences (HLD). */
@@ -59,6 +61,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   generateRevisions: 'Generate revisions',
   suggestDirectives: 'Suggest directives',
   generateSprintPlan: 'Generate sprint plan',
+  compareVersions: 'Compare versions',
 };
 
 /**

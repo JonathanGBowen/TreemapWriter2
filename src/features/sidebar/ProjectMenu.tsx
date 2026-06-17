@@ -70,6 +70,7 @@ export function ProjectMenu({
   const setShowProjectModal = useStore((s) => s.setShowProjectModal);
   const setShowSyncConfigModal = useStore((s) => s.setShowSyncConfigModal);
   const setShowRemoteProjectModal = useStore((s) => s.setShowRemoteProjectModal);
+  const openCompare = useStore((s) => s.openCompare);
   const sync = summarizeSync(
     useStore((s) => s.syncStatus),
     useStore((s) => s.syncError),
@@ -111,6 +112,8 @@ export function ProjectMenu({
             <MenuRow label="New from remote…" onClick={() => run(() => setShowRemoteProjectModal(true))} />
           )}
           <MenuRow label="Open projects…" meta={projectCount || undefined} onClick={() => run(() => setShowProjectModal(true))} />
+          <Divider />
+          <MenuRow label="Compare versions" meta="≈" onClick={() => run(openCompare)} />
           <Divider />
           <MenuRow label="Import markdown" onClick={() => run(() => mdInputRef.current?.click())} />
           <MenuRow label="Import project" onClick={() => run(() => projectInputRef.current?.click())} />

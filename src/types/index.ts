@@ -160,6 +160,83 @@ export interface SectionAnalysisState {
   dialogueContext: string | null;
 }
 
+// --- VERSION COMPARISON (A/B EVALUATION) ---
+// An exegetical comparison of two saved versions (git snapshots) of the
+// document: not a textual diff (the `diff` package already does that) but a
+// structural read of how the ARGUMENT changed — drift, gains, losses, and
+// shifts in the moves. Structure, not summary. Ephemeral/regenerable: never
+// persisted, produced on demand by `AIProvider.compareVersions`.
+
+/**
+ * Net direction of version B relative to version A. Not a grade — a vector. An
+ * honest revision is often 'mixed' (gains here, losses there) or 'lateral'
+ * (changed without clearly improving), and the report must be able to say so.
+ */
+export type ComparisonDirection = 'improved' | 'regressed' | 'mixed' | 'lateral';
+
+/**
+ * A verbatim excerpt grounding a comparison claim — the same "no claim without
+ * a receipt" guarantee the revision engine makes (cf. `RevisionProposal`).
+ * `side` records which version the quote is lifted from.
+ */
+export interface ComparisonReceipt {
+  quote: string;
+  side: 'a' | 'b';
+}
+
+/**
+ * One discrete change between the versions: an improvement, a loss, or a shift
+ * in the argument's moves. Grounded in verbatim quotes; phrased in the spec
+ * vocabulary (`RequiredMove` / `mainClaim` / `SectionFunction`) where it fits.
+ */
+export interface ComparisonChange {
+  /** The change in one line. */
+  summary: string;
+  /** Which argument-move or aspect it touches (echoes RequiredMove language). */
+  aspect?: string;
+  /** Verbatim grounding from version A and/or B. */
+  receipts: ComparisonReceipt[];
+}
+
+/**
+ * Per-section comparison, for a section that exists (by heading title) in one
+ * or both versions. A section present on only one side is itself a structural
+ * fact worth surfacing — an added or excised section moves the argument.
+ */
+export interface SectionComparisonNote {
+  /** Heading title used to align the two versions (NOT a slug id). */
+  sectionTitle: string;
+  presentInA: boolean;
+  presentInB: boolean;
+  direction: ComparisonDirection;
+  note: string;
+}
+
+/**
+ * The structured result of an exegetical A/B comparison: how the argument moved
+ * from version A to version B. It reconstructs drift, gains, losses, and shifts
+ * in the moves — each grounded in the text — rather than restating what either
+ * draft says.
+ */
+export interface VersionComparison {
+  /** Net direction of B relative to A. */
+  direction: ComparisonDirection;
+  /** A one-paragraph overall read of the revision. */
+  verdict: string;
+  /** How the thesis / throughline / commitments moved between versions. */
+  conceptualDrift: string;
+  /** What got stronger, each grounded in the text. */
+  improvements: ComparisonChange[];
+  /** What was weakened, dropped, or lost. */
+  losses: ComparisonChange[];
+  /** Changes to the argument's moves and structure. */
+  moveChanges: ComparisonChange[];
+  /** Per-section notes, where sections align by heading title. */
+  sectionNotes: SectionComparisonNote[];
+  /** The comparison lens applied, if any (audit trail). */
+  lensName?: string;
+}
+
 // --- GLASS BOX REVISION ENGINE ---
 
 /**
@@ -295,6 +372,23 @@ export interface Snapshot {
   testSuite: TestSuite;
   interpolationConfig?: PromptsConfig;
 }
+
+/**
+ * Lightweight commit metadata — the blob-free projection of a `Snapshot` (no
+ * markdown/testSuite), as returned by the Rust `snapshot_list` command. Lets us
+ * index deep history cheaply (e.g. the Version Compare day picker) without
+ * reading file blobs; full content is fetched lazily per selected commit via
+ * `Repository.readSnapshot`. `trigger` is a raw string (parsed from the commit
+ * message) — treat unknown values as routine autosaves.
+ */
+export interface SnapshotMeta {
+  id: string;
+  timestamp: number;
+  trigger: string;
+  affectedScope: 'all' | { sectionIds: string[] };
+  contentHash: string;
+  message: string;
+}
  
 export interface ProjectMeta {
   id: string;
@@ -328,6 +422,8 @@ export interface PromptsConfig {
   generateRevisionsPrompt: string;
   /** Living Sprints: bends an argument shape into a timed, section-specific plan. */
   generateSprintPlanPrompt: string;
+  /** Version Compare: exegetical A/B evaluation of two saved versions. */
+  compareVersionsPrompt: string;
 }
 
 // --- LIVING SPRINTS TYPES ---

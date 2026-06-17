@@ -1799,3 +1799,140 @@ writes the live text into the existing `project.md` / `localDraft` fields.
 autosave, fully restoring the draft/committed split on desktop. Tracked in
 `STATUS.md`. The unrelated section-ID-orphan item ("re-enable App.tsx test-suite
 cleanup") is untouched.
+
+---
+
+## 2026-06-17 — Feature: Version Compare (evaluative A/B comparison workspace)
+
+**Why.** The app could already *diff* two saved versions textually
+(`VersionHistoryModal` + the `diff` package), but offered no *judgment* — no read
+on whether a revision strengthened or weakened the dissertation. This adds an
+exegetical A/B comparison: a full-screen workspace where the writer picks two
+versions and gets the textual diff *plus* an AI evaluation of conceptual drift,
+improvements, and possible losses — structure, not summary (VISION). It reuses the
+git-snapshot history as the version source and the Grimoire "spell" mechanism
+(persona + lens) as the way to "draw from prompt libraries for philosophy &
+manuscript revision." **Named "Version Compare," never "A/B testing"** — VISION's
+out-of-scope "A/B testing" means product experimentation, not comparing drafts
+(VISION's non-goal was clarified in the same change to prevent a future revert).
+
+**What changed (TypeScript only; no schema/Rust/Repository change).** The last 20
+commits are already eager-loaded with full markdown by `tauri-repository.getProject`,
+so both operands are already in memory — no new persistence was needed.
+
+- **Domain type.** Added the `VersionComparison` block to `src/types/index.ts`
+  (`ComparisonDirection`, `ComparisonReceipt`, `ComparisonChange`,
+  `SectionComparisonNote`, `VersionComparison`) — reuses the RequiredMove/receipt
+  vocabulary; ephemeral/regenerable, never persisted. Added a
+  `compareVersionsPrompt` field to `PromptsConfig` (+ default in
+  `services/prompts/index.ts`, normalized over defaults at hydration; + the two
+  exhaustive maps in `PromptsGraphModal.tsx`).
+- **AI flow** (the documented "new AI flow" recipe). New prompt
+  `src/services/prompts/compare-versions.md`; new `compareVersions` on the
+  `AIProvider` interface (`src/services/ai-provider.ts`) + `CompareVersionsInput`;
+  provider-agnostic impl split out as `src/services/ai/ai-provider.compare.ts`
+  (non-streaming `generateText` + `responseJsonSchema` + `safeJsonParse` +
+  `normalizeComparison`, modeled on `ai-provider.revisions.ts`); wired in
+  `ai-provider.impl.ts`; `'compareVersions'` added to `AICallKind` /
+  `AI_CALL_KINDS` / labels (`model-types.ts`) and `DEFAULT_MODEL_CONFIG`
+  (`model-config.ts`, pro-tier like `analyzeSection`).
+- **Comparison lenses.** `src/lib/defaultCompareLenses.ts` — 6 built-in lenses
+  (Developmental Edit, Line Edit, Reverse-Outline Drift, Toulmin Integrity,
+  Citation & Evidence Integrity, Concision vs. Voice), reusing the `AnalysisSpell`
+  type so the picker offers them alongside the user's Grimoire spells.
+- **State.** New ephemeral slice `src/state/comparison-state.ts` (precedent:
+  `RevisionSlice` — open flag lives in the slice), combined in `state/index.ts`.
+- **Pure helpers + tests.** `src/lib/compareHelpers.ts` (`extractHeadings`,
+  `alignByTitle` — aligns on heading *title*, not the fragile slug id —
+  `sharedTitles`, `normalizeComparison`); `src/lib/__tests__/compareHelpers.test.ts`
+  (12 tests).
+- **UI.** New panel `src/features/compare/`: `CompareWorkspace` (full-screen
+  overlay, ESC closes; mounted unconditionally in `App.tsx`), `CompareTopBar`
+  (A/B version pickers + lens selector + lit Run action), `CompareDiff` (the
+  green/magenta diff lifted from `VersionHistoryModal`, with a Lines/Words
+  `SegControl` toggle), `CompareReport` (verdict + drift + improvements/losses/
+  move-changes + by-section notes, surfaced via `hld-pip` color/shape), and the
+  orchestration hook `use-comparison-actions` (reads operands, resolves the lens,
+  pre-flights the context budget via `checkContextFit`, calls the provider).
+- **Entry points.** "Compare versions" row in `ProjectMenu`; a "≈ Compare →"
+  link in `VersionHistoryModal`'s header.
+- **VISION.** Clarified the "A/B testing" non-goal (product experimentation ≠
+  version comparison).
+
+**What to verify.** `npm test` (181 pass, incl. 12 new), `npm run typecheck`
+(clean), `npm run build` (ok). Manual (browser dev or `npm run tauri:dev`): open a
+project with ≥ 2 saved versions → project menu → "Compare versions" → set A = an
+older version, B = Current Draft → confirm the diff → pick a comparison lens →
+"Run evaluation" → verdict / drift / improvements / losses + by-section notes
+render with pips → switch to a Grimoire spell and re-run. Requires an AI key
+(`ANTHROPIC_API_KEY` / `GEMINI_API_KEY`) in `src-tauri/.env.local` or the OS keyring.
+
+**Rollback.** Pure additive code; no schema/state migration. `git revert` removes
+the feature; the only change to an existing persisted shape is the additive
+`compareVersionsPrompt` prompt field, which `normalizePromptsConfig` back-fills
+from defaults, so older project files keep loading either way.
+
+**Deferred / follow-up (tracked in `STATUS.md`).** Compare is limited to the
+loaded 20-commit window; reports are ephemeral (a `.twriter/comparisons/` sidecar
+would persist them); strict section-by-section alignment by id awaits the stable
+section-ID work.
+
+---
+
+## 2026-06-17 — Feature: Version Compare iteration 2 (Dock launcher + deep, day-grained history)
+
+**Why.** Two follow-ups: (1) make Compare reachable from the Dock (bottom of the
+left column) alongside the other tools, not only the project menu; (2) let Compare
+reach far past the last 20 commits without UI noise or a project-open slowdown.
+Frequent autosaves make raw history both deep and repetitive.
+
+**Key enabler.** `snapshot_list` (commit metadata) is **blob-free**;
+`snapshot_read` (full content) is only needed for the two operands actually
+compared. Both Rust commands already exist and are registered, so this is
+**TypeScript-only — no Rust change.**
+
+**What changed.**
+
+- **Dock launcher.** `src/features/sidebar/Dock.tsx` — added an 8th tool
+  (`≈`, calls the existing `openCompare`) and widened the grid `grid-cols-7` →
+  `grid-cols-8`. The iteration-1 project-menu entry stays.
+- **Data layer (no Rust change).** Promoted `SnapshotMeta` to a shared type in
+  `src/types/index.ts`. Added two methods to the `Repository` interface + both
+  impls: `listSnapshotMeta(limit?)` (Tauri → `snapshot_list` with
+  `COMPARE_INDEX_LIMIT = 2000`; browser → maps in-memory `revisions`) and
+  `readSnapshot(id)` (Tauri → `snapshot_read`; browser → finds in `revisions`,
+  resolved against a cached `lastOpenedId`).
+- **Lazy loading.** New hook `src/features/compare/use-compare-operands.ts`
+  (mounted by `CompareWorkspace`): loads the blob-free index when the workspace
+  opens, and resolves the two selected operands' full content on demand
+  (fast-pathing the already-loaded recent `revisions`, else `readSnapshot`). The
+  eager 20-full-snapshot load in `getProject`, `VersionHistoryModal`, and restore
+  are untouched — **normal project-open cost is unchanged**; deep reads happen
+  only inside Compare.
+- **Day/checkpoint picker.** `src/lib/compareHelpers.ts` gained pure
+  `groupSnapshotsByDay(metas, { showAll, now })` (groups by local day, surfaces
+  "Start of day" + `manual`/`pre-ai-write` checkpoints, collapses identical-tree
+  saves, folds routine autosaves unless `showAll`) and `resolveOperand(...)`
+  (replaces the old `operandFor`; resolves a ref against the lazily-loaded
+  snapshot or the live draft). `CompareTopBar.tsx` now renders day `<optgroup>`s
+  with a "show every save" toggle and defaults A = start of the most recent day,
+  B = Current Draft. `CompareDiff.tsx` reads the loaded operands and shows a brief
+  "Loading version…" state.
+- **State.** `src/state/comparison-state.ts` gained `snapshotIndex`,
+  `indexStatus`, `loadedA`/`loadedB`, `showAllSaves` (+ setters).
+
+**What to verify.** `npm test` (188 pass, +7 new for `groupSnapshotsByDay` /
+`resolveOperand`), `npm run typecheck` (clean), `npm run build` (ok). No Rust
+change ⇒ no `cargo` step. Manual: Dock `≈` opens Compare; the A/B pickers show
+day groups (Today/Yesterday/date) with start-of-day + checkpoints, autosaves
+folded; "show every save" reveals the rest; pick a deep day for A and Current
+Draft for B → diff + evaluation load after a brief "Loading version…"; confirm a
+normal project open does no extra snapshot reads until Compare opens.
+
+**Rollback.** Pure additive TypeScript; `git revert`. No schema/state migration,
+no on-disk format change.
+
+**Deferred / follow-up (tracked in `STATUS.md`).** The deep index reaches back
+`COMPARE_INDEX_LIMIT = 2000` snapshots — a parameterless `snapshot_list_all` Rust
+command + a "load older" affordance is the trivial lift beyond that. Ephemeral
+reports and strict section-by-section alignment remain as before.

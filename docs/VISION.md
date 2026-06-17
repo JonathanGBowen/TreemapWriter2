@@ -158,8 +158,11 @@ amplify those moments of consequence; it is never decoration at the margins.
 
 These are not deferred features — they are out of scope by *identity*. Do not add
 them, and do not propose them: user accounts, billing, RBAC, telemetry, A/B
-testing, internationalization, multi-tenant anything, or feature flags for a
-hypothetical user. The default answer to "should we add this dependency?" is no.
+testing (the *product-experimentation* kind — splitting users into cohorts to
+measure a metric; this is **not** the Version Compare feature, which compares two
+drafts of the user's *own* prose and is squarely in scope),
+internationalization, multi-tenant anything, or feature flags for a hypothetical
+user. The default answer to "should we add this dependency?" is no.
 
 A configuration knob without a default that does the right thing, and a feature
 flag for a user who does not exist, are both anti-patterns here. (Currently

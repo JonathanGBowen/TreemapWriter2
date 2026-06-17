@@ -7,6 +7,7 @@ import type {
   Resolution,
   ResolveOutcome,
   Snapshot,
+  SnapshotMeta,
   SyncState,
   TestSuite,
 } from '../types';
@@ -105,6 +106,25 @@ export interface Repository {
     trigger: 'manual' | 'autosave' | 'pre-ai-write',
     affectedScope: 'all' | { sectionIds: string[] },
   ): Promise<string | null>;
+
+  /**
+   * Blob-free listing of the open project's snapshot history, newest first.
+   * Cheap (commit metadata only, no file reads), so it can reach far back —
+   * used by Version Compare to index deep history without the cost of loading
+   * full content. `limit` caps the walk (default: a generous implementation
+   * constant). Tauri wraps `snapshot_list`; the browser maps its in-memory
+   * `revisions`. Returns [] for an empty/fresh history.
+   */
+  listSnapshotMeta(limit?: number): Promise<SnapshotMeta[]>;
+
+  /**
+   * Lazily fetch ONE snapshot's full content (markdown + testSuite) by id.
+   * Returns null if the commit is gone or unreadable. Tauri wraps
+   * `snapshot_read`; the browser finds it in the in-memory `revisions`. Used to
+   * resolve the two operands a comparison actually needs, regardless of how far
+   * back they sit.
+   */
+  readSnapshot(id: string): Promise<Snapshot | null>;
 
   // --- Phase 4: sync ---
 
