@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { DEFAULT_PROMPTS_CONFIG, normalizePromptsConfig } from '../lib/constants';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
+import { setSecret } from '../services/credentials';
 import { isTauri } from '../services/tauri-environment';
 import { normalizeModelConfig } from '../services/ai/model-config';
 import type { Dependency, ProjectMeta, PromptsConfig, Snapshot, TestSuite } from '../types';
@@ -43,6 +44,18 @@ export interface ProjectStateSlice {
   createNewProject: () => Promise<void>;
   /** Desktop: pick an existing project folder and open it. Browser: no-op. */
   openExistingProject: () => Promise<void>;
+  /**
+   * Desktop: clone an existing project from `url` into a chosen empty folder
+   * and open it. Resolves `true` on success, `false` if the user cancelled the
+   * folder picker, and throws (for the modal to surface verbatim) on failure.
+   */
+  cloneRemoteProject: (url: string, token: string) => Promise<boolean>;
+  /**
+   * Desktop: create a new project in a chosen folder, then publish it to an
+   * (expected empty) remote. Same `true`/`false`/throw contract as
+   * `cloneRemoteProject`; throws "use Clone" if the remote already has commits.
+   */
+  createProjectWithRemote: (url: string, token: string) => Promise<boolean>;
   loadProject: (id: string) => Promise<boolean>;
   deleteProject: (id: string) => Promise<void>;
   saveCurrentState: () => Promise<void>;
@@ -71,6 +84,23 @@ const sha256Hex = async (str: string): Promise<string> => {
 /** Derive a project name from the trailing segment of a folder path. */
 const folderName = (p: string): string =>
   p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'Untitled Project';
+
+/**
+ * Open the native single-folder picker. Returns the chosen path, or null if the
+ * user cancelled. Throws if the dialog itself fails to open (callers that want
+ * to keep a modal open surface the message).
+ */
+async function pickFolder(title: string): Promise<string | null> {
+  let selected: string | string[] | null;
+  try {
+    selected = await openFolderDialog({ directory: true, multiple: false, title });
+  } catch (e) {
+    console.error('folder picker failed', e);
+    throw new Error('Could not open the folder picker.');
+  }
+  const folder = Array.isArray(selected) ? selected[0] : selected;
+  return folder || null;
+}
 
 /**
  * Desktop create/open flow: pick a folder, scaffold (project_create) or open
@@ -252,6 +282,40 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
   openExistingProject: async () => {
     if (!isTauri()) return;
     await createFolderProject(get, set, 'open');
+  },
+
+  cloneRemoteProject: async (url, token) => {
+    if (!isTauri()) throw new Error('Cloning from a remote requires the desktop app.');
+    // Store the PAT first — the clone authenticates with it from the keyring.
+    await setSecret('git', token.trim());
+    const folder = await pickFolder('Choose an empty folder to clone into');
+    if (!folder) return false; // user cancelled the picker
+    // Throws (empty remote / not a project / bad auth) for the modal to surface.
+    const meta = await repo.cloneProject(url.trim(), folder);
+    set({ projectList: await repo.getMeta() });
+    const ok = await get().loadProject(meta.id);
+    if (!ok) throw new Error('Cloned, but the project data could not be loaded.');
+    toast.success(`Cloned "${meta.name}".`);
+    return true;
+  },
+
+  createProjectWithRemote: async (url, token) => {
+    if (!isTauri()) throw new Error('Publishing to a remote requires the desktop app.');
+    const folder = await pickFolder('Choose an empty folder for your new project');
+    if (!folder) return false;
+    const meta = await repo.createProjectAt(folderName(folder), folder);
+    set({ projectList: await repo.getMeta() });
+    const ok = await get().loadProject(meta.id);
+    if (!ok) throw new Error('Project created, but its data could not be loaded.');
+    // Attach + publish. The remote is expected to be empty.
+    await setSecret('git', token.trim());
+    await repo.configureRemote(url.trim());
+    const result = await repo.syncPush();
+    if (result.kind === 'nonFastForward') {
+      throw new Error('Remote already has commits — use Clone to load it instead.');
+    }
+    toast.success(`Created "${meta.name}" and published to the remote.`);
+    return true;
   },
 
   loadProject: async (id: string) => {

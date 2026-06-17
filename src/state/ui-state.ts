@@ -55,6 +55,7 @@ export interface UIStateSlice {
   showMigrationModal: boolean;
   showSyncConfigModal: boolean;
   showConflictModal: boolean;
+  showRemoteProjectModal: boolean;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -87,6 +88,7 @@ export interface UIStateSlice {
   setShowMigrationModal: (show: boolean) => void;
   setShowSyncConfigModal: (show: boolean) => void;
   setShowConflictModal: (show: boolean) => void;
+  setShowRemoteProjectModal: (show: boolean) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
@@ -124,6 +126,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showMigrationModal: false,
   showSyncConfigModal: false,
   showConflictModal: false,
+  showRemoteProjectModal: false,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -155,4 +158,5 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowMigrationModal: (show) => set({ showMigrationModal: show }),
   setShowSyncConfigModal: (show) => set({ showSyncConfigModal: show }),
   setShowConflictModal: (show) => set({ showConflictModal: show }),
+  setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
 });

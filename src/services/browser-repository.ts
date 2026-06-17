@@ -85,6 +85,10 @@ export const browserRepository: Repository = {
     throw new Error('Folder-based projects require the desktop app.');
   },
 
+  async cloneProject(): Promise<ProjectMeta> {
+    throw new Error('Cloning from a remote requires the desktop app.');
+  },
+
   async commitSnapshot(): Promise<null> {
     // No-op in the browser. Snapshots live as plain entries on the
     // in-memory `revisions` array (capped at 50) and are persisted via

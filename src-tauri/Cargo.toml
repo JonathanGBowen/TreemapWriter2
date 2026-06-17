@@ -28,7 +28,7 @@ tauri-plugin-fs = "2"
 # The dissertation lives as plain markdown + YAML sidecars + a real
 # git repo on disk; SQLite is a derived cache for fast queries.
 rusqlite = { version = "0.32", features = ["bundled"] }
-git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2", "https"] }
 # Phase 5 — pure-Rust 3-way text merge for in-app conflict resolution. git2 0.19
 # does not expose libgit2's merge-file; diffy produces the hunk-level
 # conflict-markered text the resolution modal renders.
@@ -41,7 +41,20 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Phase 4 — OS-level secret storage for git PAT + Gemini API key.
 # Uses Windows Credential Manager, macOS Keychain, Linux Secret Service.
-keyring = "3"
+# keyring 3 makes the platform backends opt-in features; with none enabled it
+# silently uses an in-memory mock that doesn't persist (each Entry gets its own
+# empty slot), so a stored PAT can never be read back. Select the native
+# backend per target.
+keyring = { version = "3", default-features = false }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
 
 [dev-dependencies]
 # Phase 5 — throwaway git repos for the merge-engine integration tests.
