@@ -155,3 +155,100 @@ Each item: text-idea → change → code site.
   paralyzing.
 - "The goal itself as part" grants permission to *change the goal* when stuck — an
   antidote to perfectionist stall.
+
+## VI. Prompt modifications (prompt-by-prompt)
+
+Tier 1 built the *machinery* of part-not-piece context. This section asks the next
+question: do the **prompt texts themselves** (`src/services/prompts/`, catalogued in
+`registry.ts`) ask the model to think in wholes and parts? Read against the functional
+work each does, several drift toward piecemeal / and-sum instructions. These are
+recommendations, not yet applied — prompts are content, so each is a one-file edit when
+its turn comes.
+
+**The tightest gap.** Tier 1 now injects a `STRUCTURAL SURROUND` block into the
+diagnostic and analysis prompts — but `diagnostic.md` and `analysis.md` never mention
+it. The data is present and unused. Teaching those two prompts to *consume* the
+surround is the highest-value edit here; the rest range from medium to light touch.
+
+Each entry: *functional work* → *Gestalt modification*.
+
+### Spec generation — the part/whole skeleton
+- **`system-instruction.md`** (shared base for every spec pass). Make the principle
+  explicit: a section's identity comes from its **place in the whole** (whole-determines-
+  part), and `requiredMoves` are a single line of development, not an and-sum checklist.
+  Stated once here, it propagates to root/l1/sub.
+- **`root-task.md`** (document spec). Add the **gap / structural-trouble** lens: name the
+  S1→S2 the whole work resolves — the field-gap it fills — not only a thesis sentence.
+- **`l1-task.md` / `sub-task.md`** (chapter / subsection specs). Add **commitment-mesh**
+  awareness: a part's `incomingContext` must interlock with a sibling's or parent's
+  `outgoingCommitments` — specify the chain so parts interlock, rather than specifying
+  each in isolation. (`sub-task.md` already says "subordinate to parent"; extend the same
+  idea to siblings.)
+- **`refine-spec.md`** (thin; operates on the legacy goals string). Refine goals **as a
+  part** — aligned to the section's function and its neighbours (the caller already passes
+  `parentGoals`) — not as a sharper isolated piece.
+
+### Diagnostics & coaching
+- **`diagnostic.md`** ⭐ (core "is this section working?"). Three edits: (a) **consume the
+  injected `STRUCTURAL SURROUND` block** — judge the section against it; (b) add a
+  **tF/fT structural-truth + center-of-gravity check** (locally true yet false as a part /
+  displaced emphasis) and an explicit **commitment-mesh check** (incoming met upstream?
+  outgoing delivered?) — elevating what is today one buried `coherenceNotes` example; (c)
+  reframe `nextPriority` as a **located gap → vector** (S1→S2), not a flat "most important
+  thing." Prompt-text only; the `DiagnosticResult` schema changes stay on the roadmap
+  (items 3–4).
+- **`coach.md`** (ADHD document triage). **Re-present the whole first** (anti "narrowing of
+  the field"); triage by the biggest **structural trouble** and the vector that resolves
+  it; permit **recentering** — including questioning whether the current goal or section
+  order serves the whole.
+- **`generate-personas.md`** (reviewer personas). Frame the three personas as genuinely
+  **different centerings of the same whole** (recentering), not just different tones; base
+  them on the argument, not a surface sample.
+
+### Generation
+- **`suggest-content.md`** (ghostwriter from goals). Generate content that serves the
+  section's **function-in-whole** and honours incoming/outgoing; avoid B-reaction
+  boilerplate — grow suggestions from the structural trouble, not from a template.
+- **`dependencies.md`** (prerequisite/reference edges). Already the commitment-mesh in
+  code form. Minor: sharpen the prerequisite-vs-reference call in part/piece terms (a true
+  prerequisite = the part cannot stand without the other). An *unmet* incoming is a finding
+  for the diagnostic, not an edge here.
+
+### Analysis & dialogue
+- **`analysis.md`** ⭐ (argument reconstruction). **Consume the surround; reconstruct the
+  argument as a part** — how the thesis depends on incoming context and what it commits
+  downstream. Keep the "definition from the provided text" guard against hallucination,
+  but allow a concept's **functional role in the whole** to inform its definition (B as
+  leading-tone vs tonic).
+- **`refactor-analysis.md`** (folds dialogue into a new version). **Recenter** the analysis
+  around what the dialogue revealed — changed place/role/function of the parts — rather
+  than patching it piecemeal.
+- **`dialogue.md`** (Socratic partner). **Probe structural grasp**: detect when the author
+  treats a part as a piece or holds a one-sided centering, and push recentering toward the
+  inner connections — the A- vs B-reaction idiom.
+
+### Revision engine — editable-only restraint
+- **`generate-revisions.md`** ⭐ (editable; the Glass Box). Its "atomic, line-by-line,
+  exhaustive" ethos *is* the and-sum piecemeal method Wertheimer names — yet atomicity is
+  a real value here, the price of auditability (the glass box). The Gestalt fix is not to
+  abandon it but to add a **whole-serving guard**: each proposal's rationale should note
+  its effect on the whole, and the pass should flag locally-good / whole-harming (`tF`)
+  edits and B-reaction boilerplate.
+- **Locked internals** (`revision-task.md`, `revision-assembly-system.md`,
+  `revision-assembly-verbatim-task.md`, `revision-assembly-woven-task.md`,
+  `suggest-directives.md`) — **leave as-is.** Their rigidity is deliberate ("do not
+  soften"). Worth recording that the verbatim/woven split maps cleanly onto piece/part:
+  *verbatim* assembly pastes pieces sequentially with source delimiters (by design, for
+  receipts); *woven* assembly makes the parts cohere into a passage. And
+  `suggest-directives.md` is already a recentering generator (distinct strategic
+  approaches). Restraint preserves what is intentionally rigid.
+
+### Sprints & comparison — already strongly Gestalt, light touch
+- **`generate-sprint-plan.md`** already embodies productive thinking: the mandatory
+  `reinstate` move literally **re-presents the whole** before work begins. Light: orient
+  the `draft` move on the section's **gap → vector**; allow a "the goal itself may be
+  wrong" beat for deep stuckness.
+- **`compare-versions.md`** already does exegetical A/B (drift, gains, losses, receipts).
+  Light: name the **center-of-gravity shift** (*Umzentrierung*) as a first-class
+  `conceptualDrift` form, and judge whether B's changes are part-improvements (serve the
+  whole) or piece-improvements (locally better, whole worse — a `tF` revision).

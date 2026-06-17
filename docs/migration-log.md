@@ -2127,3 +2127,29 @@ commitment-mesh diagnostic (item 3); gap→vector next-actions (4); recentering 
 question-the-goal operation (5); argument whole-view on the treemap (6); boundary
 correctness + B-reaction guardrails, which also resolves the `contentPreview` slice
 (7).
+
+---
+
+## 2026-06-17 — Gestalt: prompt-by-prompt analysis (docs only)
+
+**Why.** Tier 1 built the *machinery* of part-not-piece context; the follow-up question
+was whether the prompt *texts* (`src/services/prompts/`) ask the model to think in
+wholes and parts. A prompt-by-prompt pass over all 21 found several drifting toward
+piecemeal / and-sum instructions — and, most notably, that `diagnostic.md` and
+`analysis.md` are now handed a `STRUCTURAL SURROUND` block by Tier 1 yet never tell the
+model to use it.
+
+**What changed.** Documentation only — **no prompt text, code, types, or tests touched.**
+
+- `docs/gestalt-design.md`: new section **§VI "Prompt modifications (prompt-by-prompt)"**
+  — the recommended Gestalt edit for each prompt, grouped by registry category, with the
+  "surround injected but unused" gap called out as highest-value. Records *editable-only
+  restraint* for the Glass-Box revision engine: a whole-serving guard recommended for the
+  editable `generate-revisions.md`, the locked "do not soften" internals left intact.
+- `STATUS.md`: extended the Gestalt roadmap bullet to point at §VI.
+
+**What to verify.** No behavioural change. `git diff --stat` touches only the three doc
+files; `npx tsc --noEmit` clean and `npx vitest run` still 205 passing (a doc edit must
+not affect them).
+
+**Rollback.** `git revert` — pure docs.
