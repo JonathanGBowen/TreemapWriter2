@@ -15,6 +15,7 @@ import refactorAnalysisPrompt from './refactor-analysis.md?raw';
 import dialoguePrompt from './dialogue.md?raw';
 import generateRevisionsPrompt from './generate-revisions.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
+import compareVersionsPrompt from './compare-versions.md?raw';
 
 const stripTrailingNewline = (s: string) => s.replace(/\n+$/, '');
 
@@ -34,6 +35,7 @@ export const DEFAULT_PROMPTS_CONFIG: PromptsConfig = {
   dialoguePrompt: stripTrailingNewline(dialoguePrompt),
   generateRevisionsPrompt: stripTrailingNewline(generateRevisionsPrompt),
   generateSprintPlanPrompt: stripTrailingNewline(generateSprintPlanPrompt),
+  compareVersionsPrompt: stripTrailingNewline(compareVersionsPrompt),
 };
 
 /**

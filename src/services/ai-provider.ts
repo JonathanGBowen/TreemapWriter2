@@ -15,6 +15,7 @@ import type {
   DirectiveSuggestion,
   ArgumentShape,
   SprintPlan,
+  VersionComparison,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 
@@ -46,6 +47,7 @@ export interface AIProvider {
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
+  compareVersions(input: CompareVersionsInput): Promise<VersionComparison>;
 }
 
 /** Compact, in-memory backlog summary shown as context chips in the Brief. */
@@ -234,6 +236,31 @@ export interface ContinueDialogueInput {
   analysis: SectionAnalysis | null;
   /** Full history; the last message is the new user turn. */
   messages: DialogueMessage[];
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface CompareVersionsInput {
+  /** Human label for the earlier version (e.g. a timestamp), shown in the report. */
+  labelA: string;
+  /** Human label for the later version. */
+  labelB: string;
+  /** Full markdown of version A (the earlier draft). */
+  markdownA: string;
+  /** Full markdown of version B (the later draft). */
+  markdownB: string;
+  /**
+   * Section headings present in both versions, for alignment scaffolding. The
+   * model produces `sectionNotes` keyed by title; this hints which titles align.
+   */
+  sharedTitles?: string[];
+  /**
+   * Active comparison lens: a persona + focus layered onto the base compare
+   * prompt (the Grimoire "spell" mechanism). Omitted for a plain comparison.
+   */
+  lens?: { persona: string; lens: string };
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

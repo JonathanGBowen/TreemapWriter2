@@ -20,6 +20,7 @@ const config: PromptsConfig = {
   dialoguePrompt: '',
   generateRevisionsPrompt: '',
   generateSprintPlanPrompt: '',
+  compareVersionsPrompt: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */

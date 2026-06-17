@@ -18,7 +18,9 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
 }) => {
   const isOpen = useStore(s => s.showHistoryModal);
   const setShow = useStore(s => s.setShowHistoryModal);
+  const openCompare = useStore(s => s.openCompare);
   const onClose = () => setShow(false);
+  const onCompare = () => { setShow(false); openCompare(); };
   const [selectedRevId, setSelectedRevId] = useState<string | null>(null);
   const [compareTargetId, setCompareTargetId] = useState<string | 'current'>('current');
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});
@@ -52,9 +54,18 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
               Review previous saves and restore older versions.
             </p>
           </div>
-          <button onClick={onClose} className="text-hld-muted hover:text-hld-text p-2 rounded-full hover:bg-hld-border transition-colors">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onCompare}
+              title="Open the Version Compare workspace to evaluate drift, gains, and losses"
+              className="px-2.5 py-1.5 border border-hld-cyan/30 text-hld-cyan hover:bg-hld-cyan/10 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors"
+            >
+              ≈ Compare →
+            </button>
+            <button onClick={onClose} className="text-hld-muted hover:text-hld-text p-2 rounded-full hover:bg-hld-border transition-colors">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-1 overflow-hidden">

@@ -19,7 +19,9 @@ shipped: prose lives in `project.md` on disk, with a rebuildable SQLite cache,
 git history, and one-button sync to a private GitHub remote (HTTPS + PAT in the
 OS keyring). Recent feature waves, all shipped: multi-provider AI (Gemini /
 Anthropic / Ollama), the Analysis + Socratic Dialogue tabs, Grimoire/lens, the
-Glass-Box revision workspace, and Living Sprints (timed, move-based sessions). In-app
+Glass-Box revision workspace, Living Sprints (timed, move-based sessions), and the
+Version Compare workspace (an exegetical A/B evaluation of two saved versions —
+drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
 
@@ -76,6 +78,16 @@ when synced, magenta on error) surfaces status without distraction.
   layout shell) plus ~14 other files exceed the cognitive-load target. Not a
   build gate (ESLint warns, doesn't error); decompose when you're already in the
   file. No single decomposition unblocks anything else.
+
+- **Version Compare follow-ups.** Shipped 2026-06-17 (see
+  [`docs/migration-log.md`](docs/migration-log.md)). Three deliberate v1 limits, by
+  mood: (a) only the loaded **20-commit window** is selectable — lifting it means a
+  larger `REVISIONS_WINDOW` or a lazy `readSnapshot(id)` repository method; (b)
+  comparison **reports are ephemeral** — a `.twriter/comparisons/<a>..<b>.yaml`
+  sidecar (Repository + both impls + `layout.rs`) would persist/export them; (c)
+  comparison is **whole-document text-level** with section notes aligned by *title*
+  — strict section-by-section alignment by id waits on the stable-section-ID work
+  above (so renames/reorders don't mis-pair sections).
 
 ## Non-goals (out of scope by design — do not pre-build)
 

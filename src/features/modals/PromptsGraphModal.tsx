@@ -72,6 +72,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     dialoguePrompt: 'SOCRATIC PARTNER',
     generateRevisionsPrompt: 'REVISION ENGINE',
     generateSprintPlanPrompt: 'SPRINT PLANNER',
+    compareVersionsPrompt: 'VERSION COMPARE',
   };
 
   const nodeDescriptions: Record<keyof PromptsConfig, string> = {
@@ -90,6 +91,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     dialoguePrompt: "The Socratic partner that interrogates parts of an analysis with the author.",
     generateRevisionsPrompt: "The Glass Box engine: proposes source-traceable revision edits, each with a verbatim receipt.",
     generateSprintPlanPrompt: "Living Sprints: bends an argument shape into a timed, section-specific plan of writing moves.",
+    compareVersionsPrompt: "Version Compare: an exegetical A/B evaluation of two saved versions — drift, improvements, and possible losses.",
   };
 
   return (
