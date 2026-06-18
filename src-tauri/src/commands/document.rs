@@ -18,7 +18,10 @@
 
 use crate::error::AppResult;
 use crate::project::{AppState, Layout};
-use crate::types::{PersistedTestEntry, Persona, PromptsConfig, StoredProjectData, TestSuite, UiState};
+use crate::types::{
+    DiskSignature, MarkdownDelta, PersistedTestEntry, Persona, PromptsConfig, StoredProjectData,
+    TestSuite, UiState,
+};
 use std::path::PathBuf;
 use tauri::State;
 
@@ -35,12 +38,27 @@ pub async fn project_write(
     state.with_current(|h| write_to(&h.layout, &data))
 }
 
-/// Read just the raw bytes of the open project's `project.md`, or `None` if the
-/// file doesn't exist yet. Cheap counterpart to `project_read` (no specs/JSON
-/// walk) used to detect edits made to the file outside the app.
+/// Read the open project's `project.md` only if it changed on disk since the
+/// caller's last-known signature. Stats the file (cheap); `content` comes back
+/// `Some` only when the signature differs from `known` (or `known` is `None`),
+/// so an unchanged file costs a stat and a ~16-byte response instead of
+/// transferring the whole document. Used to detect edits made to the file
+/// outside the app on window focus.
 #[tauri::command]
-pub async fn project_read_markdown(state: State<'_, AppState>) -> AppResult<Option<String>> {
-    state.with_current(|h| crate::fs_io::read_to_string_optional(&h.layout.project_md()))
+pub async fn project_read_markdown_if_changed(
+    state: State<'_, AppState>,
+    known: Option<DiskSignature>,
+) -> AppResult<MarkdownDelta> {
+    state.with_current(|h| {
+        let path = h.layout.project_md();
+        let signature = crate::fs_io::signature_optional(&path)?
+            .map(|(mtime_ms, size)| DiskSignature { mtime_ms, size });
+        let content = match signature {
+            Some(sig) if known != Some(sig) => crate::fs_io::read_to_string_optional(&path)?,
+            _ => None,
+        };
+        Ok(MarkdownDelta { signature, content })
+    })
 }
 
 fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {

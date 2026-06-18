@@ -1,5 +1,7 @@
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import type {
+  DiskSignature,
+  MarkdownDelta,
   ProjectMeta,
   PullOutcome,
   PushOutcome,
@@ -148,9 +150,9 @@ export const browserRepository: Repository = {
     }
   },
 
-  async readProjectMarkdown(): Promise<string | null> {
+  async readMarkdownIfChanged(_known: DiskSignature | null): Promise<MarkdownDelta> {
     // No filesystem in the browser; nothing can edit a file out-of-band.
-    return null;
+    return { signature: null, content: null };
   },
 
   // --- Phase 4: sync (browser is a no-op) ---

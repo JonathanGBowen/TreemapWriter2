@@ -100,7 +100,7 @@ pub fn run() {
             // commands/document.rs
             commands::document::project_read,
             commands::document::project_write,
-            commands::document::project_read_markdown,
+            commands::document::project_read_markdown_if_changed,
             // commands/snapshot.rs
             commands::snapshot::snapshot_commit,
             commands::snapshot::snapshot_list,

@@ -1,4 +1,6 @@
 import type {
+  DiskSignature,
+  MarkdownDelta,
   Persona,
   PromptsConfig,
   ProjectMeta,
@@ -132,11 +134,14 @@ export interface Repository {
   readSnapshot(id: string): Promise<Snapshot | null>;
 
   /**
-   * Desktop only: the raw current bytes of the open project's `project.md` on
-   * disk, or `null` when there is no file yet. The browser has no filesystem and
-   * returns `null`. Used to detect edits made to the file outside the app.
+   * Desktop only: read the open project's `project.md` only if it changed on
+   * disk since `known` (its last-returned signature; pass `null` to force a
+   * read). Returns the current signature plus content — `content` is non-null
+   * only when the file changed, so an unchanged file is a cheap stat. The
+   * browser has no filesystem and returns `{ signature: null, content: null }`.
+   * Used to detect edits made to the file outside the app.
    */
-  readProjectMarkdown(): Promise<string | null>;
+  readMarkdownIfChanged(known: DiskSignature | null): Promise<MarkdownDelta>;
 
   // --- Phase 4: sync ---
 

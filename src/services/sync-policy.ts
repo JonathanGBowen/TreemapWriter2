@@ -22,6 +22,7 @@ import { useStore } from '../store';
 import { repository } from './repository-registry';
 import { isTauri } from './tauri-environment';
 import { toast } from 'sonner';
+import type { DiskSignature } from '../types';
 
 const PUSH_DEBOUNCE_MS = 5_000;
 const PULL_THROTTLE_MS = 60_000;
@@ -36,6 +37,10 @@ let lastRevisionsLength = 0;
 let storeUnsubscribe: (() => void) | null = null;
 let lastExternalCheckAt = 0;
 let checkingExternal = false;
+// Last on-disk signature of project.md we observed, so an unchanged file skips
+// the full read. Reset on project switch/close (teardown) so it never leaks
+// across projects.
+let lastMdSignature: DiskSignature | null = null;
 
 /**
  * Bootstrap sync automation. Called from App.tsx when a project loads.
@@ -92,6 +97,7 @@ export function teardownSyncPolicy(): void {
   useStore.getState().setSyncCounts(0, 0);
   lastExternalCheckAt = 0;
   checkingExternal = false;
+  lastMdSignature = null;
   initialized = false;
 }
 
@@ -140,14 +146,18 @@ export async function checkExternalChanges(): Promise<void> {
   checkingExternal = true;
   lastExternalCheckAt = Date.now();
   try {
-    const disk = await repository.readProjectMarkdown();
-    if (disk === null) return; // browser, or an unborn project — nothing to reconcile
+    // Cheap stat first: the full file comes back only when its signature
+    // (mtime+size) differs from what we last saw, so an unchanged file is a
+    // ~16-byte response rather than the whole document.
+    const { signature, content } = await repository.readMarkdownIfChanged(lastMdSignature);
+    lastMdSignature = signature;
+    if (content === null) return; // unchanged since last check, or no file (browser/unborn)
     const { localContent, markdown } = useStore.getState();
-    // Fast-path bail: the live buffer already equals disk. Covers the no-change
-    // case and the autosave write window (disk updates before `markdown`),
-    // which a markdown-only comparison would misread as an external edit.
-    if (disk === localContent) return;
-    if (disk === markdown) return; // defensive; implied false by the line above
+    // Fast-path bail: the live buffer already equals disk. Covers the autosave
+    // write window (disk updates before `markdown`), which a content-only
+    // comparison would otherwise misread as an external edit.
+    if (content === localContent) return;
+    if (content === markdown) return; // defensive; implied false by the line above
     if (localContent === markdown) {
       // No unsaved in-app edits: load the external version silently.
       await reloadDocument();
