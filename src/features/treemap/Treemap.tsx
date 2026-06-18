@@ -166,20 +166,22 @@ export const Treemap: React.FC<TreemapProps> = ({
           }
           fontColor = '#ffffff';
         } else {
-          // DIMMED BACKGROUND
-          lineWidth = 1;
+          // DIMMED BACKGROUND — recede behind the selection but stay legible.
+          // (The previous 0.015 bg / width-1 / 0.3 font made unselected
+          // sections all but invisible, so focus mode erased the structure.)
+          lineWidth = 1.5;
           if (bgColor.startsWith('rgba')) {
-            bgColor = bgColor.replace(/[\d.]+\)$/, '0.015)');
+            bgColor = bgColor.replace(/[\d.]+\)$/, '0.09)');
           } else {
-            bgColor = 'rgba(255,255,255,0.005)';
+            bgColor = 'rgba(255,255,255,0.04)';
           }
-          
+
           if (lineColor.startsWith('rgba')) {
-            lineColor = lineColor.replace(/[\d.]+\)$/, '0.1)');
+            lineColor = lineColor.replace(/[\d.]+\)$/, '0.28)');
           } else {
-            lineColor = 'rgba(255,255,255,0.03)';
+            lineColor = 'rgba(255,255,255,0.16)';
           }
-          fontColor = 'rgba(255,255,255,0.3)';
+          fontColor = 'rgba(255,255,255,0.55)';
         }
       }
 

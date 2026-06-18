@@ -43,11 +43,15 @@ export function SprintBrief(props: SprintBriefProps) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<SprintPlan | null>(null);
+  // Whether the shown plan is the shape's default (AI generation failed) rather
+  // than a tailored one — so the card doesn't mislabel a fallback as "generated".
+  const [isFallback, setIsFallback] = useState(false);
 
   useEffect(() => {
     // Reset when re-opened for a fresh section/shape.
     setPlan(null);
     setError(null);
+    setIsFallback(false);
     setSessionGoal('');
   }, [isOpen, shape, props.targetSectionId]);
 
@@ -73,9 +77,11 @@ export function SprintBrief(props: SprintBriefProps) {
         modelChoice: choice,
       });
       setPlan(generated);
+      setIsFallback(false);
     } catch (e) {
       console.error('[SprintBrief] generation failed', e);
       setPlan(fallbackPlan(props));
+      setIsFallback(true);
       setError("Coach unavailable — using the shape's default plan. You can still start.");
     } finally {
       setProcessing(false);
@@ -164,7 +170,9 @@ export function SprintBrief(props: SprintBriefProps) {
         {plan && (
           <div className="border border-hld-border bg-hld-bgDeep">
             <div className="flex items-center justify-between px-[12px] py-[9px] border-b border-hld-border bg-hld-purple/[0.06]">
-              <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-hld-purple">Generated plan</span>
+              <span className={`font-mono text-[9px] tracking-[0.14em] uppercase ${isFallback ? 'text-hld-yellow' : 'text-hld-purple'}`}>
+                {isFallback ? 'Default plan · coach offline' : 'Generated plan'}
+              </span>
               <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-hld-cyan">
                 Shape · {shape?.name ?? 'Freeform'}
               </span>

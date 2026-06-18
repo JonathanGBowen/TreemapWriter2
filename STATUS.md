@@ -9,8 +9,10 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-17.** Update this file whenever a feature ships or is
-> planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)).
+> **Current as of 2026-06-18.** Update this file whenever a feature ships or is
+> planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
+> point-in-time audit of the desktop user flow (with a flow diagram and the
+> issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md).
 
 ## Where things stand
 
@@ -63,10 +65,13 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
-- **Re-enable App.tsx test-suite cleanup.** A `useEffect` is commented out
-  ("Disabled to prevent deleting data when section titles change") — a data-loss
-  bug was found and the feature disabled rather than fixed. Design a safer cleanup
-  (cleanup only on explicit section delete, not on title rename) and re-enable.
+- ~~**Re-enable App.tsx test-suite cleanup.**~~ Done 2026-06-18 (UX audit; see
+  [`docs/migration-log.md`](docs/migration-log.md) and
+  [`docs/ux-audit.md`](docs/ux-audit.md)). The disabled `useEffect` is replaced by
+  the `document-state` action `pruneOrphanEntries`, which removes only orphaned
+  testSuite entries with **no authored content** — renames/reorders keep their
+  specs/goals/history. A complete fix (id-stable cleanup that can also reclaim
+  data-bearing orphans) still depends on **stable section IDs** above.
 - **Crash-resilient unsaved draft on desktop** (follow-up to the 2026-06-16
   autosave data-loss fix; see [`migration-log.md`](docs/migration-log.md)). The
   desktop autosave now persists the live buffer to `project.md` every 60 s, so a

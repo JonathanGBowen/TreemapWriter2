@@ -20,6 +20,7 @@ import { GeminiClient, AnthropicClient, OllamaClient, DEFAULT_OLLAMA_BASE_URL } 
 import { MultiProviderAIProvider } from './ai/ai-provider.impl';
 import { resolveModelChoice } from './ai/resolve-model-choice';
 import { getSecret } from './credentials';
+import { isTauri } from './tauri-environment';
 import type { AIProvider } from './ai-provider';
 import type { AICallKind, ModelConfig } from './ai/model-types';
 
@@ -52,14 +53,20 @@ const impl = new MultiProviderAIProvider({ gemini, anthropic, ollama }, resolveC
 
 export const aiProvider: AIProvider = impl;
 
-// Fire-and-forget keyring lookups. Errors (browser mode, Linux without Secret
-// Service, etc.) are swallowed — the env fallback remains in effect.
+// Fire-and-forget keyring lookups. The env fallback remains in effect either
+// way. In the browser a failure is expected (no keyring) and stays silent; on
+// desktop a failure is worth a distinct console warning — it explains why a key
+// saved to the keyring isn't taking effect (e.g. Linux without a Secret Service
+// daemon), which is otherwise indistinguishable from "no key set".
+const onKeyringFail = (provider: string) => (e: unknown) => {
+  if (isTauri()) console.warn(`Keyring lookup for ${provider} failed; using env/.env.local fallback if present.`, e);
+};
 void getSecret('gemini')
   .then((k) => { if (k && k.length > 0) gemini.setApiKey(k); })
-  .catch(() => {});
+  .catch(onKeyringFail('Gemini'));
 void getSecret('anthropic')
   .then((k) => { if (k && k.length > 0) anthropic.setApiKey(k); })
-  .catch(() => {});
+  .catch(onKeyringFail('Anthropic'));
 
 /** Called by the AI Settings modal after the user saves a Gemini key. */
 export function refreshGeminiKey(newKey: string): void {

@@ -315,13 +315,15 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               </span>
            )}
 
-           <button
-             onClick={openRevisionWorkspace}
-             className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
-             title="Revise — Glass Box revision workspace"
-           >
-             <span className="text-[12px] leading-none">⟐</span> Revise
-           </button>
+           {!needsProject && (
+             <button
+               onClick={openRevisionWorkspace}
+               className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
+               title="Revise — Glass Box revision workspace"
+             >
+               <span className="text-[12px] leading-none">⟐</span> Revise
+             </button>
+           )}
 
            {/* Focus Mode Toggle */}
            <button
@@ -337,22 +339,29 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
              Focus
            </button>
 
-           <button
-             onClick={onOpenHistory}
-             className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-text hover:border-[#1e2f42] text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
-             title="Version History"
-           >
-             <History size={11} /> History
-           </button>
+           {/* History + Snapshot persist to / read from an on-disk project. On the
+               desktop preview (no open project) they have nothing to act on, so
+               hide them rather than show an empty modal / no-op snapshot. */}
+           {!needsProject && (
+             <button
+               onClick={onOpenHistory}
+               className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-text hover:border-[#1e2f42] text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
+               title="Version History"
+             >
+               <History size={11} /> History
+             </button>
+           )}
 
-           <button
-             onClick={handleSave}
-             className="p-[5px_12px] bg-transparent border border-[rgba(0,232,245,0.3)] text-hld-cyan hover:bg-[rgba(0,232,245,0.12)] hover:shadow-[0_0_10px_rgba(0,232,245,0.25)] text-ui-btn font-mono uppercase tracking-[0.12em] flex items-center gap-[5px] transition-all bracketed"
-             style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}
-             title="Commit a labeled snapshot to History"
-           >
-             <Clock size={11} /> Snapshot
-           </button>
+           {!needsProject && (
+             <button
+               onClick={handleSave}
+               className="p-[5px_12px] bg-transparent border border-[rgba(0,232,245,0.3)] text-hld-cyan hover:bg-[rgba(0,232,245,0.12)] hover:shadow-[0_0_10px_rgba(0,232,245,0.25)] text-ui-btn font-mono uppercase tracking-[0.12em] flex items-center gap-[5px] transition-all bracketed"
+               style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}
+               title="Commit a labeled snapshot to History"
+             >
+               <Clock size={11} /> Snapshot
+             </button>
+           )}
          </div>
       </div>
 
@@ -367,13 +376,13 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             </div>
           )}
           
-          {isEmptyState && (
+          {(isEmptyState || needsProject) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10 pointer-events-none opacity-100 animate-in fade-in duration-700">
                <div className="text-center pointer-events-auto bg-[#0c1520]/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
                  {needsProject ? (
                    <>
                      <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Start a Project</h2>
-                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.</p>
+                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">{isEmptyState ? 'Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.' : 'This is a read-only preview — nothing here is saved. Your writing lives in a project folder on disk, with version history. Create or open one to begin.'}</p>
                      <div className="space-y-3">
                        <button onClick={() => { void createNewProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
                          <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
@@ -424,6 +433,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                 <CodeMirror
                   value={focusText}
                   onChange={handleFocusChange}
+                  editable={!needsProject}
                   extensions={[
                     markdown({ 
                       base: markdownLanguage, 
@@ -447,6 +457,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                   value={localContent}
                   onChange={handleMainChange}
                   onUpdate={handleSelectionMap}
+                  editable={!needsProject}
                   theme={hldTheme}
                   height="100%"
                   className="h-full"

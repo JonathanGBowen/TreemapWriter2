@@ -42,6 +42,7 @@ import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
 import { checkContextFit } from './services/ai/context-budget';
 import { guardContextFit } from './features/shared/context-guard';
+import { notifyAiError } from './features/shared/ai-error';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { isTauri } from './services/tauri-environment';
@@ -91,7 +92,7 @@ export const App = () => {
     setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
     
     loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, deleteProject,
-    saveCurrentState, createSnapshot, setRevisions
+    saveCurrentState, createSnapshot, setRevisions, updateSectionGoals
   } = useStore(useShallow(state => ({
     projectList: state.projectList,
     activeProjectId: state.activeProjectId,
@@ -172,7 +173,10 @@ export const App = () => {
     loadProject: state.loadProject,
     deleteProject: state.deleteProject,
     saveCurrentState: state.saveCurrentState,
-    createSnapshot: state.createSnapshot
+    createSnapshot: state.createSnapshot,
+    // Domain mutator lives in document-state; modals/panels share this one
+    // codepath (snapshot-on-ai-write + history) rather than a component-local copy.
+    updateSectionGoals: state.updateSectionGoals
   })));
 
   const activeLineIndexRef = useRef<number | null>(activeLineIndex);
@@ -209,6 +213,10 @@ export const App = () => {
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
+  // Guards the 60s autosave against overlapping itself: a save that runs long
+  // (slow disk, git commit, network) must not let the next tick fire a second
+  // concurrent write to the same project file and clobber the first.
+  const isAutoSavingRef = useRef(false);
 
   // Auto-open the migration modal on first Tauri launch when there are
   // legacy projects to import. The hook does the detection; we just react
@@ -227,7 +235,12 @@ export const App = () => {
       teardownSyncPolicy();
       return;
     }
-    void initSyncPolicy();
+    void initSyncPolicy().catch((e) => {
+      console.error('Sync initialization failed', e);
+      const ui = useStore.getState();
+      ui.setSyncStatus('error');
+      ui.setSyncError('Sync failed to start — check the remote connection.');
+    });
     return () => {
       teardownSyncPolicy();
     };
@@ -238,9 +251,14 @@ export const App = () => {
     // Hydrate global AI prefs (default model, editable catalog, Ollama URL) and
     // refresh the Ollama catalog. Non-blocking; independent of project load.
     void useStore.getState().hydrateAIPreferences();
-    loadInitialState().then(() => {
-       isFirstRender.current = false;
-    });
+    loadInitialState()
+      .catch((e) => {
+        console.error('Initial project load failed', e);
+        toast.error('Could not load your projects. Restart the app, or check the console.');
+      })
+      .finally(() => {
+        isFirstRender.current = false;
+      });
   }, []);
 
   const autoSaveRefs = useRef({
@@ -266,8 +284,20 @@ export const App = () => {
     const intervalId = setInterval(() => {
        const refs = autoSaveRefs.current;
        if (!refs.activeProjectId) return;
-       refs.saveCurrentState();
-       refs.createSnapshot('autosave');
+       // Skip this tick if the previous save is still in flight — overlapping
+       // writes to the same project file can clobber each other.
+       if (isAutoSavingRef.current) return;
+       isAutoSavingRef.current = true;
+       void (async () => {
+         try {
+           await refs.saveCurrentState();
+           await refs.createSnapshot('autosave');
+         } catch (e) {
+           console.error('Autosave failed', e);
+         } finally {
+           isAutoSavingRef.current = false;
+         }
+       })();
     }, 60 * 1000); // Save every 60 seconds
 
     return () => clearInterval(intervalId);
@@ -310,31 +340,23 @@ export const App = () => {
     return () => clearTimeout(handler);
   }, [localContent]);
 
-  // Clean test suite (Disabled to prevent deleting data when section titles change)
-  /*
+  // Bound orphaned testSuite growth without the old data-loss bug. The previous
+  // version deleted any entry whose id wasn't in `sections` — which wiped real
+  // work the moment a title (and thus its derived id) changed, so it was
+  // disabled. `pruneOrphanEntries` removes only orphans that hold NO authored
+  // content, so renames/reorders keep their specs/goals/history untouched.
   useEffect(() => {
     if (sections.length === 0) return;
-    const currentIds = new Set<string>();
+    const liveIds: string[] = [];
     const traverse = (nodes: Section[]) => {
       nodes.forEach(node => {
-        currentIds.add(node.id);
+        liveIds.push(node.id);
         traverse(node.children);
       });
     };
     traverse(sections);
-    setTestSuite(prev => {
-      const next = { ...prev };
-      let hasChanges = false;
-      Object.keys(next).forEach(key => {
-        if (!currentIds.has(key)) {
-          // delete next[key]; // Do not delete orphaned data
-          // hasChanges = true;
-        }
-      });
-      return hasChanges ? next : prev;
-    });
+    useStore.getState().pruneOrphanEntries(liveIds);
   }, [sections]);
-  */
 
   const currentSection = useMemo(() => 
     selectedId ? findSection(sections, selectedId) : null
@@ -398,6 +420,7 @@ export const App = () => {
         setHiddenSectionIds([]);
         activeLineIndexRef.current = null;
         if (activeProjectId) saveCurrentState();
+        toast.success(`Imported "${targetName}".`);
     });
   };
 
@@ -441,7 +464,8 @@ export const App = () => {
          
          // 3. Load via `loadProject` to ensure all fields and UI are correctly hydrated sequentially
          await loadProject(newId);
-         
+         toast.success(`Loaded "${newName}".`);
+
        } catch(e) {
          toast.error("Invalid file.");
        }
@@ -564,7 +588,7 @@ export const App = () => {
     });
   } catch (e: any) {
     console.error("Interpolation failed", e);
-    toast.error(`Task interpolation failed: ${e?.message || 'Check console/API Key.'}`);
+    notifyAiError(e, `Task interpolation failed: ${e?.message || 'Check the console.'}`);
   } finally {
     setIsInterpolating(false);
   }
@@ -669,7 +693,7 @@ export const App = () => {
     }));
   } catch (e: any) {
     console.error("Diagnostic evaluation failed:", e);
-    toast.error(`Analysis failed: ${e?.message || 'Check API key or try again'}`);
+    notifyAiError(e, `Analysis failed: ${e?.message || 'Try again.'}`);
     setTestSuite(prev => ({
       ...prev,
       [testId]: { ...prev[testId], status: 'fail' }
@@ -679,34 +703,9 @@ export const App = () => {
   }
 };
 
-  // updateSpec, updateGoals — moved to document-state slice in Phase 1e.
-  // Modals/panels call them via useStore directly.
-
-  const updateSectionGoals = useCallback((id: string, newGoals: string, type: 'manual' | 'ai-generate' | 'ai-refine', instruction?: string) => {
-    if (type.startsWith('ai-')) {
-       createSnapshot('pre-ai-write', { sectionIds: [id] });
-    }
-    setTestSuite(prev => {
-      const entry = prev[id] || { goals: '', status: 'idle', history: [] };
-      return {
-        ...prev,
-        [id]: {
-          ...entry,
-          goals: newGoals,
-          status: 'stale',
-          history: [
-            ...(entry.history || []),
-            { 
-               timestamp: Date.now(), 
-               goals: entry.goals, 
-               instruction,
-               type
-            }
-          ]
-        }
-      };
-    });
-  }, []);
+  // updateSpec, updateGoals, updateSectionGoals — moved to document-state slice.
+  // Modals/panels call them via useStore directly (the App.tsx-local copy of
+  // updateSectionGoals was a stale-closure duplicate and is gone).
 
   const updateDependencies = useCallback((id: string, deps: Dependency[]) => {
     setTestSuite(prev => {
@@ -767,36 +766,37 @@ export const App = () => {
   // toggleSectionVisibility — moved to document-state slice in Phase 1e.
 
   const handleSaveContent = (sectionId: string, newContent: string) => {
-    setLocalContent(prev => {
-      // Re-parse with the literal latest localContent to find line numbers
-      const currSections = parseMarkdown(prev);
-      const flattenSections = (nodes: Section[]): Section[] => {
-        const result: Section[] = [];
-        const tr = (nx: Section[]) => {
-          nx.forEach(n => { result.push(n); tr(n.children); });
-        };
-        tr(nodes);
-        return result;
+    // Read the live buffer fresh (not a possibly-stale closure) so the line math
+    // matches what is actually on screen.
+    const prev = useStore.getState().localContent;
+    const currSections = parseMarkdown(prev);
+    const flattenSections = (nodes: Section[]): Section[] => {
+      const result: Section[] = [];
+      const tr = (nx: Section[]) => {
+        nx.forEach(n => { result.push(n); tr(n.children); });
       };
-      
-      const flat = flattenSections(currSections);
-      const sec = flat.find(s => s.id === sectionId);
-      
-      if (!sec) return prev;
-      
-      const lines = prev.split('\n');
-      const childStartIndex = sec.children.length > 0 ? sec.children[0].startLine : sec.endLine;
-      
-      const before = lines.slice(0, sec.startLine);
-      const after = lines.slice(childStartIndex);
-      
-      // Keep the markdown header exactly as it was, and only replace the rest
-      // Actually, wait, `newContent` includes the header line? 
-      // Yes, `node.content` includes the header line in the original code. 
-      // If the user modified the header, that's fine.
-      
-      return [...before, newContent, ...after].join('\n');
-    });
+      tr(nodes);
+      return result;
+    };
+
+    const sec = flattenSections(currSections).find(s => s.id === sectionId);
+    if (!sec) {
+      toast.error("Couldn't locate that section to save — it may have been renamed.");
+      return;
+    }
+
+    const lines = prev.split('\n');
+    // `newContent` includes the section's own heading line (matching node.content),
+    // so we replace from this section's start up to its first child (or its end).
+    const childStartIndex = sec.children.length > 0 ? sec.children[0].startLine : sec.endLine;
+    const before = lines.slice(0, sec.startLine);
+    const after = lines.slice(childStartIndex);
+    const next = [...before, newContent, ...after].join('\n');
+
+    setLocalContent(next);
+    // Persist immediately rather than waiting up to 60s for the next autosave —
+    // a sprint edit must survive a crash/close in that window.
+    if (activeProjectId) void saveCurrentState();
   };
 
   const handleLineFocus = useCallback((index: number | null) => {

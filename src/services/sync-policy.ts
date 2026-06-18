@@ -37,6 +37,9 @@ let lastRevisionsLength = 0;
 let storeUnsubscribe: (() => void) | null = null;
 let lastExternalCheckAt = 0;
 let checkingExternal = false;
+// External-edit detection runs on every focus; a persistent read failure would
+// spam toasts. Surface it once, then stay quiet until a check succeeds again.
+let externalCheckErrorNotified = false;
 // Last on-disk signature of project.md we observed, so an unchanged file skips
 // the full read. Reset on project switch/close (teardown) so it never leaks
 // across projects.
@@ -151,6 +154,7 @@ export async function checkExternalChanges(): Promise<void> {
     // ~16-byte response rather than the whole document.
     const { signature, content } = await repository.readMarkdownIfChanged(lastMdSignature);
     lastMdSignature = signature;
+    externalCheckErrorNotified = false; // a successful read re-arms the one-shot warning
     if (content === null) return; // unchanged since last check, or no file (browser/unborn)
     const { localContent, markdown } = useStore.getState();
     // Fast-path bail: the live buffer already equals disk. Covers the autosave
@@ -168,6 +172,10 @@ export async function checkExternalChanges(): Promise<void> {
     }
   } catch (e) {
     console.error('external-change check failed', e);
+    if (!externalCheckErrorNotified) {
+      externalCheckErrorNotified = true;
+      toast.error("Couldn't check project.md for outside changes. If you edit it elsewhere, reload manually.");
+    }
   } finally {
     checkingExternal = false;
   }
@@ -177,6 +185,15 @@ export async function checkExternalChanges(): Promise<void> {
 async function flush() {
   await runPull();
   await runPush();
+}
+
+/**
+ * User-initiated retry from the sidebar indicator. Re-attempts a pull+push; a
+ * latched error lifts via succeed() if it works now (e.g. the network came
+ * back). No-op clearing — a still-broken remote simply re-latches.
+ */
+export async function retrySync(): Promise<void> {
+  await flush();
 }
 
 function schedulePush() {
