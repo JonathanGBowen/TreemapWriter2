@@ -103,6 +103,11 @@ export const tauriRepository: Repository = {
     await invoke('project_write', { data });
   },
 
+  async readProjectMarkdown(): Promise<string | null> {
+    // Reads against the currently-open project handle, like project_read.
+    return invoke<string | null>('project_read_markdown');
+  },
+
   async deleteProject(id: string): Promise<void> {
     await invoke('project_delete_recent', { id });
     idToPath.delete(id);

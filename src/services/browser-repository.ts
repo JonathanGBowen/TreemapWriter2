@@ -148,6 +148,11 @@ export const browserRepository: Repository = {
     }
   },
 
+  async readProjectMarkdown(): Promise<string | null> {
+    // No filesystem in the browser; nothing can edit a file out-of-band.
+    return null;
+  },
+
   // --- Phase 4: sync (browser is a no-op) ---
 
   async syncState(): Promise<SyncState> {

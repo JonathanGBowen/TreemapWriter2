@@ -131,6 +131,13 @@ export interface Repository {
    */
   readSnapshot(id: string): Promise<Snapshot | null>;
 
+  /**
+   * Desktop only: the raw current bytes of the open project's `project.md` on
+   * disk, or `null` when there is no file yet. The browser has no filesystem and
+   * returns `null`. Used to detect edits made to the file outside the app.
+   */
+  readProjectMarkdown(): Promise<string | null>;
+
   // --- Phase 4: sync ---
 
   /**

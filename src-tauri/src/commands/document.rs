@@ -35,6 +35,14 @@ pub async fn project_write(
     state.with_current(|h| write_to(&h.layout, &data))
 }
 
+/// Read just the raw bytes of the open project's `project.md`, or `None` if the
+/// file doesn't exist yet. Cheap counterpart to `project_read` (no specs/JSON
+/// walk) used to detect edits made to the file outside the app.
+#[tauri::command]
+pub async fn project_read_markdown(state: State<'_, AppState>) -> AppResult<Option<String>> {
+    state.with_current(|h| crate::fs_io::read_to_string_optional(&h.layout.project_md()))
+}
+
 fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
     let markdown = crate::fs_io::read_to_string_optional(&layout.project_md())?;
 
