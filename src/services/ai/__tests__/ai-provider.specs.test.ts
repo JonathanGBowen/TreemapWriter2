@@ -21,6 +21,10 @@ const config: PromptsConfig = {
   generateRevisionsPrompt: '',
   generateSprintPlanPrompt: '',
   compareVersionsPrompt: '',
+  weatherReportPrompt: '',
+  radarScanPrompt: '',
+  stormSpotterPrompt: '',
+  forecastPrompt: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */

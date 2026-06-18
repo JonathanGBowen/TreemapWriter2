@@ -16,6 +16,7 @@ import type {
   ArgumentShape,
   SprintPlan,
   VersionComparison,
+  AtmosphericInstrument,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 
@@ -48,6 +49,7 @@ export interface AIProvider {
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
   compareVersions(input: CompareVersionsInput): Promise<VersionComparison>;
+  analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string>;
 }
 
 /** Compact, in-memory backlog summary shown as context chips in the Brief. */
@@ -261,6 +263,21 @@ export interface CompareVersionsInput {
    * prompt (the Grimoire "spell" mechanism). Omitted for a plain comparison.
    */
   lens?: { persona: string; lens: string };
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface AnalyzeAtmosphereInput {
+  /** Which Climate Artist instrument to run. */
+  instrument: AtmosphericInstrument;
+  /** Whether the text is the whole draft or a single selected section. */
+  target: 'document' | 'section';
+  /** The section's title, when `target` is 'section' (given to the model for framing). */
+  sectionTitle?: string;
+  /** The text to read: the whole markdown, or the section's `fullContent`. */
+  text: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

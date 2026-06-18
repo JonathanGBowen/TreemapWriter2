@@ -21,6 +21,7 @@ import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { RevisionWorkspace } from "./features/revision/RevisionWorkspace";
 import { CompareWorkspace } from "./features/compare/CompareWorkspace";
+import { ClimateWorkspace } from "./features/climate/ClimateWorkspace";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
@@ -991,6 +992,8 @@ export const App = () => {
         <RevisionWorkspace />
 
         <CompareWorkspace />
+
+        <ClimateWorkspace />
 
         <Toaster position="bottom-right" richColors />
       </div>

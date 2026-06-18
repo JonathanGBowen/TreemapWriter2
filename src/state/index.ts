@@ -6,6 +6,7 @@ import { createProjectStateSlice, type ProjectStateSlice } from './project-state
 import { createUIStateSlice, type UIStateSlice } from './ui-state';
 import { createRevisionSlice, type RevisionSlice } from './revision-state';
 import { createComparisonSlice, type ComparisonSlice } from './comparison-state';
+import { createClimateSlice, type ClimateSlice } from './climate-state';
 import { setModelConfigSource } from '../services/ai-provider-registry';
 
 /**
@@ -18,6 +19,7 @@ import { setModelConfigSource } from '../services/ai-provider-registry';
  * - {@link AIStateSlice}       — persona, prompts, coach cache
  * - {@link RevisionSlice}      — Glass Box revision workflow (ephemeral, unpersisted)
  * - {@link ComparisonSlice}    — Version Compare workspace (ephemeral, unpersisted)
+ * - {@link ClimateSlice}       — Climate Artist workspace (ephemeral, unpersisted)
  *
  * Components subscribe to a single slice's shape via selectors. New code
  * should not destructure the whole store; that pattern is a Phase-1 legacy.
@@ -29,7 +31,8 @@ export type AppState =
   & ProjectStateSlice
   & AIStateSlice
   & RevisionSlice
-  & ComparisonSlice;
+  & ComparisonSlice
+  & ClimateSlice;
 
 export const useStore = create<AppState>()((...args) => ({
   ...createUIStateSlice(...args),
@@ -39,6 +42,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createAIStateSlice(...args),
   ...createRevisionSlice(...args),
   ...createComparisonSlice(...args),
+  ...createClimateSlice(...args),
 }));
 
 // Wire model resolution to live state without the registry importing the store

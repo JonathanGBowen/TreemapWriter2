@@ -41,6 +41,7 @@ import type {
   SuggestDirectivesInput,
   GenerateSprintPlanInput,
   CompareVersionsInput,
+  AnalyzeAtmosphereInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import type { LLMClient, LLMMessage } from './clients';
@@ -49,6 +50,7 @@ import { generateRevisions } from './ai-provider.revisions';
 import { suggestDirectives } from './ai-provider.suggest-directives';
 import { generateSprintPlan } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
+import { analyzeAtmosphere } from './ai-provider.atmosphere';
 
 const MAX_OUTPUT_TOKENS = 16000;
 const ANALYSIS_INPUT_CAP = 60000;
@@ -374,6 +376,16 @@ export class MultiProviderAIProvider implements AIProvider {
   async compareVersions(input: CompareVersionsInput): Promise<VersionComparison> {
     const choice = this.choose('compareVersions', input);
     return compareVersions(
+      this.clientFor(choice.provider),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string> {
+    const choice = this.choose('analyzeAtmosphere', input);
+    return analyzeAtmosphere(
       this.clientFor(choice.provider),
       choice.model,
       choice.thinkingBudget,

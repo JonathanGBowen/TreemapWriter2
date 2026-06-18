@@ -27,6 +27,7 @@ const CATEGORY_ORDER: PromptCategory[] = [
   'revision-engine',
   'sprints',
   'comparison',
+  'climate',
 ];
 
 const CATEGORY_PRESENTATION: Record<
@@ -67,6 +68,11 @@ const CATEGORY_PRESENTATION: Record<
     title: 'Version Compare',
     eyebrow: 'text-sky-500/70 border-sky-500/30',
     selected: 'bg-sky-500/20 border-sky-400 text-sky-300',
+  },
+  climate: {
+    title: 'Climate Artist',
+    eyebrow: 'text-teal-500/70 border-teal-500/30',
+    selected: 'bg-teal-500/20 border-teal-400 text-teal-300',
   },
 };
 

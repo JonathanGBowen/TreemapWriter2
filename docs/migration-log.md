@@ -2074,3 +2074,64 @@ customPersonas) persists on Save. That STATUS item is now fully resolved.
 
 **Deferred.** The declared per-prompt `variables` metadata is surfaced for locked
 prompts but there's no variable-aware editing UI yet.
+
+---
+
+## 2026-06-18 — Climate Artist (atmospheric analysis suite)
+
+**What changed.** A new analysis suite that reads the *atmospheric construction*
+of a text — atmosphere as a pressure system the prose enacts on the reader
+(accumulation, withholding, discharge; turkey towers, mesocyclones, fronts), not
+mood/tone/theme. Five instruments, wired to the features they naturally fit.
+
+- **New "Climate Artist" workspace** (`src/features/climate/`), a full-screen
+  overlay sibling of the Version Compare and Glass Box workspaces. Pick an
+  instrument + a target (whole draft or any section), run, read the prose verdict.
+  - `ClimateWorkspace.tsx` (self-gates on `climateOpen`, ESC-to-close),
+    `ClimateTopBar.tsx` (instrument + target pickers + Run), `ClimateReport.tsx`
+    (renders the reading via `react-markdown`, with running/empty/error states +
+    a `CopyButton`), and `use-climate-actions.ts` (orchestration: resolve target
+    text → `aiProvider.analyzeAtmosphere` → slice).
+  - Entry point: a `≋` glyph added to the sidebar `Dock` (grid widened 8→9);
+    mounted unconditionally in `App.tsx`.
+- **Four single-draft instruments**, each an editable prompt under
+  `src/services/prompts/` catalogued in `registry.ts` under a new `climate`
+  category: **Weather Report** (completed text), **Radar Scan** (draft-wide map —
+  the turkey-tower diagnostic), **Storm Spotter** (one passage), **Forecast**
+  (incomplete work). Prompt texts adapted from the user's design suite.
+- **The Front** — comparative atmospheric analysis — added to the *existing*
+  Version Compare feature as one new compare lens (`Atmospheric Front` in
+  `defaultCompareLenses.ts`). No schema change: the lens redirects the compare
+  report's fields (drift / improvements / losses / move-changes) atmospherically.
+- **One new AI flow, prose output.** `analyzeAtmosphere(input): Promise<string>`
+  on the `AIProvider` interface, dispatched in `ai-provider.impl.ts` to a new
+  standalone `ai-provider.atmosphere.ts` (selects the instrument's prompt, feeds
+  line-numbered text for location references, returns markdown). Modeled on
+  `getCoachAdvice` (plain text, no JSON schema/normalizer) per the essayistic
+  output choice. New `analyzeAtmosphere` `AICallKind` (one model setting for the
+  suite) with a pro-tier default in `DEFAULT_MODEL_CONFIG`.
+- **One new domain type.** `AtmosphericInstrument` (a 4-member union) in
+  `src/types/index.ts`; the four prompt keys flow into `PromptsConfig`
+  automatically via the registry. The reading itself is markdown `string`, so
+  nothing in the argument model is flattened.
+- **State.** New ephemeral `climate-state.ts` slice (`ClimateSlice`), registered
+  in `state/index.ts`. Nothing persists — readings are regenerable, like the
+  Compare/Revision workspaces.
+
+**What to verify.** `npm run typecheck` (clean — new `AICallKind`,
+`PromptCategory`, slice, interface method), `npm test`, `npm run lint`,
+`npm run build`. In-app: open Climate from the dock, run Radar Scan / Forecast on
+a whole draft (expect a line-cited map with a turkey-tower / debt finding), Storm
+Spotter on a selected section, Weather Report for intensity/substance/mechanisms;
+the four prompts appear under a "Climate" group in the prompts editor. In Version
+Compare, the **Atmospheric Front** lens reads two snapshots as weather systems.
+
+**Rollback.** Pure additive front-end + prompt content (`git revert`). No schema,
+on-disk, or Rust change; no existing flow altered.
+
+**Deferred (by design).** Streaming the prose readings (client layer supports it
+via `continueDialogue`); persisting reading history per section (cross-revision
+atmospheric history is served by the Atmospheric Front over git snapshots);
+structured/hybrid UI (intensity meters, formation pips); lens overlays on the
+four instruments (the generative/"eupsychogenic" valence lives in the Weather
+Report prompt for now).
