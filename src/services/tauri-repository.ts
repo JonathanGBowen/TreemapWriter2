@@ -110,6 +110,12 @@ export const tauriRepository: Repository = {
     return invoke<MarkdownDelta>('project_read_markdown_if_changed', { known });
   },
 
+  async writeExportBytes(path: string, bytes: Uint8Array): Promise<void> {
+    // Number array over IPC: fine for a one-shot export of a modest .docx. If
+    // exports ever grow large, switch to Tauri raw-bytes IPC.
+    await invoke('export_write_file', { path, bytes: Array.from(bytes) });
+  },
+
   async deleteProject(id: string): Promise<void> {
     await invoke('project_delete_recent', { id });
     idToPath.delete(id);

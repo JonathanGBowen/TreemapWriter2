@@ -143,6 +143,13 @@ export interface Repository {
    */
   readMarkdownIfChanged(known: DiskSignature | null): Promise<MarkdownDelta>;
 
+  /**
+   * Desktop only: write raw bytes to an absolute path (the user's save-dialog
+   * choice) — used for the on-demand .docx export. Goes through a purpose-built
+   * Rust command, not tauri-plugin-fs. Browser throws (it downloads instead).
+   */
+  writeExportBytes(path: string, bytes: Uint8Array): Promise<void>;
+
   // --- Phase 4: sync ---
 
   /**

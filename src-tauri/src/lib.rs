@@ -101,6 +101,8 @@ pub fn run() {
             commands::document::project_read,
             commands::document::project_write,
             commands::document::project_read_markdown_if_changed,
+            // commands/export.rs
+            commands::export::export_write_file,
             // commands/snapshot.rs
             commands::snapshot::snapshot_commit,
             commands::snapshot::snapshot_list,

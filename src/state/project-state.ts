@@ -56,6 +56,13 @@ export interface ProjectStateSlice {
    * `cloneRemoteProject`; throws "use Clone" if the remote already has commits.
    */
   createProjectWithRemote: (url: string, token: string) => Promise<boolean>;
+  /**
+   * Create a brand-new project seeded with markdown (e.g. converted from a
+   * .docx). Composes createNewProject (folder picker on desktop / in-memory in
+   * the browser) then seeds + saves + snapshots. Resolves false if the desktop
+   * folder picker was cancelled. Cross-slice, hence here.
+   */
+  createProjectFromMarkdown: (name: string, markdown: string) => Promise<boolean>;
   loadProject: (id: string) => Promise<boolean>;
   deleteProject: (id: string) => Promise<void>;
   saveCurrentState: () => Promise<void>;
@@ -287,6 +294,28 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     });
 
     await get().saveCurrentState();
+  },
+
+  createProjectFromMarkdown: async (name, markdown) => {
+    // Reuse the empty-project flow (folder picker + scaffold on desktop; an
+    // in-memory project in the browser), then seed it with the imported prose.
+    await get().createNewProject();
+    // Desktop: a cancelled folder picker leaves no open handle — bail rather
+    // than seed into the previously-open project. (Browser always opens one.)
+    if (isTauri() && !get().hasOpenProject) return false;
+    set({
+      projectName: name || 'Imported Document',
+      markdown,
+      localContent: markdown,
+      testSuite: {},
+      hiddenSectionIds: [],
+      selectedId: null,
+      activeLineIndex: null,
+    });
+    // sections re-derive from localContent via App's parse effect.
+    await get().saveCurrentState();
+    await get().createSnapshot('manual');
+    return true;
   },
 
   openExistingProject: async () => {

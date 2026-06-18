@@ -155,6 +155,10 @@ export const browserRepository: Repository = {
     return { signature: null, content: null };
   },
 
+  async writeExportBytes(): Promise<void> {
+    throw new Error('writeExportBytes is desktop-only; the browser downloads instead.');
+  },
+
   // --- Phase 4: sync (browser is a no-op) ---
 
   async syncState(): Promise<SyncState> {

@@ -25,6 +25,7 @@ import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
 import { ExternalChangeModal } from "./features/modals/ExternalChangeModal";
+import { DocxImportModal } from "./features/modals/DocxImportModal";
 import { RemoteProjectModal } from "./features/modals/RemoteProjectModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
@@ -71,6 +72,10 @@ const findSectionByLine = (nodes: Section[], line: number): Section | null => {
   return null;
 };
 
+/** Derive a project name from a .docx filename (strip path + extension). */
+const docxProjectName = (fileName: string): string =>
+  fileName.replace(/.*[\\/]/, '').replace(/\.docx$/i, '').trim() || 'Imported Document';
+
 export const App = () => {
   const {
     projectList, activeProjectId, hasOpenProject, markdown, projectName, testSuite, hiddenSectionIds,
@@ -90,7 +95,8 @@ export const App = () => {
     setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
     
     loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, deleteProject,
-    saveCurrentState, createSnapshot, setRevisions
+    saveCurrentState, createSnapshot, setRevisions, createProjectFromMarkdown,
+    setShowDocxImportModal, setDocxImport
   } = useStore(useShallow(state => ({
     projectList: state.projectList,
     activeProjectId: state.activeProjectId,
@@ -171,7 +177,10 @@ export const App = () => {
     loadProject: state.loadProject,
     deleteProject: state.deleteProject,
     saveCurrentState: state.saveCurrentState,
-    createSnapshot: state.createSnapshot
+    createSnapshot: state.createSnapshot,
+    createProjectFromMarkdown: state.createProjectFromMarkdown,
+    setShowDocxImportModal: state.setShowDocxImportModal,
+    setDocxImport: state.setDocxImport
   })));
 
   const activeLineIndexRef = useRef<number | null>(activeLineIndex);
@@ -484,6 +493,48 @@ export const App = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleImportDocx = async (buffer: ArrayBuffer, fileName: string) => {
+    try {
+      const { docxArrayBufferToMarkdown } = await import('./lib/docx');
+      const { markdown } = await docxArrayBufferToMarkdown(buffer);
+      setDocxImport({ markdown, fileName });
+      setShowDocxImportModal(true);
+    } catch (e) {
+      console.error('docx import failed', e);
+      toast.error('Could not read that .docx. It may be corrupt or password-protected.');
+    }
+  };
+
+  const handleExportDocx = async () => {
+    try {
+      const { markdownToDocxBlob } = await import('./lib/docx');
+      const blob = await markdownToDocxBlob(localContent);
+      const base = `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'document'}-${new Date().toISOString().slice(0, 10)}`;
+      if (isTauri()) {
+        const { save } = await import('@tauri-apps/plugin-dialog');
+        const path = await save({
+          defaultPath: `${base}.docx`,
+          filters: [{ name: 'Word Document', extensions: ['docx'] }],
+        });
+        if (!path) return; // user cancelled the save dialog
+        await repo.writeExportBytes(path, new Uint8Array(await blob.arrayBuffer()));
+        toast.success('Exported .docx.');
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${base}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error('docx export failed', e);
+      toast.error('Could not export .docx.');
+    }
   };
 
   const handleExportSpecs = () => {
@@ -809,10 +860,12 @@ export const App = () => {
             editorRef.current?.focus();
           }}
           onImportMarkdown={handleImportMarkdown}
+          onImportDocx={handleImportDocx}
           onLoadProject={handleLoadFile}
           onSaveProject={handleExportProject}
           onExportMarkdown={handleExportMarkdown}
           onExportSpecs={handleExportSpecs}
+          onExportDocx={handleExportDocx}
           onResetProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
           onStartTutorial={() => setRunTutorial(true)}
@@ -997,6 +1050,11 @@ export const App = () => {
         <ConflictResolutionModal />
 
         <ExternalChangeModal />
+
+        <DocxImportModal
+          onIntoCurrent={handleImportMarkdown}
+          onAsNew={(md, fileName) => createProjectFromMarkdown(docxProjectName(fileName), md)}
+        />
 
         <RevisionWorkspace />
 

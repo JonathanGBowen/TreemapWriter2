@@ -46,18 +46,20 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onContinue: () => void;
   onImportMarkdown: (content: string) => void;
+  onImportDocx: (buffer: ArrayBuffer, fileName: string) => void;
   onLoadProject: (content: string) => void;
   onSaveProject: () => void;
   onExportMarkdown: () => void;
   onExportSpecs: () => void;
+  onExportDocx: () => void;
   onResetProject: () => void;
   onLoadDefaultProject: () => void;
   onStartTutorial: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  onSelect, onContinue, onImportMarkdown, onLoadProject, onSaveProject,
-  onExportMarkdown, onExportSpecs, onResetProject, onLoadDefaultProject, onStartTutorial,
+  onSelect, onContinue, onImportMarkdown, onImportDocx, onLoadProject, onSaveProject,
+  onExportMarkdown, onExportSpecs, onExportDocx, onResetProject, onLoadDefaultProject, onStartTutorial,
 }) => {
   const projectName = useStore((s) => s.projectName);
   const setProjectName = useStore((s) => s.setProjectName);
@@ -103,9 +105,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onStartTutorial={onStartTutorial}
           onImportMarkdown={onImportMarkdown}
           onImportProject={onLoadProject}
+          onImportDocx={onImportDocx}
           onExportMarkdown={onExportMarkdown}
           onExportProject={onSaveProject}
           onExportSpecs={onExportSpecs}
+          onExportDocx={onExportDocx}
         />
         <input
           value={projectName}

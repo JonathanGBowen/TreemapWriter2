@@ -35,6 +35,25 @@ pub fn atomic_write_str(path: &Path, contents: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// Atomic write of raw bytes: temp file + fsync + rename. Byte counterpart to
+/// `atomic_write_str`, used for generated export artifacts (e.g. .docx).
+pub fn atomic_write_bytes(path: &Path, contents: &[u8]) -> AppResult<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let tmp = path.with_extension(format!(
+        "{}.tmp",
+        path.extension().and_then(|s| s.to_str()).unwrap_or("")
+    ));
+    {
+        let mut f = fs::File::create(&tmp)?;
+        f.write_all(contents)?;
+        f.sync_all()?;
+    }
+    fs::rename(&tmp, path)?;
+    Ok(())
+}
+
 pub fn read_to_string_optional(path: &Path) -> AppResult<Option<String>> {
     if !path.exists() {
         return Ok(None);

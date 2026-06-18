@@ -8,6 +8,7 @@
 
 pub mod credentials;
 pub mod document;
+pub mod export;
 pub mod migration;
 pub mod project;
 pub mod snapshot;

@@ -17,9 +17,11 @@ interface ProjectMenuProps {
   onStartTutorial: () => void;
   onImportMarkdown: (content: string) => void;
   onImportProject: (content: string) => void;
+  onImportDocx: (buffer: ArrayBuffer, fileName: string) => void;
   onExportMarkdown: () => void;
   onExportProject: () => void;
   onExportSpecs: () => void;
+  onExportDocx: () => void;
 }
 
 function MenuRow({ label, meta, onClick }: { label: string; meta?: React.ReactNode; onClick: () => void }) {
@@ -47,6 +49,19 @@ function readFileInto(event: React.ChangeEvent<HTMLInputElement>, cb: (content: 
   event.target.value = '';
 }
 
+/** Read a picked file as an ArrayBuffer (for binary formats like .docx); resets the input. */
+function readFileAsArrayBuffer(
+  event: React.ChangeEvent<HTMLInputElement>,
+  cb: (buffer: ArrayBuffer, fileName: string) => void,
+) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => { if (e.target?.result instanceof ArrayBuffer) cb(e.target.result, file.name); };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
+}
+
 async function backupAll() {
   try {
     await exportAllProjects();
@@ -59,12 +74,13 @@ async function backupAll() {
 
 export function ProjectMenu({
   onResetProject, onLoadDefaultProject, onStartTutorial,
-  onImportMarkdown, onImportProject, onExportMarkdown, onExportProject, onExportSpecs,
+  onImportMarkdown, onImportProject, onImportDocx, onExportMarkdown, onExportProject, onExportSpecs, onExportDocx,
 }: ProjectMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const mdInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
+  const docxInputRef = useRef<HTMLInputElement>(null);
 
   const projectCount = useStore((s) => s.projectList.length);
   const setShowProjectModal = useStore((s) => s.setShowProjectModal);
@@ -117,7 +133,9 @@ export function ProjectMenu({
           <Divider />
           <MenuRow label="Import markdown" onClick={() => run(() => mdInputRef.current?.click())} />
           <MenuRow label="Import project" onClick={() => run(() => projectInputRef.current?.click())} />
+          <MenuRow label="Import Word" meta=".docx" onClick={() => run(() => docxInputRef.current?.click())} />
           <MenuRow label="Export markdown" onClick={() => run(onExportMarkdown)} />
+          <MenuRow label="Export Word" meta=".docx" onClick={() => run(onExportDocx)} />
           <MenuRow label="Export project" meta=".socratic" onClick={() => run(onExportProject)} />
           <MenuRow label="Export specs" meta=".json" onClick={() => run(onExportSpecs)} />
           <MenuRow label="Back up everything" onClick={() => run(backupAll)} />
@@ -139,6 +157,7 @@ export function ProjectMenu({
 
       <input type="file" ref={mdInputRef} className="hidden" accept=".md,.markdown,.txt" onChange={(e) => readFileInto(e, onImportMarkdown)} />
       <input type="file" ref={projectInputRef} className="hidden" accept=".socratic,.json" onChange={(e) => readFileInto(e, onImportProject)} />
+      <input type="file" ref={docxInputRef} className="hidden" accept=".docx" onChange={(e) => readFileAsArrayBuffer(e, onImportDocx)} />
     </div>
   );
 }

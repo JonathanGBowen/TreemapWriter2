@@ -59,6 +59,10 @@ export interface UIStateSlice {
   // project.md changed on disk outside the app while the editor had unsaved
   // edits — prompt the user to reload or overwrite (see sync-policy).
   showExternalChangeModal: boolean;
+  // .docx import: a pending conversion awaiting the user's "current vs new
+  // project" choice. Transient UI state, like pendingMerge.
+  showDocxImportModal: boolean;
+  docxImport: { markdown: string; fileName: string } | null;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -93,6 +97,8 @@ export interface UIStateSlice {
   setShowConflictModal: (show: boolean) => void;
   setShowRemoteProjectModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
+  setShowDocxImportModal: (show: boolean) => void;
+  setDocxImport: (payload: { markdown: string; fileName: string } | null) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
@@ -132,6 +138,8 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showConflictModal: false,
   showRemoteProjectModal: false,
   showExternalChangeModal: false,
+  showDocxImportModal: false,
+  docxImport: null,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -165,4 +173,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowConflictModal: (show) => set({ showConflictModal: show }),
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
+  setShowDocxImportModal: (show) => set({ showDocxImportModal: show }),
+  setDocxImport: (payload) => set({ docxImport: payload }),
 });
