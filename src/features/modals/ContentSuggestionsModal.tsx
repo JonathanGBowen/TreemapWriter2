@@ -7,6 +7,7 @@ import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
+import { guardContextFit } from "../shared/context-guard";
 import { ModelPicker } from "./ModelPicker";
 import { useModelChoice } from "./use-model-choice";
 
@@ -37,6 +38,7 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [choice, setChoice] = useModelChoice('getContentSuggestions', isOpen);
+  const modelCatalog = useStore(s => s.modelCatalog);
   const [isStale, setIsStale] = useState(false);
   
   const currentInputHash = computeHash(`${sectionTitle}|${currentGoals}|${fullSectionContent}|${parentGoals||''}`);
@@ -57,6 +59,10 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
   }, [isOpen, sectionTitle, currentGoals, fullSectionContent, parentGoals, cachedSuggestions]);
 
   const handleGenerate = async () => {
+    // The full section content is sent whole; abort on overflow rather than slicing.
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: fullSectionContent, what: 'This section', setting: 'Content suggestions' })) {
+      return;
+    }
     setIsThinking(true);
     setIsStale(false);
     try {

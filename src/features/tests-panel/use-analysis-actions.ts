@@ -8,7 +8,7 @@ import { makeAnalysisVersion } from '../../lib/analysis-helpers';
 import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
-import { checkContextFit } from '../../services/ai/context-budget';
+import { guardContextFit } from '../shared/context-guard';
 import { useCurrentSection } from './use-current-section';
 
 /**
@@ -116,19 +116,21 @@ export const useAnalysisActions = () => {
       ? [...DEFAULT_SPELLS, ...customSpells].find((s) => s.id === activeSpellId)
       : undefined;
 
-    // Whole-document analysis sends the entire document — never silently truncate.
-    // If it would overflow the chosen model's window, abort and ask the user to
-    // pick a larger-context model rather than slicing the text.
+    // The full section text is sent whole — never silently truncate (whole-document
+    // or per-section). Pre-flight the token budget and abort on overflow, asking the
+    // user to pick a larger-context model rather than slicing the text.
     const wholeDocument = sectionId === 'root';
-    if (wholeDocument) {
-      const choice = resolveModelChoice('analyzeSection', modelConfig, globalModelDefault);
-      const fit = checkContextFit(modelCatalog, choice, sectionText);
-      if (fit.overflow) {
-        toast.error(
-          `The whole document (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s context window. Switch the "Analyze section" model to a larger-context one (e.g. Gemini 3.1 Pro) to analyze the entire document without truncation.`,
-        );
-        return;
-      }
+    const choice = resolveModelChoice('analyzeSection', modelConfig, globalModelDefault);
+    if (
+      !guardContextFit({
+        catalog: modelCatalog,
+        choice,
+        text: sectionText,
+        what: wholeDocument ? 'The whole document' : 'This section',
+        setting: 'Analyze section',
+      })
+    ) {
+      return;
     }
 
     const prevVersions = testSuite[sectionId]?.analysis?.versions ?? [];
@@ -212,7 +214,8 @@ export const useAnalysisActions = () => {
       const trimmed = text.trim();
       if (!currentSection || !trimmed) return;
       const sectionId = currentSection.id;
-      const { testSuite, promptsConfig, isProcessing } = useStore.getState();
+      const { testSuite, promptsConfig, isProcessing, modelConfig, globalModelDefault, modelCatalog } =
+        useStore.getState();
       // Mutually exclusive with analyze/refactor (isProcessing) and with a
       // second concurrent send (inFlight) on this section.
       if (inFlight.has(sectionId) || isProcessing) return;
@@ -222,6 +225,21 @@ export const useAnalysisActions = () => {
         ...(state?.dialogue ?? []),
         { role: 'user', text: trimmed },
       ];
+
+      // The whole conversation travels each turn (no history window); pre-flight
+      // the assembled context + transcript and abort on overflow rather than
+      // dropping older turns.
+      const analysisResult = activeVersionOf(state)?.result;
+      const budgetText = [
+        state?.dialogueContext ?? '',
+        analysisResult ? JSON.stringify(analysisResult) : '',
+        ...nextMessages.map((m) => m.text),
+      ].join('\n\n');
+      const choice = resolveModelChoice('continueDialogue', modelConfig, globalModelDefault);
+      if (!guardContextFit({ catalog: modelCatalog, choice, text: budgetText, what: 'This conversation', setting: 'Dialogue' })) {
+        return;
+      }
+
       // The user's words are persisted before the stream starts; a crash
       // mid-stream loses only the regenerable model reply.
       setDialogue(sectionId, nextMessages);

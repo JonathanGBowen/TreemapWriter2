@@ -17,8 +17,6 @@ import type { LLMClient } from './clients';
 import { getPromptText } from '../prompts';
 
 const MAX_OUTPUT_TOKENS = 16000;
-const SECTION_TEXT_CAP = 24000;
-const SOURCE_CONTENT_CAP = 8000;
 
 const REVISION_TYPES = [
   'Addition',
@@ -74,7 +72,7 @@ const formatSources = (sources: SourceDocument[]): string =>
     ? sources
         .map(
           (s) =>
-            `--- [Source ID: ${s.id}] ${s.label} (${s.kind}) ---\n${s.content.slice(0, SOURCE_CONTENT_CAP)}`,
+            `--- [Source ID: ${s.id}] ${s.label} (${s.kind}) ---\n${s.content}`,
         )
         .join('\n\n')
     : '(none provided)';
@@ -89,7 +87,7 @@ const buildUserPrompt = (task: string, input: GenerateRevisionsInput): string =>
       '(No explicit directive — apply the engine principles to improve this section.)',
     '',
     '### MASTER_DOCUMENT ###',
-    input.sectionText.slice(0, SECTION_TEXT_CAP),
+    input.sectionText,
     '',
     '### SOURCE_DOCUMENTS ###',
     formatSources(input.sources),
