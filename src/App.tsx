@@ -618,6 +618,12 @@ export const App = () => {
     }));
     setIsProcessing(true);
    
+    // Spec map (sectionId → spec, incl. 'root') so the diagnostic can judge this
+    // section as a part inside its live structural surround, not as an isolated piece.
+    const specs: Record<string, SectionSpec | undefined> = Object.fromEntries(
+      Object.entries(testSuite).map(([id, e]) => [id, e?.spec]),
+    );
+
     const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,
       spec,
@@ -629,6 +635,7 @@ export const App = () => {
       sections,
       config: promptsConfig,
       findSection,
+      specs,
     });
    
     const derivedStatus = diagnosticToStatus(diagnostic);

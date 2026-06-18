@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Section, Persona, SectionSpec } from "../../types";
 import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
+import { buildStructuralSurround, formatStructuralSurround } from "../../lib/diagnostic-helpers";
 import { useStore } from "../../store";
 import { useModelChoice } from "./use-model-choice";
 import { ModalShell } from "./ModalShell";
@@ -72,6 +73,7 @@ function buildCopyText(p: {
   fullDocument: string;
   allSections: Section[];
   currentSpec: SectionSpec | undefined;
+  specs: Record<string, SectionSpec | undefined>;
   personaInstruction: string;
   customInstruction: string;
 }): string {
@@ -84,6 +86,12 @@ function buildCopyText(p: {
     if (parent) content = parent.fullContent;
   }
   const spec: SectionSpec = p.currentSpec ?? { function: 'argue', mainClaim: '', requiredMoves: [], incomingContext: [], outgoingCommitments: [] };
+  // Mirror the live prompt: the whole-document pass is already the whole; every
+  // narrower scope gets the section's part-in-whole surround.
+  const structuralSurround =
+    currentSection.id === 'root'
+      ? ''
+      : formatStructuralSurround(buildStructuralSurround(currentSection.id, p.allSections, p.specs));
   return buildDiagnosticPrompt({
     baseInstruction: DEFAULT_PROMPTS_CONFIG.diagnosticInstruction,
     personaInstruction: p.personaInstruction,
@@ -96,6 +104,7 @@ function buildCopyText(p: {
     outgoingCommitments: spec.outgoingCommitments,
     scope: p.scope,
     content: content.slice(0, 12000),
+    structuralSurround,
   });
 }
 
@@ -106,6 +115,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   const setShow = useStore((s) => s.setShowRunModal);
   const setShowPersonaModal = useStore((s) => s.setShowPersonaModal);
   const catalog = useStore((s) => s.modelCatalog);
+  const testSuite = useStore((s) => s.testSuite);
   const onClose = () => setShow(false);
   const [scope, setScope] = useState<Scope>('segment');
   const [choice, setChoice] = useModelChoice('runDiagnostic', isOpen);
@@ -138,8 +148,11 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
     fine: depthModelLabel(catalog, choice, tier),
   }));
 
+  const specs: Record<string, SectionSpec | undefined> = Object.fromEntries(
+    Object.entries(testSuite).map(([id, e]) => [id, e?.spec]),
+  );
   const copyText = buildCopyText({
-    currentSection, scope: effScope, fullDocument, allSections, currentSpec,
+    currentSection, scope: effScope, fullDocument, allSections, currentSpec, specs,
     personaInstruction: activePersona.instruction, customInstruction,
   });
 

@@ -35,6 +35,12 @@ export function buildDiagnosticPrompt(params: {
   outgoingCommitments: string[];
   scope: string;
   content: string;
+  /**
+   * Optional part-in-whole context (parent/sibling claims and commitments),
+   * pre-formatted by `formatStructuralSurround`. Present, it makes the model judge
+   * the section as a part functioning in the whole rather than as an isolated piece.
+   */
+  structuralSurround?: string;
 }): string {
   const movesList = params.requiredMoves
     .map((m, i) => `  ${i + 1}. [${m.id}] ${m.description}`)
@@ -68,6 +74,7 @@ export function buildDiagnosticPrompt(params: {
     "OUTGOING COMMITMENTS (what this section must establish for later):",
     outgoing,
     "",
+    params.structuralSurround || "",
     `CONTEXT SCOPE: ${params.scope}`,
     "",
     "TEXT TO EVALUATE:",

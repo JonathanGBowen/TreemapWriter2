@@ -138,13 +138,20 @@ export async function generateSpecs(
             '',
           ]
         : []),
-      'DOCUMENT PREVIEW (first 4000 chars):',
-      markdown.slice(0, 4000),
-      '...',
+      // Part-not-piece: a character prefix (the old `markdown.slice(0, 4000)`) is a
+      // piece torn from context. The document-level spec above (its role/claim) plus
+      // this structural outline carry the whole as a part-reconstruction, never a slice.
+      'DOCUMENT OUTLINE (structural backbone — chapters and their children):',
+      JSON.stringify(topLevelOutline, null, 2),
       '',
       config.l1TaskInstruction,
       '',
       'SECTIONS TO ANALYZE:',
+      // TODO (Gestalt roadmap, part-not-piece): `contentPreview` is still a char
+      // prefix — a piece. It is unavoidable *here* because this pass is what derives
+      // the spec, so no role-reconstruction exists yet for these sections. The proper
+      // fix lands with boundary/reconstruction work: derive a structural skeleton
+      // rather than slicing. See docs/gestalt-design.md item 7.
       JSON.stringify(
         l1Nodes.map((n) => ({
           id: n.id,
