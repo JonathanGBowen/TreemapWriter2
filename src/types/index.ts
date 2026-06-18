@@ -536,3 +536,17 @@ export interface SyncState {
   /** Current local branch name, e.g. "main". Null if HEAD detached or no commits. */
   branch: string | null;
 }
+
+export interface DiskSignature {
+  /** project.md last-modified time, epoch milliseconds. */
+  mtimeMs: number;
+  /** project.md size in bytes. */
+  size: number;
+}
+
+/** Conditional read result: current signature (null if the file is absent) and
+ *  the content, present only when it changed from the caller's last signature. */
+export interface MarkdownDelta {
+  signature: DiskSignature | null;
+  content: string | null;
+}

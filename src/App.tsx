@@ -24,6 +24,7 @@ import { CompareWorkspace } from "./features/compare/CompareWorkspace";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
+import { ExternalChangeModal } from "./features/modals/ExternalChangeModal";
 import { RemoteProjectModal } from "./features/modals/RemoteProjectModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
@@ -1006,6 +1007,8 @@ export const App = () => {
         <RemoteProjectModal />
 
         <ConflictResolutionModal />
+
+        <ExternalChangeModal />
 
         <RevisionWorkspace />
 

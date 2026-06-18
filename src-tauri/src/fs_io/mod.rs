@@ -42,6 +42,22 @@ pub fn read_to_string_optional(path: &Path) -> AppResult<Option<String>> {
     Ok(Some(fs::read_to_string(path)?))
 }
 
+/// Cheap stat of a file: `(mtime_ms, size)`, or `None` if it doesn't exist.
+/// Counterpart to `read_to_string_optional`, used as a change pre-filter so the
+/// whole file isn't read just to discover "no change".
+pub fn signature_optional(path: &Path) -> AppResult<Option<(i64, u64)>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let meta = fs::metadata(path)?;
+    let mtime_ms = meta
+        .modified()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    Ok(Some((mtime_ms, meta.len())))
+}
+
 pub fn write_json<T: Serialize>(path: &Path, value: &T) -> AppResult<()> {
     let s = serde_json::to_string_pretty(value)?;
     atomic_write_str(path, &s)

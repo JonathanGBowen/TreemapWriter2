@@ -56,6 +56,9 @@ export interface UIStateSlice {
   showSyncConfigModal: boolean;
   showConflictModal: boolean;
   showRemoteProjectModal: boolean;
+  // project.md changed on disk outside the app while the editor had unsaved
+  // edits — prompt the user to reload or overwrite (see sync-policy).
+  showExternalChangeModal: boolean;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -89,6 +92,7 @@ export interface UIStateSlice {
   setShowSyncConfigModal: (show: boolean) => void;
   setShowConflictModal: (show: boolean) => void;
   setShowRemoteProjectModal: (show: boolean) => void;
+  setShowExternalChangeModal: (show: boolean) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
@@ -127,6 +131,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showSyncConfigModal: false,
   showConflictModal: false,
   showRemoteProjectModal: false,
+  showExternalChangeModal: false,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -159,4 +164,5 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowSyncConfigModal: (show) => set({ showSyncConfigModal: show }),
   setShowConflictModal: (show) => set({ showConflictModal: show }),
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
+  setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
 });

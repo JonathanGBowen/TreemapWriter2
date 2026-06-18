@@ -20,15 +20,27 @@
 
 import { useStore } from '../store';
 import { repository } from './repository-registry';
+import { isTauri } from './tauri-environment';
+import { toast } from 'sonner';
+import type { DiskSignature } from '../types';
 
 const PUSH_DEBOUNCE_MS = 5_000;
 const PULL_THROTTLE_MS = 60_000;
+// External-edit detection runs on focus and is a cheap local file read, so it
+// gets its own short throttle rather than sharing the 60s pull throttle.
+const EXTERNAL_CHECK_THROTTLE_MS = 3_000;
 
 let initialized = false;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let lastPullAt = 0;
 let lastRevisionsLength = 0;
 let storeUnsubscribe: (() => void) | null = null;
+let lastExternalCheckAt = 0;
+let checkingExternal = false;
+// Last on-disk signature of project.md we observed, so an unchanged file skips
+// the full read. Reset on project switch/close (teardown) so it never leaks
+// across projects.
+let lastMdSignature: DiskSignature | null = null;
 
 /**
  * Bootstrap sync automation. Called from App.tsx when a project loads.
@@ -37,6 +49,11 @@ let storeUnsubscribe: (() => void) | null = null;
 export async function initSyncPolicy(): Promise<void> {
   if (initialized) return;
   initialized = true;
+
+  // External-edit detection works for every open project, remote or not, so the
+  // focus listener is registered before the remote gate below. Teardown removes
+  // it unconditionally.
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   const state = await repository.syncState();
   const ui = useStore.getState();
@@ -64,8 +81,8 @@ export async function initSyncPolicy(): Promise<void> {
     }
   });
 
-  // Pull on focus (throttled); flush on network reconnect.
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  // Flush on network reconnect. (Pull-on-focus is wired above via the
+  // visibilitychange listener, which is registered for every project.)
   window.addEventListener('online', handleOnline);
 }
 
@@ -78,11 +95,19 @@ export function teardownSyncPolicy(): void {
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   window.removeEventListener('online', handleOnline);
   useStore.getState().setSyncCounts(0, 0);
+  lastExternalCheckAt = 0;
+  checkingExternal = false;
+  lastMdSignature = null;
   initialized = false;
 }
 
 function handleVisibilityChange() {
   if (document.visibilityState !== 'visible') return;
+  // Cheap local check first: reconcile external edits to project.md before any
+  // network pull mutates state. Runs whether or not a remote is configured.
+  void checkExternalChanges();
+  // The pull path applies only to remote projects.
+  if (useStore.getState().syncStatus === 'no-remote') return;
   if (Date.now() - lastPullAt < PULL_THROTTLE_MS) return;
   void runPull();
 }
@@ -90,6 +115,62 @@ function handleVisibilityChange() {
 /** On reconnect, pull then push so offline work lands without a new edit. */
 function handleOnline() {
   void flush();
+}
+
+/**
+ * True when an external check should be skipped — a merge/modal is in progress,
+ * no project is open, a check is already running, or we checked too recently.
+ * Split out so the detection routine itself stays under the complexity limit.
+ */
+function shouldSkipExternalCheck(): boolean {
+  const ui = useStore.getState();
+  if (ui.pendingMerge) return true;
+  if (ui.showExternalChangeModal) return true;
+  if (!ui.activeProjectId) return true;
+  if (isTauri() && !ui.hasOpenProject) return true;
+  if (checkingExternal) return true;
+  if (Date.now() - lastExternalCheckAt < EXTERNAL_CHECK_THROTTLE_MS) return true;
+  return false;
+}
+
+/**
+ * Detect whether project.md changed on disk outside the app and reconcile.
+ * Compares the on-disk bytes against the live editor buffer: if they match
+ * (the common case — and the brief window mid-autosave where disk is written
+ * before `markdown` converges) there is nothing to do. A genuine external edit
+ * is auto-reloaded when the in-app buffer has no unsaved edits, or routed to a
+ * prompt modal when it does. No-op in the browser and while a merge is pending.
+ */
+export async function checkExternalChanges(): Promise<void> {
+  if (shouldSkipExternalCheck()) return;
+  checkingExternal = true;
+  lastExternalCheckAt = Date.now();
+  try {
+    // Cheap stat first: the full file comes back only when its signature
+    // (mtime+size) differs from what we last saw, so an unchanged file is a
+    // ~16-byte response rather than the whole document.
+    const { signature, content } = await repository.readMarkdownIfChanged(lastMdSignature);
+    lastMdSignature = signature;
+    if (content === null) return; // unchanged since last check, or no file (browser/unborn)
+    const { localContent, markdown } = useStore.getState();
+    // Fast-path bail: the live buffer already equals disk. Covers the autosave
+    // write window (disk updates before `markdown`), which a content-only
+    // comparison would otherwise misread as an external edit.
+    if (content === localContent) return;
+    if (content === markdown) return; // defensive; implied false by the line above
+    if (localContent === markdown) {
+      // No unsaved in-app edits: load the external version silently.
+      await reloadDocument();
+      toast('Reloaded external changes to project.md');
+    } else {
+      // Unsaved in-app edits would be lost by a blind reload — let the user pick.
+      useStore.getState().setShowExternalChangeModal(true);
+    }
+  } catch (e) {
+    console.error('external-change check failed', e);
+  } finally {
+    checkingExternal = false;
+  }
 }
 
 /** Pull latest, then push any unpushed commits. */
@@ -177,6 +258,15 @@ async function reloadDocument(): Promise<void> {
     console.error('reload after sync failed', e);
   }
   lastRevisionsLength = useStore.getState().revisions.length;
+}
+
+/**
+ * Reload the open project from disk, discarding the in-memory buffer. Shared by
+ * the external-change auto-reload path and the "Reload from disk" modal action;
+ * delegates to reloadDocument so the commit-watcher baseline stays in step.
+ */
+export async function reloadFromDisk(): Promise<void> {
+  await reloadDocument();
 }
 
 /**
