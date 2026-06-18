@@ -14,9 +14,6 @@ import type { VersionComparison } from '../../types';
 import type { LLMClient } from './clients';
 
 const MAX_OUTPUT_TOKENS = 16000;
-// Generous per-side backstop. The real overflow gate is the caller's context-fit
-// pre-flight (use-comparison-actions); this only guards a pathological payload.
-const SIDE_CAP = 120000;
 
 const DIRECTIONS = ['improved', 'regressed', 'mixed', 'lateral'];
 
@@ -80,10 +77,10 @@ const buildComparePrompt = (input: CompareVersionsInput): string =>
       : []),
     '',
     `### VERSION A — ${input.labelA} (earlier) ###`,
-    input.markdownA.slice(0, SIDE_CAP),
+    input.markdownA,
     '',
     `### VERSION B — ${input.labelB} (later) ###`,
-    input.markdownB.slice(0, SIDE_CAP),
+    input.markdownB,
     '',
     'Return ONLY the JSON object defined by the schema. Every receipt quote MUST be copied verbatim from the version named in its "side" (a = VERSION A, b = VERSION B).',
   ].join('\n');

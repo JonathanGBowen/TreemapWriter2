@@ -2153,3 +2153,52 @@ files; `npx tsc --noEmit` clean and `npx vitest run` still 205 passing (a doc ed
 not affect them).
 
 **Rollback.** `git revert` — pure docs.
+
+---
+
+## 2026-06-18 — Stop silent character-cap truncation of source/section text
+
+**Why.** Many AI calls silently sliced their inputs to an arbitrary character
+count before building the prompt, so functionality meant to reason over the
+*full* source documents or *whole* sections was quietly working on a prefix
+(revisions/directives grounded in the first 6–8k chars of each source; analysis
+and diagnostics that stopped reading a long section at 12–60k chars; comparisons
+capped at 120k chars/side; dialogue truncated to the last 40 turns + a 12k cap on
+the analysis-JSON context). This violated the architectural law in
+`services/ai/context-budget.ts` — "never silently truncate" — which a few call
+sites already honoured and the rest ignored.
+
+**What changed.** Front-end only; the fix extends the existing pre-flight pattern
+everywhere a cap lived.
+
+- **Provider builders now send full text** (caps deleted): `ai-provider.revisions.ts`
+  (`SOURCE_CONTENT_CAP` 8000, `SECTION_TEXT_CAP` 24000), `ai-provider.suggest-directives.ts`
+  (6000 / 24000), `ai-provider.compare.ts` (`SIDE_CAP` 120000), and in
+  `ai-provider.impl.ts`: `runDiagnostic` (12000), `analyzeSection` / `refactorAnalysis`
+  (`ANALYSIS_INPUT_CAP` 60000), `getContentSuggestions` (5000), `refineSpec` (3000),
+  `generatePersonas` (5000), and `continueDialogue` (`DIALOGUE_ANALYSIS_CAP` 12000 +
+  `DIALOGUE_HISTORY_WINDOW` 40 — the whole conversation now travels each turn).
+- **New shared pre-flight helper** `src/features/shared/context-guard.ts`
+  (`guardContextFit`): wraps `checkContextFit` + the standard overflow toast, returns
+  `false` (caller aborts) on genuine overflow, proceeds on an unknown window (Ollama).
+- **Callers gained the guard** so overflow warns instead of hitting the model's hard
+  limit: `use-revision-actions`, `use-suggest-directives`, `use-analysis-actions`
+  (per-section analyze + dialogue), `App.tsx` `handleRunTests` (all scopes, not just
+  root), and the `ContentSuggestionsModal` / `SpecGeneratorModal` / `PersonaSettingsModal`
+  modals. The compare caller already pre-flighted A+B; only its builder cap was removed.
+
+**Out of scope (left intentionally).** The spec-derivation `contentPreview` slices
+(800 / 600) in `ai-provider.specs.ts` — documented Gestalt debt (item 7): the spec
+pass is what *derives* the structural reconstruction, so there is nothing yet to send
+instead of a slice.
+
+**What to verify.** `npx tsc --noEmit` clean; `npx vitest run` 205 passing; `npm run build`
+clean; `npm run lint` adds no new errors (the 5 are pre-existing). Manual: paste a
+>30k-char source + long section and run Generate Revisions / Suggest Directive — the
+full text reaches the prompt (not a prefix); repeat for Analyze section / Run diagnostic
+on a long section and Compare versions on two long drafts. Overflow path: pick a
+small-window model (or a long doc) and confirm a toast appears and the call aborts —
+no silent slice, no raw API length error.
+
+**Rollback.** `git revert` — pure front-end. Re-adding the caps would restore the old
+truncating behaviour; the new `context-guard.ts` is additive.

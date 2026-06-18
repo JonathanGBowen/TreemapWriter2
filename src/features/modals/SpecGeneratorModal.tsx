@@ -6,6 +6,8 @@ import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
+import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
+import { guardContextFit } from "../shared/context-guard";
 
 interface SpecGeneratorModalProps {
   sectionTitle: string;
@@ -46,6 +48,12 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
   if (!isOpen) return null;
 
   const handleGenerate = async () => {
+    // The full section content is sent whole; abort on overflow rather than slicing.
+    const { modelCatalog, modelConfig, globalModelDefault } = useStore.getState();
+    const choice = resolveModelChoice('refineSpec', modelConfig, globalModelDefault);
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: fullSectionContent, what: 'This section', setting: 'Refine goals' })) {
+      return;
+    }
     setIsThinking(true);
 
     try {

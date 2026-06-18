@@ -38,7 +38,11 @@ when synced, magenta on error) surfaces status without distraction.
   char-slice). Several depend on stable section IDs (below) for clean part alignment.
   A prompt-by-prompt pass (`gestalt-design.md` §VI) records the recommended edits to
   the prompt *texts* themselves — the highest-value being to teach `diagnostic.md` and
-  `analysis.md` to consume the structural surround Tier 1 already injects.
+  `analysis.md` to consume the structural surround Tier 1 already injects. As of
+  2026-06-18 the spec-derivation `contentPreview` slices (800 / 600) are now the *only*
+  remaining input char-slices: every other arbitrary source/section cap was deleted in
+  favour of the `checkContextFit` token-budget pre-flight (see
+  [`docs/migration-log.md`](docs/migration-log.md)).
 - **Streaming AI in a sidebar coach panel.** The `AIProvider` interface accepts
   sibling streaming methods; none implemented yet. Target a
   `streamCoachAdvice(section): AsyncIterable<string>` on the provider, consumed

@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { DEFAULT_PERSONAS } from '../../lib/defaultPersonas';
+import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
+import { guardContextFit } from '../shared/context-guard';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 import type { DirectiveSuggestion, Persona } from '../../types';
 
@@ -27,10 +29,25 @@ export const useSuggestDirectives = () => {
   return useCallback(async (): Promise<DirectiveSuggestion[]> => {
     if (!currentSection) return [];
     const { title: sectionTitle, fullContent: sectionText } = currentSection;
-    const { revisionSources, selectedSourceIds, activePersonaId, customPersonas } =
-      useStore.getState();
+    const {
+      revisionSources,
+      selectedSourceIds,
+      activePersonaId,
+      customPersonas,
+      modelConfig,
+      globalModelDefault,
+      modelCatalog,
+    } = useStore.getState();
     const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
     const persona = resolveActivePersona(activePersonaId, customPersonas);
+
+    // The prompt sends the full section + sources whole; abort on overflow.
+    const choice = resolveModelChoice('suggestDirectives', modelConfig, globalModelDefault);
+    const budgetText = [sectionText, ...sources.map((s) => s.content)].join('\n\n');
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: budgetText, what: 'This section and its sources', setting: 'Suggest directives' })) {
+      return [];
+    }
+
     try {
       return await aiProvider.suggestDirectives({
         sectionTitle,

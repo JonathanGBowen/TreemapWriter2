@@ -52,9 +52,6 @@ import { generateSprintPlan } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
 
 const MAX_OUTPUT_TOKENS = 16000;
-const ANALYSIS_INPUT_CAP = 60000;
-const DIALOGUE_HISTORY_WINDOW = 40;
-const DIALOGUE_ANALYSIS_CAP = 12000;
 
 const VALID_MOVE_STATUSES = ['present', 'partial', 'missing', 'unclear'] as const;
 const VALID_READINESS = ['draft', 'developing', 'nearly-there', 'solid'];
@@ -134,7 +131,7 @@ export class MultiProviderAIProvider implements AIProvider {
       incomingContext: input.spec.incomingContext,
       outgoingCommitments: input.spec.outgoingCommitments,
       scope: input.scope,
-      content: isWholeDocument ? contextContent : contextContent.slice(0, 12000),
+      content: contextContent,
       structuralSurround,
     });
 
@@ -252,7 +249,7 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async getContentSuggestions(input: ContentSuggestionsInput): Promise<string> {
-    const prompt = `\n${input.config.suggestContentPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nSection Goals: "${input.currentGoals}"\nCurrent Content:\n---\n${input.fullSectionContent.slice(0, 5000)}\n---\n      `;
+    const prompt = `\n${input.config.suggestContentPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nSection Goals: "${input.currentGoals}"\nCurrent Content:\n---\n${input.fullSectionContent}\n---\n      `;
 
     const choice = this.choose('getContentSuggestions', input);
     return this.clientFor(choice.provider).generateText({
@@ -264,8 +261,7 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async generatePersonas(input: GeneratePersonasInput): Promise<PersonaSuggestion[]> {
-    const contextSample = input.documentContext.slice(0, 5000);
-    const prompt = `\n${input.config.generatePersonasPrompt}\n\nTEXT SAMPLE:\n---\n${contextSample}\n---\n`;
+    const prompt = `\n${input.config.generatePersonasPrompt}\n\nTEXT SAMPLE:\n---\n${input.documentContext}\n---\n`;
 
     const choice = this.choose('generatePersonas', input);
     const text = await this.clientFor(choice.provider).generateText({
@@ -290,7 +286,7 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async refineSpec(input: RefineSpecInput): Promise<string> {
-    const prompt = `\n${input.config.refineSpecPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nCurrent Goals: "${input.currentGoals}"\nSection Content: "${input.fullSectionContent.slice(0, 3000)}..."\n\nUSER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals for clarity, conciseness, and completeness.'}"\n      `;
+    const prompt = `\n${input.config.refineSpecPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nCurrent Goals: "${input.currentGoals}"\nSection Content: "${input.fullSectionContent}"\n\nUSER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals for clarity, conciseness, and completeness.'}"\n      `;
 
     const choice = this.choose('refineSpec', input);
     const text = await this.clientFor(choice.provider).generateText({
@@ -303,14 +299,11 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
-    // Whole-document analysis sends the full text uncapped (the caller has already
-    // verified it fits the model window); per-section analysis keeps the cap.
-    const text = input.wholeDocument
-      ? input.sectionText
-      : input.sectionText.slice(0, ANALYSIS_INPUT_CAP);
+    // Send the full section text — never a slice. The caller (use-analysis-actions)
+    // pre-flights the token budget against the model window and aborts on overflow.
     const prompt = buildAnalysisRequestText(
       input.sectionTitle,
-      text,
+      input.sectionText,
       input.config.analysisPrompt,
       input.wholeDocument,
       input.spell,
@@ -322,7 +315,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis> {
     const prompt = buildRefactorRequestText({
       sectionTitle: input.sectionTitle,
-      sectionText: input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      sectionText: input.sectionText,
       analysisJson: JSON.stringify(input.analysis, null, 2),
       transcript: formatTranscript(input.dialogue, input.dialogueContext),
       prompt: input.config.refactorAnalysisPrompt,
@@ -400,9 +393,7 @@ export class MultiProviderAIProvider implements AIProvider {
    * a conversation survives reloads and the provider holds no state.
    */
   async *continueDialogue(input: ContinueDialogueInput): AsyncIterable<string> {
-    const analysisJson = input.analysis
-      ? JSON.stringify(input.analysis).slice(0, DIALOGUE_ANALYSIS_CAP)
-      : '';
+    const analysisJson = input.analysis ? JSON.stringify(input.analysis) : '';
     const systemInstruction = [
       input.config.dialoguePrompt,
       `CONTEXT:\n${input.context}`,
@@ -411,8 +402,9 @@ export class MultiProviderAIProvider implements AIProvider {
       .filter(Boolean)
       .join('\n\n');
 
-    const recent = input.messages.slice(-DIALOGUE_HISTORY_WINDOW);
-    const messages: LLMMessage[] = recent.map((m) => ({ role: m.role, text: m.text }));
+    // Send the whole conversation — never a window. The caller pre-flights the
+    // assembled history against the model's context budget and aborts on overflow.
+    const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('continueDialogue', input);
     const stream = this.clientFor(choice.provider).streamText({

@@ -40,6 +40,7 @@ import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
 import { checkContextFit } from './services/ai/context-budget';
+import { guardContextFit } from './features/shared/context-guard';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { isTauri } from './services/tauri-environment';
@@ -578,18 +579,29 @@ export const App = () => {
   
   const testId = currentSection.id;
 
-  // Whole-document evaluation: force full scope and pre-flight the context window
-  // (never silently truncate — abort and ask the user to pick a larger model).
+  // Whole-document evaluation forces full scope. The diagnostic sends the scoped
+  // content whole (no per-section cap), so pre-flight the exact text the provider
+  // will assemble and abort on overflow — never silently truncate.
   let effectiveScope: 'segment' | 'parent' | 'full' = scope;
-  if (testId === 'root') {
-    effectiveScope = 'full';
-    const fit = checkContextFit(useStore.getState().modelCatalog, choice, markdown);
-    if (fit.overflow) {
-      toast.error(
-        `The whole document (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s context window. Switch the diagnostic model to a larger-context one (e.g. Gemini 3.1 Pro) to evaluate the entire document without truncation.`,
-      );
-      return;
-    }
+  if (testId === 'root') effectiveScope = 'full';
+
+  let diagContent = currentSection.fullContent;
+  if (effectiveScope === 'full') {
+    diagContent = markdown;
+  } else if (effectiveScope === 'parent' && currentSection.parentId) {
+    const parent = findSection(sections, currentSection.parentId);
+    if (parent) diagContent = parent.fullContent;
+  }
+  if (
+    !guardContextFit({
+      catalog: useStore.getState().modelCatalog,
+      choice,
+      text: diagContent,
+      what: testId === 'root' ? 'The whole document' : 'This section',
+      setting: 'Run diagnostic',
+    })
+  ) {
+    return;
   }
   
   try {
