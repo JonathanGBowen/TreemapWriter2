@@ -8,6 +8,7 @@ import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
 import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
 import { guardContextFit } from "../shared/context-guard";
+import { notifyAiError } from "../shared/ai-error";
 
 interface SpecGeneratorModalProps {
   sectionTitle: string;
@@ -71,7 +72,7 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
       }
     } catch (e) {
       console.error(e);
-      toast.error("Failed to generate specs. Please check your connection and API key.");
+      notifyAiError(e, "Failed to generate specs. Please check your connection and try again.");
     } finally {
       setIsThinking(false);
     }

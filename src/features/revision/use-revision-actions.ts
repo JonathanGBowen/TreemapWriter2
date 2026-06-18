@@ -5,6 +5,7 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { applyProposal } from '../../lib/revision-helpers';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
+import { notifyAiError } from '../shared/ai-error';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 import type { SessionProposal } from '../../state/revision-state';
 
@@ -80,7 +81,7 @@ export const useRevisionActions = () => {
       setRevisionPhase('review');
       if (proposals.length === 0) toast.info('No well-grounded edits found for this directive.');
     } catch (e) {
-      toast.error(`Revision failed: ${errMessage(e)}`);
+      notifyAiError(e, `Revision failed: ${errMessage(e)}`);
       setRevisionPhase('config');
     } finally {
       setIsProcessing(false);

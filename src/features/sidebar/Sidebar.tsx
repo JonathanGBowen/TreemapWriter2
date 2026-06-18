@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { Treemap } from "../treemap/Treemap";
 import { useStore } from "../../store";
 import { Pip } from "../shared/Pip";
@@ -7,6 +8,7 @@ import { SectionRow } from "./SectionRow";
 import { buildRootSection } from "../../lib/utils";
 import { Dock } from "./Dock";
 import { summarizeSync } from "./sync-status";
+import { retrySync } from "../../services/sync-policy";
 
 /** Map + sections zone — hairline-delimited, absorbing the space freed below. */
 function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
@@ -64,13 +66,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const width = useStore((s) => s.sidebarWidth);
   const setWidth = useStore((s) => s.setSidebarWidth);
   const setShowConflictModal = useStore((s) => s.setShowConflictModal);
+  const setShowSyncConfigModal = useStore((s) => s.setShowSyncConfigModal);
+  const syncStatus = useStore((s) => s.syncStatus);
+  const syncError = useStore((s) => s.syncError);
   const sync = summarizeSync(
-    useStore((s) => s.syncStatus),
-    useStore((s) => s.syncError),
+    syncStatus,
+    syncError,
     useStore((s) => s.syncAhead),
     useStore((s) => s.syncBehind),
   );
-  const isConflict = useStore((s) => s.syncStatus) === 'conflict';
+  const isConflict = syncStatus === 'conflict';
+  const isError = syncStatus === 'error';
+  // The "no PAT configured" failure is the one error a retry can't fix — it
+  // needs the user to (re)enter a token, so route that click into setup instead.
+  const needsPat = isError && /\bpat\b/i.test(sync.text);
 
   const [caption, setCaption] = useState<string | null>(null);
 
@@ -90,7 +99,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     document.body.style.cursor = 'col-resize';
   };
 
-  const pipCaption = `Sync · ${sync.text}`;
+  const pipCaption = isError
+    ? `Sync · ${sync.text} · ${needsPat ? 'click to configure' : 'click to retry'}`
+    : `Sync · ${sync.text}`;
+
+  const handleErrorPipClick = () => {
+    if (needsPat) {
+      setShowSyncConfigModal(true);
+      return;
+    }
+    toast('Retrying sync…');
+    void retrySync();
+  };
 
   return (
     <div style={{ width }} className="h-full flex-none relative border-r border-hld-border bg-hld-surface flex flex-col shadow-sm z-10 hld-scanline">
@@ -116,6 +136,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
         {isConflict ? (
           <button type="button" onClick={() => setShowConflictModal(true)} title={sync.text} aria-label={`Sync: ${sync.text}`}
+            onMouseEnter={() => setCaption(pipCaption)} onMouseLeave={() => setCaption(null)}>
+            <Pip status={sync.pip} pulse={sync.pulse} />
+          </button>
+        ) : isError ? (
+          <button type="button" onClick={handleErrorPipClick} title={pipCaption} aria-label={`Sync error: ${sync.text}`}
             onMouseEnter={() => setCaption(pipCaption)} onMouseLeave={() => setCaption(null)}>
             <Pip status={sync.pip} pulse={sync.pulse} />
           </button>

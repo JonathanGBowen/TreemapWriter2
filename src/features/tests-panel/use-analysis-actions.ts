@@ -9,6 +9,7 @@ import { buildStructuralSurround, formatStructuralSurround } from '../../lib/dia
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
+import { notifyAiError } from '../shared/ai-error';
 import { useCurrentSection } from './use-current-section';
 
 /**
@@ -56,7 +57,7 @@ const runDialogueTurn = async (args: {
     else toast.error('Dialogue returned no text.');
   } catch (e) {
     if (partial) args.onCommit(partial);
-    toast.error(`Dialogue failed: ${errMessage(e)}`);
+    notifyAiError(e, `Dialogue failed: ${errMessage(e)}`);
   }
 };
 
@@ -164,7 +165,7 @@ export const useAnalysisActions = () => {
       });
       addAnalysisVersion(sectionId, version);
     } catch (e) {
-      toast.error(`Analysis failed: ${errMessage(e)}`);
+      notifyAiError(e, `Analysis failed: ${errMessage(e)}`);
       setIsProcessing(false);
       return;
     }
@@ -303,7 +304,7 @@ export const useAnalysisActions = () => {
     } catch (e) {
       // Dialogue and versions are untouched on failure: nothing mutates
       // until the provider call resolves.
-      toast.error(`Refactor failed: ${errMessage(e)}`);
+      notifyAiError(e, `Refactor failed: ${errMessage(e)}`);
       setIsProcessing(false);
       return;
     }

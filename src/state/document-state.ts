@@ -25,6 +25,24 @@ const blankEntry = (): TestSuiteEntry => ({
 });
 
 /**
+ * True when an entry holds anything the user (or the AI on their behalf) authored.
+ * Over-inclusive on purpose: the only consequence of a false positive is keeping
+ * a slightly-stale entry, whereas a false negative would delete real work.
+ */
+const hasAuthoredContent = (e: TestSuiteEntry): boolean =>
+  Boolean(
+    e.spec ||
+    e.lastDiagnostic ||
+    e.lastResult ||
+    e.mainClaim ||
+    (e.goals && e.goals.trim()) ||
+    (e.history && e.history.length) ||
+    (e.dependencies && e.dependencies.length) ||
+    e.analysis ||
+    e.cachedSuggestions,
+  );
+
+/**
  * The committed dissertation document. This is domain data — what the user
  * actually persists. Pre-Phase-3 it's an IndexedDB blob; post-Phase-3 it's
  * markdown files on disk + SQLite cache + git history.
@@ -72,6 +90,17 @@ export interface DocumentStateSlice {
 
   /** Toggle whether a section's text is visible in the focus-mode editor. */
   toggleSectionVisibility: (sectionId: string) => void;
+
+  /**
+   * Bound the unbounded growth of orphaned testSuite entries. Section ids are
+   * derived from `title.slug + index`, so a rename or reorder creates a *new*
+   * id and orphans the old entry. This removes only orphans that hold no
+   * authored content — a renamed section keeps its spec/goals/history (so a
+   * rename-back restores it), and nothing the user wrote is ever dropped. The
+   * complete fix is stable section IDs (see STATUS.md). No-op while `liveIds`
+   * is empty (a transient mid-load state).
+   */
+  pruneOrphanEntries: (liveIds: string[]) => void;
 
   /**
    * Analysis/Dialogue mutators (Analysis + Dialogue tabs). No pre-ai-write
@@ -204,6 +233,22 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         ? state.hiddenSectionIds.filter((x) => x !== sectionId)
         : [...state.hiddenSectionIds, sectionId],
     })),
+
+  pruneOrphanEntries: (liveIds) =>
+    set((state) => {
+      if (liveIds.length === 0) return state;
+      const live = new Set(liveIds);
+      let changed = false;
+      const next: TestSuite = {};
+      for (const [id, entry] of Object.entries(state.testSuite)) {
+        if (live.has(id) || hasAuthoredContent(entry)) {
+          next[id] = entry;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? { testSuite: next } : state;
+    }),
 
   addAnalysisVersion: (sectionId, version) =>
     set((state) => ({ testSuite: withAnalysisVersion(state.testSuite, sectionId, version) })),

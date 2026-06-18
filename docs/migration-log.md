@@ -2202,3 +2202,62 @@ no silent slice, no raw API length error.
 
 **Rollback.** `git revert` — pure front-end. Re-adding the caps would restore the old
 truncating behaviour; the new `context-guard.ts` is additive.
+
+---
+
+## 2026-06-18 — Tauri UX audit & remediation
+
+**What changed.** A full audit of the desktop user flow (documented in
+[`ux-audit.md`](ux-audit.md), with a Mermaid flow diagram + issue table) plus
+fixes across four tiers. No architecture changed; this hardened existing flows.
+
+- **Data safety (App.tsx, project-state.ts, document-state.ts).** Autosave now
+  guards against overlapping itself and catches rejections; `loadInitialState`
+  and `initSyncPolicy` no longer swallow rejections; `saveCurrentState` aborts
+  its store-convergence if the active project changed during the write
+  (project-switch race); the duplicate `updateSectionGoals` in `App.tsx` (a
+  stale-closure copy) was deleted in favour of the canonical `document-state`
+  action; `handleSaveContent` persists immediately and guards a missing section.
+- **Orphan cleanup re-enabled safely.** New `document-state` action
+  `pruneOrphanEntries(liveIds)` replaces the long-disabled cleanup `useEffect`.
+  It removes only orphaned testSuite entries that hold **no authored content**,
+  so a rename/reorder (which changes the title-derived id) never loses
+  specs/goals/history. The full fix still wants stable section IDs (STATUS).
+- **Silent-failure visibility.** New `features/shared/ai-error.ts`
+  `notifyAiError` turns missing/invalid-key failures into a specific message
+  with an **AI Settings** shortcut, wired across every primary AI flow
+  (interpolate, diagnostic, spec-refine, suggestions, revision, analysis,
+  dialogue). The sidebar sync error pip is now actionable (retry, or open
+  `SyncConfigModal` for the no-PAT case); external-change read failures surface
+  a one-shot toast; Ollama "Detect" reports success/failure; a "✓ stored" badge
+  confirms a saved key; keyring-lookup failures log distinctly on desktop.
+- **First-run preview (EditorPanel.tsx).** On desktop with no open project the
+  demo is now a **read-only preview** with an always-on "Start a Project" CTA,
+  and History/Snapshot/Revise are hidden — typed work can no longer be lost when
+  the onboarding tutorial runs over the demo.
+- **Polish.** Treemap focus-mode dimming raised to legible values;
+  `ContentSuggestionsModal` no longer auto-fires an AI call on open (explicit
+  Generate); success toasts on import/load; the sprint brief labels a fallback
+  plan as such.
+
+**Verified non-issues (no change).** SpecGeneratorModal preserves its typed
+instruction across the edit/diff toggle; the sprint-cues toggle already exists in
+`SprintRunner`; the revision/analysis workspaces already handle errors;
+`GrimoireModal` opens from `AnalysisTab`. **Deferred:** catalog-aware model
+fallback (would break `resolveModelChoice` purity) and a global prompt-overrides
+editor (larger, unclear value).
+
+**What to verify.** `npx tsc --noEmit` clean; `npx vitest run` 205 passing;
+`npm run build` clean; `npm run lint` adds no new errors (the 5 are pre-existing,
+in `livePreview.ts` + a pre-existing `exhaustive-deps` disable). Manual (Tauri):
+first desktop launch shows a read-only preview + one CTA; run a diagnostic with
+no key set → specific toast with a working "AI Settings" action; drop the network
+mid-push then click the error pip → retry; clear the PAT → pip opens sync config;
+edit goals from a panel and a modal → single snapshot; delete a section → its
+empty testSuite entry is pruned, a rename loses nothing; select a section → others
+dim but stay legible.
+
+**Rollback.** `git revert` — front-end only except for nothing on the Rust side
+(no Rust changed). `pruneOrphanEntries` is additive; reverting restores the
+inert commented-out cleanup. The new `ai-error.ts` and read-only-preview gating
+are additive.
