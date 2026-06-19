@@ -131,6 +131,27 @@ describe('normalizeComparison', () => {
     expect(r!.sectionNotes[0].presentInA).toBe(true);
     expect(r!.sectionNotes[0].presentInB).toBe(false);
   });
+
+  it('keeps well-formed openThreads and drops empty-summary ones', () => {
+    const r = normalizeComparison({
+      ...wellFormed,
+      openThreads: [
+        { summary: 'Results section is still a stub', location: 'Results' },
+        { summary: '' },
+        { summary: 'Tie back to the intro claim' },
+      ],
+    });
+    expect(r!.openThreads).toHaveLength(2);
+    expect(r!.openThreads![0]).toEqual({ summary: 'Results section is still a stub', location: 'Results' });
+    expect(r!.openThreads![1]).toEqual({ summary: 'Tie back to the intro claim' });
+  });
+
+  it('omits openThreads entirely when none are usable (the final-mode shape)', () => {
+    const r = normalizeComparison(wellFormed);
+    expect('openThreads' in r!).toBe(false);
+    const r2 = normalizeComparison({ ...wellFormed, openThreads: [{ summary: '' }] });
+    expect('openThreads' in r2!).toBe(false);
+  });
 });
 
 describe('groupSnapshotsByDay', () => {

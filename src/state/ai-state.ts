@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from '../lib/constants';
-import type { AnalysisSpell, Persona, PromptsConfig } from '../types';
+import type { AnalysisSpell, Persona, PromptsConfig, ReadingMode } from '../types';
 import type { AppState } from '.';
 import type { ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
@@ -43,6 +43,10 @@ export interface AIStateSlice {
   customSpells: AnalysisSpell[];
   /** Which lens the next Analysis run uses. Session-only (never persisted); null = plain reconstruction. */
   activeSpellId: string | null;
+  /** Reading stance for Analysis (incl. refactor): 'draft' (default) vs 'final'. Session-only. */
+  analysisMode: ReadingMode;
+  /** Reading stance for the Diagnostic: 'draft' (default) vs 'final'. Session-only. */
+  diagnosticMode: ReadingMode;
 
   /** Per-project per-kind model overrides. Sparse; resolves against the global default. */
   modelConfig: ModelConfig;
@@ -66,6 +70,8 @@ export interface AIStateSlice {
   /** Replace (or update) the global spell library; writes through to preferences. */
   setCustomSpells: (spells: AnalysisSpell[] | ((prev: AnalysisSpell[]) => AnalysisSpell[])) => void;
   setActiveSpellId: (id: string | null) => void;
+  setAnalysisMode: (m: ReadingMode) => void;
+  setDiagnosticMode: (m: ReadingMode) => void;
 
   setModelConfig: (config: ModelConfig) => void;
   setGlobalModelDefault: (config: ModelConfig) => void;
@@ -87,6 +93,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
 
   customSpells: [],
   activeSpellId: null,
+  analysisMode: 'draft',
+  diagnosticMode: 'draft',
 
   modelConfig: {},
   globalModelDefault: {},
@@ -128,6 +136,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     void prefs.setSpells(next);
   },
   setActiveSpellId: (id) => set({ activeSpellId: id }),
+  setAnalysisMode: (m) => set({ analysisMode: m }),
+  setDiagnosticMode: (m) => set({ diagnosticMode: m }),
 
   setModelConfig: (config) => set({ modelConfig: config }),
 

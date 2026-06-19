@@ -35,6 +35,11 @@ import revisionTask from './revision-task.md?raw';
 import revisionAssemblyVerbatimTask from './revision-assembly-verbatim-task.md?raw';
 import revisionAssemblyWovenTask from './revision-assembly-woven-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
+// Draft-in-process reading overlays (locked): prepended to the evaluative tools'
+// base prompts when their mode is 'draft' (the default).
+import compareModeDraft from './compare-mode-draft.md?raw';
+import analysisModeDraft from './analysis-mode-draft.md?raw';
+import diagnosticModeDraft from './diagnostic-mode-draft.md?raw';
 
 const strip = (s: string) => s.replace(/\n+$/, '');
 
@@ -246,6 +251,38 @@ export const PROMPT_REGISTRY = [
     variables: [],
   },
   // --- Locked engine internals (not in PromptsConfig, never persisted) ---
+  // Draft-in-process reading overlays, prepended to the evaluative tools' base
+  // prompts when their mode is 'draft' (the default). 'final' prepends nothing.
+  {
+    key: 'compareModeDraft',
+    defaultText: strip(compareModeDraft),
+    label: 'Compare — Draft Mode',
+    description: 'Draft-in-process overlay for Version Compare: scaffolding is not a loss; lean into continuity.',
+    category: 'comparison',
+    flow: 'compareVersions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'analysisModeDraft',
+    defaultText: strip(analysisModeDraft),
+    label: 'Analysis — Draft Mode',
+    description: 'Draft-in-process overlay for Analysis: reconstruct the argument as-is without faulting incompleteness.',
+    category: 'analysis-dialogue',
+    flow: 'analyzeSection',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'diagnosticModeDraft',
+    defaultText: strip(diagnosticModeDraft),
+    label: 'Diagnostic — Draft Mode',
+    description: 'Draft-in-process overlay for Diagnostic: a missing move is a next step, not a failure.',
+    category: 'diagnostics-coaching',
+    flow: 'runDiagnostic',
+    editability: 'locked',
+    variables: [],
+  },
   {
     key: 'revisionAssemblySystem',
     defaultText: strip(revisionAssemblySystem),

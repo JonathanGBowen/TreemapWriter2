@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
-import type { Snapshot, SnapshotMeta, VersionComparison } from '../types';
+import type { ReadingMode, Snapshot, SnapshotMeta, VersionComparison } from '../types';
 
 /**
  * The Version Compare workspace, as an ephemeral slice. Like the Glass Box
@@ -28,6 +28,8 @@ export interface ComparisonSlice {
   versionBId: VersionRef | null;
   /** Active lens id (a compare lens, a Grimoire spell, or a custom one); null = plain. */
   activeCompareLensId: string | null;
+  /** Reading stance for the comparison: 'draft' (default) vs 'final'. Session-only. */
+  compareMode: ReadingMode;
   comparison: VersionComparison | null;
   comparisonStatus: ComparisonStatus;
 
@@ -45,6 +47,7 @@ export interface ComparisonSlice {
   setVersionA: (ref: VersionRef) => void;
   setVersionB: (ref: VersionRef) => void;
   setCompareLens: (id: string | null) => void;
+  setCompareMode: (m: ReadingMode) => void;
   setComparison: (c: VersionComparison | null) => void;
   setComparisonStatus: (s: ComparisonStatus) => void;
   setSnapshotIndex: (metas: SnapshotMeta[]) => void;
@@ -59,6 +62,7 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   versionAId: null,
   versionBId: null,
   activeCompareLensId: null,
+  compareMode: 'draft',
   comparison: null,
   comparisonStatus: 'idle',
   snapshotIndex: [],
@@ -74,6 +78,7 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   setVersionA: (ref) => set({ versionAId: ref }),
   setVersionB: (ref) => set({ versionBId: ref }),
   setCompareLens: (id) => set({ activeCompareLensId: id }),
+  setCompareMode: (m) => set({ compareMode: m }),
   setComparison: (c) => set({ comparison: c }),
   setComparisonStatus: (s) => set({ comparisonStatus: s }),
   setSnapshotIndex: (metas) => set({ snapshotIndex: metas }),

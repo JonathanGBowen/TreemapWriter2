@@ -106,6 +106,7 @@ export const useAnalysisActions = () => {
       globalModelDefault,
       customSpells,
       activeSpellId,
+      analysisMode,
     } = useStore.getState();
     // Mutually exclusive with a streaming dialogue turn for this section:
     // both would write the same sidecar and could otherwise race two saves.
@@ -155,6 +156,7 @@ export const useAnalysisActions = () => {
         wholeDocument,
         spell: spell ? { persona: spell.persona, lens: spell.lens } : undefined,
         structuralSurround,
+        mode: analysisMode,
       });
       const version = makeAnalysisVersion({
         kind: 'analysis',
@@ -272,7 +274,7 @@ export const useAnalysisActions = () => {
   const concludeAndRefactor = useCallback(async () => {
     if (!currentSection) return;
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
-    const { testSuite, promptsConfig, isProcessing } = useStore.getState();
+    const { testSuite, promptsConfig, isProcessing, analysisMode } = useStore.getState();
     if (isProcessing || inFlight.has(sectionId)) return;
 
     const state = testSuite[sectionId]?.analysis;
@@ -289,6 +291,7 @@ export const useAnalysisActions = () => {
         analysis: active.result,
         dialogue,
         dialogueContext: state.dialogueContext,
+        mode: analysisMode,
         config: promptsConfig,
       });
       const version = makeAnalysisVersion({

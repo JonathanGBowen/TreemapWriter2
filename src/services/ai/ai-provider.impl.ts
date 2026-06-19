@@ -15,6 +15,7 @@ import type {
   DirectiveSuggestion,
   SprintPlan,
   VersionComparison,
+  ReadingMode,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
 import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
@@ -45,6 +46,7 @@ import type {
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import type { LLMClient, LLMMessage } from './clients';
+import { getPromptText } from '../prompts';
 import { generateSpecs } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
 import { suggestDirectives } from './ai-provider.suggest-directives';
@@ -92,6 +94,14 @@ export class MultiProviderAIProvider implements AIProvider {
     return this.clients.gemini;
   }
 
+  /**
+   * Prepend the draft-mode reading overlay to a base instruction when the mode is
+   * 'draft' (the default). 'final' prepends nothing — today's completed-work read.
+   */
+  private withDraftMode(mode: ReadingMode | undefined, overlayKey: string, base: string): string {
+    return (mode ?? 'draft') === 'draft' ? `${getPromptText(overlayKey)}\n\n${base}` : base;
+  }
+
   async generateSpecs(input: GenerateSpecsInput): Promise<void> {
     const choice = this.choose('generateSpecs', input);
     await generateSpecs(this.clientFor(choice.provider), choice.model, choice.thinkingBudget ?? 0, input);
@@ -121,7 +131,7 @@ export class MultiProviderAIProvider implements AIProvider {
         : '';
 
     const prompt = buildDiagnosticPrompt({
-      baseInstruction: input.config.diagnosticInstruction,
+      baseInstruction: this.withDraftMode(input.mode, 'diagnosticModeDraft', input.config.diagnosticInstruction),
       personaInstruction: input.persona.instruction,
       customInstruction: input.customInstruction,
       sectionTitle: input.section.title,
@@ -304,7 +314,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = buildAnalysisRequestText(
       input.sectionTitle,
       input.sectionText,
-      input.config.analysisPrompt,
+      this.withDraftMode(input.mode, 'analysisModeDraft', input.config.analysisPrompt),
       input.wholeDocument,
       input.spell,
       input.structuralSurround,
@@ -318,7 +328,7 @@ export class MultiProviderAIProvider implements AIProvider {
       sectionText: input.sectionText,
       analysisJson: JSON.stringify(input.analysis, null, 2),
       transcript: formatTranscript(input.dialogue, input.dialogueContext),
-      prompt: input.config.refactorAnalysisPrompt,
+      prompt: this.withDraftMode(input.mode, 'analysisModeDraft', input.config.refactorAnalysisPrompt),
     });
     return this.generateAnalysis(
       'refactorAnalysis',
