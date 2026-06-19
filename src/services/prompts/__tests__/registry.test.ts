@@ -32,6 +32,11 @@ const HISTORICAL_KEYS = [
   'subTaskInstruction',
   'suggestContentPrompt',
   'systemInstruction',
+  // Climate Artist suite (2026-06-18) — atmospheric analysis instruments.
+  'weatherReportPrompt',
+  'radarScanPrompt',
+  'stormSpotterPrompt',
+  'forecastPrompt',
 ].sort();
 
 // Locked engine internals — catalogued but never persisted / user-editable.

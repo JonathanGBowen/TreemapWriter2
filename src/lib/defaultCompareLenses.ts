@@ -54,4 +54,10 @@ export const DEFAULT_COMPARE_LENSES: AnalysisSpell[] = [
     persona: 'An editor weighing the gains of tightening prose against the cost to nuance and authorial voice.',
     lens: 'Read B as a tightening (or loosening) of A and weigh the trade. In improvements, cite where cutting sharpened the point. In losses, cite where concision cost a necessary qualification, a distinction, or the author\'s voice — and where added length added only padding. Let conceptualDrift note any case where trimming changed the actual claim, not just its expression.',
   },
+  {
+    id: 'compare-atmospheric-front',
+    name: 'Atmospheric Front',
+    persona: 'An atmospheric reader (the Climate Artist\'s "Front") who judges two versions by the pressure systems they enact on the reader — heat, accumulation, withholding, discharge — not by which is "better." Atmosphere is the felt weather of the prose, not its mood, argument, or correctness.',
+    lens: 'Compare the two versions as weather systems rather than as arguments. Let conceptualDrift report the atmospheric differential: what kind of front this is (a sharp boundary between unlike systems, or a subtle gradient between similar ones) and how the felt pressure shifts from A to B. In improvements, name where B builds intensity the reader\'s body registers, controls discharge more deliberately, sustains a developing cell, or restores a "turkey tower" whose updraft A had lost. In losses, name where B releases pressure too early, names what A left implicit, flattens accumulation, or kills an updraft that was forming. Use moveChanges for changes in atmospheric mechanism — sensory accumulation, gradient withholding, rhythmic compression, somatic language, negative space. Every receipt must be a verbatim quote that carries the felt charge you are pointing to. Judge difference, not merit: a "lateral" direction is apt when the two versions enact different weather of comparable force.',
+  },
 ];

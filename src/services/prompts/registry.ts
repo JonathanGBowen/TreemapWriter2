@@ -28,6 +28,10 @@ import dialoguePrompt from './dialogue.md?raw';
 import generateRevisionsPrompt from './generate-revisions.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
 import compareVersionsPrompt from './compare-versions.md?raw';
+import weatherReportPrompt from './weather-report.md?raw';
+import radarScanPrompt from './radar-scan.md?raw';
+import stormSpotterPrompt from './storm-spotter.md?raw';
+import forecastPrompt from './forecast.md?raw';
 // Engine-internal ("do not soften these") — catalogued but locked: never
 // persisted, never user-editable, always resolve to the default text below.
 import revisionAssemblySystem from './revision-assembly-system.md?raw';
@@ -50,7 +54,8 @@ export type PromptCategory =
   | 'analysis-dialogue'
   | 'revision-engine'
   | 'sprints'
-  | 'comparison';
+  | 'comparison'
+  | 'climate';
 
 /**
  * `editable` prompts are user-tunable, land in `PromptsConfig`, and are
@@ -247,6 +252,49 @@ export const PROMPT_REGISTRY = [
       'Version Compare: an exegetical A/B evaluation of two saved versions — drift, improvements, and possible losses.',
     category: 'comparison',
     flow: 'compareVersions',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'weatherReportPrompt',
+    defaultText: strip(weatherReportPrompt),
+    label: 'Weather Report',
+    description:
+      'Climate Artist: atmospheric reading of a completed text — intensity, substance, and mechanisms.',
+    category: 'climate',
+    flow: 'analyzeAtmosphere',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'radarScanPrompt',
+    defaultText: strip(radarScanPrompt),
+    label: 'Radar Scan',
+    description:
+      "Climate Artist: a draft-wide atmospheric map — developing cells, turkey towers, fronts, latent instability.",
+    category: 'climate',
+    flow: 'analyzeAtmosphere',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'stormSpotterPrompt',
+    defaultText: strip(stormSpotterPrompt),
+    label: 'Storm Spotter',
+    description: 'Climate Artist: close-range diagnosis of one passage — what is forming, what disrupts it.',
+    category: 'climate',
+    flow: 'analyzeAtmosphere',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'forecastPrompt',
+    defaultText: strip(forecastPrompt),
+    label: 'Forecast',
+    description:
+      'Climate Artist: atmospheric projection for an incomplete work — developing systems, debt, trajectory.',
+    category: 'climate',
+    flow: 'analyzeAtmosphere',
     editability: 'editable',
     variables: [],
   },

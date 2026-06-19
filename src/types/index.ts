@@ -444,6 +444,17 @@ export interface ProjectMeta {
  */
 export type PromptsConfig = Record<EditablePromptKey, string>;
 
+/**
+ * The Climate Artist instruments — atmospheric analysis of a draft. Each maps to
+ * an editable prompt in the registry; the reading itself is essayistic markdown
+ * (no structured shape), so this union is the only domain type the suite adds.
+ */
+export type AtmosphericInstrument =
+  | 'weatherReport'
+  | 'radarScan'
+  | 'stormSpotter'
+  | 'forecast';
+
 // --- LIVING SPRINTS TYPES ---
 // A sprint runs an ordered sequence of timed *moves* for one target section
 // (not a march over all sections). A move is mostly a RequiredMove + a clock +

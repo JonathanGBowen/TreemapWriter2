@@ -39,6 +39,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowCoachModal = useStore((s) => s.setShowCoachModal);
   const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
   const openCompare = useStore((s) => s.openCompare);
+  const openClimate = useStore((s) => s.openClimate);
 
   const continueLabel = (selectedId ? findTitleById(sections, selectedId) : null) ?? sections[0]?.title ?? 'Begin';
   const wordCount = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
@@ -60,6 +61,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '◉', name: 'Coach — stuck? start here', aria: 'Coach', onClick: () => setShowCoachModal(true) },
     { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
+    { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
   ];
 
   return (
@@ -82,7 +84,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
           className="flex-1 py-[6px] border border-amber-500/25 text-amber-500 text-[12px] leading-none hover:bg-amber-500/10 transition-colors">»</button>
       </div>
 
-      <div className="grid grid-cols-8 gap-[2px]">
+      <div className="grid grid-cols-9 gap-[2px]">
         {tools.map((t) => (
           <button
             key={t.aria}
