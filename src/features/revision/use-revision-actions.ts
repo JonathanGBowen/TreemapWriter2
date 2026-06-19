@@ -3,6 +3,9 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { applyProposal } from '../../lib/revision-helpers';
+import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
+import { guardContextFit } from '../shared/context-guard';
+import { notifyAiError } from '../shared/ai-error';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 import type { SessionProposal } from '../../state/revision-state';
 
@@ -38,6 +41,9 @@ export const useRevisionActions = () => {
       revisionSubMode,
       promptsConfig,
       isProcessing,
+      modelConfig,
+      globalModelDefault,
+      modelCatalog,
     } = useStore.getState();
     if (isProcessing) return;
 
@@ -48,6 +54,14 @@ export const useRevisionActions = () => {
     }
     if (revisionMode === 'revision' && !directive.trim()) {
       toast.error('Add a directive — what should this revision accomplish?');
+      return;
+    }
+
+    // Pre-flight the full section + all selected sources against the model window —
+    // the prompt sends them whole, so abort and ask for a larger model on overflow.
+    const choice = resolveModelChoice('generateRevisions', modelConfig, globalModelDefault);
+    const budgetText = [sectionText, ...sources.map((s) => s.content)].join('\n\n');
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: budgetText, what: 'This section and its sources', setting: 'Generate revisions' })) {
       return;
     }
 
@@ -67,7 +81,7 @@ export const useRevisionActions = () => {
       setRevisionPhase('review');
       if (proposals.length === 0) toast.info('No well-grounded edits found for this directive.');
     } catch (e) {
-      toast.error(`Revision failed: ${errMessage(e)}`);
+      notifyAiError(e, `Revision failed: ${errMessage(e)}`);
       setRevisionPhase('config');
     } finally {
       setIsProcessing(false);

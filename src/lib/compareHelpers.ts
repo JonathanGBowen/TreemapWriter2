@@ -7,6 +7,7 @@ import type {
   ComparisonChange,
   ComparisonDirection,
   ComparisonReceipt,
+  OpenThread,
   SectionComparisonNote,
   Snapshot,
   SnapshotMeta,
@@ -108,6 +109,17 @@ const toSectionNotes = (v: unknown): SectionComparisonNote[] =>
         .filter((n) => n.sectionTitle && n.note)
     : [];
 
+const toOpenThreads = (v: unknown): OpenThread[] =>
+  Array.isArray(v)
+    ? v
+        .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+        .map((x) => ({
+          summary: toStr(x.summary),
+          ...(toStr(x.location) ? { location: toStr(x.location) } : {}),
+        }))
+        .filter((t) => t.summary)
+    : [];
+
 /**
  * Tolerant validator for the model's comparison JSON. Missing arrays become
  * empty; an invalid direction falls back to 'lateral'. Returns null when there
@@ -127,6 +139,7 @@ export const normalizeComparison = (
   const losses = toChanges(data.losses);
   const moveChanges = toChanges(data.moveChanges);
   const sectionNotes = toSectionNotes(data.sectionNotes);
+  const openThreads = toOpenThreads(data.openThreads);
 
   if (!verdict && !conceptualDrift && !improvements.length && !losses.length && !moveChanges.length) {
     return null;
@@ -140,6 +153,7 @@ export const normalizeComparison = (
     losses,
     moveChanges,
     sectionNotes,
+    ...(openThreads.length ? { openThreads } : {}),
     ...(lensName ? { lensName } : {}),
   };
 };

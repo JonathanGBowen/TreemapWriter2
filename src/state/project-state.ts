@@ -462,6 +462,13 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
 
     await repo.setProject(state.activeProjectId, data);
 
+    // If the user switched projects while the write was in flight, the captured
+    // `state` now describes a different project than is active. Persisting the
+    // data above was correct (it targeted the captured id), but converging the
+    // in-memory store below would stamp the old project's prose onto the newly
+    // opened one. Abort the convergence in that case.
+    if (get().activeProjectId !== state.activeProjectId) return;
+
     const wordCount = liveProse.trim() === '' ? 0 : liveProse.trim().split(/\s+/).length;
     const metaEntry: ProjectMeta = {
       id: state.activeProjectId,

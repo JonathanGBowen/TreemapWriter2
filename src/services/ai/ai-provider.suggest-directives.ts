@@ -12,8 +12,6 @@ import type { LLMClient } from './clients';
 import { renderPrompt } from '../prompts';
 
 const MAX_OUTPUT_TOKENS = 4000;
-const SECTION_TEXT_CAP = 24000;
-const SOURCE_CONTENT_CAP = 6000;
 
 const DIRECTIVES_JSON_SCHEMA = {
   type: 'object',
@@ -38,7 +36,7 @@ const sourceContext = (hasSources: boolean): string =>
 const formatSources = (sources: SourceDocument[]): string =>
   sources.length
     ? sources
-        .map((s) => `--- [${s.label}] ---\n${s.content.slice(0, SOURCE_CONTENT_CAP)}`)
+        .map((s) => `--- [${s.label}] ---\n${s.content}`)
         .join('\n\n')
     : '(none)';
 
@@ -59,7 +57,7 @@ export async function suggestDirectives(
     `### SECTION ###\n${input.sectionTitle}`,
     '',
     '### MASTER_DOCUMENT ###',
-    input.sectionText.slice(0, SECTION_TEXT_CAP),
+    input.sectionText,
     '',
     '### SOURCE_DOCUMENTS ###',
     formatSources(input.sources),

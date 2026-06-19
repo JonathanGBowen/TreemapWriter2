@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, X, Lightbulb, MessageSquare, ArrowRight, RefreshCw, Settings, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { toast } from "sonner";
 import { computeHash } from "../../lib/utils";
 import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
+import { guardContextFit } from "../shared/context-guard";
+import { notifyAiError } from "../shared/ai-error";
 import { ModelPicker } from "./ModelPicker";
 import { useModelChoice } from "./use-model-choice";
 
@@ -37,6 +38,7 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [choice, setChoice] = useModelChoice('getContentSuggestions', isOpen);
+  const modelCatalog = useStore(s => s.modelCatalog);
   const [isStale, setIsStale] = useState(false);
   
   const currentInputHash = computeHash(`${sectionTitle}|${currentGoals}|${fullSectionContent}|${parentGoals||''}`);
@@ -50,13 +52,18 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
         setSuggestions(cachedSuggestions.suggestions);
         setIsStale(true);
       } else {
+        // No cache: wait for an explicit "Generate" rather than firing an AI
+        // call (and burning tokens) the instant the modal opens.
         setSuggestions(null);
-        handleGenerate();
       }
     }
   }, [isOpen, sectionTitle, currentGoals, fullSectionContent, parentGoals, cachedSuggestions]);
 
   const handleGenerate = async () => {
+    // The full section content is sent whole; abort on overflow rather than slicing.
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: fullSectionContent, what: 'This section', setting: 'Content suggestions' })) {
+      return;
+    }
     setIsThinking(true);
     setIsStale(false);
     try {
@@ -74,8 +81,7 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
       }
     } catch (e) {
       console.error(e);
-      toast.error("Failed to generate suggestions. Please check your connection and API key.");
-      setSuggestions("Failed to generate suggestions. Please check your connection and try again.");
+      notifyAiError(e, "Failed to generate suggestions. Please check your connection and try again.");
     } finally {
       setIsThinking(false);
     }
@@ -126,7 +132,15 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
                   {suggestions}
                 </ReactMarkdown>
               ) : (
-                <p className="text-center text-hld-muted py-10 italic">No suggestions available.</p>
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <p className="text-center text-hld-muted italic font-sans">No suggestions yet for this section.</p>
+                  <button
+                    onClick={handleGenerate}
+                    className="px-5 py-2 bg-hld-cyan text-hld-bg rounded-md text-[10px] font-mono uppercase tracking-widest font-bold shadow-sm hover:bg-hld-cyan/80 transition-all active:scale-95 flex items-center gap-2"
+                  >
+                    <Sparkles size={14} /> Generate suggestions
+                  </button>
+                </div>
               )}
             </div>
           )}

@@ -4,6 +4,7 @@ import { Pip, type PipStatus } from '../shared/Pip';
 import type {
   ComparisonChange,
   ComparisonDirection,
+  OpenThread,
   SectionComparisonNote,
 } from '../../types';
 
@@ -97,6 +98,29 @@ function SectionNotes({ notes }: { notes: SectionComparisonNote[] }) {
   );
 }
 
+/** Draft-mode checklist of still-open work — neutral, never a verdict. */
+function OpenThreads({ threads }: { threads: OpenThread[] }) {
+  if (!threads.length) return null;
+  return (
+    <section className="mb-5">
+      <Eyebrow pip="cyan">Open threads · {threads.length}</Eyebrow>
+      <div className="space-y-2">
+        {threads.map((t, i) => (
+          <div key={i} className="flex gap-2">
+            <span className="text-hld-cyan/70 text-[12px] leading-snug shrink-0">◇</span>
+            <div>
+              <div className="text-[13px] text-hld-text leading-snug">{t.summary}</div>
+              {t.location && (
+                <div className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-hld-muted-text">{t.location}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /** The right-hand evaluation panel: verdict, drift, gains, losses, by-section. */
 export function CompareReport() {
   const status = useStore((s) => s.comparisonStatus);
@@ -107,7 +131,7 @@ export function CompareReport() {
       <div className="relative px-4 py-3 border-b border-hld-border shrink-0">
         <div className="absolute top-0 left-0 right-0 h-px bg-hld-cyan shadow-[0_0_12px_var(--color-hld-cyan)]" />
         <div className="font-mono uppercase tracking-[0.14em] text-[10px] font-bold text-hld-text">
-          Evaluation{comparison?.lensName ? ` · ${comparison.lensName}` : ''}
+          Evaluation{comparison?.mode === 'draft' ? ' · Draft' : comparison?.mode === 'final' ? ' · Completed' : ''}{comparison?.lensName ? ` · ${comparison.lensName}` : ''}
         </div>
       </div>
 
@@ -144,7 +168,12 @@ export function CompareReport() {
             )}
 
             <ChangeBlock pip="green" title="Improvements" changes={comparison.improvements} />
-            <ChangeBlock pip="magenta" title="Possible losses" changes={comparison.losses} />
+            {comparison.mode === 'draft' && <OpenThreads threads={comparison.openThreads ?? []} />}
+            <ChangeBlock
+              pip="magenta"
+              title={comparison.mode === 'draft' ? 'Regressions / drift' : 'Possible losses'}
+              changes={comparison.losses}
+            />
             <ChangeBlock pip="yellow" title="Argument moves" changes={comparison.moveChanges} />
             <SectionNotes notes={comparison.sectionNotes} />
           </>

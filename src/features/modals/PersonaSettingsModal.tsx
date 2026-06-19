@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
+import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
+import { guardContextFit } from "../shared/context-guard";
 import { ModalShell } from "./ModalShell";
 import { Disclosure } from "../shared/Disclosure";
 import { AiSettingsSection } from "./AiSettingsSection";
@@ -87,6 +89,12 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleGeneratePersonas = async () => {
+    // The full document context is sent whole; abort on overflow rather than slicing.
+    const { modelCatalog, modelConfig, globalModelDefault } = useStore.getState();
+    const choice = resolveModelChoice('generatePersonas', modelConfig, globalModelDefault);
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: documentContext, what: 'The document', setting: 'Generate personas' })) {
+      return;
+    }
     setIsGenerating(true);
     try {
       const suggestions = await aiProvider.generatePersonas({

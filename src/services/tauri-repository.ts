@@ -11,6 +11,8 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  DiskSignature,
+  MarkdownDelta,
   ProjectMeta,
   PullOutcome,
   PushOutcome,
@@ -101,6 +103,11 @@ export const tauriRepository: Repository = {
     // open project. Tauri's project_write writes against the active
     // ProjectHandle. (Switching projects is a getProject call.)
     await invoke('project_write', { data });
+  },
+
+  async readMarkdownIfChanged(known: DiskSignature | null): Promise<MarkdownDelta> {
+    // Reads against the currently-open project handle, like project_read.
+    return invoke<MarkdownDelta>('project_read_markdown_if_changed', { known });
   },
 
   async deleteProject(id: string): Promise<void> {

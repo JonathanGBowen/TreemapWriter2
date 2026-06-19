@@ -214,6 +214,28 @@ export interface SectionComparisonNote {
 }
 
 /**
+ * Reading stance for an evaluative AI pass. 'draft' (the default) treats the text
+ * as a work in progress — stubs/placeholders are intended scaffolding, not flaws,
+ * and feedback leans toward continuity and next moves. 'final' judges the text as
+ * completed work, where gaps count against it. Shared by Version Compare,
+ * Analysis, and Diagnostic; each tool tracks its own mode independently.
+ */
+export type ReadingMode = 'draft' | 'final';
+
+/**
+ * Draft-mode only: a still-open thread of work in a draft — a stub, placeholder,
+ * TODO, bracketed note, or a commitment set up but not yet paid off — surfaced
+ * NEUTRALLY as a working-memory checklist. Never a loss or a defect; the writer's
+ * own scaffolding reflected back so nothing slips across a revision pass.
+ */
+export interface OpenThread {
+  /** The intended-but-unfinished item, in one line. */
+  summary: string;
+  /** Where it sits (heading title or locus), if locatable. */
+  location?: string;
+}
+
+/**
  * The structured result of an exegetical A/B comparison: how the argument moved
  * from version A to version B. It reconstructs drift, gains, losses, and shifts
  * in the moves — each grounded in the text — rather than restating what either
@@ -234,6 +256,13 @@ export interface VersionComparison {
   moveChanges: ComparisonChange[];
   /** Per-section notes, where sections align by heading title. */
   sectionNotes: SectionComparisonNote[];
+  /**
+   * Draft-mode only: the writer's still-open work (stubs, TODOs, unpaid
+   * commitments), reflected back as a neutral checklist. Empty/absent in 'final'.
+   */
+  openThreads?: OpenThread[];
+  /** The reading stance used for this comparison (audit trail). */
+  mode?: ReadingMode;
   /** The comparison lens applied, if any (audit trail). */
   lensName?: string;
 }
@@ -546,4 +575,18 @@ export interface SyncState {
   workingTreeDirty: boolean;
   /** Current local branch name, e.g. "main". Null if HEAD detached or no commits. */
   branch: string | null;
+}
+
+export interface DiskSignature {
+  /** project.md last-modified time, epoch milliseconds. */
+  mtimeMs: number;
+  /** project.md size in bytes. */
+  size: number;
+}
+
+/** Conditional read result: current signature (null if the file is absent) and
+ *  the content, present only when it changed from the caller's last signature. */
+export interface MarkdownDelta {
+  signature: DiskSignature | null;
+  content: string | null;
 }

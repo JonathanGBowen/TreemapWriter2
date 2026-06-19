@@ -381,6 +381,25 @@ pub struct SyncState {
     pub branch: Option<String>,
 }
 
+/// Cheap change-detection stat of a file: last-modified (epoch ms) + byte size.
+/// Lets a caller skip re-reading the whole file when it hasn't changed on disk.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiskSignature {
+    pub mtime_ms: i64,
+    pub size: u64,
+}
+
+/// Result of a conditional read: the current signature (`None` if the file is
+/// absent) and the content, present only when it differs from the caller's
+/// last-known signature.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkdownDelta {
+    pub signature: Option<DiskSignature>,
+    pub content: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UiState {

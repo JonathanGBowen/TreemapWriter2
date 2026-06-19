@@ -9,8 +9,10 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-17.** Update this file whenever a feature ships or is
-> planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)).
+> **Current as of 2026-06-18.** Update this file whenever a feature ships or is
+> planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
+> point-in-time audit of the desktop user flow (with a flow diagram and the
+> issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md).
 
 ## Where things stand
 
@@ -27,6 +29,22 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Next (felt priorities)
 
+- **Gestalt roadmap (items 3–7).** Tier 1 shipped 2026-06-17 — part-not-piece
+  context: prefix-truncation killed in spec generation, and a *structural surround*
+  (a section's live part-in-whole relations) now threads into the diagnostic and
+  analysis prompts. The design and the remaining levers live in
+  [`docs/gestalt-design.md`](docs/gestalt-design.md): structural-truth (tF/fT) +
+  commitment-mesh diagnostic; gap→vector next-actions; a recentering /
+  question-the-goal operation; an argument whole-view on the treemap; and boundary
+  correctness + B-reaction guardrails (which also retires the last `contentPreview`
+  char-slice). Several depend on stable section IDs (below) for clean part alignment.
+  A prompt-by-prompt pass (`gestalt-design.md` §VI) records the recommended edits to
+  the prompt *texts* themselves — the highest-value being to teach `diagnostic.md` and
+  `analysis.md` to consume the structural surround Tier 1 already injects. As of
+  2026-06-18 the spec-derivation `contentPreview` slices (800 / 600) are now the *only*
+  remaining input char-slices: every other arbitrary source/section cap was deleted in
+  favour of the `checkContextFit` token-budget pre-flight (see
+  [`docs/migration-log.md`](docs/migration-log.md)).
 - **Streaming AI in a sidebar coach panel.** The `AIProvider` interface accepts
   sibling streaming methods; none implemented yet. Target a
   `streamCoachAdvice(section): AsyncIterable<string>` on the provider, consumed
@@ -47,10 +65,13 @@ when synced, magenta on error) surfaces status without distraction.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
-- **Re-enable App.tsx test-suite cleanup.** A `useEffect` is commented out
-  ("Disabled to prevent deleting data when section titles change") — a data-loss
-  bug was found and the feature disabled rather than fixed. Design a safer cleanup
-  (cleanup only on explicit section delete, not on title rename) and re-enable.
+- ~~**Re-enable App.tsx test-suite cleanup.**~~ Done 2026-06-18 (UX audit; see
+  [`docs/migration-log.md`](docs/migration-log.md) and
+  [`docs/ux-audit.md`](docs/ux-audit.md)). The disabled `useEffect` is replaced by
+  the `document-state` action `pruneOrphanEntries`, which removes only orphaned
+  testSuite entries with **no authored content** — renames/reorders keep their
+  specs/goals/history. A complete fix (id-stable cleanup that can also reclaim
+  data-bearing orphans) still depends on **stable section IDs** above.
 - **Crash-resilient unsaved draft on desktop** (follow-up to the 2026-06-16
   autosave data-loss fix; see [`migration-log.md`](docs/migration-log.md)). The
   desktop autosave now persists the live buffer to `project.md` every 60 s, so a

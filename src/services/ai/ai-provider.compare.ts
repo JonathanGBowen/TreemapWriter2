@@ -9,14 +9,12 @@
 
 import { safeJsonParse } from '../../lib/utils';
 import { normalizeComparison } from '../../lib/compareHelpers';
+import { getPromptText } from '../prompts';
 import type { CompareVersionsInput } from '../ai-provider';
 import type { VersionComparison } from '../../types';
 import type { LLMClient } from './clients';
 
 const MAX_OUTPUT_TOKENS = 16000;
-// Generous per-side backstop. The real overflow gate is the caller's context-fit
-// pre-flight (use-comparison-actions); this only guards a pathological payload.
-const SIDE_CAP = 120000;
 
 const DIRECTIONS = ['improved', 'regressed', 'mixed', 'lateral'];
 
@@ -40,6 +38,16 @@ const CHANGE_SCHEMA = {
   required: ['summary', 'receipts'],
 };
 
+/** Draft-mode only: a neutral still-open-work item. Optional in the schema (omitted in 'final'). */
+const OPEN_THREAD_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    location: { type: 'string' },
+  },
+  required: ['summary'],
+};
+
 /** Structured-output schema mirroring `VersionComparison` (cf. REVISIONS_JSON_SCHEMA). */
 const COMPARISON_JSON_SCHEMA = {
   type: 'object',
@@ -50,6 +58,7 @@ const COMPARISON_JSON_SCHEMA = {
     improvements: { type: 'array', items: CHANGE_SCHEMA },
     losses: { type: 'array', items: CHANGE_SCHEMA },
     moveChanges: { type: 'array', items: CHANGE_SCHEMA },
+    openThreads: { type: 'array', items: OPEN_THREAD_SCHEMA },
     sectionNotes: {
       type: 'array',
       items: {
@@ -71,6 +80,8 @@ const COMPARISON_JSON_SCHEMA = {
 /** Base instruction + optional lens + alignment hint + the two labeled drafts. */
 const buildComparePrompt = (input: CompareVersionsInput): string =>
   [
+    // Draft mode (default): prepend the in-process overlay. 'final' prepends nothing.
+    ...((input.mode ?? 'draft') === 'draft' ? [getPromptText('compareModeDraft'), ''] : []),
     input.config.compareVersionsPrompt,
     ...(input.lens
       ? ['', `ADOPT THIS PERSONA: ${input.lens.persona}`, `APPLY THIS COMPARISON LENS: ${input.lens.lens}`]
@@ -80,10 +91,10 @@ const buildComparePrompt = (input: CompareVersionsInput): string =>
       : []),
     '',
     `### VERSION A — ${input.labelA} (earlier) ###`,
-    input.markdownA.slice(0, SIDE_CAP),
+    input.markdownA,
     '',
     `### VERSION B — ${input.labelB} (later) ###`,
-    input.markdownB.slice(0, SIDE_CAP),
+    input.markdownB,
     '',
     'Return ONLY the JSON object defined by the schema. Every receipt quote MUST be copied verbatim from the version named in its "side" (a = VERSION A, b = VERSION B).',
   ].join('\n');

@@ -167,6 +167,12 @@ export const buildAnalysisRequestText = (
   wholeDocument = false,
   /** Active analytical lens, layered on top of the base prompt (persona + focus). */
   spell?: { persona: string; lens: string },
+  /**
+   * Optional part-in-whole context (parent/sibling claims and commitments),
+   * pre-formatted by `formatStructuralSurround`. Lets the reconstruction read the
+   * section as a part of the whole rather than as an isolated piece.
+   */
+  structuralSurround?: string,
 ): string =>
   [
     prompt,
@@ -179,6 +185,7 @@ export const buildAnalysisRequestText = (
     ...(spell
       ? ['', `ADOPT THIS PERSONA: ${spell.persona}`, `APPLY THIS ANALYTICAL LENS: ${spell.lens}`]
       : []),
+    ...(structuralSurround ? ['', structuralSurround] : []),
     '',
     `SECTION: "${sectionTitle}"`,
     '',

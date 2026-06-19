@@ -2135,3 +2135,245 @@ atmospheric history is served by the Atmospheric Front over git snapshots);
 structured/hybrid UI (intensity meters, formation pips); lens overlays on the
 four instruments (the generative/"eupsychogenic" valence lives in the Weather
 Report prompt for now).
+## 2026-06-17 — Gestalt: part-not-piece context (Tier 1)
+
+**Why.** A design pass reading the tool through Wertheimer's Gestalt theory (see the
+new [`gestalt-design.md`](gestalt-design.md)) found the tool violating its own
+"structure not summary" thesis at two points: it compressed context with character
+*prefixes* (a "piece torn from context"), and it judged a section with only its own
+spec — as a *piece*, never tested as a *part* inside its whole. Tier 1 fixes both.
+
+**What changed.** Front-end + prompt-assembly only. No schema, state, Rust, or
+on-disk change.
+
+- **New design doc.** [`docs/gestalt-design.md`](gestalt-design.md) — the *why*
+  (part/piece doctrine), the diagnosis of current part-handling, what shipped now,
+  and a roadmap (items 3–7) for the rest. Referenced from STATUS.md "Next".
+- **Killed prefix-truncation in spec generation.** `src/services/ai/ai-provider.specs.ts`
+  drops the redundant `markdown.slice(0, 4000)` document preview in the L1 batch; the
+  document-level spec reconstruction (`rootCtx`) + a structural outline now carry the
+  whole as a role-reconstruction, not a slice. The per-section `contentPreview` slice
+  is annotated with a TODO — unavoidable there (that pass *derives* the spec, so no
+  reconstruction yet exists); proper fix tracked as roadmap item 7.
+- **Structural surround.** New pure helpers `buildStructuralSurround` /
+  `formatStructuralSurround` in `src/lib/diagnostic-helpers.ts` derive a section's
+  *live* part-in-whole context (document claim, parent claim, preceding section's
+  outgoing commitments, following section's incoming needs) — role-reconstructions,
+  never prose. Threaded behind optional params into `buildDiagnosticPrompt`
+  (`src/lib/constants.ts`) and `buildAnalysisRequestText` (`src/lib/analysis-helpers.ts`);
+  `RunDiagnosticInput` gained an optional `specs` map and `AnalyzeSectionInput` an
+  optional `structuralSurround`. Wired at the diagnostic call (`src/App.tsx`), the
+  analysis call (`src/features/tests-panel/use-analysis-actions.ts`), and the modal's
+  prompt preview (`src/features/modals/TestRunnerModal.tsx`) so the preview matches the
+  sent prompt. The whole-document pass gets no surround (it is already the whole).
+- **Tests.** `src/lib/__tests__/diagnostic-helpers.structural-surround.test.ts`
+  (5 cases): middle/first/last sibling, unknown id, and "role-reconstructions only,
+  no prose."
+
+**What to verify.** `npx tsc --noEmit` (clean), `npx vitest run` (205 pass; +5 new),
+`npm run lint` (no new errors — the 5 are pre-existing in `livePreview.ts` /
+`SpecGeneratorModal.tsx`), `npm run build` (clean). Manual: load the default
+dissertation, generate specs, run a diagnostic on a mid-document subsection, open the
+Test Runner's prompt preview — it now carries a "STRUCTURAL SURROUND" block with the
+neighbours' claims and commitments.
+
+**Rollback.** Pure front-end (`git revert`). All new params are optional, so reverting
+the call-site wiring leaves the builders back-compatible.
+
+**Deferred (roadmap, see `gestalt-design.md` §IV).** Structural-truth (tF/fT) +
+commitment-mesh diagnostic (item 3); gap→vector next-actions (4); recentering /
+question-the-goal operation (5); argument whole-view on the treemap (6); boundary
+correctness + B-reaction guardrails, which also resolves the `contentPreview` slice
+(7).
+
+---
+
+## 2026-06-17 — Gestalt: prompt-by-prompt analysis (docs only)
+
+**Why.** Tier 1 built the *machinery* of part-not-piece context; the follow-up question
+was whether the prompt *texts* (`src/services/prompts/`) ask the model to think in
+wholes and parts. A prompt-by-prompt pass over all 21 found several drifting toward
+piecemeal / and-sum instructions — and, most notably, that `diagnostic.md` and
+`analysis.md` are now handed a `STRUCTURAL SURROUND` block by Tier 1 yet never tell the
+model to use it.
+
+**What changed.** Documentation only — **no prompt text, code, types, or tests touched.**
+
+- `docs/gestalt-design.md`: new section **§VI "Prompt modifications (prompt-by-prompt)"**
+  — the recommended Gestalt edit for each prompt, grouped by registry category, with the
+  "surround injected but unused" gap called out as highest-value. Records *editable-only
+  restraint* for the Glass-Box revision engine: a whole-serving guard recommended for the
+  editable `generate-revisions.md`, the locked "do not soften" internals left intact.
+- `STATUS.md`: extended the Gestalt roadmap bullet to point at §VI.
+
+**What to verify.** No behavioural change. `git diff --stat` touches only the three doc
+files; `npx tsc --noEmit` clean and `npx vitest run` still 205 passing (a doc edit must
+not affect them).
+
+**Rollback.** `git revert` — pure docs.
+
+---
+
+## 2026-06-18 — Stop silent character-cap truncation of source/section text
+
+**Why.** Many AI calls silently sliced their inputs to an arbitrary character
+count before building the prompt, so functionality meant to reason over the
+*full* source documents or *whole* sections was quietly working on a prefix
+(revisions/directives grounded in the first 6–8k chars of each source; analysis
+and diagnostics that stopped reading a long section at 12–60k chars; comparisons
+capped at 120k chars/side; dialogue truncated to the last 40 turns + a 12k cap on
+the analysis-JSON context). This violated the architectural law in
+`services/ai/context-budget.ts` — "never silently truncate" — which a few call
+sites already honoured and the rest ignored.
+
+**What changed.** Front-end only; the fix extends the existing pre-flight pattern
+everywhere a cap lived.
+
+- **Provider builders now send full text** (caps deleted): `ai-provider.revisions.ts`
+  (`SOURCE_CONTENT_CAP` 8000, `SECTION_TEXT_CAP` 24000), `ai-provider.suggest-directives.ts`
+  (6000 / 24000), `ai-provider.compare.ts` (`SIDE_CAP` 120000), and in
+  `ai-provider.impl.ts`: `runDiagnostic` (12000), `analyzeSection` / `refactorAnalysis`
+  (`ANALYSIS_INPUT_CAP` 60000), `getContentSuggestions` (5000), `refineSpec` (3000),
+  `generatePersonas` (5000), and `continueDialogue` (`DIALOGUE_ANALYSIS_CAP` 12000 +
+  `DIALOGUE_HISTORY_WINDOW` 40 — the whole conversation now travels each turn).
+- **New shared pre-flight helper** `src/features/shared/context-guard.ts`
+  (`guardContextFit`): wraps `checkContextFit` + the standard overflow toast, returns
+  `false` (caller aborts) on genuine overflow, proceeds on an unknown window (Ollama).
+- **Callers gained the guard** so overflow warns instead of hitting the model's hard
+  limit: `use-revision-actions`, `use-suggest-directives`, `use-analysis-actions`
+  (per-section analyze + dialogue), `App.tsx` `handleRunTests` (all scopes, not just
+  root), and the `ContentSuggestionsModal` / `SpecGeneratorModal` / `PersonaSettingsModal`
+  modals. The compare caller already pre-flighted A+B; only its builder cap was removed.
+
+**Out of scope (left intentionally).** The spec-derivation `contentPreview` slices
+(800 / 600) in `ai-provider.specs.ts` — documented Gestalt debt (item 7): the spec
+pass is what *derives* the structural reconstruction, so there is nothing yet to send
+instead of a slice.
+
+**What to verify.** `npx tsc --noEmit` clean; `npx vitest run` 205 passing; `npm run build`
+clean; `npm run lint` adds no new errors (the 5 are pre-existing). Manual: paste a
+>30k-char source + long section and run Generate Revisions / Suggest Directive — the
+full text reaches the prompt (not a prefix); repeat for Analyze section / Run diagnostic
+on a long section and Compare versions on two long drafts. Overflow path: pick a
+small-window model (or a long doc) and confirm a toast appears and the call aborts —
+no silent slice, no raw API length error.
+
+**Rollback.** `git revert` — pure front-end. Re-adding the caps would restore the old
+truncating behaviour; the new `context-guard.ts` is additive.
+
+---
+
+## 2026-06-18 — Tauri UX audit & remediation
+
+**What changed.** A full audit of the desktop user flow (documented in
+[`ux-audit.md`](ux-audit.md), with a Mermaid flow diagram + issue table) plus
+fixes across four tiers. No architecture changed; this hardened existing flows.
+
+- **Data safety (App.tsx, project-state.ts, document-state.ts).** Autosave now
+  guards against overlapping itself and catches rejections; `loadInitialState`
+  and `initSyncPolicy` no longer swallow rejections; `saveCurrentState` aborts
+  its store-convergence if the active project changed during the write
+  (project-switch race); the duplicate `updateSectionGoals` in `App.tsx` (a
+  stale-closure copy) was deleted in favour of the canonical `document-state`
+  action; `handleSaveContent` persists immediately and guards a missing section.
+- **Orphan cleanup re-enabled safely.** New `document-state` action
+  `pruneOrphanEntries(liveIds)` replaces the long-disabled cleanup `useEffect`.
+  It removes only orphaned testSuite entries that hold **no authored content**,
+  so a rename/reorder (which changes the title-derived id) never loses
+  specs/goals/history. The full fix still wants stable section IDs (STATUS).
+- **Silent-failure visibility.** New `features/shared/ai-error.ts`
+  `notifyAiError` turns missing/invalid-key failures into a specific message
+  with an **AI Settings** shortcut, wired across every primary AI flow
+  (interpolate, diagnostic, spec-refine, suggestions, revision, analysis,
+  dialogue). The sidebar sync error pip is now actionable (retry, or open
+  `SyncConfigModal` for the no-PAT case); external-change read failures surface
+  a one-shot toast; Ollama "Detect" reports success/failure; a "✓ stored" badge
+  confirms a saved key; keyring-lookup failures log distinctly on desktop.
+- **First-run preview (EditorPanel.tsx).** On desktop with no open project the
+  demo is now a **read-only preview** with an always-on "Start a Project" CTA,
+  and History/Snapshot/Revise are hidden — typed work can no longer be lost when
+  the onboarding tutorial runs over the demo.
+- **Polish.** Treemap focus-mode dimming raised to legible values;
+  `ContentSuggestionsModal` no longer auto-fires an AI call on open (explicit
+  Generate); success toasts on import/load; the sprint brief labels a fallback
+  plan as such.
+
+**Verified non-issues (no change).** SpecGeneratorModal preserves its typed
+instruction across the edit/diff toggle; the sprint-cues toggle already exists in
+`SprintRunner`; the revision/analysis workspaces already handle errors;
+`GrimoireModal` opens from `AnalysisTab`. **Deferred:** catalog-aware model
+fallback (would break `resolveModelChoice` purity) and a global prompt-overrides
+editor (larger, unclear value).
+
+**What to verify.** `npx tsc --noEmit` clean; `npx vitest run` 205 passing;
+`npm run build` clean; `npm run lint` adds no new errors (the 5 are pre-existing,
+in `livePreview.ts` + a pre-existing `exhaustive-deps` disable). Manual (Tauri):
+first desktop launch shows a read-only preview + one CTA; run a diagnostic with
+no key set → specific toast with a working "AI Settings" action; drop the network
+mid-push then click the error pip → retry; clear the PAT → pip opens sync config;
+edit goals from a panel and a modal → single snapshot; delete a section → its
+empty testSuite entry is pruned, a rename loses nothing; select a section → others
+dim but stay legible.
+
+**Rollback.** `git revert` — front-end only except for nothing on the Rust side
+(no Rust changed). `pruneOrphanEntries` is additive; reverting restores the
+inert commented-out cleanup. The new `ai-error.ts` and read-only-preview gating
+are additive.
+
+## 2026-06-19 — Feature: Draft-in-process reading mode (Compare / Analysis / Diagnostic)
+
+**Why.** The evaluative tools assumed finished writing, so pointing them at a
+draft-in-process made the model fixate on incompleteness ("undermined by [stub]")
+— useless mid-revision. The app is a cognitive prosthetic for revision; the tools
+must treat stubs/TODOs as intended scaffolding and steer toward continuity and
+next moves, not credibility verdicts.
+
+**What changed.**
+- New `ReadingMode = 'draft' | 'final'` (`src/types/index.ts`), default `'draft'`.
+  Three INDEPENDENT per-tool modes (state by lifecycle, the user's choice):
+  `compareMode` (`state/comparison-state.ts`), `analysisMode` + `diagnosticMode`
+  (`state/ai-state.ts`) — all session-only, like `activeSpellId`.
+- Three locked prompt overlays — `compare-mode-draft.md`, `analysis-mode-draft.md`,
+  `diagnostic-mode-draft.md` — catalogued in `services/prompts/registry.ts`
+  (`editability: 'locked'`, so excluded from `PromptsConfig`). Prepended to the
+  base prompt ONLY when mode is `'draft'`; `'final'` prepends nothing (= prior
+  behavior — additive, zero-regression). Compare prepends inside
+  `buildComparePrompt` (`ai-provider.compare.ts`); Analysis/Diagnostic prepend at
+  the impl via `ai-provider.impl.ts#withDraftMode`, leaving the pure builders
+  (`analysis-helpers.ts`, `constants.ts`) untouched (deviation from the plan,
+  which proposed builder params — the impl-compose route is smaller and respects
+  the "pure helper" boundary).
+- `mode?` added to `CompareVersionsInput` / `AnalyzeSectionInput` /
+  `RunDiagnosticInput` / `RefactorAnalysisInput` (optional, `?? 'draft'` in the
+  builders so no caller/test breaks); threaded from the slices via the action
+  hooks (`use-comparison-actions`, `use-analysis-actions`) and via `onRun` →
+  `App.handleRunTests` for the diagnostic.
+- Compare gains an optional `openThreads` output (`OpenThread[]`): the writer's own
+  still-open work as a NEUTRAL working-memory checklist (draft-only). Schema in
+  `ai-provider.compare.ts` (NOT in `required`), tolerant parse in
+  `compareHelpers.ts#normalizeComparison`, and a cyan "Open threads" section in
+  `CompareReport`. `mode` recorded on `VersionComparison` (audit, like `lensName`).
+  Analysis & Diagnostic are reframe-only — their existing fields
+  (`potentialObjections`; `moveResults`/`overallReadiness`) already carry "what's
+  open", so no new output shape.
+- UI (`SegControl`, default Draft, with a `title` tooltip): a toggle in
+  `CompareTopBar` (left of Lens), beside the `LensBar` in `AnalysisTab`, and a
+  "Read as" row in `TestRunnerModal`. `CompareReport` echoes the active mode in its
+  header and relabels "Possible losses" → "Regressions / drift" in draft mode. No
+  new `AICallKind` (same flows, different composition).
+
+**What to verify.** `npx vitest run` (added `openThreads` cases to
+`compareHelpers.test.ts`); `npx tsc --noEmit`; `npm run build` (3 new `.md?raw`
+imports resolve); `npm run lint` (no new errors). Manual: with a stub/TODO in the
+live draft, Version Compare in Draft surfaces it under **Open threads** (not
+losses) and doesn't drag the verdict down; flipping to **Completed** restores
+gap-penalizing and hides Open threads; the header reads
+`Evaluation · Draft|Completed · <Lens>`; Analysis/Diagnostic stop faulting
+incompleteness in Draft.
+
+**Rollback.** `git revert` — front-end only (no Rust). All new fields are optional
+and the overlays additive, so reverting leaves older reports valid; delete the
+three `*-mode-draft.md` files and their registry entries.
+
+**Current state.** Draft mode is the default for all three tools; each tool's mode
+is independent and session-only (resets to Draft on reload).

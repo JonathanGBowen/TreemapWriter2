@@ -6,6 +6,7 @@ import { DEFAULT_COMPARE_LENSES } from '../../lib/defaultCompareLenses';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { groupSnapshotsByDay, type DayGroup } from '../../lib/compareHelpers';
 import { useComparisonActions } from './use-comparison-actions';
+import { SegControl } from '../modals/SegControl';
 
 /** A styled <select> over { Current Draft, …days → snapshots }. */
 function VersionSelect({
@@ -60,6 +61,8 @@ export function CompareTopBar() {
   const setVersionB = useStore((s) => s.setVersionB);
   const activeCompareLensId = useStore((s) => s.activeCompareLensId);
   const setCompareLens = useStore((s) => s.setCompareLens);
+  const compareMode = useStore((s) => s.compareMode);
+  const setCompareMode = useStore((s) => s.setCompareMode);
   const status = useStore((s) => s.comparisonStatus);
   const customSpells = useStore((s) => s.customSpells);
   const { runComparison } = useComparisonActions();
@@ -126,6 +129,15 @@ export function CompareTopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-3 shrink-0">
+        <div title="Draft: treats stubs, placeholders and TODOs as intended scaffolding and weighs whether you're holding your throughline. Completed: judges both versions as finished work, where gaps count against them.">
+          <SegControl
+            ariaLabel="Comparison reading mode"
+            accent="cyan"
+            value={compareMode === 'final' ? 1 : 0}
+            onChange={(i) => setCompareMode(i === 1 ? 'final' : 'draft')}
+            options={[{ glyph: '✎', label: 'Draft' }, { glyph: '✓', label: 'Completed' }]}
+          />
+        </div>
         <label className="flex items-center gap-2">
           <span className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text">Lens</span>
           <select

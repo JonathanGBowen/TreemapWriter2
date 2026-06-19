@@ -17,6 +17,7 @@ import type {
   SprintPlan,
   VersionComparison,
   AtmosphericInstrument,
+  ReadingMode,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 
@@ -105,6 +106,8 @@ export interface RunDiagnosticInput {
   section: Section;
   spec: SectionSpec;
   scope: 'segment' | 'parent' | 'full';
+  /** Reading stance: 'draft' (default) treats unwritten moves as next steps, not gaps. */
+  mode?: ReadingMode;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;
@@ -114,6 +117,12 @@ export interface RunDiagnosticInput {
   sections: Section[];
   config: PromptsConfig;
   findSection: (nodes: Section[], id: string) => Section | null;
+  /**
+   * Section-id → spec map (with `'root'` holding the document-level spec). When
+   * present, the diagnostic builds a structural surround so the section is judged
+   * as a part functioning in the whole rather than as an isolated piece.
+   */
+  specs?: Record<string, SectionSpec | undefined>;
 }
 
 export interface EstimateDependenciesInput {
@@ -181,6 +190,13 @@ export interface AnalyzeSectionInput {
    * analysis prompt. Omitted for a plain exegetical reconstruction.
    */
   spell?: { persona: string; lens: string };
+  /**
+   * Optional part-in-whole context, pre-formatted by `formatStructuralSurround`.
+   * Lets the reconstruction read the section as a part of the whole, not a piece.
+   */
+  structuralSurround?: string;
+  /** Reading stance: 'draft' (default) reconstructs the argument as-is without faulting incompleteness. */
+  mode?: ReadingMode;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
@@ -194,6 +210,8 @@ export interface RefactorAnalysisInput {
   analysis: SectionAnalysis;
   dialogue: DialogueMessage[];
   dialogueContext: string | null;
+  /** Reading stance, inherited from the Analysis tool. */
+  mode?: ReadingMode;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
@@ -263,6 +281,12 @@ export interface CompareVersionsInput {
    * prompt (the Grimoire "spell" mechanism). Omitted for a plain comparison.
    */
   lens?: { persona: string; lens: string };
+  /**
+   * Reading stance: 'draft' (the default) treats both texts as works-in-progress
+   * and scaffolding as intended; 'final' judges them as completed work. Selects
+   * the mode overlay prepended to the base compare prompt.
+   */
+  mode?: ReadingMode;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

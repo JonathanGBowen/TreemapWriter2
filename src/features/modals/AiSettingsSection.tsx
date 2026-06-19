@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Key, Server, Cpu, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Key, Server, Cpu, Plus, Trash2, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '../../store';
-import { setSecret } from '../../services/credentials';
+import { getSecret, setSecret } from '../../services/credentials';
 import {
   refreshGeminiKey,
   refreshAnthropicKey,
+  detectOllamaModels,
 } from '../../services/ai-provider-registry';
 import { isTauri } from '../../services/tauri-environment';
 import { AI_CALL_KINDS, AI_CALL_KIND_LABELS } from '../../services/ai/model-types';
@@ -128,6 +129,25 @@ const ProviderKeys: React.FC<{
   const [anthropicKey, setAnthropicKey] = useState('');
   const [ollamaUrl, setOllamaUrl] = useState(ollamaBaseUrl);
   const [saving, setSaving] = useState<'gemini' | 'anthropic' | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  // Whether a key is already present in the keyring, so the user can verify a
+  // key is stored without making a test call. Desktop-only (browser has no keyring).
+  const [stored, setStored] = useState<{ gemini: boolean; anthropic: boolean }>({
+    gemini: false,
+    anthropic: false,
+  });
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let active = true;
+    void (async () => {
+      const [g, a] = await Promise.all([getSecret('gemini'), getSecret('anthropic')]);
+      if (active) setStored({ gemini: !!g, anthropic: !!a });
+    })().catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const saveKey = async (service: 'gemini' | 'anthropic', value: string) => {
     if (!value.trim()) return;
@@ -142,11 +162,31 @@ const ProviderKeys: React.FC<{
       else refreshAnthropicKey(value.trim());
       if (service === 'gemini') setGeminiKey('');
       else setAnthropicKey('');
+      setStored((prev) => ({ ...prev, [service]: true }));
       toast.success(`${service === 'gemini' ? 'Gemini' : 'Anthropic'} API key saved to OS keyring.`);
     } catch (e) {
       toast.error(`Failed to save key: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(null);
+    }
+  };
+
+  const detectOllama = async () => {
+    const url = ollamaUrl.trim();
+    setOllamaUrl(url);
+    setDetecting(true);
+    try {
+      const models = await detectOllamaModels(url);
+      onSaveOllamaUrl(url); // persist the endpoint + refresh the catalog
+      toast.success(
+        models.length
+          ? `Detected ${models.length} Ollama model${models.length === 1 ? '' : 's'}.`
+          : 'Connected to Ollama, but no models are installed.',
+      );
+    } catch {
+      toast.error('Could not reach Ollama. Check it is running at this URL, and set OLLAMA_ORIGINS to allow this app.');
+    } finally {
+      setDetecting(false);
     }
   };
 
@@ -170,6 +210,7 @@ const ProviderKeys: React.FC<{
         onChange={setGeminiKey}
         onSave={() => saveKey('gemini', geminiKey)}
         saving={saving === 'gemini'}
+        stored={stored.gemini}
       />
       <KeyRow
         label="Anthropic API Key"
@@ -177,6 +218,7 @@ const ProviderKeys: React.FC<{
         onChange={setAnthropicKey}
         onSave={() => saveKey('anthropic', anthropicKey)}
         saving={saving === 'anthropic'}
+        stored={stored.anthropic}
       />
 
       {/* Ollama endpoint */}
@@ -195,10 +237,11 @@ const ProviderKeys: React.FC<{
             className="flex-1 p-2 text-[12px] font-mono border border-hld-border rounded bg-hld-bg text-hld-text focus:outline-none focus:border-hld-cyan"
           />
           <button
-            onClick={() => onSaveOllamaUrl(ollamaUrl.trim())}
-            className="px-3 py-2 bg-hld-surface border border-hld-border rounded text-[10px] font-mono uppercase tracking-widest font-bold hover:bg-hld-border text-hld-text transition-colors"
+            onClick={detectOllama}
+            disabled={detecting}
+            className="px-3 py-2 bg-hld-surface border border-hld-border rounded text-[10px] font-mono uppercase tracking-widest font-bold hover:bg-hld-border text-hld-text transition-colors disabled:opacity-50"
           >
-            Detect
+            {detecting ? 'Detecting…' : 'Detect'}
           </button>
         </div>
         <p className="text-[10px] text-hld-muted mt-1 font-mono">
@@ -215,10 +258,16 @@ const KeyRow: React.FC<{
   onChange: (v: string) => void;
   onSave: () => void;
   saving: boolean;
-}> = ({ label, value, onChange, onSave, saving }) => (
+  stored?: boolean;
+}> = ({ label, value, onChange, onSave, saving, stored }) => (
   <div>
-    <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted mb-1 block">
+    <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted mb-1 flex items-center gap-2">
       {label}
+      {stored && (
+        <span className="inline-flex items-center gap-1 text-hld-green normal-case tracking-normal" title="A key is stored in your OS keyring">
+          <Check size={11} /> stored
+        </span>
+      )}
     </label>
     <div className="flex gap-2">
       <input
