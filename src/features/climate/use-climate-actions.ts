@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
+import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
+import { guardContextFit } from '../shared/context-guard';
 import type { Section } from '../../types';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
@@ -30,8 +32,17 @@ export const useClimateActions = () => {
   const setClimateStatus = useStore((s) => s.setClimateStatus);
 
   const runAtmosphere = useCallback(async () => {
-    const { markdown, sections, climateInstrument, climateTargetId, climateStatus, promptsConfig } =
-      useStore.getState();
+    const {
+      markdown,
+      sections,
+      climateInstrument,
+      climateTargetId,
+      climateStatus,
+      promptsConfig,
+      modelCatalog,
+      modelConfig,
+      globalModelDefault,
+    } = useStore.getState();
 
     if (climateStatus === 'running') return;
 
@@ -52,6 +63,22 @@ export const useClimateActions = () => {
 
     if (!text.trim()) {
       toast.error('Nothing to read yet — the draft (or selected section) is empty.');
+      return;
+    }
+
+    // The full target text is sent whole — never silently truncate. Pre-flight the
+    // token budget and abort on overflow, asking for a larger-context model rather
+    // than slicing the draft (cf. use-analysis-actions / use-comparison-actions).
+    const choice = resolveModelChoice('analyzeAtmosphere', modelConfig, globalModelDefault);
+    if (
+      !guardContextFit({
+        catalog: modelCatalog,
+        choice,
+        text,
+        what: target === 'document' ? 'The whole draft' : 'This section',
+        setting: 'Atmosphere',
+      })
+    ) {
       return;
     }
 

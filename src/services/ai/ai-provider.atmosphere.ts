@@ -14,9 +14,6 @@ import type { EditablePromptKey } from '../prompts/registry';
 import type { LLMClient } from './clients';
 
 const MAX_OUTPUT_TOKENS = 16000;
-// Generous backstop on the fed text. Typical drafts are far smaller; this only
-// guards a pathological payload (cf. ai-provider.compare.ts SIDE_CAP).
-const INPUT_CAP = 120000;
 
 /** Which editable prompt drives each instrument. */
 const PROMPT_KEY: Record<AtmosphericInstrument, EditablePromptKey> = {
@@ -43,7 +40,9 @@ const buildAtmospherePrompt = (input: AnalyzeAtmosphereInput): string => {
     instruction,
     '',
     header,
-    withLineNumbers(input.text.slice(0, INPUT_CAP)),
+    // Full text, never a slice: the caller (use-climate-actions) pre-flights the
+    // token budget via guardContextFit and aborts on overflow rather than truncating.
+    withLineNumbers(input.text),
     '',
     'Analyze the text above and respond in markdown, following the output format described. Ground your reading in specific passages — quote directly, and cite locations by section heading and line number where useful. The "N | " prefixes are line markers for your reference only; never include them inside quoted text.',
   ].join('\n');
