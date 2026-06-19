@@ -1,7 +1,8 @@
+import { SlidersHorizontal } from 'lucide-react';
 import { useStore } from '../../state';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 
-/** Workspace header: Done · ⟐ §title · Preview-all toggle · in-use source glyphs. */
+/** Workspace header: Done · ⟐ §title · Preview-all toggle · in-use source glyphs · settings. */
 export function RevisionTopBar() {
   const close = useStore((s) => s.closeRevisionWorkspace);
   const phase = useStore((s) => s.revisionPhase);
@@ -9,6 +10,7 @@ export function RevisionTopBar() {
   const setPreviewAll = useStore((s) => s.setPreviewAll);
   const sources = useStore((s) => s.revisionSources);
   const selectedIds = useStore((s) => s.selectedSourceIds);
+  const setShowSettings = useStore((s) => s.setShowRevisionSettingsModal);
   const current = useCurrentSection();
   const inUse = sources.filter((s) => selectedIds.includes(s.id));
 
@@ -54,6 +56,15 @@ export function RevisionTopBar() {
             </span>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setShowSettings(true)}
+          title="Revision settings — instruction, model, token preview, prompts"
+          aria-label="Revision settings"
+          className="w-[28px] h-[28px] flex items-center justify-center border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 transition-colors"
+        >
+          <SlidersHorizontal size={13} />
+        </button>
       </div>
     </div>
   );

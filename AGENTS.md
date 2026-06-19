@@ -174,6 +174,7 @@ the name as historical; do not "simplify" the structure.
 | A new persisted field | Update the `Repository` interface **first** (`src/services/repository.ts`), then **both** implementations, then the matching slice. For Tauri, "both implementations" includes the Rust mirror (`types.rs`), an on-disk path (`layout.rs`), and read/write in `document.rs` — serde silently drops unknown fields, so land Rust + TS together (e.g. `modelsConfig` ↔ `.twriter/models.json`). Global, non-project settings go in `services/preferences.ts`, not the project file. |
 | A new domain mutation (testSuite, document, etc.) | An action on the appropriate state slice, NOT a `useCallback` in a component. |
 | A new UI panel | New folder under `src/features/<panel-name>/`. |
+| A draggable column / panel resizer | `src/features/shared/useColumnResize.ts` (pure `clampWidth`/`nextWidth` + the hook that owns the CodeMirror-relayout `resize` dispatch) + `ResizeHandle`. Don't hand-roll the `mousedown`/clamp logic — the main sidebar, tests panel, and both workspaces share this. Persist the width in `ui-state` (and mirror it in the Rust `UiState` struct for desktop). |
 | A new icon | `lucide-react`. Do not introduce a second icon library. |
 | A new dependency | Ask the user. Default answer is "we don't need it." |
 

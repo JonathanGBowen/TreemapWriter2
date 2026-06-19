@@ -5,6 +5,7 @@ import { languages } from '@codemirror/language-data';
 import { GFM, Table } from '@lezer/markdown';
 import { EditorView } from '@codemirror/view';
 import { hldExtensions, hldTheme } from '../../lib/editorTheme';
+import { findProposalOffset } from '../../lib/revision-helpers';
 import { useStore } from '../../state';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 import {
@@ -56,6 +57,23 @@ export function MasterDocument() {
   useEffect(() => {
     cmRef.current?.view?.dispatch({ effects: setPreviewEffect.of(payload) });
   }, [payload]);
+
+  // Scroll the active proposal's insertion point into view. Both entry points —
+  // clicking a proposal card and clicking a highlighted span — funnel through
+  // `activeProposalId`, so one effect covers both. Keyed on the active id (plus
+  // the doc/proposals it reads) so it recenters on selection, not on every render.
+  useEffect(() => {
+    const view = cmRef.current?.view;
+    if (!view || !activeId) return;
+    const p = proposals.find((x) => x.id === activeId);
+    if (!p) return;
+    // A previewed/accepted edit may have replaced the original span; target the
+    // text actually present in the doc.
+    const target = p._status === 'accepted' ? p.proposed_text : p.original_text;
+    const pos = findProposalOffset(value, target);
+    if (pos < 0) return;
+    view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) });
+  }, [activeId, proposals, value]);
 
   const extensions = useMemo(
     () => [

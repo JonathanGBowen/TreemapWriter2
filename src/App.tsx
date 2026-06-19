@@ -20,6 +20,7 @@ import { ProjectFileModal } from "./features/modals/ProjectFileModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { RevisionWorkspace } from "./features/revision/RevisionWorkspace";
+import { RevisionSettingsModal } from "./features/modals/RevisionSettingsModal";
 import { CompareWorkspace } from "./features/compare/CompareWorkspace";
 import { ClimateWorkspace } from "./features/climate/ClimateWorkspace";
 import { MigrationModal } from "./features/migration/MigrationModal";
@@ -1014,6 +1015,8 @@ export const App = () => {
         <ExternalChangeModal />
 
         <RevisionWorkspace />
+
+        <RevisionSettingsModal />
 
         <CompareWorkspace />
 

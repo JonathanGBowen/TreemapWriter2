@@ -27,6 +27,16 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
 
+The Glass-Box revision workspace gained (2026-06-19, see
+[`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
+default when no sources exist (proposals grounded in the document itself, steered
+by a reusable **Instruction** library — global, shipping with an "intrinsic
+requirements" default — with the verbatim-receipt contract relaxed for sourceless
+passes only); drag-resizable workspace columns (via the shared
+`features/shared/useColumnResize` primitive, which also now backs the main sidebar
++ tests panel); scroll-to-insertion when a proposal is previewed; and a
+**Revision settings modal** (instruction · model · live token preview · prompts).
+
 ## Next (felt priorities)
 
 - **Gestalt roadmap (items 3–7).** Tier 1 shipped 2026-06-17 — part-not-piece
@@ -110,6 +120,14 @@ when synced, magenta on error) surfaces status without distraction.
   above (so renames/reorders don't mis-pair sections). (The original 20-commit
   selection limit is resolved: a blob-free metadata index loads lazily on open and
   full content is fetched per chosen version via `readSnapshot`.)
+
+- **Sourceless-revision follow-ups.** Shipped 2026-06-19. Deliberate limits, by
+  mood: the Instruction library is global only (no per-project active instruction
+  or per-project library — a project-tier override would mirror the prompts tiers
+  if ever wanted); no instruction import/export (the spells modal has the pattern
+  to copy); `assembly` mode remains source-required by design. The shared
+  `useColumnResize`/`ResizeHandle` primitive is ready to apply to any other
+  column workspace (Climate/Sprint) if they grow resizable columns.
 
 ## Non-goals (out of scope by design — do not pre-build)
 

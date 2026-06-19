@@ -14,6 +14,11 @@ export interface UIStateSlice {
   // Layout
   sidebarWidth: number;
   testsPanelWidth: number;
+  /** Revision Workspace column widths (left rail, right proposals). */
+  revisionRailWidth: number;
+  revisionProposalsWidth: number;
+  /** Version Compare workspace right report-column width. */
+  compareReportWidth: number;
   focusMode: boolean;
   runTutorial: boolean;
   activeTab: 'editor' | 'preview';
@@ -56,6 +61,8 @@ export interface UIStateSlice {
   showSyncConfigModal: boolean;
   showConflictModal: boolean;
   showRemoteProjectModal: boolean;
+  /** Revision feature settings (instruction · model · token preview · prompts). */
+  showRevisionSettingsModal: boolean;
   // project.md changed on disk outside the app while the editor had unsaved
   // edits — prompt the user to reload or overwrite (see sync-policy).
   showExternalChangeModal: boolean;
@@ -63,6 +70,9 @@ export interface UIStateSlice {
   // Setters
   setSidebarWidth: (w: number) => void;
   setTestsPanelWidth: (w: number) => void;
+  setRevisionRailWidth: (w: number) => void;
+  setRevisionProposalsWidth: (w: number) => void;
+  setCompareReportWidth: (w: number) => void;
   setFocusMode: (mode: boolean) => void;
   setRunTutorial: (run: boolean) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
@@ -92,12 +102,16 @@ export interface UIStateSlice {
   setShowSyncConfigModal: (show: boolean) => void;
   setShowConflictModal: (show: boolean) => void;
   setShowRemoteProjectModal: (show: boolean) => void;
+  setShowRevisionSettingsModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
   sidebarWidth: 320,
   testsPanelWidth: 350,
+  revisionRailWidth: 156,
+  revisionProposalsWidth: 440,
+  compareReportWidth: 440,
   focusMode: true,
   runTutorial: false,
   activeTab: 'editor',
@@ -131,10 +145,14 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showSyncConfigModal: false,
   showConflictModal: false,
   showRemoteProjectModal: false,
+  showRevisionSettingsModal: false,
   showExternalChangeModal: false,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
+  setRevisionRailWidth: (w) => set({ revisionRailWidth: w }),
+  setRevisionProposalsWidth: (w) => set({ revisionProposalsWidth: w }),
+  setCompareReportWidth: (w) => set({ compareReportWidth: w }),
   setFocusMode: (mode) => set({ focusMode: mode }),
   setRunTutorial: (run) => set({ runTutorial: run }),
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -164,5 +182,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowSyncConfigModal: (show) => set({ showSyncConfigModal: show }),
   setShowConflictModal: (show) => set({ showConflictModal: show }),
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
+  setShowRevisionSettingsModal: (show) => set({ showRevisionSettingsModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
 });

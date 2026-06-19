@@ -1,5 +1,7 @@
 import { useStore } from '../../state';
 import { Pip, type PipStatus } from '../shared/Pip';
+import { useColumnResize } from '../shared/useColumnResize';
+import { ResizeHandle } from '../shared/ResizeHandle';
 import type { Section } from '../../types';
 
 /** Section status → the one pip vocabulary. */
@@ -24,18 +26,25 @@ const flatten = (
 };
 
 /**
- * The slim 156px section rail — navigation without the full treemap's visual
- * weight. Drives the same `selectedId` the rest of the app uses.
+ * The slim section rail — navigation without the full treemap's visual weight.
+ * Drives the same `selectedId` the rest of the app uses. Drag the right edge to
+ * resize (width persists per-project via ui-state).
  */
 export function RevisionRail() {
   const sections = useStore((s) => s.sections);
   const selectedId = useStore((s) => s.selectedId);
   const setSelectedId = useStore((s) => s.setSelectedId);
   const testSuite = useStore((s) => s.testSuite);
+  const width = useStore((s) => s.revisionRailWidth);
+  const setWidth = useStore((s) => s.setRevisionRailWidth);
+  const onResize = useColumnResize({ width, setWidth, edge: 'right', min: 120, max: 360 });
   const flat = flatten(sections);
 
   return (
-    <div className="w-[156px] shrink-0 border-r border-hld-border bg-hld-surface flex flex-col overflow-hidden">
+    <div
+      style={{ width }}
+      className="shrink-0 relative border-r border-hld-border bg-hld-surface flex flex-col"
+    >
       <div className="h-10 shrink-0 border-b border-hld-border flex items-center gap-2 px-3 bg-hld-surface2">
         <span className="text-hld-cyan text-[12px]">◇</span>
         <span className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text">sections</span>
@@ -66,6 +75,7 @@ export function RevisionRail() {
           );
         })}
       </div>
+      <ResizeHandle side="right" onMouseDown={onResize} />
     </div>
   );
 }

@@ -15,12 +15,16 @@ export function ReviseConfig() {
   const isProcessing = useStore((s) => s.isProcessing);
   const { generate } = useRevisionActions();
 
-  const ready = selectedIds.length > 0 && (mode === 'assembly' || directive.trim().length > 0);
+  // Sourceless revision is the default: revision mode needs only a directive;
+  // assembly still needs source material to assemble from.
+  const ready = mode === 'assembly' ? selectedIds.length > 0 : directive.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className={eyebrow}>① sources to cite from</div>
+        <div className={eyebrow}>
+          ① sources {mode === 'assembly' ? 'to assemble from' : 'to cite from · optional'}
+        </div>
         <SourcePicker />
       </div>
       <div>
@@ -37,7 +41,9 @@ export function ReviseConfig() {
         ◆ Generate proposals
       </button>
       <div className="font-mono text-[8.5px] text-hld-muted text-center uppercase tracking-[0.08em]">
-        {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
+        {selectedIds.length === 0 && mode === 'revision'
+          ? 'no sources — grounding in the document'
+          : `${selectedIds.length} source${selectedIds.length === 1 ? '' : 's'} selected`}
       </div>
     </div>
   );

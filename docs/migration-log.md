@@ -2377,3 +2377,99 @@ three `*-mode-draft.md` files and their registry entries.
 
 **Current state.** Draft mode is the default for all three tools; each tool's mode
 is independent and session-only (resets to Draft on reload).
+
+---
+
+## 2026-06-19 — Sourceless revision, reusable Instructions, resizable workspaces, preview-scroll, revision settings modal
+
+**What changed.** Five changes to the Glass-Box Revision Workspace, all additive.
+
+- **Sourceless revision (now the default when no sources exist).** Previously the
+  engine hard-required ≥1 selected source (UI gate + runtime gate + a verbatim-
+  receipt demand in the prompt + the normalizer dropping any proposal lacking
+  `verbatim_source_quote`). Now, in `revision` mode with no sources, the engine
+  grounds proposals in the master document itself and emits **no source receipt**.
+  This mirrors the precedent in `ai-provider.suggest-directives.ts` (which already
+  branches on `hasSources`). Mechanics:
+  - `ai-provider.revisions.ts`: `sourceless = sources.length === 0`; the response
+    schema is built per-call (`revisionsJsonSchema(sourceless)`) and drops
+    `source_id` + `verbatim_source_quote` from `required` when sourceless; the user
+    prompt appends an `### INSTRUCTION ###` block instead of `### SOURCE_DOCUMENTS ###`
+    and uses the new locked task prompt `revision-task-sourceless.md`.
+  - `lib/revision-helpers.ts` `normalizeOne`: the glass-box "three guarantees"
+    become **two** when `sourceless` (require `original_text` + `proposed_text`;
+    allow empty receipt). Sourced mode is unchanged — still strict.
+  - `use-revision-actions.ts`: the `sources.length === 0` abort now applies only to
+    `assembly` mode (assembly still needs source material); `ReviseConfig.tsx` gates
+    `revision` mode on the directive alone and re-labels the optional source step.
+  - `ProposalCard` shows a quiet "grounded in the document" line instead of an empty
+    receipt for sourceless proposals.
+- **Reusable Instruction library.** A small global library (idb-keyval, like the
+  spell library), shipping with one built-in default — *"Base your analysis on
+  intrinsic requirements of the text."* New `RevisionInstruction` type
+  (`types/index.ts`), default text sourced from a **locked** registry entry
+  (`revision-instruction-default.md`), library seed + resolvers in
+  `lib/defaultInstructions.ts`, persistence in `services/preferences.ts`
+  (`get/setRevisionInstructions`, `get/setActiveRevisionInstructionId`), and global
+  state on the **AI slice** (`state/ai-state.ts`: `revisionInstructions`,
+  `activeRevisionInstructionId`, hydrated in `hydrateAIPreferences`). Deliberately
+  **not** a `PromptsConfig` key (it's a content selection, not a prompt override;
+  keeps `registry.test.ts`'s `HISTORICAL_KEYS` intact). Threaded into
+  `GenerateRevisionsInput.instruction` (optional; defaults to the built-in).
+- **Resizable workspace columns.** Extracted the bespoke main-page resizers into
+  one shared primitive — `features/shared/useColumnResize.ts` (pure `clampWidth` /
+  `nextWidth` + a hook that centralizes the CodeMirror-relayout `resize` dispatch)
+  and `features/shared/ResizeHandle.tsx`. Refactored `Sidebar.tsx` + `TestsPanel.tsx`
+  onto it (DRY), then applied drag-resize to the Revision (`RevisionRail` +
+  proposals column) and Compare (report column) workspaces. New persisted widths in
+  `ui-state.ts` (`revisionRailWidth` 156, `revisionProposalsWidth` 440,
+  `compareReportWidth` 440), saved/loaded via the existing `uiState` block in
+  `project-state.ts` (+ `repository.ts` `StoredProjectData.uiState` type) and
+  mirrored in the Rust `UiState` struct (`src-tauri/src/types.rs`).
+- **Preview-scroll.** `MasterDocument.tsx` now scrolls the active proposal's
+  insertion point into view (`EditorView.scrollIntoView`, offset via the existing
+  `findProposalOffset`), keyed on `activeProposalId` so both entry points (card
+  click and in-text span click) recenter the document. Guards `-1`; targets
+  `proposed_text` for accepted proposals.
+- **Revision settings modal.** New self-mounting `RevisionSettingsModal`
+  (`showRevisionSettingsModal` in `ui-state.ts`, opened from a gear glyph in
+  `RevisionTopBar`). Composes: the Instruction library editor
+  (`RevisionInstructionEditor`), a live token preview
+  (`RevisionTokenPreview`, reusing `checkContextFit` over the shared
+  `revision-budget.ts` so it can't drift from the pre-flight), per-kind model
+  pickers (`generateRevisions`/`suggestDirectives`, reusing `ModelPicker`), and a
+  prompts editor (`RevisionPromptsEditor`: edit the editable engine prompt with the
+  store's sparse-diff save path, view locked internals read-only, link to the
+  Prompt Map). Auto-saves throughout; no confirmation modals.
+
+**What to verify.** `npx tsc --noEmit`; `npx vitest run` (added: sourceless cases
+in `revision-helpers.test.ts`, `defaultInstructions.test.ts`, the new locked keys in
+`registry.test.ts`, `useColumnResize.test.ts`); `npm run build` (new `.md?raw`
+imports resolve); `npm run lint` (no new errors — only the project's standing
+max-lines/complexity warnings). Manual: open the Revision Workspace with **no
+sources** → Generate produces document-grounded proposals (e.g. fills `[stub]` gaps
+with continuous prose), each card shows "grounded in the document" rather than a
+receipt; add a source → sourced behavior with receipts returns; assembly still
+requires a source. Drag the rail/proposals/report column edges; reopen the project
+(desktop) and confirm widths persist. Click a proposal → the document scrolls to it.
+Open the gear → edit/select an instruction, switch the revision model, watch the
+token bar recolor on overflow, edit + reset the engine prompt.
+
+**Not verified locally.** The Rust `UiState` field addition (`cargo check`) — the
+container lacks the GTK/webkit system libs (`gdk-3.0`), so the crate can't build
+here. The change is a three-field mirror of the existing `Option<i32>` +
+`#[serde(skip_serializing_if, default)]` + `rename_all = "camelCase"` pattern;
+without it, workspace widths persist in the browser but drop silently on desktop
+(acceptable for ephemeral UI, but the fields are present so it should round-trip).
+
+**Rollback.** `git revert` — front-end is self-contained; the Rust change is the
+only backend touch and is independent. New fields are optional and overlays are
+additive, so older project files stay valid; delete the two new `.md` prompts +
+their registry entries and the new `features/modals/Revision*`,
+`features/shared/useColumnResize.ts` / `ResizeHandle.tsx`,
+`features/revision/revision-budget.ts`, and `lib/defaultInstructions.ts`.
+
+**Current state.** Sourceless revision is the default with no sources; the active
+Instruction (default: intrinsic requirements) grounds it. Workspace column widths
+are drag-resizable and persisted per-project. Previewing a proposal scrolls to it.
+The revision settings modal centralizes instruction/model/token-preview/prompt config.
