@@ -2261,3 +2261,61 @@ dim but stay legible.
 (no Rust changed). `pruneOrphanEntries` is additive; reverting restores the
 inert commented-out cleanup. The new `ai-error.ts` and read-only-preview gating
 are additive.
+
+## 2026-06-19 — Feature: Draft-in-process reading mode (Compare / Analysis / Diagnostic)
+
+**Why.** The evaluative tools assumed finished writing, so pointing them at a
+draft-in-process made the model fixate on incompleteness ("undermined by [stub]")
+— useless mid-revision. The app is a cognitive prosthetic for revision; the tools
+must treat stubs/TODOs as intended scaffolding and steer toward continuity and
+next moves, not credibility verdicts.
+
+**What changed.**
+- New `ReadingMode = 'draft' | 'final'` (`src/types/index.ts`), default `'draft'`.
+  Three INDEPENDENT per-tool modes (state by lifecycle, the user's choice):
+  `compareMode` (`state/comparison-state.ts`), `analysisMode` + `diagnosticMode`
+  (`state/ai-state.ts`) — all session-only, like `activeSpellId`.
+- Three locked prompt overlays — `compare-mode-draft.md`, `analysis-mode-draft.md`,
+  `diagnostic-mode-draft.md` — catalogued in `services/prompts/registry.ts`
+  (`editability: 'locked'`, so excluded from `PromptsConfig`). Prepended to the
+  base prompt ONLY when mode is `'draft'`; `'final'` prepends nothing (= prior
+  behavior — additive, zero-regression). Compare prepends inside
+  `buildComparePrompt` (`ai-provider.compare.ts`); Analysis/Diagnostic prepend at
+  the impl via `ai-provider.impl.ts#withDraftMode`, leaving the pure builders
+  (`analysis-helpers.ts`, `constants.ts`) untouched (deviation from the plan,
+  which proposed builder params — the impl-compose route is smaller and respects
+  the "pure helper" boundary).
+- `mode?` added to `CompareVersionsInput` / `AnalyzeSectionInput` /
+  `RunDiagnosticInput` / `RefactorAnalysisInput` (optional, `?? 'draft'` in the
+  builders so no caller/test breaks); threaded from the slices via the action
+  hooks (`use-comparison-actions`, `use-analysis-actions`) and via `onRun` →
+  `App.handleRunTests` for the diagnostic.
+- Compare gains an optional `openThreads` output (`OpenThread[]`): the writer's own
+  still-open work as a NEUTRAL working-memory checklist (draft-only). Schema in
+  `ai-provider.compare.ts` (NOT in `required`), tolerant parse in
+  `compareHelpers.ts#normalizeComparison`, and a cyan "Open threads" section in
+  `CompareReport`. `mode` recorded on `VersionComparison` (audit, like `lensName`).
+  Analysis & Diagnostic are reframe-only — their existing fields
+  (`potentialObjections`; `moveResults`/`overallReadiness`) already carry "what's
+  open", so no new output shape.
+- UI (`SegControl`, default Draft, with a `title` tooltip): a toggle in
+  `CompareTopBar` (left of Lens), beside the `LensBar` in `AnalysisTab`, and a
+  "Read as" row in `TestRunnerModal`. `CompareReport` echoes the active mode in its
+  header and relabels "Possible losses" → "Regressions / drift" in draft mode. No
+  new `AICallKind` (same flows, different composition).
+
+**What to verify.** `npx vitest run` (added `openThreads` cases to
+`compareHelpers.test.ts`); `npx tsc --noEmit`; `npm run build` (3 new `.md?raw`
+imports resolve); `npm run lint` (no new errors). Manual: with a stub/TODO in the
+live draft, Version Compare in Draft surfaces it under **Open threads** (not
+losses) and doesn't drag the verdict down; flipping to **Completed** restores
+gap-penalizing and hides Open threads; the header reads
+`Evaluation · Draft|Completed · <Lens>`; Analysis/Diagnostic stop faulting
+incompleteness in Draft.
+
+**Rollback.** `git revert` — front-end only (no Rust). All new fields are optional
+and the overlays additive, so reverting leaves older reports valid; delete the
+three `*-mode-draft.md` files and their registry entries.
+
+**Current state.** Draft mode is the default for all three tools; each tool's mode
+is independent and session-only (resets to Draft on reload).

@@ -12,6 +12,7 @@ import { Disclosure } from "../shared/Disclosure";
 import { PanelHeader } from "./PanelHeader";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
+import { SegControl } from "../modals/SegControl";
 
 const versionDate = (ts: number) => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric' });
 
@@ -40,6 +41,23 @@ function LensBar({ name, onOpen }: { name: string; onOpen: () => void }) {
       </span>
       <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text-2 group-hover:text-hld-cyan shrink-0 transition-colors">Grimoire ▸</span>
     </button>
+  );
+}
+
+/** Draft/Completed reading-stance toggle for Analysis. Reads its own store state. */
+function AnalysisModeToggle() {
+  const mode = useStore((s) => s.analysisMode);
+  const setMode = useStore((s) => s.setAnalysisMode);
+  return (
+    <div title="Draft: reconstruct the argument as it stands, treating stubs and gaps as scaffolding, not flaws. Completed: read it as finished work.">
+      <SegControl
+        ariaLabel="Analysis reading mode"
+        accent="cyan"
+        value={mode === 'final' ? 1 : 0}
+        onChange={(i) => setMode(i === 1 ? 'final' : 'draft')}
+        options={[{ glyph: '✎', label: 'Draft' }, { glyph: '✓', label: 'Completed' }]}
+      />
+    </div>
   );
 }
 
@@ -132,8 +150,9 @@ function ReanalyzeFooter({ busy, onRun }: { busy: boolean; onRun: () => void }) 
 function AnalysisEmpty({ busy, onRun, lensName, onOpenGrimoire }: { busy: boolean; onRun: () => void; lensName: string; onOpenGrimoire: () => void }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
-      <div className="px-[16px] pt-[16px]">
+      <div className="px-[16px] pt-[16px] flex flex-col gap-[10px]">
         <LensBar name={lensName} onOpen={onOpenGrimoire} />
+        <AnalysisModeToggle />
       </div>
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-[16px] p-[24px] text-center">
         <span className="w-[22px] h-[22px] rotate-45 border border-hld-muted" />
@@ -222,6 +241,7 @@ export function AnalysisTab() {
         <>
           <div className="flex-1 min-h-0 overflow-y-auto px-[16px] py-[16px] flex flex-col gap-[18px]">
             <LensBar name={activeSpellName} onOpen={openGrimoire} />
+            <AnalysisModeToggle />
 
             <div>
               <Zone label="Thesis" />

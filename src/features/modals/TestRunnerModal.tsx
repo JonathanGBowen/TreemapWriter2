@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Section, Persona, SectionSpec } from "../../types";
+import { Section, Persona, SectionSpec, ReadingMode } from "../../types";
 import { buildDiagnosticPrompt, DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
 import { buildStructuralSurround, formatStructuralSurround } from "../../lib/diagnostic-helpers";
 import { useStore } from "../../store";
@@ -16,7 +16,7 @@ import type { ModelChoice } from "../../services/ai/model-types";
 type Scope = 'segment' | 'parent' | 'full';
 
 interface TestRunnerModalProps {
-  onRun: (scope: Scope, choice: ModelChoice, instruction: string) => void;
+  onRun: (scope: Scope, choice: ModelChoice, instruction: string, mode: ReadingMode) => void;
   sectionTitle: string;
   currentSection: Section | null;
   currentSpec?: SectionSpec;
@@ -116,6 +116,8 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
   const setShowPersonaModal = useStore((s) => s.setShowPersonaModal);
   const catalog = useStore((s) => s.modelCatalog);
   const testSuite = useStore((s) => s.testSuite);
+  const diagnosticMode = useStore((s) => s.diagnosticMode);
+  const setDiagnosticMode = useStore((s) => s.setDiagnosticMode);
   const onClose = () => setShow(false);
   const [scope, setScope] = useState<Scope>('segment');
   const [choice, setChoice] = useModelChoice('runDiagnostic', isOpen);
@@ -162,7 +164,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
       eyebrow="AI · Evaluation"
       title={`Run Diagnostic — ${sectionTitle}`}
       onClose={onClose}
-      onPrimary={() => onRun(effScope, choice, customInstruction)}
+      onPrimary={() => onRun(effScope, choice, customInstruction, diagnosticMode)}
       primaryLabel="▶ Run"
     >
       <div className="flex flex-col gap-[16px]">
@@ -179,6 +181,18 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
         <div>
           <div className="font-mono text-[10px] font-semibold tracking-[0.14em] uppercase text-hld-muted-text-2 mb-[8px]">Depth</div>
           <SegControl ariaLabel="Evaluation depth" options={depthOptions} value={depthIndex} onChange={(i) => setChoice(resolveDepthChoice(catalog, choice, DEPTH_TIERS[i]))} />
+        </div>
+        <div title="Draft: a missing or partial move is your next step, not a failure. Completed: missing moves are gaps in finished work.">
+          <div className="font-mono text-[10px] font-semibold tracking-[0.14em] uppercase text-hld-muted-text-2 mb-[8px]">Read as</div>
+          <SegControl
+            ariaLabel="Diagnostic reading mode"
+            options={[
+              { glyph: '✎', label: 'Draft', fine: 'in process' },
+              { glyph: '✓', label: 'Completed', fine: 'finished' },
+            ]}
+            value={diagnosticMode === 'final' ? 1 : 0}
+            onChange={(i) => setDiagnosticMode(i === 1 ? 'final' : 'draft')}
+          />
         </div>
 
         <Disclosure label="Focus the evaluator" count="optional">

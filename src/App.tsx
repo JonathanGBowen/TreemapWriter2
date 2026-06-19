@@ -34,7 +34,7 @@ import type { ModelChoice } from "./services/ai/model-types";
 import defaultProjectData from "./lib/defaultProject.json";
 import { Section, TestSuite, ProjectMeta, Snapshot,
   Dependency, PromptsConfig,
-  SectionSpec, DiagnosticResult
+  SectionSpec, DiagnosticResult, ReadingMode
 } from "./types";
 import { repository as repo } from './services/repository-registry';
 import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
@@ -597,7 +597,8 @@ export const App = () => {
   const handleRunTests = async (
   scope: 'segment' | 'parent' | 'full',
   choice: ModelChoice,
-  instruction: string
+  instruction: string,
+  mode: ReadingMode
 ) => {
   setShowRunModal(false);
   if (!currentSection) return;
@@ -673,6 +674,7 @@ export const App = () => {
       config: promptsConfig,
       findSection,
       specs,
+      mode,
     });
    
     const derivedStatus = diagnosticToStatus(diagnostic);

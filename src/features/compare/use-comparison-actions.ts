@@ -31,6 +31,7 @@ export const useComparisonActions = () => {
       loadedA,
       loadedB,
       activeCompareLensId,
+      compareMode,
       comparisonStatus,
       promptsConfig,
       customSpells,
@@ -80,9 +81,10 @@ export const useComparisonActions = () => {
         markdownB: b.markdown,
         sharedTitles: sharedTitles(a.markdown, b.markdown),
         lens: lens ? { persona: lens.persona, lens: lens.lens } : undefined,
+        mode: compareMode,
         config: promptsConfig,
       });
-      setComparison(lens ? { ...result, lensName: lens.name } : result);
+      setComparison({ ...result, mode: compareMode, ...(lens ? { lensName: lens.name } : {}) });
       setComparisonStatus('idle');
     } catch (e) {
       setComparisonStatus('error');
