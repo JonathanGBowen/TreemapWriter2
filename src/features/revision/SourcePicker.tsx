@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Plus, Upload, X } from 'lucide-react';
 import { useStore } from '../../state';
 import { makeSourceId } from '../../state/revision-state';
 import { Pip } from '../shared/Pip';
@@ -62,6 +62,7 @@ export function SourcePicker() {
   const addSource = useStore((s) => s.addRevisionSource);
   const removeSource = useStore((s) => s.removeRevisionSource);
   const [adding, setAdding] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const submit = (label: string, content: string) => {
     if (!content.trim()) return;
@@ -73,6 +74,23 @@ export function SourcePicker() {
       content: content.trim(),
     });
     setAdding(false);
+  };
+
+  // Upload a markdown/text file as a source: read it in the browser (works in the
+  // Tauri webview too — same FileReader pattern as ProjectMenu's markdown import),
+  // using the filename (sans extension) as the label. Reset the input so picking
+  // the same file again re-fires.
+  const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result === 'string') {
+        submit(file.name.replace(/\.(md|markdown|txt)$/i, ''), ev.target.result);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   return (
@@ -112,13 +130,29 @@ export function SourcePicker() {
           );
         })}
         {!adding && (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-1 px-2 py-1.5 border border-dashed border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9.5px] uppercase tracking-[0.08em] transition-colors"
-          >
-            <Plus size={10} /> Add source
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1 px-2 py-1.5 border border-dashed border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9.5px] uppercase tracking-[0.08em] transition-colors"
+            >
+              <Plus size={10} /> Add source
+            </button>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1 px-2 py-1.5 border border-dashed border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9.5px] uppercase tracking-[0.08em] transition-colors"
+            >
+              <Upload size={10} /> Upload .md
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".md,.markdown,.txt"
+              className="hidden"
+              onChange={onUpload}
+            />
+          </>
         )}
       </div>
 

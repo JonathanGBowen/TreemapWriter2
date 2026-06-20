@@ -1,11 +1,18 @@
 import type { CSSProperties } from 'react';
 import { useStore } from '../../state';
+import { revisionReady } from '../../lib/revision-helpers';
 import { SourcePicker } from './SourcePicker';
 import { DirectiveComposer } from './DirectiveComposer';
 import { useRevisionActions } from './use-revision-actions';
 
 const cyanBr = { '--br-color': 'var(--color-hld-cyan)' } as CSSProperties;
 const eyebrow = 'font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text mb-2';
+
+const SOURCE_HINT: Record<string, string> = {
+  assembly: 'to assemble from',
+  citations: 'to check against',
+  revision: 'to cite from · optional',
+};
 
 /** The "no more, no less" config core: sources → directive → one lit Generate. */
 export function ReviseConfig() {
@@ -15,16 +22,13 @@ export function ReviseConfig() {
   const isProcessing = useStore((s) => s.isProcessing);
   const { generate } = useRevisionActions();
 
-  // Sourceless revision is the default: revision mode needs only a directive;
-  // assembly still needs source material to assemble from.
-  const ready = mode === 'assembly' ? selectedIds.length > 0 : directive.trim().length > 0;
+  // revision needs a directive (can be sourceless); assembly + citations need sources.
+  const ready = revisionReady(mode, selectedIds.length, directive);
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className={eyebrow}>
-          ① sources {mode === 'assembly' ? 'to assemble from' : 'to cite from · optional'}
-        </div>
+        <div className={eyebrow}>① sources {SOURCE_HINT[mode]}</div>
         <SourcePicker />
       </div>
       <div>
@@ -43,7 +47,9 @@ export function ReviseConfig() {
       <div className="font-mono text-[8.5px] text-hld-muted text-center uppercase tracking-[0.08em]">
         {selectedIds.length === 0 && mode === 'revision'
           ? 'no sources — grounding in the document'
-          : `${selectedIds.length} source${selectedIds.length === 1 ? '' : 's'} selected`}
+          : `${selectedIds.length} source${selectedIds.length === 1 ? '' : 's'} selected${
+              mode === 'citations' ? ' · whole document' : ''
+            }`}
       </div>
     </div>
   );

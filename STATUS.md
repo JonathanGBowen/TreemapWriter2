@@ -36,6 +36,14 @@ passes only); drag-resizable workspace columns (via the shared
 `features/shared/useColumnResize` primitive, which also now backs the main sidebar
 + tests panel); scroll-to-insertion when a proposal is previewed; and a
 **Revision settings modal** (instruction · model · live token preview · prompts).
+A third revision mode, **Citations** (2026-06-20), audits how the draft uses its
+cited sources — quote fidelity (catching fabricated/misquoted quotations), faithful
+representation (flagging strawmanning but never legitimate disagreement), APA
+in-text citations, and References (proposing a `## References` section when absent).
+It runs whole-document (a "Whole document" row was added to the revision rail), and
+sources can now be **uploaded as markdown** as well as pasted. Deliberate limits:
+References-creation is a rejectable proposal (never an auto-write); APA page numbers
+are best-effort; Author/Year inference rides on the source labels/content.
 
 ## Next (felt priorities)
 

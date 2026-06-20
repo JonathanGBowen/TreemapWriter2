@@ -2476,6 +2476,52 @@ The revision settings modal centralizes instruction/model/token-preview/prompt c
 
 ---
 
+## 2026-06-20 — Citations fidelity mode + markdown source upload
+
+**What changed.** A third Glass-Box revision mode and a source-upload affordance, both additive.
+
+- **Citations mode** (`RevisionMode = 'revision' | 'assembly' | 'citations'` in `types/index.ts`). Audits
+  how the draft *uses* its cited sources — quote fidelity (catch fabricated/misquoted quotations), faithful
+  representation (flag strawmanning while leaving legitimate disagreement untouched — the single most
+  load-bearing line in the prompt), APA in-text citations (normalize `(Dewey 1922, p.127)` →
+  `(Dewey, 1922, p. 127)`; page only where available), and References (add/correct entries; **propose
+  creating a `## References` section if the draft has none**, as a rejectable proposal whose `original_text`
+  is a unique trailing substring — the only way to append under the literal-replace accept path).
+  - It reuses the existing **sourced** schema + verbatim-receipt contract (no new proposal fields, no new
+    `RevisionType` — `Citation` for citations/references, `Replacement`/`Rewording` for quote+faithfulness),
+    so `ProposalCard`, `normalizeOne`, and the JSON schema are untouched.
+  - Two new **locked** prompts (`citations-system.md`, `citations-task.md`) catalogued in `registry.ts`
+    (`category: 'revision-engine'`), auto-listed read-only in the settings modal's `RevisionPromptsEditor`.
+    `LOCKED_KEYS` extended in `registry.test.ts` (no `HISTORICAL_KEYS` change — locked, not editable).
+  - Engine branch in `ai-provider.revisions.ts` (`systemInstructionFor`/`taskFor` helpers); requires
+    sources (gate in `use-revision-actions.ts`), directive optional.
+  - **Whole-document scope**: Citations is a document-level audit, so entering the mode auto-selects `'root'`
+    (a one-shot `useEffect` in `DirectiveComposer`, never auto-reverted), and `RevisionRail` gained a
+    "◈ Whole document" row (sets `selectedId='root'`). This reuses the existing root machinery end-to-end —
+    `useCurrentSection()` already returns the full `markdown` for `'root'`, and `accept`/`applyProposal`
+    already edit the whole `localContent` draft, so cross-section (References) edits apply and preview. The
+    context-fit pre-flight message names "The whole document and its sources" in this mode.
+  - Mode color `hld-gold`; the readiness gate is now the shared pure helper
+    `revisionReady(mode, selectedCount, directive)` in `revision-helpers.ts` (used by `ReviseConfig`).
+- **Markdown source upload** (`SourcePicker.tsx`): an "⬑ Upload .md" button beside "Add source" reads a
+  `.md`/`.markdown`/`.txt` file via the browser `FileReader` (same pattern as `ProjectMenu`'s markdown
+  import; works in the Tauri webview, no IPC), using the filename (sans extension) as the source label.
+  Applies to all modes; sources stay ephemeral.
+
+**What to verify.** `npx tsc --noEmit`; `npx vitest run` (added `revisionReady` cases +
+`LOCKED_KEYS` keys; 220 tests green); `npm run build` (two new `.md?raw` imports resolve); `npm run lint`
+(no new errors). Manual: Revision Workspace → **Citations** → selection jumps to **Whole document** →
+upload/paste the cited source(s) → Generate → proposals add/normalize APA citations, correct or flag
+non-verbatim quotes (receipt = the real source text), fix misrepresentations while leaving disagreement
+alone, and add/correct References (proposing a new `## References` section when absent). Upload also works
+in revision/assembly mode; selecting a section in the rail runs Citations section-scoped.
+
+**Rollback.** `git revert` — front-end only, no Rust, no persisted data (sources ephemeral; prompts
+locked/non-persisted). Delete the two `citations-*.md` files + their registry entries and the `LOCKED_KEYS`
+lines; the `RevisionMode` union and the `revisionReady` helper are additive.
+
+**Current state.** Three revision modes: revision (optionally sourceless), assembly (fill from sources),
+citations (audit source use whole-document). Sources can be pasted or uploaded as markdown.
 ## 2026-06-19 — Parallel (aligned) viewer for Version Compare
 
 **What changed.** The Version Compare diff pane (`CompareDiff`) gains a

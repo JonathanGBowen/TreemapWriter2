@@ -54,9 +54,14 @@ export const useRevisionActions = () => {
     const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
     // Sourceless revision is now the default when no sources exist: the engine
     // grounds proposals in the document itself via the active Instruction. Assembly
-    // is the exception — it assembles FROM source material, so it still needs one.
+    // (assembles FROM sources) and Citations (checks the draft AGAINST sources) are
+    // the exceptions — both require at least one source.
     if (revisionMode === 'assembly' && sources.length === 0) {
       toast.error('Assembly mode needs at least one source to assemble from.');
+      return;
+    }
+    if (revisionMode === 'citations' && sources.length === 0) {
+      toast.error('Citations mode needs the cited source(s) to check against.');
       return;
     }
     if (revisionMode === 'revision' && !directive.trim()) {
@@ -71,7 +76,11 @@ export const useRevisionActions = () => {
     // model on overflow.
     const choice = resolveModelChoice('generateRevisions', modelConfig, globalModelDefault);
     const budgetText = revisionBudgetText(sectionText, instruction, sources);
-    if (!guardContextFit({ catalog: modelCatalog, choice, text: budgetText, what: 'This section and its sources', setting: 'Generate revisions' })) {
+    // Citations runs whole-document (sectionText is the full draft when 'root' is
+    // selected), so name that in the overflow message.
+    const budgetWhat =
+      revisionMode === 'citations' ? 'The whole document and its sources' : 'This section and its sources';
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: budgetText, what: budgetWhat, setting: 'Generate revisions' })) {
       return;
     }
 

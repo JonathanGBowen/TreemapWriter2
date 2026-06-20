@@ -4,6 +4,7 @@ import {
   findProposalOffset,
   normalizeDirectiveSuggestions,
   normalizeRevisions,
+  revisionReady,
 } from '../revision-helpers';
 
 const valid = {
@@ -127,6 +128,21 @@ describe('normalizeRevisions', () => {
     expect(p.source_id).toBe('src-2');
     expect(p.verbatim_source_quote).toBe('the receipt');
     expect(p.confidence_score).toBe(4);
+  });
+});
+
+describe('revisionReady', () => {
+  it('revision mode is ready iff a directive is present (sources irrelevant)', () => {
+    expect(revisionReady('revision', 0, 'do the thing')).toBe(true);
+    expect(revisionReady('revision', 3, '   ')).toBe(false);
+    expect(revisionReady('revision', 0, '')).toBe(false);
+  });
+
+  it('assembly and citations are ready iff a source is selected (directive optional)', () => {
+    expect(revisionReady('assembly', 1, '')).toBe(true);
+    expect(revisionReady('assembly', 0, 'directive')).toBe(false);
+    expect(revisionReady('citations', 2, '')).toBe(true);
+    expect(revisionReady('citations', 0, 'directive')).toBe(false);
   });
 });
 
