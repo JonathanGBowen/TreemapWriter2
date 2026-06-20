@@ -38,6 +38,8 @@ import revisionAssemblySystem from './revision-assembly-system.md?raw';
 import revisionTask from './revision-task.md?raw';
 import revisionAssemblyVerbatimTask from './revision-assembly-verbatim-task.md?raw';
 import revisionAssemblyWovenTask from './revision-assembly-woven-task.md?raw';
+import revisionTaskSourceless from './revision-task-sourceless.md?raw';
+import revisionInstructionDefault from './revision-instruction-default.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
@@ -366,6 +368,28 @@ export const PROMPT_REGISTRY = [
     defaultText: strip(revisionAssemblyWovenTask),
     label: 'Assembly Task (Woven)',
     description: 'Woven assembly task instruction. Engine internal — not user-editable.',
+    category: 'revision-engine',
+    flow: 'generateRevisions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'revisionTaskSourceless',
+    defaultText: strip(revisionTaskSourceless),
+    label: 'Revision Task (Sourceless)',
+    description:
+      'Revision task used when no sources are present: ground proposals in the document itself, no source receipt. Engine internal — not user-editable.',
+    category: 'revision-engine',
+    flow: 'generateRevisions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'revisionInstructionDefault',
+    defaultText: strip(revisionInstructionDefault),
+    label: 'Default Instruction',
+    description:
+      'The shipped default grounding Instruction for a sourceless revision pass. The text is editable in the Revision Settings; this catalogues the built-in default.',
     category: 'revision-engine',
     flow: 'generateRevisions',
     editability: 'locked',

@@ -48,6 +48,19 @@ function ResolvedStrip({ proposal }: { proposal: SessionProposal }) {
 function AuditTrail({ proposal, large }: { proposal: SessionProposal; large?: boolean }) {
   const source = useStore((s) => s.revisionSources.find((x) => x.id === proposal.source_id));
   const [open, setOpen] = useState(!!large);
+
+  // Sourceless proposal: no external receipt to disclose. State the grounding
+  // plainly (the rationale above stands as the justification) rather than showing
+  // an empty quote — the glass box stays honest about what it's based on.
+  if (!proposal.verbatim_source_quote && !proposal.source_id) {
+    return (
+      <div className="mb-3 flex items-center gap-1.5 text-hld-muted-text font-mono text-[9px] uppercase tracking-[0.14em] py-1">
+        <span className="text-[11px] opacity-80">◇</span>
+        grounded in the document
+      </div>
+    );
+  }
+
   return (
     <div className="mb-3">
       <button

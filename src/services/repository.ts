@@ -44,6 +44,9 @@ export interface StoredProjectData {
   uiState?: {
     sidebarWidth?: number;
     testsPanelWidth?: number;
+    revisionRailWidth?: number;
+    revisionProposalsWidth?: number;
+    compareReportWidth?: number;
     focusMode?: boolean;
     selectedSectionId?: string | null;
     activeLineIndex?: number | null;

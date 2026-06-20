@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from '../lib/constants';
-import type { AnalysisSpell, Persona, PromptsConfig, ReadingMode } from '../types';
+import type { AnalysisSpell, Persona, PromptsConfig, ReadingMode, RevisionInstruction } from '../types';
+import { DEFAULT_INSTRUCTION_ID } from '../lib/defaultInstructions';
 import type { AppState } from '.';
 import type { ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
@@ -43,6 +44,15 @@ export interface AIStateSlice {
   customSpells: AnalysisSpell[];
   /** Which lens the next Analysis run uses. Session-only (never persisted); null = plain reconstruction. */
   activeSpellId: string | null;
+
+  /**
+   * User-created revision Instructions (the grounding stance for a sourceless
+   * revision pass). Global library (persisted in app preferences), like spells;
+   * the built-in defaults live in code (`lib/defaultInstructions.ts`).
+   */
+  revisionInstructions: RevisionInstruction[];
+  /** Which instruction a sourceless pass uses. Persisted globally; defaults to the built-in. */
+  activeRevisionInstructionId: string;
   /** Reading stance for Analysis (incl. refactor): 'draft' (default) vs 'final'. Session-only. */
   analysisMode: ReadingMode;
   /** Reading stance for the Diagnostic: 'draft' (default) vs 'final'. Session-only. */
@@ -70,6 +80,12 @@ export interface AIStateSlice {
   /** Replace (or update) the global spell library; writes through to preferences. */
   setCustomSpells: (spells: AnalysisSpell[] | ((prev: AnalysisSpell[]) => AnalysisSpell[])) => void;
   setActiveSpellId: (id: string | null) => void;
+  /** Replace (or update) the global instruction library; writes through to preferences. */
+  setRevisionInstructions: (
+    list: RevisionInstruction[] | ((prev: RevisionInstruction[]) => RevisionInstruction[]),
+  ) => void;
+  /** Select the active sourceless-pass instruction; writes through to preferences. */
+  setActiveRevisionInstructionId: (id: string) => void;
   setAnalysisMode: (m: ReadingMode) => void;
   setDiagnosticMode: (m: ReadingMode) => void;
 
@@ -93,6 +109,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
 
   customSpells: [],
   activeSpellId: null,
+  revisionInstructions: [],
+  activeRevisionInstructionId: DEFAULT_INSTRUCTION_ID,
   analysisMode: 'draft',
   diagnosticMode: 'draft',
 
@@ -136,6 +154,17 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     void prefs.setSpells(next);
   },
   setActiveSpellId: (id) => set({ activeSpellId: id }),
+
+  setRevisionInstructions: (list) => {
+    const next = typeof list === 'function' ? list(get().revisionInstructions) : list;
+    set({ revisionInstructions: next });
+    void prefs.setRevisionInstructions(next);
+  },
+  setActiveRevisionInstructionId: (id) => {
+    set({ activeRevisionInstructionId: id });
+    void prefs.setActiveRevisionInstructionId(id);
+  },
+
   setAnalysisMode: (m) => set({ analysisMode: m }),
   setDiagnosticMode: (m) => set({ diagnosticMode: m }),
 
@@ -158,14 +187,23 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   },
 
   hydrateAIPreferences: async () => {
-    const [globalModelDefault, modelCatalog, ollamaBaseUrl, customSpells, globalPromptsConfig] =
-      await Promise.all([
-        prefs.getGlobalModelDefault(),
-        prefs.getModelCatalog(),
-        prefs.getOllamaBaseUrl(),
-        prefs.getSpells(),
-        prefs.getGlobalPromptsDefault(),
-      ]);
+    const [
+      globalModelDefault,
+      modelCatalog,
+      ollamaBaseUrl,
+      customSpells,
+      globalPromptsConfig,
+      revisionInstructions,
+      activeRevisionInstructionId,
+    ] = await Promise.all([
+      prefs.getGlobalModelDefault(),
+      prefs.getModelCatalog(),
+      prefs.getOllamaBaseUrl(),
+      prefs.getSpells(),
+      prefs.getGlobalPromptsDefault(),
+      prefs.getRevisionInstructions(),
+      prefs.getActiveRevisionInstructionId(),
+    ]);
     // Re-resolve the effective config against the just-loaded global tier — a
     // project may already be open by the time prefs hydrate.
     set((s) => ({
@@ -174,6 +212,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       ollamaBaseUrl,
       customSpells,
       globalPromptsConfig,
+      revisionInstructions,
+      activeRevisionInstructionId: activeRevisionInstructionId ?? s.activeRevisionInstructionId,
       promptsConfig: resolvePromptsConfig(s.projectPromptsOverride, globalPromptsConfig),
     }));
     applyOllamaBaseUrl(ollamaBaseUrl);

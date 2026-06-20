@@ -54,6 +54,38 @@ describe('normalizeRevisions', () => {
     expect(out).toHaveLength(1);
   });
 
+  it('sourceless mode keeps proposals with no receipt (two guarantees, not three)', () => {
+    const sourcelessItem = {
+      revision_type: 'Addition',
+      original_text: '[stub]',
+      proposed_text: 'a finished thought.',
+      rationale: 'completes the paragraph',
+      source_id: '',
+      verbatim_source_quote: '',
+      confidence_score: 4,
+    };
+    // Sourced mode (default) drops it for the missing receipt...
+    expect(normalizeRevisions([sourcelessItem])).toHaveLength(0);
+    // ...but a sourceless pass keeps it (the receipt isn't required).
+    const out = normalizeRevisions([sourcelessItem], { sourceless: true })!;
+    expect(out).toHaveLength(1);
+    expect(out[0].original_text).toBe('[stub]');
+    expect(out[0].verbatim_source_quote).toBe('');
+    expect(out[0].source_id).toBe('');
+  });
+
+  it('sourceless mode still requires the edit spans', () => {
+    const out = normalizeRevisions(
+      [
+        { ...valid, source_id: '', verbatim_source_quote: '' },
+        { ...valid, source_id: '', verbatim_source_quote: '', original_text: '' },
+        { ...valid, source_id: '', verbatim_source_quote: '', proposed_text: '  ' },
+      ],
+      { sourceless: true },
+    )!;
+    expect(out).toHaveLength(1);
+  });
+
   it('clamps confidence to 0–5 and defaults non-numbers to 3', () => {
     const out = normalizeRevisions([
       { ...valid, confidence_score: 9 },

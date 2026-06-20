@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { applyProposal } from '../../lib/revision-helpers';
+import { resolveActiveInstruction } from '../../lib/defaultInstructions';
+import { revisionBudgetText } from './revision-budget';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
@@ -44,12 +46,17 @@ export const useRevisionActions = () => {
       modelConfig,
       globalModelDefault,
       modelCatalog,
+      revisionInstructions,
+      activeRevisionInstructionId,
     } = useStore.getState();
     if (isProcessing) return;
 
     const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
-    if (sources.length === 0) {
-      toast.error('Select at least one source to cite from.');
+    // Sourceless revision is now the default when no sources exist: the engine
+    // grounds proposals in the document itself via the active Instruction. Assembly
+    // is the exception — it assembles FROM source material, so it still needs one.
+    if (revisionMode === 'assembly' && sources.length === 0) {
+      toast.error('Assembly mode needs at least one source to assemble from.');
       return;
     }
     if (revisionMode === 'revision' && !directive.trim()) {
@@ -57,10 +64,13 @@ export const useRevisionActions = () => {
       return;
     }
 
-    // Pre-flight the full section + all selected sources against the model window —
-    // the prompt sends them whole, so abort and ask for a larger model on overflow.
+    const instruction = resolveActiveInstruction(revisionInstructions, activeRevisionInstructionId).body;
+
+    // Pre-flight the full section + sources (+ the grounding instruction) against the
+    // model window — the prompt sends them whole, so abort and ask for a larger
+    // model on overflow.
     const choice = resolveModelChoice('generateRevisions', modelConfig, globalModelDefault);
-    const budgetText = [sectionText, ...sources.map((s) => s.content)].join('\n\n');
+    const budgetText = revisionBudgetText(sectionText, instruction, sources);
     if (!guardContextFit({ catalog: modelCatalog, choice, text: budgetText, what: 'This section and its sources', setting: 'Generate revisions' })) {
       return;
     }
@@ -75,6 +85,7 @@ export const useRevisionActions = () => {
         mode: revisionMode,
         subMode: revisionSubMode,
         sources,
+        instruction,
         config: promptsConfig,
       });
       setProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));

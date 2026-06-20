@@ -307,6 +307,24 @@ export interface SourceDocument {
 }
 
 /**
+ * A reusable revision "Instruction" — the grounding stance for a SOURCELESS pass.
+ * When no SourceDocuments are present, the revision engine grounds proposals in
+ * the master document itself, steered by the active instruction's `body` (default
+ * library entry: "Base your analysis on intrinsic requirements of the text.").
+ * A small global library, shared across projects (modeled on AnalysisSpell); the
+ * built-in defaults live in code (`lib/defaultInstructions.ts`), user additions
+ * persist in app preferences. Distinct from `directive` (per-pass, what to
+ * accomplish): the instruction is the standing stance; the directive is the goal.
+ */
+export interface RevisionInstruction {
+  id: string;
+  /** Human label shown in the picker. */
+  label: string;
+  /** The instruction text steering a sourceless revision pass. */
+  body: string;
+}
+
+/**
  * One auditable revision proposal. Every proposal carries a verbatim quote from a
  * named source — the "glass box" guarantee: no claim without a receipt. Acceptance
  * is a literal `original_text → proposed_text` replace (no fuzzy matching).

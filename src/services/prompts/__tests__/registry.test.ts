@@ -45,6 +45,8 @@ const LOCKED_KEYS = [
   'revisionTask',
   'revisionAssemblyVerbatimTask',
   'revisionAssemblyWovenTask',
+  'revisionTaskSourceless',
+  'revisionInstructionDefault',
   'suggestDirectivesTemplate',
 ];
 
