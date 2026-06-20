@@ -3,6 +3,7 @@
 // testable. Section alignment is by HEADING TITLE (not the fragile slug id), so
 // it survives renames/reorders that would break id-based matching.
 
+import type { Change } from 'diff';
 import type {
   ComparisonChange,
   ComparisonDirection,
@@ -285,4 +286,64 @@ export const resolveOperand = (
     return { markdown: loaded.markdown, label: new Date(loaded.timestamp).toLocaleString() };
   }
   return null;
+};
+
+// --- aligned (side-by-side) diff projection ---------------------------------
+
+/** One side of an aligned diff row. `null` is a blank gutter (no line here). */
+export type DiffCell = { text: string; kind: 'unchanged' | 'added' | 'removed' } | null;
+
+/** A row of the parallel viewer: the A line (left) beside the B line (right). */
+export interface DiffRow {
+  left: DiffCell;
+  right: DiffCell;
+}
+
+/** Split a line-diff part's value into lines, dropping the trailing newline's
+ *  empty tail so each line "owns" its break (middle blank lines are kept). */
+const splitLines = (value: string): string[] => {
+  const lines = value.split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+};
+
+/**
+ * Turn a *line-level* diff (`diffLines` output) into row-aligned cells for the
+ * parallel viewer. Unchanged lines sit on both sides of the same row; a run of
+ * removed lines pairs row-for-row with the following run of added lines (a
+ * replacement), and whichever side runs out gets blank gutters — so additions
+ * leave space on the left, removals leave space on the right, and unchanged text
+ * always lines up exactly. Pure: takes a `Change[]`, returns rows.
+ */
+export const buildAlignedRows = (changes: Change[]): DiffRow[] => {
+  const rows: DiffRow[] = [];
+  let removed: string[] = [];
+  let added: string[] = [];
+
+  const flush = () => {
+    const n = Math.max(removed.length, added.length);
+    for (let i = 0; i < n; i++) {
+      rows.push({
+        left: i < removed.length ? { text: removed[i], kind: 'removed' } : null,
+        right: i < added.length ? { text: added[i], kind: 'added' } : null,
+      });
+    }
+    removed = [];
+    added = [];
+  };
+
+  for (const part of changes) {
+    if (part.removed) {
+      removed.push(...splitLines(part.value));
+    } else if (part.added) {
+      added.push(...splitLines(part.value));
+    } else {
+      flush();
+      for (const text of splitLines(part.value)) {
+        rows.push({ left: { text, kind: 'unchanged' }, right: { text, kind: 'unchanged' } });
+      }
+    }
+  }
+  flush();
+  return rows;
 };
