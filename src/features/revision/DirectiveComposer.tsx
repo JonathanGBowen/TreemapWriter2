@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useStore } from '../../state';
 import type { AssemblySubMode, RevisionMode } from '../../types';
 import { DirectiveSuggestions } from './DirectiveSuggestions';
@@ -12,9 +13,10 @@ const PRESETS = [
 const MODE_ON: Record<RevisionMode, string> = {
   revision: 'border-hld-cyan bg-hld-cyan/10 text-hld-cyan',
   assembly: 'border-hld-assembly bg-hld-assembly/10 text-hld-assembly',
+  citations: 'border-hld-gold bg-hld-gold/10 text-hld-gold',
 };
 
-/** Revision/Assembly mode, the Verbatim/Woven sub-mode, the directive, and presets. */
+/** Revision/Assembly/Citations mode, the Verbatim/Woven sub-mode, the directive, and presets. */
 export function DirectiveComposer() {
   const mode = useStore((s) => s.revisionMode);
   const subMode = useStore((s) => s.revisionSubMode);
@@ -22,11 +24,22 @@ export function DirectiveComposer() {
   const setMode = useStore((s) => s.setRevisionMode);
   const setSubMode = useStore((s) => s.setRevisionSubMode);
   const setDirective = useStore((s) => s.setRevisionDirective);
+  const setSelectedId = useStore((s) => s.setSelectedId);
+
+  // Citations is a whole-document audit (citations + a References section span the
+  // doc), so entering it switches scope to the whole document. One-shot on the
+  // transition into citations; we never auto-revert — the rail's Whole Document
+  // row lets the user navigate back to a section to check just that one.
+  useEffect(() => {
+    if (mode === 'citations' && useStore.getState().selectedId !== 'root') {
+      setSelectedId('root');
+    }
+  }, [mode, setSelectedId]);
 
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex gap-1.5">
-        {(['revision', 'assembly'] as RevisionMode[]).map((k) => (
+        {(['revision', 'assembly', 'citations'] as RevisionMode[]).map((k) => (
           <button
             key={k}
             type="button"

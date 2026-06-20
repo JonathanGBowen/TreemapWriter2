@@ -40,6 +40,8 @@ import revisionAssemblyVerbatimTask from './revision-assembly-verbatim-task.md?r
 import revisionAssemblyWovenTask from './revision-assembly-woven-task.md?raw';
 import revisionTaskSourceless from './revision-task-sourceless.md?raw';
 import revisionInstructionDefault from './revision-instruction-default.md?raw';
+import citationsSystem from './citations-system.md?raw';
+import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
@@ -390,6 +392,28 @@ export const PROMPT_REGISTRY = [
     label: 'Default Instruction',
     description:
       'The shipped default grounding Instruction for a sourceless revision pass. The text is editable in the Revision Settings; this catalogues the built-in default.',
+    category: 'revision-engine',
+    flow: 'generateRevisions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'citationsSystem',
+    defaultText: strip(citationsSystem),
+    label: 'Citations System',
+    description:
+      'Glass Box Citations mode: audits how the draft uses cited sources (quote fidelity, faithful representation, APA citations, references). Engine internal — not user-editable.',
+    category: 'revision-engine',
+    flow: 'generateRevisions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'citationsTask',
+    defaultText: strip(citationsTask),
+    label: 'Citations Task',
+    description:
+      'Citations-mode task: quote correction, anti-strawman fidelity checks, APA in-text citations, and references. Engine internal — not user-editable.',
     category: 'revision-engine',
     flow: 'generateRevisions',
     editability: 'locked',

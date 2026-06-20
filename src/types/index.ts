@@ -283,8 +283,12 @@ export type RevisionType =
   | 'Flow Improvement'
   | 'Assembly';
 
-/** Revision (sharpen existing prose) vs Assembly (stitch sources into new prose). */
-export type RevisionMode = 'revision' | 'assembly';
+/**
+ * Revision (sharpen existing prose) vs Assembly (stitch sources into new prose)
+ * vs Citations (audit how the draft uses its cited sources — quote fidelity,
+ * faithful representation, APA citations, and references).
+ */
+export type RevisionMode = 'revision' | 'assembly' | 'citations';
 
 /** Assembly sub-mode: quote sources verbatim, or weave them into original prose. */
 export type AssemblySubMode = 'verbatim' | 'woven';

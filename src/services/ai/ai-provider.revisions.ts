@@ -124,29 +124,37 @@ const buildUserPrompt = (
   ].join('\n');
 };
 
+/** The user-editable (revision) or locked (assembly/citations) system instruction, by mode. */
+const systemInstructionFor = (input: GenerateRevisionsInput): string => {
+  if (input.mode === 'citations') return getPromptText('citationsSystem');
+  if (input.mode === 'assembly') return getPromptText('revisionAssemblySystem');
+  return input.config.generateRevisionsPrompt;
+};
+
+/** The locked task instruction, by mode + sourceless + assembly sub-mode. */
+const taskFor = (input: GenerateRevisionsInput, sourceless: boolean): string => {
+  if (input.mode === 'citations') return getPromptText('citationsTask');
+  if (input.mode === 'assembly') {
+    return getPromptText(
+      input.subMode === 'verbatim' ? 'revisionAssemblyVerbatimTask' : 'revisionAssemblyWovenTask',
+    );
+  }
+  return getPromptText(sourceless ? 'revisionTaskSourceless' : 'revisionTask');
+};
+
 export async function generateRevisions(
   client: LLMClient,
   model: string,
   thinkingBudget: number | undefined,
   input: GenerateRevisionsInput,
 ): Promise<RevisionProposal[]> {
-  const assembly = input.mode === 'assembly';
-  // Sourceless = no sources to cite. Assembly always works FROM sources (UI-gated),
-  // so sourceless only changes the standard revision task; the receipt relaxes
-  // either way (see normalizeRevisions / revisionsJsonSchema).
+  // Sourceless = no sources to cite. Assembly + Citations always work FROM sources
+  // (UI-gated), so sourceless only changes the standard revision task; the receipt
+  // relaxes either way (see normalizeRevisions / revisionsJsonSchema).
   const sourceless = input.sources.length === 0;
   const instruction = input.instruction?.trim() || getPromptText('revisionInstructionDefault');
-  // System instruction by mode; task instruction by mode + sourceless + assembly sub-mode.
-  const systemInstruction = assembly
-    ? getPromptText('revisionAssemblySystem')
-    : input.config.generateRevisionsPrompt;
-  const task = !assembly
-    ? sourceless
-      ? getPromptText('revisionTaskSourceless')
-      : getPromptText('revisionTask')
-    : input.subMode === 'verbatim'
-      ? getPromptText('revisionAssemblyVerbatimTask')
-      : getPromptText('revisionAssemblyWovenTask');
+  const systemInstruction = systemInstructionFor(input);
+  const task = taskFor(input, sourceless);
 
   const text = await client.generateText({
     model,

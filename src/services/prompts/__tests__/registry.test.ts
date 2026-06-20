@@ -47,6 +47,8 @@ const LOCKED_KEYS = [
   'revisionAssemblyWovenTask',
   'revisionTaskSourceless',
   'revisionInstructionDefault',
+  'citationsSystem',
+  'citationsTask',
   'suggestDirectivesTemplate',
 ];
 

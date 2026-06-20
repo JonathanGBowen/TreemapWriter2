@@ -2,7 +2,19 @@
 // the AIProvider impl and the revision slice both lean on these so they stay
 // thin and testable. Mirrors lib/analysis-helpers.ts in spirit.
 
-import type { DirectiveSuggestion, RevisionProposal, RevisionType } from '../types';
+import type { DirectiveSuggestion, RevisionMode, RevisionProposal, RevisionType } from '../types';
+
+/**
+ * Whether a revision pass is ready to generate. `revision` mode needs a directive
+ * (it can be sourceless); `assembly` and `citations` need at least one source to
+ * work from (their directive is optional). The single source of truth for the
+ * Generate gate, shared by the config UI and the action's abort check.
+ */
+export const revisionReady = (
+  mode: RevisionMode,
+  selectedSourceCount: number,
+  directive: string,
+): boolean => (mode === 'revision' ? directive.trim().length > 0 : selectedSourceCount > 0);
 
 const VALID_REVISION_TYPES: RevisionType[] = [
   'Addition',

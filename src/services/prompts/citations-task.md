@@ -1,0 +1,17 @@
+### GENERATION_TASK (CITATION FIDELITY) ###
+
+Audit the MASTER_DOCUMENT against the SOURCE_DOCUMENTS and generate a Revision Proposal for every issue in how the draft uses its sources. Work through the whole document in order. The REVISION_DIRECTIVE, if present, narrows your focus (e.g. "only the Kohler quotes"); if absent, check everything below.
+
+For every proposal: `original_text` is the exact verbatim substring of the MASTER_DOCUMENT being changed; `proposed_text` is the correction; `source_id` + `verbatim_source_quote` are the receipt (the verbatim text from the source that justifies the change); `rationale` explains the issue in one or two sentences.
+
+1. QUOTATIONS (`revision_type: "Replacement"`, or `"Rewording"` if you must paraphrase). For each quoted span attributed to a source, find it in the sources. If the wording differs, propose the corrected verbatim quote. If it cannot be found in any source, say so in the rationale and propose either an accurate paraphrase (drop the quote marks) or a real verbatim quote that supports the same point. The `verbatim_source_quote` is the true source text.
+
+2. FAITHFUL REPRESENTATION (`revision_type: "Rewording"` or `"Replacement"`). Only where the draft genuinely misrepresents a source — strawman, reversed position, unsupported attribution, meaning-changing omission — propose wording that restores an accurate portrayal. The `verbatim_source_quote` is the source passage showing the author's actual position. Do NOT touch passages where the author is merely disagreeing with or critiquing the source; that is legitimate and stays untouched.
+
+3. IN-TEXT CITATIONS (`revision_type: "Citation"`). Produce APA in-text citations: `(Author, Year, p. NN)` when the page is available in the source or the draft, otherwise `(Author, Year)`. Infer Author and Year from the source's label and content. NORMALIZE existing loose citations to APA — e.g. `(Dewey 1922, p.127)` becomes `(Dewey, 1922, p. 127)` (comma after the author, a space after `p.`). Where a claim is clearly drawn from a source but uncited, propose adding the citation. Include a page number ONLY where it is genuinely available — never fabricate one.
+
+4. REFERENCES (`revision_type: "Citation"`). Where the bibliographic information is available in a source, add or correct the matching entry in the document's References (or Bibliography / Works Cited) section, in APA form: `Author, A. A. (Year). Title. Source/Publisher.`
+   - If such a section EXISTS, target the entry (or its insertion point) within it.
+   - If NO such section exists anywhere in the document, you MAY propose creating one with a SINGLE proposal: set `original_text` to a UNIQUE trailing substring of the document (for example its final sentence or paragraph, copied verbatim), and set `proposed_text` to that same text followed by `\n\n## References\n\n` and the APA entries for the cited sources. This is the only way to append a new section, because edits are applied as a literal replacement of `original_text`; a non-verbatim or empty `original_text` will be discarded.
+
+CONSTRAINTS: Do NOT group changes — one issue per proposal. Do NOT impose a limit on the number of proposals; if there are forty citation issues, generate forty. Do NOT rewrite prose for style or argument — that is not this task. Assign `confidence_score` with decimal precision: reserve high scores (4.5–5.0) for substantive errors (fabricated or misquoted quotations, misrepresentations, missing citations) and lower scores (2.5–3.8) for cosmetic citation normalization.

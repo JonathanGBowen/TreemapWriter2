@@ -50,6 +50,28 @@ export function RevisionRail() {
         <span className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text">sections</span>
       </div>
       <div className="flex-1 overflow-y-auto py-1.5">
+        {sections.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedId('root')}
+            title="Revise across the whole document (used by Citations mode)"
+            style={{ paddingLeft: 10 }}
+            className={`flex items-center gap-1.5 w-full text-left pr-2 py-1.5 border-l-2 transition-colors ${
+              selectedId === 'root'
+                ? 'bg-hld-cyan/10 border-hld-cyan'
+                : 'border-transparent hover:bg-white/[0.02]'
+            }`}
+          >
+            <Pip status={STATUS_PIP[testSuite['root']?.status ?? 'idle'] ?? 'idle'} size="sm" />
+            <span
+              className={`flex-1 font-mono text-[9.5px] uppercase tracking-[0.1em] truncate ${
+                selectedId === 'root' ? 'text-hld-text font-semibold' : 'text-hld-muted-text'
+              }`}
+            >
+              ◈ Whole document
+            </span>
+          </button>
+        )}
         {flat.map(({ node, depth }) => {
           const sel = node.id === selectedId;
           const status = testSuite[node.id]?.status ?? 'idle';
