@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { diffLines, type Change } from 'diff';
 import {
   alignByTitle,
+  buildAlignedRows,
   extractHeadings,
   groupSnapshotsByDay,
   normalizeComparison,
@@ -221,5 +223,64 @@ describe('resolveOperand', () => {
   it('returns null while the loaded snapshot does not match the ref (still loading)', () => {
     expect(resolveOperand('s2', null, 'LIVE')).toBeNull();
     expect(resolveOperand('s2', snap('s1', 'OLD'), 'LIVE')).toBeNull();
+  });
+});
+
+describe('buildAlignedRows', () => {
+  const unchanged = (value: string): Change => ({ value, added: false, removed: false });
+  const removed = (value: string): Change => ({ value, added: false, removed: true });
+  const added = (value: string): Change => ({ value, added: true, removed: false });
+
+  it('returns no rows for an empty diff', () => {
+    expect(buildAlignedRows([])).toEqual([]);
+  });
+
+  it('puts identical lines side by side on every row', () => {
+    expect(buildAlignedRows([unchanged('x\ny\n')])).toEqual([
+      { left: { text: 'x', kind: 'unchanged' }, right: { text: 'x', kind: 'unchanged' } },
+      { left: { text: 'y', kind: 'unchanged' }, right: { text: 'y', kind: 'unchanged' } },
+    ]);
+  });
+
+  it('leaves a blank gutter on the left for a pure addition', () => {
+    expect(buildAlignedRows([unchanged('x\n'), added('new\n')])).toEqual([
+      { left: { text: 'x', kind: 'unchanged' }, right: { text: 'x', kind: 'unchanged' } },
+      { left: null, right: { text: 'new', kind: 'added' } },
+    ]);
+  });
+
+  it('leaves a blank gutter on the right for a pure removal', () => {
+    expect(buildAlignedRows([unchanged('x\n'), removed('old\n')])).toEqual([
+      { left: { text: 'x', kind: 'unchanged' }, right: { text: 'x', kind: 'unchanged' } },
+      { left: { text: 'old', kind: 'removed' }, right: null },
+    ]);
+  });
+
+  it('pairs a replacement row-for-row and pads the shorter side', () => {
+    // 3 removed lines replaced by 1 added line → 1 paired row + 2 padded rows.
+    expect(buildAlignedRows([removed('l1\nl2\nl3\n'), added('r1\n')])).toEqual([
+      { left: { text: 'l1', kind: 'removed' }, right: { text: 'r1', kind: 'added' } },
+      { left: { text: 'l2', kind: 'removed' }, right: null },
+      { left: { text: 'l3', kind: 'removed' }, right: null },
+    ]);
+  });
+
+  it('preserves middle blank lines and handles a missing trailing newline', () => {
+    // 'a\n\nb' (no trailing newline) → three lines, the middle one blank.
+    expect(buildAlignedRows([unchanged('a\n\nb')])).toEqual([
+      { left: { text: 'a', kind: 'unchanged' }, right: { text: 'a', kind: 'unchanged' } },
+      { left: { text: '', kind: 'unchanged' }, right: { text: '', kind: 'unchanged' } },
+      { left: { text: 'b', kind: 'unchanged' }, right: { text: 'b', kind: 'unchanged' } },
+    ]);
+  });
+
+  it('reconstructs each full version from a real diffLines run', () => {
+    const a = 'shared1\nshared2\nremoveme\nshared3';
+    const b = 'shared1\nadded\nshared2\nshared3';
+    const rows = buildAlignedRows(diffLines(a, b));
+    const leftLines = rows.map((r) => r.left).filter((c): c is NonNullable<typeof c> => c !== null).map((c) => c.text);
+    const rightLines = rows.map((r) => r.right).filter((c): c is NonNullable<typeof c> => c !== null).map((c) => c.text);
+    expect(leftLines).toEqual(['shared1', 'shared2', 'removeme', 'shared3']);
+    expect(rightLines).toEqual(['shared1', 'added', 'shared2', 'shared3']);
   });
 });

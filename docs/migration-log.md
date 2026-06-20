@@ -2522,3 +2522,47 @@ lines; the `RevisionMode` union and the `revisionReady` helper are additive.
 
 **Current state.** Three revision modes: revision (optionally sourceless), assembly (fill from sources),
 citations (audit source use whole-document). Sources can be pasted or uploaded as markdown.
+## 2026-06-19 — Parallel (aligned) viewer for Version Compare
+
+**What changed.** The Version Compare diff pane (`CompareDiff`) gains a
+Unified/Parallel view toggle, off by default. Parallel shows the two drafts as a
+true side-by-side aligned diff (GitHub split-view style): unchanged lines sit
+exactly beside each other; an addition (B-only) leaves a blank gutter on the left,
+a removal (A-only) a blank gutter on the right. A single shared scroll container
+wraps the row-aligned rows, so the columns move together and stay aligned with no
+scroll-sync code.
+
+- New pure helper `buildAlignedRows(changes: Change[]): DiffRow[]` (+ `DiffRow` /
+  `DiffCell` types) in `src/lib/compareHelpers.ts`: walks a *line-level* diff,
+  emitting unchanged lines on both sides and pairing each removed run with the
+  following added run row-for-row, padding the shorter side with blank gutters.
+  Reuses the existing `diff` `Change[]` — no new diff computation.
+- New component `src/features/compare/ParallelDiff.tsx` (props only, no store):
+  renders the aligned rows in one scroll container, reusing the existing
+  green/magenta/muted color tokens and the `border-hld-border` divider.
+- `CompareDiff.tsx`: a second `SegControl` `[Unified | Parallel]` beside the
+  granularity control (granularity is hidden in Parallel, which always diffs by
+  line); the view flag is **local `useState`** (single reader — mirrors the
+  existing granularity `mode`, not promoted to the slice); the diff memo forces
+  `diffLines` when parallel; the unified branch is extracted to a local
+  `UnifiedDiff` component to keep the function under the line/complexity targets.
+
+**What to verify.** `npm run typecheck`; `npx vitest run
+src/lib/__tests__/compareHelpers.test.ts` (new `buildAlignedRows` cases: empty,
+identical, pure add/remove, unequal replacement padding, trailing-newline +
+middle-blank handling, full-version reconstruction); `npm test`; `npm run lint`
+(no new errors — the pre-existing repo errors are untouched). Manual (`npm run
+dev` → Version Compare via Dock `≈`): default is Unified; switching to Parallel
+aligns unchanged lines and shows blank gutters for adds/removes; scrolling moves
+both columns together; the granularity toggle hides in Parallel; identical
+versions render two identical columns in Parallel and the "No textual
+differences" note in Unified.
+
+**Rollback.** `git revert` — front-end only, no Rust, no schema, no persisted
+state. Delete `ParallelDiff.tsx`, the `buildAlignedRows`/`DiffRow`/`DiffCell`
+additions in `compareHelpers.ts` (+ tests), and revert `CompareDiff.tsx` to the
+unified-only view.
+
+**Current state.** Parallel view is off by default and session-only (resets to
+Unified when the workspace closes/reopens). Highlighting is line-level; intra-line
+word highlighting within a changed pair is a possible future refinement.
