@@ -11,6 +11,8 @@ import { languages } from '@codemirror/language-data';
 import { GFM, Table } from '@lezer/markdown';
 import { hldExtensions, hldTheme } from '../../lib/editorTheme';
 import { livePreviewPlugin } from '../../lib/livePreview';
+import { SurroundRail } from '../coach/SurroundRail';
+import { AmbientCue } from '../coach/AmbientCue';
 import { EditorView, keymap, drawSelection, highlightSpecialChars, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
@@ -365,10 +367,17 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
          </div>
       </div>
 
+      {/* Part-in-whole rail — pinned in BOTH focus and normal mode, so the
+          argument's structure stays external working memory while writing a
+          part. Self-gates to nothing when there is no spec. */}
+      {!isEmptyState && !needsProject && <SurroundRail />}
+
       {/* Editor Area */}
       <div className="flex-1 overflow-hidden bg-transparent relative h-full">
+        {/* Non-initiated cue — surfaces the next move without a button press. */}
+        {!needsProject && <AmbientCue />}
         <div className="h-full relative">
-          
+
           {focusMode && currentSection && (
             <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-[#05090d] z-10 w-full max-w-[800px] mx-auto">
               <div className="w-[7px] h-[7px] bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />

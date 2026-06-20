@@ -2473,3 +2473,62 @@ their registry entries and the new `features/modals/Revision*`,
 Instruction (default: intrinsic requirements) grounds it. Workspace column widths
 are drag-resizable and persisted per-project. Previewing a proposal scrolls to it.
 The revision settings modal centralizes instruction/model/token-preview/prompt config.
+
+---
+
+## 2026-06-20 — Profile-driven prosthetic wave (ambient cue · pinned surround · streaming coach)
+
+**Why.** A neuropsychological profile (severe ADHD + mNCD/TBI; sustained
+attention 2nd %ile, recognition memory 2nd–5th %ile, post-injury apathy, a
+perfection loop, and elite verbal/reasoning) made one mismatch glaring: every
+support in the app required the user to *initiate* it (open the coach, start a
+sprint, toggle focus), yet the clinical record states support "must not depend on
+my own initiative to activate it." Two further mismatches: Focus Mode hid the
+whole document from a user whose core deficit is losing the argument-of-the-whole
+while writing a part; and the most coaching-like surface did not stream. This wave
+ships the three least-served, highest-leverage features (F1, F4, F6 from
+`docs/` analysis); F2 (provenance marking), F3 (Good-Enough gate), F5
+(point-of-action instructions) remain queued.
+
+**What changed.**
+
+- **F1 — Non-initiated ambient cue.** New `src/features/coach/AmbientCue.tsx` +
+  `use-ambient-cue.ts`. Surfaces the next move with no button press: on re-entry
+  (section change) and again on a mid-section stall (`STALL_MS = 90s`, pure
+  `isStalled` predicate). All data is local — `buildReinstatement` (reused) +
+  `lastDiagnostic.nextPriority` — so there is no AI call on the path; it is
+  instant and always available. Dismiss is soft (re-arms on the next section or
+  stall), never a persisted off. Honors `prefers-reduced-motion`.
+- **F4 — Pinned structural surround.** New `src/features/coach/SurroundRail.tsx`
+  renders `buildStructuralSurround` (reused, was prompt-only) as glanceable chips
+  in the editor, mounted under the toolbar in **both** Focus and normal mode —
+  fixing Focus Mode hiding the whole. Self-gates to nothing when a section has no
+  spec.
+- **F6 — Streaming + proactive coach.** Added `streamCoachAdvice` to the
+  `AIProvider` interface + a `MultiProviderAIProvider` `async *` mirroring
+  `continueDialogue`; the shared `buildCoachPrompt` helper backs both the
+  streaming and non-streaming calls. `CoachModal` now streams token-by-token
+  (cursor while in flight, spinner only until the first token) with a
+  `guardContextFit` pre-flight. The ambient cue's "Go deeper" opens it.
+- **Shared.** New `src/lib/spec-map.ts` (`selectSpecMap`) de-duplicates the
+  testSuite→spec projection (App.tsx now imports it). New ephemeral UI state in
+  `ui-state.ts`: `ambientCueEnabled` (default on), `surroundCollapsed`,
+  `cueDismissedForId`. New `'streamCoachAdvice'` `AICallKind` + default model
+  config (mirrors the coach default).
+
+**How to verify.** `npm test` (added `spec-map` + `use-ambient-cue` tests),
+`npm run typecheck`, `npm run build` all pass. In-app: open a section with a spec
+→ surround chips show its place in the whole, and stay when Focus Mode toggles; a
+section with no spec → no rail. Switch sections → the cue appears with no click;
+stop typing ~90s mid-section → the stall cue appears; dismiss re-arms on the next
+section. Open the coach → advice streams; "Go deeper" on the cue opens it.
+
+**Rollback.** `git revert` — the change is front-end + one additive AIProvider
+method. Delete `src/features/coach/`, `src/lib/spec-map.ts`, the three `ui-state`
+fields, the `streamCoachAdvice` interface method / impl / call-kind / config
+entry, and the EditorPanel + CoachModal wiring. No domain types, persisted
+fields, prompts, or Rust were touched; older project files stay valid.
+
+**Current state.** The app now offers continuous, non-initiated cueing and a
+pinned part-in-whole surround, and the coach streams. The next wave is provenance
+marking (F2) and the Good-Enough stop gate (F3).

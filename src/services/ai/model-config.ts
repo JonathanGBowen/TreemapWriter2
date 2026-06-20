@@ -23,6 +23,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   runDiagnostic: g('gemini-3.1-flash-lite-preview', 0),
   estimateDependencies: g('gemini-3.1-pro-preview', 1024),
   getCoachAdvice: g('gemini-3-flash-preview', 0),
+  // Streaming coach mirrors the coach default — same model, just yielded live.
+  streamCoachAdvice: g('gemini-3-flash-preview', 0),
   getContentSuggestions: g('gemini-3.1-flash-lite-preview', 0),
   generatePersonas: g('gemini-3-flash-preview', 0),
   refineSpec: g('gemini-3.1-pro-preview', 16000),

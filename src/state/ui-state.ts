@@ -21,6 +21,19 @@ export interface UIStateSlice {
   compareReportWidth: number;
   focusMode: boolean;
   runTutorial: boolean;
+  /**
+   * Ambient cueing (the non-initiated coach). Default-on: this is the
+   * prosthetic that does not wait to be asked, so it must be present without a
+   * button press. Never persisted.
+   */
+  ambientCueEnabled: boolean;
+  /** Editor structural-surround rail collapsed (glance vs hidden). */
+  surroundCollapsed: boolean;
+  /**
+   * Section id whose ambient cue the user soft-dismissed this visit. Cleared on
+   * section change so a re-entered section cues again — undo, not a persisted off.
+   */
+  cueDismissedForId: string | null;
   activeTab: 'editor' | 'preview';
   /** Which surface the right panel shows. Ephemeral, like activeTab. */
   testsPanelTab: 'spec' | 'analysis' | 'dialogue';
@@ -75,6 +88,9 @@ export interface UIStateSlice {
   setCompareReportWidth: (w: number) => void;
   setFocusMode: (mode: boolean) => void;
   setRunTutorial: (run: boolean) => void;
+  setAmbientCueEnabled: (on: boolean) => void;
+  setSurroundCollapsed: (collapsed: boolean) => void;
+  setCueDismissedForId: (id: string | null) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
   setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue') => void;
   setIsProcessing: (proc: boolean) => void;
@@ -114,6 +130,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   compareReportWidth: 440,
   focusMode: true,
   runTutorial: false,
+  ambientCueEnabled: true,
+  surroundCollapsed: false,
+  cueDismissedForId: null,
   activeTab: 'editor',
   testsPanelTab: 'spec',
 
@@ -155,6 +174,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setCompareReportWidth: (w) => set({ compareReportWidth: w }),
   setFocusMode: (mode) => set({ focusMode: mode }),
   setRunTutorial: (run) => set({ runTutorial: run }),
+  setAmbientCueEnabled: (on) => set({ ambientCueEnabled: on }),
+  setSurroundCollapsed: (collapsed) => set({ surroundCollapsed: collapsed }),
+  setCueDismissedForId: (id) => set({ cueDismissedForId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setTestsPanelTab: (tab) => set({ testsPanelTab: tab }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),

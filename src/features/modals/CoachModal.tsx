@@ -6,6 +6,7 @@ import { computeHash } from '../../lib/utils';
 import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { useStore } from '../../store';
 import { aiProvider } from '../../services/ai-provider-registry';
+import { guardContextFit } from '../shared/context-guard';
 import { ModelPicker } from './ModelPicker';
 import { useModelChoice } from './use-model-choice';
 
@@ -28,8 +29,9 @@ export const CoachModal: React.FC<CoachModalProps> = ({
 }) => {
   const isOpen = useStore(s => s.showCoachModal);
   const setShow = useStore(s => s.setShowCoachModal);
+  const modelCatalog = useStore(s => s.modelCatalog);
   const onClose = () => setShow(false);
-  const [choice, setChoice] = useModelChoice('getCoachAdvice', isOpen);
+  const [choice, setChoice] = useModelChoice('streamCoachAdvice', isOpen);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionPlan, setActionPlan] = useState<string | null>(null);
@@ -67,25 +69,45 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   if (!isOpen) return null;
 
   const handleGenerate = async () => {
+    // Pre-flight the structure summary (what the call actually sends) against
+    // the chosen model's window — never silently truncate.
+    if (!guardContextFit({
+      catalog: modelCatalog,
+      choice,
+      text: JSON.stringify(structureData),
+      what: 'This project summary',
+      setting: 'Coach advice (live)',
+    })) return;
+
     setIsProcessing(true);
     setIsStale(false);
     setError(null);
+    setActionPlan('');
 
     try {
-      const text = await aiProvider.getCoachAdvice({
+      // Stream token-by-token: the system's thinking is made visible, killing
+      // the "is it working?" moment (the app's preferred accessibility idiom).
+      let acc = '';
+      for await (const chunk of aiProvider.streamCoachAdvice({
         markdown,
         sections,
         testSuite,
         config: promptsConfig,
         modelChoice: choice,
-      });
-      setActionPlan(text);
-      if (onSaveCache && text) {
-        onSaveCache(currentInputHash, text);
+      })) {
+        acc += chunk;
+        setActionPlan(acc);
+      }
+      if (!acc) {
+        setError('The coach returned no text.');
+        setActionPlan(null);
+      } else if (onSaveCache) {
+        onSaveCache(currentInputHash, acc);
       }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'An error occurred during analysis.');
+      setActionPlan(null);
     } finally {
       setIsProcessing(false);
     }
@@ -147,7 +169,9 @@ export const CoachModal: React.FC<CoachModalProps> = ({
             </div>
           )}
 
-          {isProcessing && (
+          {/* Spinner only until the first token lands; after that the streaming
+              text itself is the progress signal. */}
+          {isProcessing && !actionPlan && (
             <div className="flex flex-col items-center justify-center py-12">
                <Loader2 className="w-8 h-8 text-hld-yellow animate-spin mb-4" />
                <div className="text-[11px] font-mono uppercase tracking-[0.1em] text-hld-muted animate-pulse">
@@ -166,6 +190,9 @@ export const CoachModal: React.FC<CoachModalProps> = ({
           {actionPlan && (
             <div className="markdown-body p-4 bg-hld-surface border border-hld-border shadow-inner font-sans text-sm text-slate-300 overflow-y-auto">
               <ReactMarkdown>{actionPlan}</ReactMarkdown>
+              {isProcessing && (
+                <span className="inline-block w-[7px] h-[14px] ml-[2px] align-middle bg-hld-yellow animate-pulse" />
+              )}
             </div>
           )}
         </div>

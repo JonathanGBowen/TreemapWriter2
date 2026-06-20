@@ -38,6 +38,13 @@ export interface AIProvider {
     input: EstimateDependenciesInput,
   ): Promise<Record<string, Dependency[]>>;
   getCoachAdvice(input: CoachAdviceInput): Promise<string>;
+  /**
+   * Streaming sibling of `getCoachAdvice` — the same triage/action-plan, but
+   * yielded token-by-token so the writer sees the system thinking (the app's
+   * preferred accessibility idiom; kills the "is it working?" moment). The
+   * non-streaming form is kept for the cache path.
+   */
+  streamCoachAdvice(input: CoachAdviceInput): AsyncIterable<string>;
   getContentSuggestions(input: ContentSuggestionsInput): Promise<string>;
   generatePersonas(
     input: GeneratePersonasInput,
