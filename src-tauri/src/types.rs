@@ -408,6 +408,12 @@ pub struct UiState {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tests_panel_width: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub revision_rail_width: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub revision_proposals_width: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub compare_report_width: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub focus_mode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub selected_section_id: Option<String>,

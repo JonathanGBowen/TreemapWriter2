@@ -3,7 +3,7 @@ import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
 import { DEFAULT_OLLAMA_BASE_URL } from './ai/clients';
-import type { AnalysisSpell, PromptsConfig } from '../types';
+import type { AnalysisSpell, PromptsConfig, RevisionInstruction } from '../types';
 
 /**
  * Global, app-level preferences that are NOT tied to a specific project.
@@ -23,6 +23,8 @@ const OLLAMA_BASE_URL_KEY = 'treemap_writer_ollama_base_url';
 const SPELLS_KEY = 'treemap_writer_spells';
 const SPRINT_CUES_KEY = 'treemap_writer_sprint_cues';
 const PROMPTS_GLOBAL_DEFAULT_KEY = 'treemap_writer_prompts_global_default';
+const REVISION_INSTRUCTIONS_KEY = 'treemap_writer_revision_instructions';
+const REVISION_INSTRUCTION_ACTIVE_KEY = 'treemap_writer_revision_instruction_active';
 
 export async function hasSeenTutorial(): Promise<boolean> {
   return Boolean(await get(TUTORIAL_SEEN_KEY));
@@ -101,4 +103,29 @@ export async function getGlobalPromptsDefault(): Promise<Partial<PromptsConfig>>
 
 export async function setGlobalPromptsDefault(config: Partial<PromptsConfig>): Promise<void> {
   await set(PROMPTS_GLOBAL_DEFAULT_KEY, config);
+}
+
+/**
+ * User-created revision Instructions — a global library shared across projects,
+ * like the spell library. The built-in defaults live in code
+ * (`lib/defaultInstructions.ts`) and are NOT stored here; this holds only the
+ * user's additions. Empty array when none saved.
+ */
+export async function getRevisionInstructions(): Promise<RevisionInstruction[]> {
+  const stored = await get<RevisionInstruction[]>(REVISION_INSTRUCTIONS_KEY);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export async function setRevisionInstructions(list: RevisionInstruction[]): Promise<void> {
+  await set(REVISION_INSTRUCTIONS_KEY, list);
+}
+
+/** The id of the active instruction (the one a sourceless pass uses). Null = built-in default. */
+export async function getActiveRevisionInstructionId(): Promise<string | null> {
+  const stored = await get<string>(REVISION_INSTRUCTION_ACTIVE_KEY);
+  return typeof stored === 'string' ? stored : null;
+}
+
+export async function setActiveRevisionInstructionId(id: string): Promise<void> {
+  await set(REVISION_INSTRUCTION_ACTIVE_KEY, id);
 }

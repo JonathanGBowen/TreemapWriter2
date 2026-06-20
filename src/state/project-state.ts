@@ -239,6 +239,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     const uiState = (defaultProjectData as { uiState?: {
       sidebarWidth?: number;
       testsPanelWidth?: number;
+      revisionRailWidth?: number;
+      revisionProposalsWidth?: number;
+      compareReportWidth?: number;
       focusMode?: boolean;
       selectedSectionId?: string | null;
     } }).uiState;
@@ -246,6 +249,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       set({
         sidebarWidth: uiState.sidebarWidth || get().sidebarWidth,
         testsPanelWidth: uiState.testsPanelWidth || get().testsPanelWidth,
+        revisionRailWidth: uiState.revisionRailWidth || get().revisionRailWidth,
+        revisionProposalsWidth: uiState.revisionProposalsWidth || get().revisionProposalsWidth,
+        compareReportWidth: uiState.compareReportWidth || get().compareReportWidth,
         focusMode: uiState.focusMode !== undefined ? uiState.focusMode : get().focusMode,
         selectedId: uiState.selectedSectionId || get().selectedId,
       });
@@ -379,6 +385,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         set({
           sidebarWidth: data.uiState.sidebarWidth || get().sidebarWidth,
           testsPanelWidth: data.uiState.testsPanelWidth || get().testsPanelWidth,
+          revisionRailWidth: data.uiState.revisionRailWidth || get().revisionRailWidth,
+          revisionProposalsWidth: data.uiState.revisionProposalsWidth || get().revisionProposalsWidth,
+          compareReportWidth: data.uiState.compareReportWidth || get().compareReportWidth,
           focusMode: data.uiState.focusMode !== undefined ? data.uiState.focusMode : get().focusMode,
           selectedId: data.uiState.selectedSectionId || get().selectedId,
           activeLineIndex:
@@ -454,6 +463,9 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       uiState: {
         sidebarWidth: state.sidebarWidth,
         testsPanelWidth: state.testsPanelWidth,
+        revisionRailWidth: state.revisionRailWidth,
+        revisionProposalsWidth: state.revisionProposalsWidth,
+        compareReportWidth: state.compareReportWidth,
         focusMode: state.focusMode,
         selectedSectionId: state.selectedId,
         activeLineIndex: state.activeLineIndex,

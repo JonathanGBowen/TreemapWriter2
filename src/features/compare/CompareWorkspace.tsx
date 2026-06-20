@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from '../../state';
+import { useColumnResize } from '../shared/useColumnResize';
+import { ResizeHandle } from '../shared/ResizeHandle';
 import { CompareTopBar } from './CompareTopBar';
 import { CompareDiff } from './CompareDiff';
 import { CompareReport } from './CompareReport';
@@ -14,6 +16,15 @@ import { useCompareOperands } from './use-compare-operands';
 export function CompareWorkspace() {
   const open = useStore((s) => s.comparisonOpen);
   const close = useStore((s) => s.closeCompare);
+  const reportWidth = useStore((s) => s.compareReportWidth);
+  const setReportWidth = useStore((s) => s.setCompareReportWidth);
+  const onResizeReport = useColumnResize({
+    width: reportWidth,
+    setWidth: setReportWidth,
+    edge: 'left',
+    min: 320,
+    max: 720,
+  });
   useCompareOperands();
 
   useEffect(() => {
@@ -34,7 +45,11 @@ export function CompareWorkspace() {
         <div className="flex-1 min-w-0 flex flex-col border-r border-hld-border bg-hld-bg">
           <CompareDiff />
         </div>
-        <div className="w-[440px] shrink-0 bg-[#080d13] flex flex-col">
+        <div
+          style={{ width: reportWidth }}
+          className="relative shrink-0 bg-[#080d13] flex flex-col"
+        >
+          <ResizeHandle side="left" onMouseDown={onResizeReport} />
           <CompareReport />
         </div>
       </div>

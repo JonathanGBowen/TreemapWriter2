@@ -229,6 +229,12 @@ export interface GenerateRevisionsInput {
   subMode: AssemblySubMode;
   /** The sources the model may quote from (every proposal carries a receipt). */
   sources: SourceDocument[];
+  /**
+   * The grounding Instruction body for a SOURCELESS pass (no sources): steers the
+   * engine to ground proposals in the master document itself. Ignored when
+   * `sources` is non-empty. Falls back to the built-in default when omitted.
+   */
+  instruction?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

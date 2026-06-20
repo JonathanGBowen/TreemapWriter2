@@ -55,6 +55,12 @@ let revSeq = 0;
 interface NormalizeOpts {
   sectionLabel?: string;
   fallbackSourceId?: string;
+  /**
+   * SOURCELESS pass (no source documents). When true the glass-box receipt is
+   * not required: proposals are grounded in the document itself, so a missing
+   * `verbatim_source_quote`/`source_id` is expected, not a defect.
+   */
+  sourceless?: boolean;
 }
 
 /** Validate + coerce one raw item, or null if it lacks a load-bearing field. */
@@ -80,8 +86,12 @@ const normalizeOne = (item: unknown, opts: NormalizeOpts): RevisionProposal | nu
     'verbatim_quote',
     'quote',
   ]);
-  // The three guarantees: a span to replace, a replacement, and a receipt.
-  if (!original_text || !proposed_text || !verbatim_source_quote) return null;
+  // The glass-box guarantees: a span to replace, a replacement, and — in SOURCED
+  // mode — a verbatim receipt. A sourceless pass grounds proposals in the document
+  // itself, so it drops to two guarantees (no receipt to require). This is the one
+  // place the receipt contract is conditional; keep sourced mode strict.
+  if (!original_text || !proposed_text) return null;
+  if (!opts.sourceless && !verbatim_source_quote) return null;
 
   return {
     id: `rev_${Date.now()}_${revSeq++}`,

@@ -9,6 +9,8 @@ import { buildRootSection } from "../../lib/utils";
 import { Dock } from "./Dock";
 import { summarizeSync } from "./sync-status";
 import { retrySync } from "../../services/sync-policy";
+import { useColumnResize } from "../shared/useColumnResize";
+import { ResizeHandle } from "../shared/ResizeHandle";
 
 /** Map + sections zone — hairline-delimited, absorbing the space freed below. */
 function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
@@ -83,21 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const [caption, setCaption] = useState<string | null>(null);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = width;
-    const onMove = (ev: MouseEvent) => setWidth(Math.max(200, Math.min(startWidth + (ev.clientX - startX), 800)));
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = 'default';
-      window.dispatchEvent(new Event('resize'));
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    document.body.style.cursor = 'col-resize';
-  };
+  const handleMouseDown = useColumnResize({ width, setWidth, edge: 'right', min: 200, max: 800 });
 
   const pipCaption = isError
     ? `Sync · ${sync.text} · ${needsPat ? 'click to configure' : 'click to retry'}`
@@ -155,11 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <Dock onContinue={onContinue} caption={caption} setCaption={setCaption} />
 
-      {/* Resize Handle */}
-      <div
-        className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-hld-cyan/50 hover:w-2 transition-all duration-150 z-50 translate-x-1/2"
-        onMouseDown={handleMouseDown}
-      />
+      <ResizeHandle side="right" onMouseDown={handleMouseDown} />
     </div>
   );
 };
