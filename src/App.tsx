@@ -30,6 +30,7 @@ import { ExternalChangeModal } from "./features/modals/ExternalChangeModal";
 import { RemoteProjectModal } from "./features/modals/RemoteProjectModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
+import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { normalizePromptsConfig } from "./lib/constants";
 import type { ModelChoice } from "./services/ai/model-types";
@@ -660,9 +661,7 @@ export const App = () => {
    
     // Spec map (sectionId → spec, incl. 'root') so the diagnostic can judge this
     // section as a part inside its live structural surround, not as an isolated piece.
-    const specs: Record<string, SectionSpec | undefined> = Object.fromEntries(
-      Object.entries(testSuite).map(([id, e]) => [id, e?.spec]),
-    );
+    const specs = selectSpecMap(testSuite);
 
     const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,

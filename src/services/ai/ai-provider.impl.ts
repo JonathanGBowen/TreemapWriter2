@@ -60,6 +60,28 @@ const MAX_OUTPUT_TOKENS = 16000;
 const VALID_MOVE_STATUSES = ['present', 'partial', 'missing', 'unclear'] as const;
 const VALID_READINESS = ['draft', 'developing', 'nearly-there', 'solid'];
 
+/**
+ * Build the coach triage prompt from the document's structure overview. Shared
+ * by the streaming and non-streaming coach calls so they stay in lockstep.
+ */
+function buildCoachPrompt(input: CoachAdviceInput): string {
+  const structureData = input.sections.map((sec) => {
+    const tests = input.testSuite[sec.id];
+    return {
+      title: sec.title,
+      level: sec.level,
+      wordCount: sec.wordCount,
+      goals: tests?.goals,
+      status: tests?.status,
+      missingMoves:
+        tests?.lastDiagnostic?.moveResults?.filter(
+          (m) => m.status === 'missing' || m.status === 'unclear',
+        ) || [],
+    };
+  });
+  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n`;
+}
+
 export interface ProviderClients {
   gemini: LLMClient;
   anthropic: LLMClient;
@@ -234,30 +256,27 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async getCoachAdvice(input: CoachAdviceInput): Promise<string> {
-    const structureData = input.sections.map((sec) => {
-      const tests = input.testSuite[sec.id];
-      return {
-        title: sec.title,
-        level: sec.level,
-        wordCount: sec.wordCount,
-        goals: tests?.goals,
-        status: tests?.status,
-        missingMoves:
-          tests?.lastDiagnostic?.moveResults?.filter(
-            (m) => m.status === 'missing' || m.status === 'unclear',
-          ) || [],
-      };
-    });
-
-    const prompt = `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n`;
-
     const choice = this.choose('getCoachAdvice', input);
     return this.clientFor(choice.provider).generateText({
       model: choice.model,
-      prompt,
+      prompt: buildCoachPrompt(input),
       thinkingBudget: choice.thinkingBudget,
       maxTokens: MAX_OUTPUT_TOKENS,
     });
+  }
+
+  /** Streaming sibling of getCoachAdvice — same prompt, yielded token-by-token. */
+  async *streamCoachAdvice(input: CoachAdviceInput): AsyncIterable<string> {
+    const choice = this.choose('streamCoachAdvice', input);
+    const stream = this.clientFor(choice.provider).streamText({
+      model: choice.model,
+      prompt: buildCoachPrompt(input),
+      thinkingBudget: choice.thinkingBudget,
+      maxTokens: MAX_OUTPUT_TOKENS,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
   }
 
   async getContentSuggestions(input: ContentSuggestionsInput): Promise<string> {

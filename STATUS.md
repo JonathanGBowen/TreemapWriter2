@@ -27,6 +27,13 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
 
+A profile-driven prosthetic wave shipped 2026-06-20 (see
+[`docs/migration-log.md`](docs/migration-log.md)): a **non-initiated ambient cue**
+(surfaces the next move on re-entry + on a mid-section stall, no button press),
+a **pinned structural-surround rail** in the editor (the part-in-whole, shown in
+both Focus and normal mode), and a **streaming coach**. All three live in
+`src/features/coach/`.
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered
@@ -47,6 +54,19 @@ are best-effort; Author/Year inference rides on the source labels/content.
 
 ## Next (felt priorities)
 
+- **Profile-driven wave, remaining items (F2 · F3 · F5).** The 2026-06-20 wave
+  shipped F1/F4/F6; the analysis flagged three more, ranked by clinical leverage:
+  **(F2) durable authorship/provenance marking for all AI-introduced text** —
+  recognition memory is 2nd–5th %ile and false-alarms, so AI prose must stay
+  visibly + persistently distinguishable from the user's own (the sourceless
+  revision + ghostwriter paths currently inject unmarked text; prefer recall over
+  recognition where feasible); **(F3) a "Good Enough" stop gate** against the
+  perfection loop (port the explicit permission-to-stop from the user's own Glass
+  Box tool; tie to the readiness ladder); **(F5) point-of-action move
+  instructions** (surface sprint-move + `RequiredMove` instructions *when the
+  move becomes active*, not as a skippable pre-gate). F2 is the highest-leverage
+  and closes a genuine integrity hazard.
+
 - **Gestalt roadmap (items 3–7).** Tier 1 shipped 2026-06-17 — part-not-piece
   context: prefix-truncation killed in spec generation, and a *structural surround*
   (a section's live part-in-whole relations) now threads into the diagnostic and
@@ -63,10 +83,11 @@ are best-effort; Author/Year inference rides on the source labels/content.
   remaining input char-slices: every other arbitrary source/section cap was deleted in
   favour of the `checkContextFit` token-budget pre-flight (see
   [`docs/migration-log.md`](docs/migration-log.md)).
-- **Streaming AI in a sidebar coach panel.** The `AIProvider` interface accepts
-  sibling streaming methods; none implemented yet. Target a
-  `streamCoachAdvice(section): AsyncIterable<string>` on the provider, consumed
-  by a new `src/features/coach/` panel. This is the next-most-felt item.
+- ~~**Streaming AI in a sidebar coach panel.**~~ Done 2026-06-20 (see
+  [`docs/migration-log.md`](docs/migration-log.md)). `streamCoachAdvice` now
+  exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and
+  `CoachModal` streams token-by-token. `src/features/coach/` is now a real panel
+  home, also hosting the ambient cue and the structural-surround rail (below).
 - **FTS5-backed full-text search.** The SQLite cache schema supports it; no
   command or UI exists. Add a `sections_fts` virtual table to
   [`src-tauri/src/db/schema.sql`](src-tauri/src/db/schema.sql), a `search_sections`
