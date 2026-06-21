@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-19.** Update this file whenever a feature ships or is
+> **Current as of 2026-06-21.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md).
@@ -50,7 +50,15 @@ in-text citations, and References (proposing a `## References` section when abse
 It runs whole-document (a "Whole document" row was added to the revision rail), and
 sources can now be **uploaded as markdown** as well as pasted. Deliberate limits:
 References-creation is a rejectable proposal (never an auto-write); APA page numbers
-are best-effort; Author/Year inference rides on the source labels/content.
+are best-effort; Author/Year inference rides on the source labels/content. A
+lightweight **Zotero bridge** (2026-06-21, see
+[`docs/migration-log.md`](docs/migration-log.md)) feeds that last point real data:
+"Import bibliography" in the source picker parses a Zotero **CSL-JSON** export
+(`src/lib/bibImport.ts` — pure, no dependency) into one ephemeral source per
+reference (`Author (Year)` chip, APA + abstract as content), so Citations builds an
+accurate `## References` section and APA audit instead of guessing. Full source text
+still rides the existing `.md` upload; bibliographies are session-only, and BibTeX /
+the live Zotero local-API picker / Web-API sync are deliberately out of scope (below).
 
 ## Next (felt priorities)
 
@@ -173,6 +181,12 @@ Unless requirements genuinely change:
   CLI, then the standard project-open flow.
 - **Y.js / Automerge real-time collaboration.** Only if a co-author is ever
   invited. Otherwise out of scope.
+- **Deep Zotero integration.** The Glass-Box bridge is file-import only
+  (CSL-JSON / `.md`, ephemeral). A live **local-API picker** (`localhost:23119`,
+  read-only, Zotero-7+ — would need the "Allow other applications…" toggle, a
+  CORS/Tauri-command path, and a picker modal), **Web-API sync** (key in keyring),
+  **BibTeX/RIS** parsing, and **persisting** imported bibliographies across sessions
+  are all deferred — revisit only if file import proves too manual in real use.
 
 (The permanent non-goals — accounts, billing, telemetry, i18n, feature flags —
 are a matter of project *identity* and live in [`docs/VISION.md`](docs/VISION.md),

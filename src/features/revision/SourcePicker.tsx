@@ -1,12 +1,29 @@
 import { useRef, useState } from 'react';
-import { Plus, Upload, X } from 'lucide-react';
+import { Library, Plus, Upload, X } from 'lucide-react';
 import { useStore } from '../../state';
 import { makeSourceId } from '../../state/revision-state';
+import { parseCslJson, referenceToSourceContent } from '../../lib/bibImport';
 import { Pip } from '../shared/Pip';
 
 /** Glyph cycle for pasted sources (HLD style; mirrors the prototype's source kinds). */
 const GLYPHS = ['✒', '⚐', '❡', '◎'];
 const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
+
+/**
+ * Read a picked file as text (same FileReader path as ProjectMenu's import — works
+ * in the Tauri webview too), hand the contents to `onText`, then reset the input so
+ * re-picking the same file re-fires.
+ */
+function readPickedFile(e: React.ChangeEvent<HTMLInputElement>, onText: (text: string, file: File) => void) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    if (typeof ev.target?.result === 'string') onText(ev.target.result, file);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
 const inputCls =
   'bg-hld-bg border border-hld-border focus:border-hld-cyan outline-none text-hld-text font-mono text-[11px] px-2 py-1.5';
 
@@ -63,6 +80,7 @@ export function SourcePicker() {
   const removeSource = useStore((s) => s.removeRevisionSource);
   const [adding, setAdding] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bibRef = useRef<HTMLInputElement>(null);
 
   const submit = (label: string, content: string) => {
     if (!content.trim()) return;
@@ -76,22 +94,27 @@ export function SourcePicker() {
     setAdding(false);
   };
 
-  // Upload a markdown/text file as a source: read it in the browser (works in the
-  // Tauri webview too — same FileReader pattern as ProjectMenu's markdown import),
-  // using the filename (sans extension) as the label. Reset the input so picking
-  // the same file again re-fires.
-  const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (typeof ev.target?.result === 'string') {
-        submit(file.name.replace(/\.(md|markdown|txt)$/i, ''), ev.target.result);
+  // Upload a markdown/text file as a source, using the filename (sans extension)
+  // as the label.
+  const onUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
+    readPickedFile(e, (text, file) => submit(file.name.replace(/\.(md|markdown|txt)$/i, ''), text));
+
+  // Import a Zotero CSL-JSON export as bibliographic sources: one ephemeral chip
+  // per reference, its content an APA entry (+ abstract) the Citations engine can
+  // quote and use to build an accurate References section. The parse is pure
+  // (lib/bibImport); a malformed file simply yields no chips.
+  const onImportBib = (e: React.ChangeEvent<HTMLInputElement>) =>
+    readPickedFile(e, (text) => {
+      for (const ref of parseCslJson(text)) {
+        addSource({
+          id: makeSourceId(),
+          kind: 'Reading',
+          label: `${ref.labelStem} (${ref.year})`,
+          glyph: '◎',
+          content: referenceToSourceContent(ref),
+        });
       }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
+    });
 
   return (
     <div className="flex flex-col gap-2">
@@ -151,6 +174,21 @@ export function SourcePicker() {
               accept=".md,.markdown,.txt"
               className="hidden"
               onChange={onUpload}
+            />
+            <button
+              type="button"
+              onClick={() => bibRef.current?.click()}
+              title="Import a Zotero CSL-JSON export as bibliographic sources"
+              className="flex items-center gap-1 px-2 py-1.5 border border-dashed border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9.5px] uppercase tracking-[0.08em] transition-colors"
+            >
+              <Library size={10} /> Import bibliography
+            </button>
+            <input
+              ref={bibRef}
+              type="file"
+              accept=".json,.csljson"
+              className="hidden"
+              onChange={onImportBib}
             />
           </>
         )}
