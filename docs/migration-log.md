@@ -2677,3 +2677,42 @@ fields, prompts, or Rust were touched; older project files stay valid.
 **Current state.** The app now offers continuous, non-initiated cueing and a
 pinned part-in-whole surround, and the coach streams. The next wave is provenance
 marking (F2) and the Good-Enough stop gate (F3).
+
+---
+
+## 2026-06-20 — Citations ↔ bibliography seam refinement (+ combined-main verification)
+
+**What changed.** A prompt-only refinement to the locked Citations-mode prompts, closing the seam with
+the Zotero CSL-JSON bibliography import (PR #24). That feature adds bibliographic sources (`kind`
+"Reading": an APA reference entry + abstract, label `Author (Year)`) but did not change the Citations
+prompt, which audited all sources uniformly. The prompts now distinguish two source kinds:
+
+- **Full-text sources** (pasted / uploaded `.md`) — the only basis for verbatim quote verification and
+  faithful-representation checks.
+- **Bibliographic sources** (a reference entry + abstract; typically `kind` "Reading", e.g. a Zotero
+  import) — citation/reference metadata. Used for APA in-text citations and `## References` entries;
+  **never** verified against for quotations, and never the basis for flagging a quote as fabricated
+  (they hold only the abstract, not the full text). A formatted bibliographic entry is reused verbatim
+  as the receipt for a References fix.
+
+Edited `src/services/prompts/citations-system.md` (new principle 2 "Two Kinds of Source"; principles
+3–6 scoped to full-text vs bibliographic) and `citations-task.md` (a SOURCE KINDS note + scoped the
+quotation / faithfulness / citation / references steps). Both are **locked** prompts — no registry,
+`PromptsConfig`, or test changes (keys unchanged). No code touched: `formatSources` already exposes
+`kind`, and the `SourceDocument` shape is untouched.
+
+**Combined-main verification.** This repo has no CI, so the merge commits that combined four feature
+waves (Glass-Box wave-1 / Citations / parallel Version Compare viewer / prosthetic wave / Zotero
+import) were never gate-tested together. Verified on the integrated `origin/main` before and after this
+change: `tsc --noEmit` clean, `vitest run` 245/245 green (30 files), `npm run build` clean,
+`npm run lint` at the 5 known pre-existing errors (untouched files). Cargo not run here (no GTK libs);
+moot — only the already-merged wave-1 touched Rust.
+
+**Rollback.** `git revert` — prompt text only, no data/schema/code. Reverting restores the
+uniform-source behavior; bibliographic sources still work (the model infers from label/content as
+before), just without the explicit guardrail.
+
+**Verify (runtime).** Revision Workspace → Import bibliography (a Zotero CSL-JSON export) → Citations:
+expect APA in-text citations + a `## References` section built from the entries, with no
+"missing/fabricated quote" proposals raised against the bibliography chips; verbatim quote-checking
+still fires against a pasted/uploaded full-text source.
