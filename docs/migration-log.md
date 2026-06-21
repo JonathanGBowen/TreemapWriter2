@@ -2566,3 +2566,56 @@ unified-only view.
 **Current state.** Parallel view is off by default and session-only (resets to
 Unified when the workspace closes/reopens). Highlighting is line-level; intra-line
 word highlighting within a changed pair is a possible future refinement.
+
+## 2026-06-21 — Glass-Box bibliography import (Zotero CSL-JSON)
+
+**What changed.** A lightweight Zotero-to-Glass-Box bridge, additive and entirely
+front-end. The writer exports a collection from Zotero as **CSL JSON** (right-click
+→ Export → "CSL JSON") and imports it into the revision workspace as bibliographic
+sources. No network, no API keys, no keyring, no persistence, no new dependency
+(CSL-JSON is plain JSON) — sources stay ephemeral like every other Glass-Box source.
+
+- New pure module `src/lib/bibImport.ts` (no React, no store — `lib/` law):
+  `parseCslJson(raw): ParsedReference[]` and `referenceToSourceContent(ref)`.
+  Parses an array *or* a single CSL item; tolerant — invalid JSON yields `[]` and a
+  malformed item is skipped rather than sinking the import. Maps a deliberately
+  minimal field set to one APA reference line: author(s) → `Family, I. I.` (with
+  `& ` before the last, `et al.` collapsed only for the chip stem), `issued` year
+  (`n.d.` fallback), title, `container-title` + volume/issue/page *or* publisher,
+  and a DOI (`https://doi.org/…`) else URL. `editor` is used when no `author`; the
+  abstract (`abstract`/BBT `abstractNote`) is appended under an `ABSTRACT` heading so
+  receipts have real text to quote.
+- `SourcePicker.tsx`: a "⌂ Import bibliography" button (lucide `Library`) beside
+  "Upload .md", with a hidden `.json,.csljson` input. Each `ParsedReference` becomes
+  one ephemeral `SourceDocument` — `kind: 'Reading'`, `glyph: '◎'`,
+  `label: "Author (Year)"`, `content` = the APA line (+ abstract) — via the existing
+  `addRevisionSource` (which auto-selects on add). The shared FileReader dance was
+  extracted to a module-level `readPickedFile(e, onText)` helper (mirrors
+  `ProjectMenu`'s `readFileInto`), so `onUpload` and `onImportBib` share one read path.
+- **No type, prompt, schema, slice, or Repository change.** `SourceDocument.kind` and
+  `.glyph` are already free strings; the value lands entirely in source `content`, so
+  the unchanged Citations engine (`citations-task.md`, which *infers* Author/Year from
+  the source label/content) now builds an accurate `## References` section and APA
+  audit from real metadata instead of guesses. The full-text half of "both" was
+  already shipped (the `.md` upload reads a source's full text for verbatim quoting).
+
+**What to verify.** `npm run typecheck`; `npx vitest run
+src/lib/__tests__/bibImport.test.ts` (12 cases: array vs single parse, article vs
+book APA, 1/2/3+ author stems + `et al.`, `n.d.` fallback, author-less title-led
+entry, editor fallback, malformed-JSON `→ []`, abstract appended/absent); `npm test`
+(239 green); `npm run build`; `npm run lint` (no new errors; `SourcePicker` keeps its
+pre-existing `max-lines` *warning*, now lower than before via the extracted helper).
+Manual (Revision Workspace → source picker): **Import bibliography** → pick a Zotero
+CSL-JSON export → one selected chip per reference, labelled `Author (Year)` → run
+**Citations** on Whole document → the proposed References use the imported metadata.
+**Upload .md** still imports a full-text source for quoting.
+
+**Rollback.** `git revert` — front-end only, no Rust, no schema, no persisted data
+(sources ephemeral). Delete `src/lib/bibImport.ts` (+ test) and the
+`Import bibliography` button / `onImportBib` / `readPickedFile` additions in
+`SourcePicker.tsx`.
+
+**Current state.** Glass-Box sources can be pasted, uploaded as markdown (full text),
+or imported from a Zotero CSL-JSON export (bibliography). Deliberately out of scope:
+BibTeX/RIS (need a fragile parser), the live `localhost:23119` Zotero local-API
+picker, Web-API sync, and persisting bibliographies across sessions.
