@@ -22,6 +22,8 @@ const MODELS_CATALOG_KEY = 'treemap_writer_models_catalog';
 const OLLAMA_BASE_URL_KEY = 'treemap_writer_ollama_base_url';
 const SPELLS_KEY = 'treemap_writer_spells';
 const SPRINT_CUES_KEY = 'treemap_writer_sprint_cues';
+const SPRINT_COACH_STYLE_KEY = 'treemap_writer_sprint_coach_style';
+const SPRINT_GOAL_MODEL_KEY = 'treemap_writer_sprint_goal_model';
 const PROMPTS_GLOBAL_DEFAULT_KEY = 'treemap_writer_prompts_global_default';
 const REVISION_INSTRUCTIONS_KEY = 'treemap_writer_revision_instructions';
 const REVISION_INSTRUCTION_ACTIVE_KEY = 'treemap_writer_revision_instruction_active';
@@ -88,6 +90,38 @@ export async function getSprintCuesEnabled(): Promise<boolean> {
 
 export async function setSprintCuesEnabled(enabled: boolean): Promise<void> {
   await set(SPRINT_CUES_KEY, enabled);
+}
+
+/**
+ * Living Sprints — the coach start protocol's two preferences. Both follow the
+ * "last-selected becomes the default" rule: the coach phase persists the choice
+ * the moment the writer flips it, so the next sprint opens on what they used
+ * last. Defaults are the gentlest / best-evidence option for a first run.
+ */
+export type SprintCoachStyle = 'guided' | 'chat' | 'hybrid';
+export type SprintGoalModelPref = 'woop' | 'plain';
+
+const COACH_STYLES: SprintCoachStyle[] = ['guided', 'chat', 'hybrid'];
+const GOAL_MODELS: SprintGoalModelPref[] = ['woop', 'plain'];
+
+/** How the coach runs the start protocol. Default 'guided' (lowest overhead). */
+export async function getSprintCoachStyle(): Promise<SprintCoachStyle> {
+  const stored = await get<SprintCoachStyle>(SPRINT_COACH_STYLE_KEY);
+  return stored && COACH_STYLES.includes(stored) ? stored : 'guided';
+}
+
+export async function setSprintCoachStyle(style: SprintCoachStyle): Promise<void> {
+  await set(SPRINT_COACH_STYLE_KEY, style);
+}
+
+/** How the goal is framed. Default 'woop' (the report's best-validated option). */
+export async function getSprintGoalModel(): Promise<SprintGoalModelPref> {
+  const stored = await get<SprintGoalModelPref>(SPRINT_GOAL_MODEL_KEY);
+  return stored && GOAL_MODELS.includes(stored) ? stored : 'woop';
+}
+
+export async function setSprintGoalModel(model: SprintGoalModelPref): Promise<void> {
+  await set(SPRINT_GOAL_MODEL_KEY, model);
 }
 
 /**

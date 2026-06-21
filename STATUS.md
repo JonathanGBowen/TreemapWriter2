@@ -34,6 +34,16 @@ a **pinned structural-surround rail** in the editor (the part-in-whole, shown in
 both Focus and normal mode), and a **streaming coach**. All three live in
 `src/features/coach/`.
 
+The **coach-driven sprint start protocol** shipped 2026-06-21 (see
+[`docs/migration-log.md`](docs/migration-log.md)): a sprint can open with a
+writing coach that defines the session goal — three styles (guided wizard /
+streaming chat / hybrid) and two goal models (WOOP or plain), both persisted with
+last-selected-default — then a **Goblin-style plan editor** breaks the goal into
+an editable, recursively-decomposable sequence of timed steps (granularity
+control + per-step "break down") that flows straight into the runner. Phases:
+`setup → coach → plan → running`. Two AI flows added (`coachSprintTurn`,
+`decomposeSprintStep`); plan edits run through the pure `src/lib/sprintEdit.ts`.
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered

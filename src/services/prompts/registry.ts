@@ -27,6 +27,8 @@ import refactorAnalysisPrompt from './refactor-analysis.md?raw';
 import dialoguePrompt from './dialogue.md?raw';
 import generateRevisionsPrompt from './generate-revisions.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
+import sprintCoachPrompt from './sprint-coach.md?raw';
+import decomposeStepPrompt from './decompose-step.md?raw';
 import compareVersionsPrompt from './compare-versions.md?raw';
 import weatherReportPrompt from './weather-report.md?raw';
 import radarScanPrompt from './radar-scan.md?raw';
@@ -245,6 +247,26 @@ export const PROMPT_REGISTRY = [
     description: 'Living Sprints: bends an argument shape into a timed, section-specific plan of writing moves.',
     category: 'sprints',
     flow: 'generateSprintPlan',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'sprintCoachPrompt',
+    defaultText: strip(sprintCoachPrompt),
+    label: 'Sprint Coach',
+    description: 'Living Sprints: the conversational coach that helps define the session goal (inquiry rule; WOOP-aware).',
+    category: 'sprints',
+    flow: 'coachSprintTurn',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'decomposeStepPrompt',
+    defaultText: strip(decomposeStepPrompt),
+    label: 'Step Decomposer',
+    description: 'Living Sprints: Goblin-style recursive breakdown of one sprint step into smaller sub-steps.',
+    category: 'sprints',
+    flow: 'decomposeSprintStep',
     editability: 'editable',
     variables: [],
   },

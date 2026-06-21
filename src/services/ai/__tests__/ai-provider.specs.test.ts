@@ -20,6 +20,8 @@ const config: PromptsConfig = {
   dialoguePrompt: '',
   generateRevisionsPrompt: '',
   generateSprintPlanPrompt: '',
+  sprintCoachPrompt: '',
+  decomposeStepPrompt: '',
   compareVersionsPrompt: '',
   weatherReportPrompt: '',
   radarScanPrompt: '',

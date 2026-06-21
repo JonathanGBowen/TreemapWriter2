@@ -10,12 +10,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../../store';
-import type { ArgumentShape, PromptsConfig, Section, SprintPlan, TestSuite } from '../../../types';
+import type {
+  ArgumentShape,
+  PromptsConfig,
+  Section,
+  SprintGoalFraming,
+  SprintPlan,
+  TestSuite,
+} from '../../../types';
 import type { SprintBacklog } from '../../../services/ai-provider';
 import { buildReinstatement } from '../../../lib/reinstate';
 import { goalPlan, planFromShape } from '../../../lib/sprintPlan';
 import { SprintSetup } from './SprintSetup';
-import { SprintBrief } from './SprintBrief';
+import { SprintCoach } from './SprintCoach';
+import { SprintPlanReview } from './SprintPlanReview';
 import { SprintRunner } from './SprintRunner';
 
 export interface SprintModalProps {
@@ -27,7 +35,12 @@ export interface SprintModalProps {
   promptsConfig: PromptsConfig;
 }
 
-type Phase = 'setup' | 'brief' | 'running';
+type Phase = 'setup' | 'coach' | 'plan' | 'running';
+
+interface GoalContext {
+  framing: SprintGoalFraming;
+  transcript?: string;
+}
 
 function findById(nodes: Section[], id: string | null): Section | null {
   if (!id) return null;
@@ -62,6 +75,7 @@ export function SprintModal({
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [plan, setPlan] = useState<SprintPlan | null>(null);
+  const [goalCtx, setGoalCtx] = useState<GoalContext | null>(null);
   const [briefSeed, setBriefSeed] = useState<{ shape: ArgumentShape | null; totalMin: number }>({
     shape: null,
     totalMin: mode === 'content' ? 35 : 10,
@@ -86,6 +100,7 @@ export function SprintModal({
     if (isOpen) {
       setPhase('setup');
       setPlan(null);
+      setGoalCtx(null);
     }
   }, [isOpen]);
 
@@ -96,6 +111,7 @@ export function SprintModal({
     else setShowContent(false);
     setPhase('setup');
     setPlan(null);
+    setGoalCtx(null);
   };
 
   const initialText =
@@ -134,18 +150,35 @@ export function SprintModal({
     );
   }
 
-  if (phase === 'brief') {
+  if (phase === 'plan' && goalCtx) {
     return (
-      <SprintBrief
-        isOpen={isOpen}
+      <SprintPlanReview
         sectionTitle={section.title}
         targetSectionId={section.id}
         spec={entry?.spec}
         shape={briefSeed.shape}
         totalMin={briefSeed.totalMin}
         backlog={backlog}
-        promptsConfig={promptsConfig}
+        framing={goalCtx.framing}
+        transcript={goalCtx.transcript}
+        config={promptsConfig}
         onStart={startWithPlan}
+        onBack={() => setPhase('coach')}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (phase === 'coach') {
+    return (
+      <SprintCoach
+        sectionTitle={section.title}
+        spec={entry?.spec}
+        config={promptsConfig}
+        onReady={(framing, transcript) => {
+          setGoalCtx({ framing, transcript });
+          setPhase('plan');
+        }}
         onBack={() => setPhase('setup')}
         onClose={onClose}
       />
@@ -157,9 +190,9 @@ export function SprintModal({
       mode={mode}
       sectionTitle={section.title}
       onStart={onStartSetup}
-      onBrief={(shape, totalMin) => {
+      onCoach={(shape, totalMin) => {
         setBriefSeed({ shape, totalMin });
-        setPhase('brief');
+        setPhase('coach');
       }}
       onClose={onClose}
     />

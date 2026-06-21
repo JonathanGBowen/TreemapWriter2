@@ -15,6 +15,9 @@ import type {
   DirectiveSuggestion,
   ArgumentShape,
   SprintPlan,
+  SprintMove,
+  SprintGoalFraming,
+  SprintGranularity,
   VersionComparison,
   AtmosphericInstrument,
   ReadingMode,
@@ -56,6 +59,19 @@ export interface AIProvider {
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
+  /**
+   * Streaming coach turn for the sprint start protocol (the chat / hybrid
+   * styles). The ADHD-coaching inquiry rule: it asks rather than tells, and
+   * offers the smallest next step when the writer stalls. Mirrors
+   * `continueDialogue` — the full (windowed) history travels each turn.
+   */
+  coachSprintTurn(input: CoachSprintTurnInput): AsyncIterable<string>;
+  /**
+   * Goblin-style recursive breakdown of ONE step into 2–4 sub-steps. The caller
+   * splices the result back in (lib/sprintEdit.replaceStepWithChildren), keeping
+   * the plan's total exact.
+   */
+  decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]>;
   compareVersions(input: CompareVersionsInput): Promise<VersionComparison>;
   analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string>;
 }
@@ -78,11 +94,48 @@ export interface GenerateSprintPlanInput {
   spec?: SectionSpec;
   /** The writer's stated aim for this session (free text from the Brief). */
   sessionGoal: string;
+  /**
+   * The coach-captured goal framing (WOOP or plain). When present its `wish`
+   * supersedes `sessionGoal` and the obstacle / if-then steer the plan.
+   */
+  goal?: SprintGoalFraming;
+  /** Goblin "spiciness": how finely to decompose. Defaults to coarse. */
+  granularity?: SprintGranularity;
+  /** Optional free-text context (e.g. a coach-chat transcript) to ground the plan. */
+  extraContext?: string;
   /** The chosen shape skeleton to bend; null = freeform. */
   shape: ArgumentShape | null;
   /** Total minutes; the returned durations must sum to totalMin × 60. */
   totalMin: number;
   backlog: SprintBacklog;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface CoachSprintTurnInput {
+  /** The section being worked, for framing. */
+  sectionTitle: string;
+  /** The section's spec, if any (function, main claim, required moves). */
+  spec?: SectionSpec;
+  /** Which goal model the protocol is running (steers the coach's questions). */
+  goalModel: 'woop' | 'plain';
+  /** Full conversation history; the last message is the new user turn. */
+  messages: DialogueMessage[];
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface DecomposeSprintStepInput {
+  /** The section being worked, for framing. */
+  sectionTitle: string;
+  /** The step to break down. */
+  step: SprintMove;
+  /** Goblin "spiciness" for the breakdown. Defaults to medium. */
+  granularity?: SprintGranularity;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
