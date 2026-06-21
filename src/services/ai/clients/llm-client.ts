@@ -30,6 +30,13 @@ export interface LLMRequest {
   thinkingBudget?: number;
   /** Required by Anthropic; ignored by Gemini/Ollama. Per-call default applies. */
   maxTokens?: number;
+  /**
+   * Client-side-only trace metadata (never sent to a provider). The Agent SDK
+   * client uses these to label/scope the live thinking/activity trace it emits;
+   * other clients ignore them. Injected by the AIProvider per call kind.
+   */
+  traceLabel?: string;
+  traceKind?: string;
 }
 
 export interface LLMClient {

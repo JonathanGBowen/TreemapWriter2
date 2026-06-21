@@ -4,6 +4,7 @@ import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from './ai/clients';
 import type { AnalysisSpell, PromptsConfig, RevisionInstruction } from '../types';
+import type { TraceRun } from '../state/trace-state';
 
 /**
  * Global, app-level preferences that are NOT tied to a specific project.
@@ -30,6 +31,8 @@ const REVISION_INSTRUCTION_ACTIVE_KEY = 'treemap_writer_revision_instruction_act
 const AGENT_MODE_ENABLED_KEY = 'treemap_writer_agent_mode_enabled';
 const AGENT_SIDECAR_URL_KEY = 'treemap_writer_agent_sidecar_url';
 const AGENT_SDK_MODEL_KEY = 'treemap_writer_agent_sdk_model';
+const AGENT_TRACE_SAVING_KEY = 'treemap_writer_agent_trace_saving';
+const AGENT_TRACES_KEY = 'treemap_writer_agent_traces';
 
 /** Default agent-sdk model when Agent mode is on (the user is on a Max plan). */
 export const DEFAULT_AGENT_SDK_MODEL = 'claude-opus-4-8';
@@ -203,4 +206,27 @@ export async function getAgentSdkModel(): Promise<string> {
 
 export async function setAgentSdkModel(model: string): Promise<void> {
   await set(AGENT_SDK_MODEL_KEY, model);
+}
+
+/**
+ * Agent SDK activity traces: whether finished runs are mirrored to IndexedDB
+ * (default on; the live in-UI trace shows regardless), and the capped list of
+ * saved runs for the optional audit viewer. App-global — never in project files.
+ */
+export async function getAgentTraceSaving(): Promise<boolean> {
+  const stored = await get(AGENT_TRACE_SAVING_KEY);
+  return stored === undefined ? true : Boolean(stored);
+}
+
+export async function setAgentTraceSaving(enabled: boolean): Promise<void> {
+  await set(AGENT_TRACE_SAVING_KEY, enabled);
+}
+
+export async function getSavedAgentTraces(): Promise<TraceRun[]> {
+  const stored = await get<TraceRun[]>(AGENT_TRACES_KEY);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export async function setSavedAgentTraces(runs: TraceRun[]): Promise<void> {
+  await set(AGENT_TRACES_KEY, runs);
 }

@@ -19,6 +19,9 @@ export const AgentSdkSettingsSection: React.FC = () => {
   const setEnabled = useStore((s) => s.setAgentModeEnabled);
   const setSidecarUrl = useStore((s) => s.setAgentSidecarUrl);
   const setAgentSdkModel = useStore((s) => s.setAgentSdkModel);
+  const traceSavingEnabled = useStore((s) => s.traceSavingEnabled);
+  const setTraceSavingEnabled = useStore((s) => s.setTraceSavingEnabled);
+  const setShowAgentTraceModal = useStore((s) => s.setShowAgentTraceModal);
 
   const [open, setOpen] = useState(false);
   const [urlDraft, setUrlDraft] = useState(sidecarUrl);
@@ -139,6 +142,41 @@ export const AgentSdkSettingsSection: React.FC = () => {
                 )}
               </p>
             )}
+          </div>
+
+          {/* Activity traces — live in the UI always; saving is optional + auditable here. */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-text">
+                Activity traces
+              </span>
+              <p className="text-[10px] text-hld-muted font-mono mt-0.5">
+                Live thinking shows in-app while running.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowAgentTraceModal(true)}
+                className="px-3 py-1.5 bg-hld-surface border border-hld-border rounded text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted hover:text-hld-text transition-colors"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={traceSavingEnabled}
+                onClick={() => setTraceSavingEnabled(!traceSavingEnabled)}
+                title="Save finished runs for later auditing"
+                className={`px-3 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest font-bold transition-colors ${
+                  traceSavingEnabled
+                    ? 'bg-hld-magenta text-hld-bg hover:bg-hld-magenta/80'
+                    : 'bg-hld-surface border border-hld-border text-hld-muted hover:text-hld-text'
+                }`}
+              >
+                {traceSavingEnabled ? 'Saving' : 'Save off'}
+              </button>
+            </div>
           </div>
 
           <p className="text-[10px] text-hld-muted leading-relaxed font-mono">

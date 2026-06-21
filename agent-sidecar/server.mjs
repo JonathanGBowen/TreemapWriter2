@@ -5,9 +5,12 @@
 // exposes the same provider-agnostic contract the webview's AgentSdkClient
 // speaks (see src/services/ai/clients/agent-sdk-client.ts):
 //
-//   GET  /health   -> { ok, authed, model }
-//   POST /generate -> { text }                          (final result text)
-//   POST /stream   -> NDJSON: { delta } per chunk, then { done: true } (or { error })
+//   GET  /health           -> { ok, authed, model }
+//   POST /generate|/stream -> typed NDJSON, one object per line:
+//        { t:'think', delta } | { t:'text', delta } | { t:'activity', label }
+//        | { t:'done', text } (terminal) | { t:'error', error } (terminal)
+//   The client collects `done.text` (generateText) or yields `text` deltas
+//   (streamText); both forward every line to the UI thinking/activity trace.
 //
 // JSON is produced via a system-prompt instruction and read back by the app's
 // tolerant safeJsonParse + normalizers (Anthropic/Ollama parity) — NOT the SDK's
@@ -22,7 +25,8 @@
 // Verified against @anthropic-ai/claude-agent-sdk 0.3.185:
 //   query({ prompt, options }); options.{model,systemPrompt,allowedTools,
 //   settingSources,permissionMode,includePartialMessages};
-//   assistant msg -> message.message.content;
+//   partial frames -> { type:'stream_event', event: BetaRawMessageStreamEvent }
+//   (content_block_delta -> delta.text / delta.thinking);
 //   result msg -> { type:'result', subtype:'success', result }.
 
 import { createServer } from 'node:http';
@@ -67,7 +71,11 @@ function buildOptions(body) {
     settingSources: [],
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
-    includePartialMessages: false,
+    // Surface live thinking/text deltas so the UI can show an activity trace.
+    // (Adds no latency; thinking depth is left at the model's default. Whatever
+    // the model exposes — readable thinking deltas, or only token estimates when
+    // the chain of thought is redacted — is forwarded as trace events.)
+    includePartialMessages: true,
   };
   if (systemParts.length) options.systemPrompt = systemParts.join('\n\n');
   // NOTE: we deliberately do NOT use the SDK's strict `outputFormat`. The app
@@ -79,14 +87,26 @@ function buildOptions(body) {
   return options;
 }
 
-/** Concatenate the text blocks of an assistant message. */
-function assistantText(message) {
-  const content = message?.message?.content;
-  if (!Array.isArray(content)) return '';
-  return content
-    .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
-    .map((b) => b.text)
-    .join('');
+/**
+ * Map one SDK message to zero or more typed trace lines. Text + thinking come
+ * from the partial `stream_event` frames (includePartialMessages); the redacted
+ * thinking phase only yields token estimates, surfaced as an activity line.
+ */
+function sdkMessageToTraceLines(message) {
+  const out = [];
+  if (message.type === 'stream_event') {
+    const ev = message.event;
+    if (ev && ev.type === 'content_block_delta' && ev.delta) {
+      if (ev.delta.type === 'text_delta' && ev.delta.text) {
+        out.push({ t: 'text', delta: ev.delta.text });
+      } else if (ev.delta.type === 'thinking_delta' && ev.delta.thinking) {
+        out.push({ t: 'think', delta: ev.delta.thinking });
+      }
+    }
+  } else if (message.type === 'system' && message.subtype === 'thinking_tokens') {
+    out.push({ t: 'activity', label: `thinking… ~${message.estimated_tokens ?? '?'} tokens` });
+  }
+  return out;
 }
 
 async function readJson(req) {
@@ -96,40 +116,35 @@ async function readJson(req) {
   return raw ? JSON.parse(raw) : {};
 }
 
-async function handleGenerate(body, res) {
-  let acc = '';
-  let finalText = '';
-  for await (const message of query({ prompt: buildPrompt(body), options: buildOptions(body) })) {
-    if (message.type === 'assistant') {
-      acc += assistantText(message);
-    } else if (message.type === 'result') {
-      if (message.subtype !== 'success') {
-        throw new Error(message.result || `Agent run failed (${message.subtype}).`);
-      }
-      finalText = message.result || acc;
-    }
-  }
-  // The final result text is returned as-is. For JSON kinds the app reads it
-  // back through its tolerant safeJsonParse (which extracts the object even from
-  // surrounding prose) + a defensive normalizer — the same path the Anthropic
-  // and Ollama providers use.
-  send(res, 200, { text: finalText || acc });
-}
-
-async function handleStream(body, res) {
+/**
+ * Shared handler for /generate and /stream: runs the SDK and streams typed NDJSON
+ * trace events. The client collects the terminal `done` (generateText) or yields
+ * `text` deltas (streamText); both forward all events to the UI trace.
+ */
+async function handleRun(body, res) {
   res.writeHead(200, { 'Content-Type': 'application/x-ndjson', ...CORS });
+  const write = (obj) => res.write(JSON.stringify(obj) + '\n');
+  let acc = '';
   try {
     for await (const message of query({ prompt: buildPrompt(body), options: buildOptions(body) })) {
-      if (message.type === 'assistant') {
-        const text = assistantText(message);
-        if (text) res.write(JSON.stringify({ delta: text }) + '\n');
-      } else if (message.type === 'result' && message.subtype !== 'success') {
-        res.write(JSON.stringify({ error: message.result || 'Agent run failed.' }) + '\n');
+      if (message.type === 'result') {
+        if (message.subtype !== 'success') {
+          write({ t: 'error', error: message.result || `Agent run failed (${message.subtype}).` });
+          res.end();
+          return;
+        }
+        // Final text comes from the authoritative `result`. For JSON kinds the app
+        // reads it back via its tolerant safeJsonParse — Anthropic/Ollama parity.
+        write({ t: 'done', text: message.result || acc });
+      } else {
+        for (const line of sdkMessageToTraceLines(message)) {
+          if (line.t === 'text') acc += line.delta;
+          write(line);
+        }
       }
     }
-    res.write(JSON.stringify({ done: true }) + '\n');
   } catch (e) {
-    res.write(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }) + '\n');
+    write({ t: 'error', error: e instanceof Error ? e.message : String(e) });
   }
   res.end();
 }
@@ -154,12 +169,8 @@ const server = createServer(async (req, res) => {
       });
       return;
     }
-    if (req.method === 'POST' && req.url === '/generate') {
-      await handleGenerate(await readJson(req), res);
-      return;
-    }
-    if (req.method === 'POST' && req.url === '/stream') {
-      await handleStream(await readJson(req), res);
+    if (req.method === 'POST' && (req.url === '/generate' || req.url === '/stream')) {
+      await handleRun(await readJson(req), res);
       return;
     }
     send(res, 404, { error: 'Not found' });

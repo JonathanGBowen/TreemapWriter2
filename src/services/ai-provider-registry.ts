@@ -25,6 +25,10 @@ import {
   DEFAULT_AGENT_SIDECAR_URL,
 } from './ai/clients';
 import type { AgentSidecarHealth } from './ai/clients';
+// Re-exported so boot can wire the trace store into the agent client without the
+// client importing the store (mirrors setModelConfigSource).
+export { setAgentTraceSink } from './ai/clients';
+export type { AgentTraceSinkEvent } from './ai/clients';
 import { MultiProviderAIProvider } from './ai/ai-provider.impl';
 import { resolveModelChoice } from './ai/resolve-model-choice';
 import { getSecret } from './credentials';

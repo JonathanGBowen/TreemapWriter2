@@ -49,6 +49,7 @@ import type {
   AnalyzeAtmosphereInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
+import { AI_CALL_KIND_LABELS } from './model-types';
 import type { LLMClient, LLMMessage } from './clients';
 import { getPromptText } from '../prompts';
 import { generateSpecs } from './ai-provider.specs';
@@ -117,11 +118,24 @@ export class MultiProviderAIProvider implements AIProvider {
     return this.resolveChoice(kind);
   }
 
-  private clientFor(provider: ProviderId): LLMClient {
-    if (provider === 'anthropic') return this.clients.anthropic;
-    if (provider === 'ollama') return this.clients.ollama;
-    if (provider === 'agent-sdk') return this.clients.agentSdk;
-    return this.clients.gemini;
+  private clientFor(provider: ProviderId, kind?: AICallKind): LLMClient {
+    const base =
+      provider === 'anthropic'
+        ? this.clients.anthropic
+        : provider === 'ollama'
+          ? this.clients.ollama
+          : provider === 'agent-sdk'
+            ? this.clients.agentSdk
+            : this.clients.gemini;
+    // For the Agent SDK, wrap each call so it carries a trace label + kind; the
+    // agent client uses these to label/scope the live thinking/activity trace it
+    // emits. Other providers ignore trace fields, so return the raw client.
+    if (provider !== 'agent-sdk' || !kind) return base;
+    const traceLabel = AI_CALL_KIND_LABELS[kind];
+    return {
+      generateText: (req) => base.generateText({ ...req, traceLabel, traceKind: kind }),
+      streamText: (req) => base.streamText({ ...req, traceLabel, traceKind: kind }),
+    };
   }
 
   /**
@@ -134,7 +148,7 @@ export class MultiProviderAIProvider implements AIProvider {
 
   async generateSpecs(input: GenerateSpecsInput): Promise<void> {
     const choice = this.choose('generateSpecs', input);
-    await generateSpecs(this.clientFor(choice.provider), choice.model, choice.thinkingBudget ?? 0, input);
+    await generateSpecs(this.clientFor(choice.provider, 'generateSpecs'), choice.model, choice.thinkingBudget ?? 0, input);
   }
 
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {
@@ -176,7 +190,7 @@ export class MultiProviderAIProvider implements AIProvider {
     });
 
     const choice = this.choose('runDiagnostic', input);
-    const text = await this.clientFor(choice.provider).generateText({
+    const text = await this.clientFor(choice.provider, 'runDiagnostic').generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -236,7 +250,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.dependenciesPrompt}\n\nSECTIONS DATA:\n${JSON.stringify(contextData, null, 2)}\n  `;
 
     const choice = this.choose('estimateDependencies', input);
-    const text = await this.clientFor(choice.provider).generateText({
+    const text = await this.clientFor(choice.provider, 'estimateDependencies').generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -263,7 +277,7 @@ export class MultiProviderAIProvider implements AIProvider {
 
   async getCoachAdvice(input: CoachAdviceInput): Promise<string> {
     const choice = this.choose('getCoachAdvice', input);
-    return this.clientFor(choice.provider).generateText({
+    return this.clientFor(choice.provider, 'getCoachAdvice').generateText({
       model: choice.model,
       prompt: buildCoachPrompt(input),
       thinkingBudget: choice.thinkingBudget,
@@ -274,7 +288,7 @@ export class MultiProviderAIProvider implements AIProvider {
   /** Streaming sibling of getCoachAdvice — same prompt, yielded token-by-token. */
   async *streamCoachAdvice(input: CoachAdviceInput): AsyncIterable<string> {
     const choice = this.choose('streamCoachAdvice', input);
-    const stream = this.clientFor(choice.provider).streamText({
+    const stream = this.clientFor(choice.provider, 'streamCoachAdvice').streamText({
       model: choice.model,
       prompt: buildCoachPrompt(input),
       thinkingBudget: choice.thinkingBudget,
@@ -289,7 +303,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.suggestContentPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nSection Goals: "${input.currentGoals}"\nCurrent Content:\n---\n${input.fullSectionContent}\n---\n      `;
 
     const choice = this.choose('getContentSuggestions', input);
-    return this.clientFor(choice.provider).generateText({
+    return this.clientFor(choice.provider, 'getContentSuggestions').generateText({
       model: choice.model,
       prompt,
       thinkingBudget: choice.thinkingBudget,
@@ -301,7 +315,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.generatePersonasPrompt}\n\nTEXT SAMPLE:\n---\n${input.documentContext}\n---\n`;
 
     const choice = this.choose('generatePersonas', input);
-    const text = await this.clientFor(choice.provider).generateText({
+    const text = await this.clientFor(choice.provider, 'generatePersonas').generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -326,7 +340,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.refineSpecPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nCurrent Goals: "${input.currentGoals}"\nSection Content: "${input.fullSectionContent}"\n\nUSER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals for clarity, conciseness, and completeness.'}"\n      `;
 
     const choice = this.choose('refineSpec', input);
-    const text = await this.clientFor(choice.provider).generateText({
+    const text = await this.clientFor(choice.provider, 'refineSpec').generateText({
       model: choice.model,
       prompt,
       thinkingBudget: choice.thinkingBudget,
@@ -373,7 +387,7 @@ export class MultiProviderAIProvider implements AIProvider {
     parseError = 'Analysis response could not be parsed.',
   ): Promise<SectionAnalysis> {
     const choice = this.choose(kind, input);
-    const text = await this.clientFor(choice.provider).generateText({
+    const text = await this.clientFor(choice.provider, kind).generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -388,7 +402,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]> {
     const choice = this.choose('generateRevisions', input);
     return generateRevisions(
-      this.clientFor(choice.provider),
+      this.clientFor(choice.provider, 'generateRevisions'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -398,7 +412,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]> {
     const choice = this.choose('suggestDirectives', input);
     return suggestDirectives(
-      this.clientFor(choice.provider),
+      this.clientFor(choice.provider, 'suggestDirectives'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -408,7 +422,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan> {
     const choice = this.choose('generateSprintPlan', input);
     return generateSprintPlan(
-      this.clientFor(choice.provider),
+      this.clientFor(choice.provider, 'generateSprintPlan'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -418,7 +432,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]> {
     const choice = this.choose('decomposeSprintStep', input);
     return decomposeSprintStep(
-      this.clientFor(choice.provider),
+      this.clientFor(choice.provider, 'decomposeSprintStep'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -428,7 +442,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async compareVersions(input: CompareVersionsInput): Promise<VersionComparison> {
     const choice = this.choose('compareVersions', input);
     return compareVersions(
-      this.clientFor(choice.provider),
+      this.clientFor(choice.provider, 'compareVersions'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -438,7 +452,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string> {
     const choice = this.choose('analyzeAtmosphere', input);
     return analyzeAtmosphere(
-      this.clientFor(choice.provider),
+      this.clientFor(choice.provider, 'analyzeAtmosphere'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -464,7 +478,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('continueDialogue', input);
-    const stream = this.clientFor(choice.provider).streamText({
+    const stream = this.clientFor(choice.provider, 'continueDialogue').streamText({
       model: choice.model,
       messages,
       systemInstruction,
@@ -496,7 +510,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('coachSprintTurn', input);
-    const stream = this.clientFor(choice.provider).streamText({
+    const stream = this.clientFor(choice.provider, 'coachSprintTurn').streamText({
       model: choice.model,
       messages,
       systemInstruction,

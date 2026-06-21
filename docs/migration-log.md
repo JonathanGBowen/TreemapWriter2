@@ -2918,3 +2918,63 @@ Haiku catalog row (and its test assertion) and restore the `outputFormat`/
 **Current state.** The Agent SDK offers Opus/Sonnet/Haiku in every model picker, and
 each of the 18 call kinds routes through a transport path proven against the existing
 providers (streamed text, plain text, tolerant-parsed JSON).
+
+---
+
+## 2026-06-21 — Agent SDK: live thinking/activity trace in the UI + optional audit log
+
+**Context.** When the Agent SDK runs a call, the one-shot UIs showed only a static
+marker ("Evaluating…", "Thinking…"). This streams the model's live thinking/activity
+into those surfaces while it runs, and saves traces for optional, out-of-the-way
+auditing. (The helper is tool-less, so the trace is the reasoning stream + answer +
+SDK progress notices, not literal tool calls.)
+
+**What changed.** Additive; the SDK stays out of the browser bundle.
+
+- **Helper emits a typed event stream.** `agent-sidecar/server.mjs` sets
+  `includePartialMessages: true` and both endpoints now stream typed NDJSON —
+  `{t:'think'|'text'|'activity'}` then terminal `{t:'done',text}` / `{t:'error'}` —
+  mapped from the SDK's `stream_event` partial frames (`content_block_delta` →
+  text/thinking) and `thinking_tokens` system messages. (Redacted-thinking phases
+  surface as a token-estimate activity line; the feature degrades gracefully.)
+- **Client forwards a trace side-channel.** `agent-sdk-client.ts` parses the typed
+  stream, preserves its contracts (`generateText` collects `done.text`; `streamText`
+  yields `text` deltas — with a fallback to `done.text` if no deltas arrived), and
+  emits start/think/text/activity/end events to an injected sink
+  (`setAgentTraceSink`, wired in `state/index.ts` — the client never imports the
+  store, mirroring `setModelConfigSource`). New client-only `LLMRequest.traceLabel`/
+  `traceKind`, injected per call kind by a `clientFor(provider, kind)` proxy in
+  `ai-provider.impl.ts` (using the existing `AI_CALL_KIND_LABELS`).
+- **Trace store + persistence.** New ephemeral `state/trace-state.ts` slice
+  (`traceRuns` capped at 25, `activeRunIds`, coalescing of consecutive same-type
+  deltas). Finished runs mirror to IndexedDB (app-global via `preferences.ts`, never
+  in git-tracked project files) when saving is on; hydrated at boot, all writes
+  `.catch`-guarded so a storage failure can't surface as an unhandled rejection.
+- **Inline ticker (`features/shared/AgentTraceTicker.tsx`).** A muted one-liner
+  showing the latest line of the most recent in-flight run whose `callKind` matches a
+  `kinds` prop (per-surface correlation under overlap; invisible otherwise). Wired
+  into the one-shot status surfaces: Analysis/Diagnostic footer, Coach, Content
+  suggestions, Spec refine, Sprint-plan, Climate, Compare, Revisions, Personas. (The
+  few kinds without a clean status marker — generateSpecs, estimateDependencies,
+  suggestDirectives — still record runs visible in the audit viewer.)
+- **Audit viewer + entry (unobtrusive).** `features/modals/AgentTraceModal.tsx`
+  (self-mounts on `showAgentTraceModal`, `ModalShell`, expandable per-run logs, Clear)
+  opened from a "View" link beside a "Save traces" toggle inside the collapsed
+  Experimental — Claude Agent SDK disclosure.
+
+**How to verify.** `npm run typecheck`, `npm test` (272 — +6: trace-store reducer +
+client trace-line/body-trace), `npm run build` pass; SDK absent from `dist/`;
+`node --check agent-sidecar/server.mjs` + boot/`/health`. Manual E2E (token, Agent
+mode on): an Analysis shows the live thinking line in the footer; Sprint-plan/Coach/
+Compare/Climate/Revisions/Specs surfaces show their tickers; AI settings →
+Experimental → View traces lists runs with thinking logs; toggle Save traces off →
+ticker still shows live, no new saved runs; Agent mode off → no tickers/runs.
+
+**Rollback.** `git revert` — additive. Remove the trace slice + its store wiring, the
+ticker/modal, the `setAgentTraceSink` sink + `traceLabel`/`traceKind` plumbing, and
+revert `server.mjs` to emitting only `{delta}`/`{done}` text.
+
+**Current state.** While the Agent SDK works, its reasoning streams into the relevant
+in-progress UI, and finished runs are auditable (opt-out) from the Experimental
+settings — satisfying the earlier "finer token-by-token streaming" follow-up via
+`includePartialMessages`.

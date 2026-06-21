@@ -9,6 +9,7 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { guardContextFit } from '../shared/context-guard';
 import { ModelPicker } from './ModelPicker';
 import { useModelChoice } from './use-model-choice';
+import { AgentTraceTicker } from '../shared/AgentTraceTicker';
 
 interface CoachModalProps {
   markdown: string;
@@ -177,6 +178,10 @@ export const CoachModal: React.FC<CoachModalProps> = ({
                <div className="text-[11px] font-mono uppercase tracking-[0.1em] text-hld-muted animate-pulse">
                  Analyzing structure & generating plan...
                </div>
+               <AgentTraceTicker
+                 kinds={['getCoachAdvice', 'streamCoachAdvice']}
+                 className="mt-3 flex items-center gap-1.5 text-[10px] font-mono text-hld-muted max-w-md min-w-0 px-4"
+               />
             </div>
           )}
 

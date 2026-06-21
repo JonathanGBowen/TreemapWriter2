@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Play } from "lucide-react";
 import { useStore } from "../../state";
 import { DEFAULT_PERSONAS } from "../../lib/defaultPersonas";
+import { AgentTraceTicker } from "../shared/AgentTraceTicker";
 
 /** Pinned footer: the single lit RUN DIAGNOSTIC action (P1), with a quiet caption
  *  below naming the evaluator persona and the content-suggestions escape — both
@@ -31,6 +32,10 @@ export function PanelFooter({ runDisabled }: { runDisabled: boolean }) {
       >
         {isProcessing ? 'Evaluating…' : <><Play size={11} fill="currentColor" /> Run Diagnostic</>}
       </button>
+      <AgentTraceTicker
+        kinds={['analyzeSection', 'runDiagnostic', 'refactorAnalysis']}
+        className="mt-[8px] flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+      />
       <div className="mt-[11px] flex items-center gap-[6px] text-[11px] text-hld-muted-text-2">
         <span className="shrink-0">Evaluated as</span>
         <button

@@ -3,14 +3,18 @@
 // subprocess; it CANNOT run in the webview. So this client is a thin proxy: it
 // forwards provider-agnostic LLMRequests to a small Node helper (see
 // `agent-sidecar/`) on localhost, which runs the SDK against the user's Claude
-// subscription and streams text back. The SDK is never imported here — only an
-// HTTP contract — so it never enters the browser bundle.
+// subscription. The SDK is never imported here — only an HTTP contract — so it
+// never enters the browser bundle.
 //
-// Wire contract (kept deliberately tiny, mirrors the Ollama NDJSON streaming):
-//   GET  /health   -> { ok: boolean, authed: boolean, model?: string }
-//   POST /generate -> { text: string }            (or { error } on failure)
-//   POST /stream   -> NDJSON lines: { delta } per chunk, then { done: true }
-//                     (or a { error } line); same framing as Ollama's /api/chat.
+// Both endpoints stream the same typed NDJSON event schema (one JSON object per line):
+//   { t: 'think',    delta }   // thinking-token delta (live reasoning)
+//   { t: 'text',     delta }   // assistant text delta
+//   { t: 'activity', label }   // coarse step / progress note
+//   { t: 'done',     text  }   // terminal: the final result text
+//   { t: 'error',    error }   // terminal: failure
+// `generateText` collects to `done`; `streamText` yields `text` deltas. Both also
+// forward every event to an injected trace sink (see setAgentTraceSink) so the UI
+// can show a live thinking/activity trace and save it for optional auditing.
 
 import type { LLMClient, LLMRequest } from './llm-client';
 
@@ -23,7 +27,36 @@ export interface AgentSidecarHealth {
   model?: string;
 }
 
-/** Body sent to the helper. Pure + exported so it can be unit-tested. */
+/** A trace event emitted by the client as a run progresses. Consumed by the trace store. */
+export type AgentTraceSinkEvent =
+  | { type: 'start'; runId: string; label?: string; callKind?: string; model: string; at: number }
+  | { type: 'think'; runId: string; delta: string; at: number }
+  | { type: 'text'; runId: string; delta: string; at: number }
+  | { type: 'activity'; runId: string; label: string; at: number }
+  | { type: 'end'; runId: string; status: 'success' | 'error'; errorMessage?: string; at: number };
+
+export type AgentTraceSink = (event: AgentTraceSinkEvent) => void;
+
+// Injected at boot (mirrors setModelConfigSource) so the client never imports the
+// store — avoids a cycle. Null in tests / before boot, which is harmless.
+let traceSink: AgentTraceSink | null = null;
+export function setAgentTraceSink(sink: AgentTraceSink | null): void {
+  traceSink = sink;
+}
+function emit(event: AgentTraceSinkEvent): void {
+  try {
+    traceSink?.(event);
+  } catch {
+    // A misbehaving sink must never break an AI call.
+  }
+}
+
+function newRunId(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  return c?.randomUUID?.() ?? `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Body sent to the helper. Pure + exported so it can be unit-tested. (Trace fields stay client-side.) */
 export interface AgentRequestBody {
   model: string;
   prompt?: string;
@@ -48,17 +81,33 @@ export function buildAgentRequestBody(req: LLMRequest): AgentRequestBody {
   };
 }
 
-/** Parse one NDJSON stream line into a delta, or throw on an error line. */
-export function parseStreamLine(line: string): string | null {
-  let obj: { delta?: unknown; error?: unknown; done?: unknown };
+export type TraceLine =
+  | { t: 'think'; delta: string }
+  | { t: 'text'; delta: string }
+  | { t: 'activity'; label: string }
+  | { t: 'done'; text: string };
+
+/** Parse one NDJSON line into a typed event (or null to skip); throws on an error line. */
+export function parseTraceLine(line: string): TraceLine | null {
+  let obj: Record<string, unknown>;
   try {
-    obj = JSON.parse(line) as typeof obj;
+    obj = JSON.parse(line) as Record<string, unknown>;
   } catch {
     return null;
   }
   if (typeof obj.error === 'string') throw new Error(obj.error);
-  if (obj.done) return null;
-  return typeof obj.delta === 'string' ? obj.delta : null;
+  switch (obj.t) {
+    case 'think':
+      return typeof obj.delta === 'string' ? { t: 'think', delta: obj.delta } : null;
+    case 'text':
+      return typeof obj.delta === 'string' ? { t: 'text', delta: obj.delta } : null;
+    case 'activity':
+      return typeof obj.label === 'string' ? { t: 'activity', label: obj.label } : null;
+    case 'done':
+      return { t: 'done', text: typeof obj.text === 'string' ? obj.text : '' };
+    default:
+      return null;
+  }
 }
 
 const UNREACHABLE =
@@ -88,38 +137,74 @@ export class AgentSdkClient implements LLMClient {
   }
 
   async generateText(req: LLMRequest): Promise<string> {
-    const res = await this.post('/generate', req);
-    const json = (await res.json()) as { text?: string; error?: string };
-    if (json.error) throw new Error(json.error);
-    return json.text ?? '';
+    const runId = this.startRun(req);
+    let acc = '';
+    let finalText = '';
+    try {
+      const res = await this.post('/generate', req);
+      for await (const line of readNdjson(res)) {
+        const ev = parseTraceLine(line);
+        if (!ev) continue;
+        if (ev.t === 'text') {
+          acc += ev.delta;
+          emit({ type: 'text', runId, delta: ev.delta, at: Date.now() });
+        } else if (ev.t === 'think') {
+          emit({ type: 'think', runId, delta: ev.delta, at: Date.now() });
+        } else if (ev.t === 'activity') {
+          emit({ type: 'activity', runId, label: ev.label, at: Date.now() });
+        } else if (ev.t === 'done') {
+          finalText = ev.text || acc;
+        }
+      }
+      emit({ type: 'end', runId, status: 'success', at: Date.now() });
+      return finalText || acc;
+    } catch (e) {
+      emit({ type: 'end', runId, status: 'error', errorMessage: errMsg(e), at: Date.now() });
+      throw e;
+    }
   }
 
   async *streamText(req: LLMRequest): AsyncIterable<string> {
-    const res = await this.post('/stream', req);
-    if (!res.body) throw new Error('Agent SDK helper returned no stream body.');
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    // Newline-delimited JSON, one object per chunk (same framing as Ollama).
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let nl: number;
-      while ((nl = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, nl).trim();
-        buffer = buffer.slice(nl + 1);
-        if (!line) continue;
-        const delta = parseStreamLine(line);
-        if (delta) yield delta;
+    const runId = this.startRun(req);
+    let yielded = false;
+    try {
+      const res = await this.post('/stream', req);
+      for await (const line of readNdjson(res)) {
+        const ev = parseTraceLine(line);
+        if (!ev) continue;
+        if (ev.t === 'text') {
+          emit({ type: 'text', runId, delta: ev.delta, at: Date.now() });
+          yielded = true;
+          yield ev.delta;
+        } else if (ev.t === 'think') {
+          emit({ type: 'think', runId, delta: ev.delta, at: Date.now() });
+        } else if (ev.t === 'activity') {
+          emit({ type: 'activity', runId, label: ev.label, at: Date.now() });
+        } else if (ev.t === 'done') {
+          // Fallback: if no text deltas streamed (e.g. partials were sparse),
+          // emit the authoritative final text so the caller isn't left empty.
+          if (!yielded && ev.text) yield ev.text;
+          break;
+        }
       }
+      emit({ type: 'end', runId, status: 'success', at: Date.now() });
+    } catch (e) {
+      emit({ type: 'end', runId, status: 'error', errorMessage: errMsg(e), at: Date.now() });
+      throw e;
     }
-    const tail = buffer.trim();
-    if (tail) {
-      const delta = parseStreamLine(tail);
-      if (delta) yield delta;
-    }
+  }
+
+  private startRun(req: LLMRequest): string {
+    const runId = newRunId();
+    emit({
+      type: 'start',
+      runId,
+      label: req.traceLabel,
+      callKind: req.traceKind,
+      model: req.model,
+      at: Date.now(),
+    });
+    return runId;
   }
 
   private async post(path: string, req: LLMRequest): Promise<Response> {
@@ -133,8 +218,7 @@ export class AgentSdkClient implements LLMClient {
     } catch {
       throw new Error(UNREACHABLE);
     }
-    if (!res.ok) {
-      // The helper sends a JSON { error } body on known failures; fall back to status.
+    if (!res.ok || !res.body) {
       const detail = await res
         .clone()
         .json()
@@ -144,6 +228,30 @@ export class AgentSdkClient implements LLMClient {
     }
     return res;
   }
+}
+
+/** Read a fetch response body as newline-delimited JSON lines. */
+async function* readNdjson(res: Response): AsyncIterable<string> {
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (line) yield line;
+    }
+  }
+  const tail = buffer.trim();
+  if (tail) yield tail;
+}
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
 }
 
 function normalizeBaseUrl(url: string): string {

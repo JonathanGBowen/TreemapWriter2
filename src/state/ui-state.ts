@@ -76,6 +76,8 @@ export interface UIStateSlice {
   showRemoteProjectModal: boolean;
   /** Revision feature settings (instruction · model · token preview · prompts). */
   showRevisionSettingsModal: boolean;
+  /** Agent SDK activity-trace audit viewer (opened from AI settings; not front-and-center). */
+  showAgentTraceModal: boolean;
   // project.md changed on disk outside the app while the editor had unsaved
   // edits — prompt the user to reload or overwrite (see sync-policy).
   showExternalChangeModal: boolean;
@@ -119,6 +121,7 @@ export interface UIStateSlice {
   setShowConflictModal: (show: boolean) => void;
   setShowRemoteProjectModal: (show: boolean) => void;
   setShowRevisionSettingsModal: (show: boolean) => void;
+  setShowAgentTraceModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
 }
 
@@ -165,6 +168,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showConflictModal: false,
   showRemoteProjectModal: false,
   showRevisionSettingsModal: false,
+  showAgentTraceModal: false,
   showExternalChangeModal: false,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
@@ -205,5 +209,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowConflictModal: (show) => set({ showConflictModal: show }),
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
   setShowRevisionSettingsModal: (show) => set({ showRevisionSettingsModal: show }),
+  setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
 });
