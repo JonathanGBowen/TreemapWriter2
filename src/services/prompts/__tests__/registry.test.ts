@@ -25,6 +25,9 @@ const HISTORICAL_KEYS = [
   'generatePersonasPrompt',
   'generateRevisionsPrompt',
   'generateSprintPlanPrompt',
+  // Sprint coach start protocol (2026-06-21) — conversational goal-setting + Goblin breakdown.
+  'sprintCoachPrompt',
+  'decomposeStepPrompt',
   'l1TaskInstruction',
   'refactorAnalysisPrompt',
   'refineSpecPrompt',

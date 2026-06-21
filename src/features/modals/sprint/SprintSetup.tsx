@@ -20,11 +20,11 @@ interface SprintSetupProps {
   mode: 'goal' | 'content';
   sectionTitle: string;
   onStart: (shape: ArgumentShape | null, totalMin: number) => void;
-  onBrief: (shape: ArgumentShape | null, totalMin: number) => void;
+  onCoach: (shape: ArgumentShape | null, totalMin: number) => void;
   onClose: () => void;
 }
 
-export function SprintSetup({ mode, sectionTitle, onStart, onBrief, onClose }: SprintSetupProps) {
+export function SprintSetup({ mode, sectionTitle, onStart, onCoach, onClose }: SprintSetupProps) {
   const presets = TOTAL_PRESETS[mode];
   const [totalMin, setTotalMin] = useState(mode === 'content' ? 35 : 10);
   const [shapeId, setShapeId] = useState<string | null>(
@@ -35,15 +35,13 @@ export function SprintSetup({ mode, sectionTitle, onStart, onBrief, onClose }: S
 
   const footer = (
     <>
-      {mode === 'content' && (
-        <button
-          type="button"
-          onClick={() => onBrief(shape, totalMin)}
-          className="flex items-center gap-[6px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-yellow hover:border-hld-yellow/40 font-mono text-[9px] tracking-[0.12em] uppercase px-[14px] py-[10px] transition-colors"
-        >
-          <Sparkles size={12} /> Generate brief
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => onCoach(shape, totalMin)}
+        className="flex items-center gap-[6px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-yellow hover:border-hld-yellow/40 font-mono text-[9px] tracking-[0.12em] uppercase px-[14px] py-[10px] transition-colors"
+      >
+        <Sparkles size={12} /> Start with coach
+      </button>
       <button
         type="button"
         onClick={() => onStart(shape, totalMin)}

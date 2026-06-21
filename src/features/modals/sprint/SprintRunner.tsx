@@ -174,7 +174,7 @@ export function SprintRunner({
               ))}
             </div>
             {isReinstate ? (
-              <ReinstatePanel reinstatement={reinstatement} lastTouchedDays={lastTouchedDays} />
+              <ReinstatePanel reinstatement={reinstatement} lastTouchedDays={lastTouchedDays} goal={plan.goal} />
             ) : (
               <SprintEditor value={text} onChange={setText} onSubmit={engine.advance} />
             )}

@@ -2716,3 +2716,73 @@ before), just without the explicit guardrail.
 expect APA in-text citations + a `## References` section built from the entries, with no
 "missing/fabricated quote" proposals raised against the bibliography chips; verbatim quote-checking
 still fires against a pasted/uploaded full-text source.
+## 2026-06-21 — Coach-driven sprint start protocol
+
+**Context.** Living Sprints' Brief took a one-line goal in a single textarea and
+generated one fixed, non-editable plan. The research report
+(`docs/` — Evidence-Based Check-In Protocols) argues the goal-setting moment
+should be a real coaching beat (GOAL → STEPS → MONITOR; WOOP for the goal; the
+ADHD-coaching inquiry rule) feeding a Goblin-style decomposition. This wave
+evolves the Brief into a start protocol that defines the goal and breaks it into
+an editable, recursively-decomposable plan that flows straight into the runner.
+
+**What changed.**
+
+- **Sprint phases.** `SprintModal` now runs `setup → coach → plan → running`
+  (was `setup → brief → running`). `SprintBrief.tsx` is removed; its coach-line
+  framing + graceful-fallback logic moved into the new components. The "Start
+  with coach" entry is offered for **both** Goal and Content sprints; the instant
+  no-AI Start is unchanged (coaching is opt-in).
+- **Coach styles (all three, persisted).** New `SprintCoach.tsx` hosts two
+  persisted selectors (`useCoachPrefs`): coach style — `CoachGuided.tsx`
+  (no-AI single-action-per-screen wizard), `CoachChat.tsx` (streaming inquiry
+  conversation), or **hybrid** (guided with a "talk it through" escape hatch) —
+  and goal model — **WOOP** (wish → inner obstacle → if-then plan) or **plain**.
+  Both follow "last-selected becomes the default" (`preferences.ts`:
+  `get/setSprintCoachStyle`, `get/setSprintGoalModel`).
+- **Goblin plan editor.** New `SprintPlanReview.tsx` + `SprintStepRow.tsx`:
+  a granularity ("spiciness") `SegControl` (coarse/medium/fine — regenerates),
+  inline title/instruction edits, add/remove/reorder, and a recursive
+  **"break down ↳"** on any step. All structural ops go through the pure,
+  unit-tested `src/lib/sprintEdit.ts`, which keeps move durations summing to the
+  plan total and pins the reinstate opener.
+- **Data model (extend, don't collapse).** New `SprintGoalFraming`
+  (`{ model, wish, obstacle?, ifThen? }`) and `SprintGranularity` in
+  `types/index.ts`; `SprintPlan` gains an optional `goal`. The runner's
+  `ReinstatePanel` shows the captured goal and (WOOP) the obstacle + pre-committed
+  if-then at the point of performance. No persisted field added — plans stay
+  ephemeral.
+- **AI layer.** `generateSprintPlan` extended (goal framing + granularity +
+  optional transcript context; prompt `generate-sprint-plan.md` updated). Two new
+  flows mirroring existing patterns: `coachSprintTurn` (streaming, like
+  `continueDialogue`; prompt `sprint-coach.md`) and `decomposeSprintStep`
+  (structured output, like `generateSprintPlan`; prompt `decompose-step.md`). Both
+  added to the `AICallKind` union/array/labels + `DEFAULT_MODEL_CONFIG` (flash,
+  fast) and registered in the prompt registry (category `sprints`, editable). On
+  any AI failure the plan phase degrades to the shape/goal default — never blocks.
+
+**How to verify.** `npm test` (new `sprintEdit` suite — 12 tests; registry +
+specs config tests updated for the two new editable prompts; 245 total),
+`npm run typecheck`, `npm run build` pass; `npm run lint` adds no new errors. In
+app (`npm run dev`): open a sprint → "Start with coach" → toggle coach style +
+goal model and reopen to confirm the choice persists → guided WOOP captures
+wish/obstacle/if-then; chat streams; hybrid offers both → in the plan editor
+change granularity (regenerates), edit/add/remove/reorder, "break down" a step
+(children replace it, durations re-sum) → Start → reinstate panel shows the goal
+(+ WOOP if-then); strict auto-advance still saves before advancing. Same path for
+a Goal sprint. With no API key the plan falls back to the shape/goal default.
+
+**Rollback.** `git revert` — additive and front-end + AI-layer only. Restore
+`SprintBrief.tsx` and its `SprintModal` wiring; delete `SprintCoach`,
+`CoachGuided`, `CoachChat`, `SprintPlanReview`, `SprintStepRow`,
+`use-coach-prefs`, `src/lib/sprintEdit.ts` (+ test), the two prompts +
+registry/model entries, the `coachSprintTurn`/`decomposeSprintStep` interface
+methods + impls, the `generateSprintPlan` input extensions, the two preferences,
+and the `SprintGoalFraming`/`SprintGranularity` types + `SprintPlan.goal`. No
+Rust, no persisted project fields, no on-disk layout touched — older project
+files stay valid.
+
+**Current state.** A sprint can now open with a coach that defines the goal
+(guided / chat / hybrid; WOOP or plain) and decomposes it into an editable,
+recursively-breakable plan that runs directly. The remaining profile-driven items
+are F2 (provenance marking) and F3 (the Good-Enough stop gate).
