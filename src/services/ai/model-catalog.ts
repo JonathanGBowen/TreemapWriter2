@@ -133,6 +133,16 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'balanced',
     contextWindow: 200_000,
   },
+  {
+    provider: 'agent-sdk',
+    id: 'claude-haiku-4-5',
+    displayName: 'Haiku 4.5 (Agent SDK)',
+    desc: 'Fast Claude, via your subscription.',
+    supportsThinking: false,
+    defaultThinkingBudget: 0,
+    tier: 'fast',
+    contextWindow: 200_000,
+  },
 ];
 
 /** Look up catalog metadata for a provider+model, if known. */

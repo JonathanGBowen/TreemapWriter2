@@ -6,8 +6,13 @@
 // speaks (see src/services/ai/clients/agent-sdk-client.ts):
 //
 //   GET  /health   -> { ok, authed, model }
-//   POST /generate -> { text }                          (structured output serialized to text)
+//   POST /generate -> { text }                          (final result text)
 //   POST /stream   -> NDJSON: { delta } per chunk, then { done: true } (or { error })
+//
+// JSON is produced via a system-prompt instruction and read back by the app's
+// tolerant safeJsonParse + normalizers (Anthropic/Ollama parity) — NOT the SDK's
+// strict output_format, which would add a hard-failure mode on the app's
+// permissive schemas.
 //
 // Auth: Max subscription only. We DELETE ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN
 // from the environment at startup so the SDK uses the subscription OAuth token
@@ -16,9 +21,9 @@
 //
 // Verified against @anthropic-ai/claude-agent-sdk 0.3.185:
 //   query({ prompt, options }); options.{model,systemPrompt,allowedTools,
-//   disallowedTools,settingSources,permissionMode,outputFormat,includePartialMessages};
-//   outputFormat: { type:'json_schema', schema }; assistant msg -> message.message.content;
-//   result msg -> { type:'result', subtype:'success', result, structured_output }.
+//   settingSources,permissionMode,includePartialMessages};
+//   assistant msg -> message.message.content;
+//   result msg -> { type:'result', subtype:'success', result }.
 
 import { createServer } from 'node:http';
 
@@ -65,9 +70,12 @@ function buildOptions(body) {
     includePartialMessages: false,
   };
   if (systemParts.length) options.systemPrompt = systemParts.join('\n\n');
-  if (body.responseJsonSchema !== undefined) {
-    options.outputFormat = { type: 'json_schema', schema: body.responseJsonSchema };
-  }
+  // NOTE: we deliberately do NOT use the SDK's strict `outputFormat`. The app
+  // reads JSON back through a tolerant parser (safeJsonParse + a defensive
+  // normalizer) exactly as it does for the Anthropic/Ollama providers, so the
+  // JSON instruction above is sufficient. Strict output_format adds a
+  // hard-failure mode (error_max_structured_output_retries) and risks rejecting
+  // the app's permissive schemas (no additionalProperties:false) — not worth it.
   return options;
 }
 
@@ -91,7 +99,6 @@ async function readJson(req) {
 async function handleGenerate(body, res) {
   let acc = '';
   let finalText = '';
-  let structured;
   for await (const message of query({ prompt: buildPrompt(body), options: buildOptions(body) })) {
     if (message.type === 'assistant') {
       acc += assistantText(message);
@@ -99,14 +106,14 @@ async function handleGenerate(body, res) {
       if (message.subtype !== 'success') {
         throw new Error(message.result || `Agent run failed (${message.subtype}).`);
       }
-      structured = message.structured_output;
       finalText = message.result || acc;
     }
   }
-  // Structured output (sprint plans) is serialized to text so the app's tolerant
-  // safeJsonParse consumes it exactly as it does for the other providers.
-  const text = structured !== undefined ? JSON.stringify(structured) : finalText || acc;
-  send(res, 200, { text });
+  // The final result text is returned as-is. For JSON kinds the app reads it
+  // back through its tolerant safeJsonParse (which extracts the object even from
+  // surrounding prose) + a defensive normalizer — the same path the Anthropic
+  // and Ollama providers use.
+  send(res, 200, { text: finalText || acc });
 }
 
 async function handleStream(body, res) {

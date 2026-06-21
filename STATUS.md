@@ -162,11 +162,15 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   `'claude-oauth'` to `src/services/credentials.ts`); finer token-by-token
   streaming (the helper streams at assistant-message granularity today,
   `includePartialMessages: false`); and re-verify the SDK option/message names
-  (`outputFormat`, `structured_output`, tool-restriction) on each upgrade — pinned
-  to `@anthropic-ai/claude-agent-sdk` 0.3.185. The webview→localhost contract is the
-  portable path (browser-only dev can't reach a desktop-spawned helper), so keep it
-  even when Rust owns the process. ToS note: subscription OAuth in a custom app is a
-  gray area — single-user, own-machine use only.
+  (`query` / `options.{model,systemPrompt,allowedTools,settingSources,permissionMode}`
+  / `result`, tool-restriction) on each upgrade — pinned to
+  `@anthropic-ai/claude-agent-sdk` 0.3.185. JSON kinds currently use a prompt
+  instruction + the app's tolerant `safeJsonParse` (Anthropic/Ollama parity), not the
+  SDK's strict `output_format`; optional hardening is `output_format` **with graceful
+  fallback** to that path, for strict typing once it can be verified per-schema. The
+  webview→localhost contract is the portable path (browser-only dev can't reach a
+  desktop-spawned helper), so keep it even when Rust owns the process. ToS note:
+  subscription OAuth in a custom app is a gray area — single-user, own-machine use only.
 - **Confirm-modal usage audit.** `ConfirmModal` (and native `confirm()`) exist;
   the ADHD-UX rule is "undo, not confirm" except for project delete. Audit usages
   to verify they're destructive-only; replace any non-destructive confirm with an

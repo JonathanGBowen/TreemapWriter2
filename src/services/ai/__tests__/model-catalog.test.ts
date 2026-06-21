@@ -15,6 +15,15 @@ describe('DEFAULT_CATALOG', () => {
     expect(ollama.length).toBe(0);
   });
 
+  it('seeds the three Claude tiers for the experimental Agent SDK provider', () => {
+    const agentSdk = DEFAULT_CATALOG.filter((m) => m.provider === 'agent-sdk');
+    expect(agentSdk.map((m) => m.id)).toEqual([
+      'claude-opus-4-8',
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5',
+    ]);
+  });
+
   it('looks models up by provider + id', () => {
     expect(findCatalogModel(DEFAULT_CATALOG, 'gemini', 'gemini-3.1-pro-preview')?.tier).toBe('deep');
     expect(findCatalogModel(DEFAULT_CATALOG, 'gemini', 'nope')).toBeUndefined();

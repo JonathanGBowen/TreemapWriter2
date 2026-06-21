@@ -49,10 +49,13 @@ hit **Check** to confirm the helper is reachable and authenticated.
 | `/generate` | POST | `{ model, prompt?, messages?, systemInstruction?, json?, responseJsonSchema?, maxTokens? }` → `{ text }` |
 | `/stream` | POST | same body → NDJSON: `{ delta }` per chunk, then `{ done: true }` (or `{ error }`) |
 
-When `responseJsonSchema` is present, the helper uses the SDK's
-`outputFormat: { type: 'json_schema', schema }` and serializes the validated
-object back as `text` (the app parses it with the same tolerant JSON parser it
-uses for every provider).
+For JSON kinds (`json: true`, with or without `responseJsonSchema`), the helper
+adds a "respond with only JSON" instruction to the system prompt and returns the
+result text. The app reads it back through its tolerant `safeJsonParse` (which
+extracts the JSON object even from surrounding prose) plus a defensive
+normalizer — the same path the Anthropic and Ollama providers use. The helper
+deliberately does **not** use the SDK's strict `output_format`, which would add a
+hard-failure mode against the app's permissive schemas.
 
 ## Notes
 

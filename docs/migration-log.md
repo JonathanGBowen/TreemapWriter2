@@ -2865,3 +2865,56 @@ SDK on a Max subscription via a local helper, opt-in and off by default, with th
 standard API path unchanged. Productionization follow-ups (Rust-owned helper
 lifecycle + token from the keyring; finer token-streaming; verifying SDK option
 names on upgrade) are logged in `STATUS.md`.
+
+---
+
+## 2026-06-21 — Agent SDK: all three Claude tiers selectable + reliable JSON parity
+
+**Context.** Two follow-ups on the experimental Agent SDK provider: make Sonnet +
+Haiku selectable (and confirm the provider appears in every model picker), and make
+*every* call kind behave reliably now that `agent-sdk` is selectable for any of the
+18 kinds — not just the six dialogue/coaching defaults.
+
+**What changed.**
+
+- **Haiku added to the catalog.** `model-catalog.ts` gains a third `agent-sdk` seed
+  row (`claude-haiku-4-5`, fast tier) beside Opus 4.8 / Sonnet 4.6. No UI edits were
+  needed: `ModelPicker` is the single shared control (used by AI-settings default +
+  per-task, `CoachModal`, `RevisionSettingsModal`, `ContentSuggestionsModal`,
+  `sprint/SprintCoach`, `sprint/SprintPlanReview`) and renders the catalog unfiltered,
+  so all three tiers now appear in all six pickers + the Agent-mode dropdown. (An audit
+  confirmed every `Record<ProviderId,…>`, `clientFor`, `isValidChoice`, `context-budget`,
+  and the keyless provider design already handle `agent-sdk` — no gaps.)
+- **Helper JSON path now mirrors the Anthropic client.** `agent-sidecar/server.mjs` no
+  longer uses the SDK's strict `outputFormat` / `structured_output`. For any JSON kind
+  it adds the "respond with only JSON" instruction to the system prompt and returns the
+  result text; the app reads it back through its tolerant `safeJsonParse`
+  (`src/lib/utils.ts` — direct parse → fence → brace/bracket extraction from prose) plus
+  the per-kind normalizer, exactly as it does for Anthropic/Ollama. This removes a
+  hard-failure surface (`error_max_structured_output_retries`) that strict mode would
+  expose on the app's permissive schemas (none set `additionalProperties:false`), and
+  brings all four schema kinds (revisions, directives, sprint-plan/decompose, compare)
+  and the five schema-less JSON kinds onto one proven path. Streaming (NDJSON deltas)
+  and plain-text kinds were already correct and are unchanged.
+- **Test.** `model-catalog.test.ts` now asserts the three `agent-sdk` ids
+  (opus/sonnet/haiku) so the tiers can't silently regress.
+- **Docs.** `agent-sidecar/README.md` contract note updated (JSON via instruction +
+  tolerant parser, not `output_format`); the `STATUS.md` helper follow-up item updated
+  to log the optional future hardening (`output_format` *with graceful fallback* for
+  strict typing once it can be verified per-schema; finer token-by-token streaming).
+
+**How to verify.** `npm run typecheck`, `npm test` (267 — +1 catalog assertion),
+`npm run build` pass; Agent SDK absent from `dist/`; `node --check agent-sidecar/server.mjs`
+and a boot + `GET /health` succeed. Manual E2E (needs a token) per bucket while Agent
+mode is on: a Dialogue + sprint Coach chat stream; Coach/refine return prose; a sprint
+plan + Compare parse and normalize (the path the strict-mode removal protects); an
+Analysis/Diagnostic parses via `safeJsonParse`; Opus/Sonnet/Haiku all appear under
+"Claude Agent SDK" and Haiku runs; toggling off reverts to Gemini/Anthropic.
+
+**Rollback.** `git revert` — additive + a helper-internal behavior change. Remove the
+Haiku catalog row (and its test assertion) and restore the `outputFormat`/
+`structured_output` branch in `server.mjs` if strict mode is ever wanted back.
+
+**Current state.** The Agent SDK offers Opus/Sonnet/Haiku in every model picker, and
+each of the 18 call kinds routes through a transport path proven against the existing
+providers (streamed text, plain text, tolerant-parsed JSON).
