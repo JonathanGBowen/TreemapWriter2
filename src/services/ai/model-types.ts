@@ -17,6 +17,7 @@ export type AICallKind =
   | 'runDiagnostic'
   | 'estimateDependencies'
   | 'getCoachAdvice'
+  | 'streamCoachAdvice'
   | 'getContentSuggestions'
   | 'generatePersonas'
   | 'refineSpec'
@@ -35,6 +36,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'runDiagnostic',
   'estimateDependencies',
   'getCoachAdvice',
+  'streamCoachAdvice',
   'getContentSuggestions',
   'generatePersonas',
   'refineSpec',
@@ -54,6 +56,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   runDiagnostic: 'Run diagnostic',
   estimateDependencies: 'Estimate dependencies',
   getCoachAdvice: 'Coach advice',
+  streamCoachAdvice: 'Coach advice (live)',
   getContentSuggestions: 'Content suggestions',
   generatePersonas: 'Generate personas',
   refineSpec: 'Refine spec',
