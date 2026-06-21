@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-18.** Update this file whenever a feature ships or is
+> **Current as of 2026-06-19.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md).
@@ -129,7 +129,11 @@ passes only); drag-resizable workspace columns (via the shared
 
 - **Version Compare follow-ups.** Shipped 2026-06-17 (see
   [`docs/migration-log.md`](docs/migration-log.md)); deep day-grained history +
-  Dock launcher added the same day. Remaining deliberate limits, by mood: (a) the
+  Dock launcher added the same day. A toggle-able **parallel (aligned)
+  side-by-side viewer** for the diff pane shipped 2026-06-19 — off by default,
+  unchanged lines aligned with blank gutters for adds/removes (see
+  [`docs/migration-log.md`](docs/migration-log.md)). Remaining deliberate limits,
+  by mood: (a) the
   deep index reaches back `COMPARE_INDEX_LIMIT = 2000` snapshots
   ([`src/services/tauri-repository.ts`](src/services/tauri-repository.ts)) — ample
   for one dissertation; a parameterless `snapshot_list_all` Rust command + a
