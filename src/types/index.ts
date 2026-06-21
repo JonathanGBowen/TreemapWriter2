@@ -497,6 +497,13 @@ export type SprintMoveRole =
   | 'synthesize'
   | 'bridge';
 
+/**
+ * Goblin-style "spiciness": how finely the coach decomposes a goal into steps.
+ * Coarser ⇒ fewer, larger steps (the default — a PhD writer deepens on demand);
+ * finer ⇒ more, smaller steps.
+ */
+export type SprintGranularity = 'coarse' | 'medium' | 'fine';
+
 export interface SprintMove {
   id: string;
   /** Short imperative label, e.g. "Draft the reply". */
@@ -511,6 +518,23 @@ export interface SprintMove {
   fromRequiredMoveId?: string;
 }
 
+/**
+ * The session goal captured by the coach start protocol, before decomposition.
+ * `plain` is goal-only; `woop` adds the inner obstacle + a pre-committed if-then
+ * plan (Oettingen/Gollwitzer — naming the inner obstacle and the response is the
+ * best-validated goal-setting move). Ephemeral run-state, carried on the plan so
+ * the runner's reinstate panel can show it at the point of performance.
+ */
+export interface SprintGoalFraming {
+  model: 'woop' | 'plain';
+  /** The one thing that has to be true by the end of the sprint. */
+  wish: string;
+  /** WOOP: the main *inner* obstacle that will get in the way. */
+  obstacle?: string;
+  /** WOOP: "if [obstacle], then I will [response]" — the pre-committed plan. */
+  ifThen?: string;
+}
+
 export interface SprintPlan {
   /** Which ArgumentShape seeded it (null = freeform / AI / goal plan). */
   shapeId: string | null;
@@ -520,6 +544,8 @@ export interface SprintPlan {
   totalSec: number;
   /** moves[0] is conventionally the Reinstate move. */
   moves: SprintMove[];
+  /** The coach-captured goal that produced this plan (when the coach was used). */
+  goal?: SprintGoalFraming;
 }
 
 export interface ArgumentShape {

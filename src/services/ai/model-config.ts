@@ -35,6 +35,10 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   suggestDirectives: g('gemini-3.1-pro-preview', 2048),
   // Light/fast: a sprint plan is short and the Brief must feel quick (>200ms rule).
   generateSprintPlan: g('gemini-3-flash-preview', 0),
+  // Live coach turn — must feel instant; flash, streamed token-by-token.
+  coachSprintTurn: g('gemini-3-flash-preview', 0),
+  // A single-step breakdown is tiny and must feel instant — flash, no thinking.
+  decomposeSprintStep: g('gemini-3-flash-preview', 0),
   // Heavy reasoning over two whole drafts — mirror analyzeSection's pro-tier budget.
   compareVersions: g('gemini-3.1-pro-preview', 16000),
   // Atmospheric reading over a whole draft — same pro-tier budget as analyzeSection.

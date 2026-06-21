@@ -6,10 +6,13 @@
 
 import { Pip } from '../../shared/Pip';
 import type { Reinstatement } from '../../../lib/reinstate';
+import type { SprintGoalFraming } from '../../../types';
 
 interface ReinstatePanelProps {
   reinstatement: Reinstatement;
   lastTouchedDays: number | null;
+  /** The coach-captured goal for this sprint (supersedes the spec-derived goal). */
+  goal?: SprintGoalFraming;
 }
 
 function BlockLabel({ pip, children }: { pip: 'cyan' | 'magenta' | 'yellow'; children: React.ReactNode }) {
@@ -21,20 +24,36 @@ function BlockLabel({ pip, children }: { pip: 'cyan' | 'magenta' | 'yellow'; chi
   );
 }
 
-export function ReinstatePanel({ reinstatement, lastTouchedDays }: ReinstatePanelProps) {
+export function ReinstatePanel({ reinstatement, lastTouchedDays, goal: framing }: ReinstatePanelProps) {
   const { goal, lastSentence, fragments } = reinstatement;
   const ago = lastTouchedDays == null ? '' : ` — ${lastTouchedDays}d ago`;
+  // The coach-captured goal wins over the spec-derived one when present.
+  const sprintGoal = framing?.wish?.trim() || goal;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-[16px] pr-1">
       <div>
-        <BlockLabel pip="cyan">This section must earn</BlockLabel>
-        {goal ? (
-          <div className="text-[13px] leading-relaxed text-hld-text border-l-2 border-hld-cyan pl-3">{goal}</div>
+        <BlockLabel pip="cyan">This sprint must earn</BlockLabel>
+        {sprintGoal ? (
+          <div className="text-[13px] leading-relaxed text-hld-text border-l-2 border-hld-cyan pl-3">{sprintGoal}</div>
         ) : (
           <div className="text-[12px] text-hld-muted-text italic pl-3">No goal set yet — define one in this sprint.</div>
         )}
       </div>
+
+      {framing?.model === 'woop' && (framing.obstacle || framing.ifThen) && (
+        <div>
+          <BlockLabel pip="yellow">If you slip, here's your move</BlockLabel>
+          {framing.obstacle && (
+            <div className="text-[12px] leading-relaxed text-hld-muted-text pl-3">⚠ {framing.obstacle}</div>
+          )}
+          {framing.ifThen && (
+            <div className="text-[12.5px] leading-relaxed text-hld-yellow border-l-2 border-hld-yellow/50 pl-3 mt-[5px]">
+              {framing.ifThen}
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <BlockLabel pip="magenta">Last sentence you wrote{ago}</BlockLabel>

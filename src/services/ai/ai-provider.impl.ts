@@ -14,6 +14,7 @@ import type {
   RevisionProposal,
   DirectiveSuggestion,
   SprintPlan,
+  SprintMove,
   VersionComparison,
   ReadingMode,
 } from '../../types';
@@ -42,6 +43,8 @@ import type {
   GenerateRevisionsInput,
   SuggestDirectivesInput,
   GenerateSprintPlanInput,
+  CoachSprintTurnInput,
+  DecomposeSprintStepInput,
   CompareVersionsInput,
   AnalyzeAtmosphereInput,
 } from '../ai-provider';
@@ -51,7 +54,7 @@ import { getPromptText } from '../prompts';
 import { generateSpecs } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
 import { suggestDirectives } from './ai-provider.suggest-directives';
-import { generateSprintPlan } from './ai-provider.sprint';
+import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
 import { analyzeAtmosphere } from './ai-provider.atmosphere';
 
@@ -409,6 +412,16 @@ export class MultiProviderAIProvider implements AIProvider {
     );
   }
 
+  async decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]> {
+    const choice = this.choose('decomposeSprintStep', input);
+    return decomposeSprintStep(
+      this.clientFor(choice.provider),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
   async compareVersions(input: CompareVersionsInput): Promise<VersionComparison> {
     const choice = this.choose('compareVersions', input);
     return compareVersions(
@@ -448,6 +461,38 @@ export class MultiProviderAIProvider implements AIProvider {
     const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('continueDialogue', input);
+    const stream = this.clientFor(choice.provider).streamText({
+      model: choice.model,
+      messages,
+      systemInstruction,
+      thinkingBudget: choice.thinkingBudget,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * Streaming coach turn for the sprint start protocol. Like continueDialogue,
+   * the full history travels each turn (stateless provider). The system
+   * instruction is the sprint-coach prompt + the section framing + which goal
+   * model is running (WOOP vs plain).
+   */
+  async *coachSprintTurn(input: CoachSprintTurnInput): AsyncIterable<string> {
+    const spec = input.spec;
+    const framing = [
+      `SECTION: "${input.sectionTitle}"`,
+      spec ? `FUNCTION: ${spec.function}` : '',
+      spec ? `MAIN CLAIM: ${spec.mainClaim}` : '',
+      `GOAL MODEL: ${input.goalModel === 'woop' ? 'WOOP (wish → inner obstacle → if-then plan)' : 'plain (just the one concrete goal)'}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const systemInstruction = `${input.config.sprintCoachPrompt}\n\nCONTEXT:\n${framing}`;
+
+    const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
+
+    const choice = this.choose('coachSprintTurn', input);
     const stream = this.clientFor(choice.provider).streamText({
       model: choice.model,
       messages,

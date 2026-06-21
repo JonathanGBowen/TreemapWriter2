@@ -27,6 +27,8 @@ export type AICallKind =
   | 'generateRevisions'
   | 'suggestDirectives'
   | 'generateSprintPlan'
+  | 'coachSprintTurn'
+  | 'decomposeSprintStep'
   | 'compareVersions'
   | 'analyzeAtmosphere';
 
@@ -46,6 +48,8 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'generateRevisions',
   'suggestDirectives',
   'generateSprintPlan',
+  'coachSprintTurn',
+  'decomposeSprintStep',
   'compareVersions',
   'analyzeAtmosphere',
 ];
@@ -66,6 +70,8 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   generateRevisions: 'Generate revisions',
   suggestDirectives: 'Suggest directives',
   generateSprintPlan: 'Generate sprint plan',
+  coachSprintTurn: 'Sprint coach (live)',
+  decomposeSprintStep: 'Break down step',
   compareVersions: 'Compare versions',
   analyzeAtmosphere: 'Atmosphere',
 };
