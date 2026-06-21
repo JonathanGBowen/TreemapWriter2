@@ -49,5 +49,10 @@ export const useStore = create<AppState>()((...args) => ({
 // (avoids a cycle). The provider reads the active per-project + global config here.
 setModelConfigSource(() => {
   const s = useStore.getState();
-  return { projectConfig: s.modelConfig, globalDefault: s.globalModelDefault };
+  return {
+    projectConfig: s.modelConfig,
+    globalDefault: s.globalModelDefault,
+    agentMode: s.agentModeEnabled,
+    agentModel: s.agentSdkModel,
+  };
 });

@@ -2786,3 +2786,82 @@ files stay valid.
 (guided / chat / hybrid; WOOP or plain) and decomposes it into an editable,
 recursively-breakable plan that runs directly. The remaining profile-driven items
 are F2 (provenance marking) and F3 (the Good-Enough stop gate).
+
+---
+
+## 2026-06-21 — Optional Claude Agent SDK transport (experimental "Agent mode")
+
+**Context.** An experiment: route the app's **dialogue** features and **coaching**
+features (the latter including the structured sprint-plan output) through the
+**Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) against the user's **Claude
+Max subscription**, instead of per-token API calls — while the standard one-off
+API path stays the default and nothing breaks. The hard constraint: the Agent SDK
+is a Node library that spawns a Claude Code subprocess, so it **cannot run in the
+Tauri webview** (and the Tauri backend is Rust, not Node). The app already has the
+right seam for it — the `LLMClient` transport interface — so the SDK becomes a
+fourth provider whose webview half is a thin proxy to a local Node helper.
+
+**What changed.** Additive; front-end + a new standalone folder. No Rust, no
+on-disk project layout, no persisted project fields.
+
+- **New provider `'agent-sdk'`.** Added to `ProviderId` (`model-types.ts`),
+  accepted by `normalizeModelConfig` (`model-config.ts`), seeded in the catalog
+  (`model-catalog.ts`: Opus 4.8 / Sonnet 4.6 "via subscription"), dispatched in
+  `MultiProviderAIProvider.clientFor` (`ai-provider.impl.ts`), and surfaced in
+  `ModelPicker` + the catalog editor. Because all prompt-building/parsing lives one
+  layer up, every AI flow can route through it unchanged.
+- **Webview client (thin proxy).** `src/services/ai/clients/agent-sdk-client.ts`
+  implements `LLMClient` over a tiny localhost HTTP contract (`/health`,
+  `/generate`, NDJSON `/stream` — mirrors the Ollama fetch-streaming). The SDK is
+  **never imported here**, so it never enters the browser bundle (verified: absent
+  from `dist/`).
+- **Node helper.** `agent-sidecar/` — a standalone package (`server.mjs`, own
+  `package.json` + deps, `.env.example`, `README.md`) that runs the SDK tool-less
+  (`allowedTools: []`, `settingSources: []`) as a dialogue/structured engine. It
+  maps `responseJsonSchema` → the SDK's `outputFormat: {type:'json_schema'}` and
+  serializes `structured_output` back as text for the app's tolerant parser. **Max
+  OAuth only:** it deletes `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` at startup so
+  the subscription token (`CLAUDE_CODE_OAUTH_TOKEN` / `claude login`) wins. Verified
+  against SDK 0.3.185.
+- **"Agent mode" toggle + routing.** Global prefs (`preferences.ts`:
+  `get/setAgentModeEnabled` [default **off**], `get/setAgentSidecarUrl`
+  [`localhost:8787`], `get/setAgentSdkModel` [`claude-opus-4-8`]) hydrated into
+  `ai-state.ts`. `resolveModelChoice` gains an optional `AgentRouting`: when on, the
+  six dialogue/coaching kinds (`AGENT_DEFAULT_KINDS`: continueDialogue,
+  streamCoachAdvice, getCoachAdvice, coachSprintTurn, generateSprintPlan,
+  decomposeSprintStep) resolve to `agent-sdk`; a per-project per-kind override still
+  wins (the opt-out escape hatch), and any other kind can be opted in manually.
+  Boot wires `agentMode`/`agentModel` into the registry's `ModelConfigSource`.
+- **UI (no clutter).** `AgentSdkSettingsSection.tsx` — a collapsed disclosure inside
+  AI settings: on/off, model, helper URL + a reachability/auth **Check** (`ping`),
+  and inline setup help. No new modal, no top-level surface.
+- **Build/config.** `agent` npm script; `agent-sidecar` excluded from the webview
+  `tsconfig` + ESLint (it's a separate Node package). Tauri CSP is `null`
+  (unrestricted) so localhost works today — left unchanged to avoid breaking the
+  existing providers; if a CSP is ever added, `connect-src` must include the helper.
+
+**How to verify.** `npm run typecheck`, `npm test` (266 total — +9: resolver
+Agent-mode routing, agent-sdk client body/stream helpers, agent-sdk provider
+acceptance), and `npm run build` pass; the Agent SDK is confirmed **absent from
+`dist/`**. `npm run lint` adds **no new findings** (5 pre-existing errors remain in
+`livePreview.ts` and `SpecGeneratorModal.tsx`, untouched here). Helper boots and
+`GET /health` returns `{ok, authed, model}`. Manual E2E (needs a token): in
+`agent-sidecar/`, `claude setup-token` → export `CLAUDE_CODE_OAUTH_TOKEN` →
+`npm run agent`; in the app enable Agent mode → section Dialogue streams via the
+SDK, sprint Coach chat streams, generate-sprint-plan returns a valid structured
+plan; toggle off reverts to Gemini/Anthropic; a non-default kind (e.g. generateSpecs)
+stays on its provider until explicitly switched.
+
+**Rollback.** `git revert` — additive. Delete `agent-sidecar/`,
+`agent-sdk-client.ts`, `AgentSdkSettingsSection.tsx`; drop `'agent-sdk'` from
+`ProviderId`/catalog/`clientFor`/`ModelPicker`/`isValidChoice`; remove the
+`AgentRouting` branch in `resolve-model-choice.ts`, the agent prefs + state, the
+registry wiring (`agentSdk` client, `setAgentSidecarUrl`, `pingAgentSidecar`,
+`ModelConfigSource` fields), the `agent` script, and the tsconfig/ESLint ignores.
+No persisted data or on-disk layout to migrate.
+
+**Current state.** Dialogue + coaching can optionally run through the Claude Agent
+SDK on a Max subscription via a local helper, opt-in and off by default, with the
+standard API path unchanged. Productionization follow-ups (Rust-owned helper
+lifecycle + token from the keyring; finer token-streaming; verifying SDK option
+names on upgrade) are logged in `STATUS.md`.

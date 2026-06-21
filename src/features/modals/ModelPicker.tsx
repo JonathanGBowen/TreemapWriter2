@@ -7,8 +7,9 @@ const PROVIDER_LABEL: Record<ProviderId, string> = {
   gemini: 'Gemini',
   anthropic: 'Anthropic',
   ollama: 'Ollama (local)',
+  'agent-sdk': 'Claude Agent SDK',
 };
-const PROVIDER_ORDER: ProviderId[] = ['gemini', 'anthropic', 'ollama'];
+const PROVIDER_ORDER: ProviderId[] = ['gemini', 'anthropic', 'ollama', 'agent-sdk'];
 
 interface ModelPickerProps {
   value?: ModelChoice | null;
@@ -41,6 +42,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
     gemini: catalog.filter((m) => m.provider === 'gemini'),
     anthropic: catalog.filter((m) => m.provider === 'anthropic'),
     ollama: catalog.filter((m) => m.provider === 'ollama'),
+    'agent-sdk': catalog.filter((m) => m.provider === 'agent-sdk'),
   };
 
   return (

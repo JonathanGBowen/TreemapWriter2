@@ -78,7 +78,8 @@ function isValidChoice(c: unknown): c is ModelChoice {
   return (
     (choice.provider === 'gemini' ||
       choice.provider === 'anthropic' ||
-      choice.provider === 'ollama') &&
+      choice.provider === 'ollama' ||
+      choice.provider === 'agent-sdk') &&
     typeof choice.model === 'string' &&
     choice.model.length > 0
   );

@@ -3,6 +3,7 @@ import { trimToFirstUser } from '../llm-client';
 import { anthropicMessages, supportsAdaptiveThinking } from '../anthropic-client';
 import { ollamaMessages } from '../ollama-client';
 import { geminiContentsForTest } from '../gemini-client';
+import { buildAgentRequestBody, parseStreamLine } from '../agent-sdk-client';
 
 describe('trimToFirstUser', () => {
   it('drops leading non-user turns (providers require a user-first history)', () => {
@@ -92,5 +93,47 @@ describe('OllamaClient message shaping', () => {
     expect(ollamaMessages({ model: 'llama3', prompt: 'p' })).toEqual([
       { role: 'user', content: 'p' },
     ]);
+  });
+});
+
+describe('AgentSdkClient request body', () => {
+  it('includes only the fields present on the request', () => {
+    expect(buildAgentRequestBody({ model: 'm', prompt: 'hi' })).toEqual({
+      model: 'm',
+      prompt: 'hi',
+    });
+    expect(
+      buildAgentRequestBody({
+        model: 'm',
+        messages: [{ role: 'user', text: 'q' }],
+        systemInstruction: 'sys',
+        json: true,
+        responseJsonSchema: { type: 'object' },
+        maxTokens: 8000,
+      }),
+    ).toEqual({
+      model: 'm',
+      messages: [{ role: 'user', text: 'q' }],
+      systemInstruction: 'sys',
+      json: true,
+      responseJsonSchema: { type: 'object' },
+      maxTokens: 8000,
+    });
+  });
+
+  it('omits json when false and keeps an empty prompt string', () => {
+    expect(buildAgentRequestBody({ model: 'm', prompt: '', json: false })).toEqual({
+      model: 'm',
+      prompt: '',
+    });
+  });
+});
+
+describe('AgentSdkClient stream parsing', () => {
+  it('extracts deltas, ignores done, ignores junk, throws on error', () => {
+    expect(parseStreamLine(JSON.stringify({ delta: 'tok' }))).toBe('tok');
+    expect(parseStreamLine(JSON.stringify({ done: true }))).toBeNull();
+    expect(parseStreamLine('not json')).toBeNull();
+    expect(() => parseStreamLine(JSON.stringify({ error: 'boom' }))).toThrow('boom');
   });
 });

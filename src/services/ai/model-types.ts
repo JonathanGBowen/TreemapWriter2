@@ -1,12 +1,17 @@
 // Multi-provider model selection — core types.
 //
-// The app talks to three providers behind one AIProvider interface. A
+// The app talks to several providers behind one AIProvider interface. A
 // `ModelChoice` is the unit of "which model runs this call": a provider id, a
 // model string, and an optional Gemini-style numeric thinking budget (ignored
-// by providers that don't have one). `AICallKind` enumerates the ten distinct
+// by providers that don't have one). `AICallKind` enumerates the distinct
 // AI calls so the user can configure each independently.
+//
+// `'agent-sdk'` is the experimental Claude Agent SDK transport: it runs in a
+// local Node helper (the SDK is a Node library that can't run in the webview)
+// and is reached over localhost. It is opt-in via the global "Agent mode"
+// toggle (see resolve-model-choice.ts) and selectable per call kind.
 
-export type ProviderId = 'gemini' | 'anthropic' | 'ollama';
+export type ProviderId = 'gemini' | 'anthropic' | 'ollama' | 'agent-sdk';
 
 /**
  * The AI call kinds, named to match the AIProvider methods so the mapping from

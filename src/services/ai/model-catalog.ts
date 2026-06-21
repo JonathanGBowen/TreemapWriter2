@@ -111,6 +111,28 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'fast',
     contextWindow: 200_000,
   },
+  // --- Claude Agent SDK --- (experimental; runs via the local Node helper and
+  // your Max subscription. Same model ids as Anthropic; the transport differs.)
+  {
+    provider: 'agent-sdk',
+    id: 'claude-opus-4-8',
+    displayName: 'Opus 4.8 (Agent SDK)',
+    desc: 'Deepest Claude, via your subscription.',
+    supportsThinking: false,
+    defaultThinkingBudget: 0,
+    tier: 'deep',
+    contextWindow: 200_000,
+  },
+  {
+    provider: 'agent-sdk',
+    id: 'claude-sonnet-4-6',
+    displayName: 'Sonnet 4.6 (Agent SDK)',
+    desc: 'Balanced Claude, via your subscription.',
+    supportsThinking: false,
+    defaultThinkingBudget: 0,
+    tier: 'balanced',
+    contextWindow: 200_000,
+  },
 ];
 
 /** Look up catalog metadata for a provider+model, if known. */

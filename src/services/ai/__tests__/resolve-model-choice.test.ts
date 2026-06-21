@@ -29,3 +29,48 @@ describe('resolveModelChoice', () => {
     expect(resolveModelChoice('analyzeSection', project, global)).toEqual(project.analyzeSection);
   });
 });
+
+describe('resolveModelChoice — Agent mode', () => {
+  const agent = { enabled: true, model: 'claude-opus-4-8' };
+
+  it('routes dialogue + coaching kinds to agent-sdk when enabled', () => {
+    expect(resolveModelChoice('continueDialogue', {}, {}, agent)).toEqual({
+      provider: 'agent-sdk',
+      model: 'claude-opus-4-8',
+    });
+    expect(resolveModelChoice('generateSprintPlan', {}, {}, agent)).toEqual({
+      provider: 'agent-sdk',
+      model: 'claude-opus-4-8',
+    });
+  });
+
+  it('leaves non-dialogue/coaching kinds on their normal provider', () => {
+    expect(resolveModelChoice('analyzeSection', {}, {}, agent)).toEqual(
+      DEFAULT_MODEL_CONFIG.analyzeSection,
+    );
+  });
+
+  it('beats the (all-or-nothing) global default for its kinds', () => {
+    const global = { continueDialogue: { provider: 'anthropic' as const, model: 'claude-opus-4-8' } };
+    expect(resolveModelChoice('continueDialogue', {}, global, agent)).toEqual({
+      provider: 'agent-sdk',
+      model: 'claude-opus-4-8',
+    });
+  });
+
+  it('yields to an explicit per-project override (the opt-out escape hatch)', () => {
+    const project = { continueDialogue: { provider: 'gemini' as const, model: 'gemini-flash-latest' } };
+    expect(resolveModelChoice('continueDialogue', project, {}, agent)).toEqual(
+      project.continueDialogue,
+    );
+  });
+
+  it('does nothing when disabled', () => {
+    expect(resolveModelChoice('continueDialogue', {}, {}, { enabled: false, model: 'x' })).toEqual(
+      DEFAULT_MODEL_CONFIG.continueDialogue,
+    );
+    expect(resolveModelChoice('continueDialogue', {}, {})).toEqual(
+      DEFAULT_MODEL_CONFIG.continueDialogue,
+    );
+  });
+});

@@ -3,7 +3,9 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', 'src-tauri/target', 'coverage'],
+    // agent-sidecar is a standalone Node package (its own deps, its own runtime);
+    // it is linted/typechecked separately, not by the webview's config.
+    ignores: ['dist', 'node_modules', 'src-tauri/target', 'coverage', 'agent-sidecar'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -89,6 +89,8 @@ export interface ProviderClients {
   gemini: LLMClient;
   anthropic: LLMClient;
   ollama: LLMClient;
+  /** Experimental Claude Agent SDK transport (proxies to the local Node helper). */
+  agentSdk: LLMClient;
 }
 
 /** Resolves the configured ModelChoice for a call kind (project → global → default). */
@@ -118,6 +120,7 @@ export class MultiProviderAIProvider implements AIProvider {
   private clientFor(provider: ProviderId): LLMClient {
     if (provider === 'anthropic') return this.clients.anthropic;
     if (provider === 'ollama') return this.clients.ollama;
+    if (provider === 'agent-sdk') return this.clients.agentSdk;
     return this.clients.gemini;
   }
 
