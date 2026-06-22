@@ -44,7 +44,6 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
       setMode('edit');
       setInstruction("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
