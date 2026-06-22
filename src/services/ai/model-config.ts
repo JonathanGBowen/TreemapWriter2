@@ -43,6 +43,9 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   compareVersions: g('gemini-3.1-pro-preview', 16000),
   // Atmospheric reading over a whole draft — same pro-tier budget as analyzeSection.
   analyzeAtmosphere: g('gemini-3.1-pro-preview', 16000),
+  // Collaborative per-level spec development — a conversational reasoning turn,
+  // so it mirrors continueDialogue's pro-tier budget.
+  developSpecLevel: g('gemini-3.1-pro-preview', 8192),
 };
 
 /**

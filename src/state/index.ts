@@ -7,6 +7,7 @@ import { createUIStateSlice, type UIStateSlice } from './ui-state';
 import { createRevisionSlice, type RevisionSlice } from './revision-state';
 import { createComparisonSlice, type ComparisonSlice } from './comparison-state';
 import { createClimateSlice, type ClimateSlice } from './climate-state';
+import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
 import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider-registry';
 
@@ -21,6 +22,7 @@ import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider
  * - {@link RevisionSlice}      — Glass Box revision workflow (ephemeral, unpersisted)
  * - {@link ComparisonSlice}    — Version Compare workspace (ephemeral, unpersisted)
  * - {@link ClimateSlice}       — Climate Artist workspace (ephemeral, unpersisted)
+ * - {@link InterpolationSlice} — Generate-Specs workspace (ephemeral, unpersisted)
  *
  * Components subscribe to a single slice's shape via selectors. New code
  * should not destructure the whole store; that pattern is a Phase-1 legacy.
@@ -34,6 +36,7 @@ export type AppState =
   & RevisionSlice
   & ComparisonSlice
   & ClimateSlice
+  & InterpolationSlice
   & TraceSlice;
 
 export const useStore = create<AppState>()((...args) => ({
@@ -45,6 +48,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createRevisionSlice(...args),
   ...createComparisonSlice(...args),
   ...createClimateSlice(...args),
+  ...createInterpolationSlice(...args),
   ...createTraceSlice(...args),
 }));
 

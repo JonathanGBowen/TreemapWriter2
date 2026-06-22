@@ -35,7 +35,8 @@ export type AICallKind =
   | 'coachSprintTurn'
   | 'decomposeSprintStep'
   | 'compareVersions'
-  | 'analyzeAtmosphere';
+  | 'analyzeAtmosphere'
+  | 'developSpecLevel';
 
 /** Every call kind, in display order. The single source of truth for "what is configurable". */
 export const AI_CALL_KINDS: AICallKind[] = [
@@ -57,6 +58,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'decomposeSprintStep',
   'compareVersions',
   'analyzeAtmosphere',
+  'developSpecLevel',
 ];
 
 /** Short, glyph-light labels for the per-call override UI. No sentences (HLD). */
@@ -79,6 +81,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   decomposeSprintStep: 'Break down step',
   compareVersions: 'Compare versions',
   analyzeAtmosphere: 'Atmosphere',
+  developSpecLevel: 'Develop spec (live)',
 };
 
 /**

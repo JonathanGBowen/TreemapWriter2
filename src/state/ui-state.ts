@@ -40,7 +40,6 @@ export interface UIStateSlice {
 
   // In-flight indicators
   isProcessing: boolean;
-  isInterpolating: boolean;
 
   // Sync status (Phase 4). 'no-remote' hides the indicator entirely.
   // 'conflict' (Phase 5) latches when a merge needs in-app resolution.
@@ -61,7 +60,6 @@ export interface UIStateSlice {
   showGrimoireModal: boolean;
   showSpecModal: boolean;
   showSuggestionsModal: boolean;
-  showInterpolationModal: boolean;
   showPromptsGraphModal: boolean;
   showSectionMapModal: boolean;
   showProjectFileModal: boolean;
@@ -96,7 +94,6 @@ export interface UIStateSlice {
   setActiveTab: (tab: 'editor' | 'preview') => void;
   setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue') => void;
   setIsProcessing: (proc: boolean) => void;
-  setIsInterpolating: (interp: boolean) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;
   setSyncError: (err: string | null) => void;
   setSyncCounts: (ahead: number, behind: number) => void;
@@ -107,7 +104,6 @@ export interface UIStateSlice {
   setShowGrimoireModal: (show: boolean) => void;
   setShowSpecModal: (show: boolean) => void;
   setShowSuggestionsModal: (show: boolean) => void;
-  setShowInterpolationModal: (show: boolean) => void;
   setShowPromptsGraphModal: (show: boolean) => void;
   setShowSectionMapModal: (show: boolean) => void;
   setShowProjectFileModal: (show: boolean) => void;
@@ -140,7 +136,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   testsPanelTab: 'spec',
 
   isProcessing: false,
-  isInterpolating: false,
 
   syncStatus: 'no-remote',
   syncError: null,
@@ -154,7 +149,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showGrimoireModal: false,
   showSpecModal: false,
   showSuggestionsModal: false,
-  showInterpolationModal: false,
   showPromptsGraphModal: false,
   showSectionMapModal: false,
   showProjectFileModal: false,
@@ -184,7 +178,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setTestsPanelTab: (tab) => set({ testsPanelTab: tab }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
-  setIsInterpolating: (interp) => set({ isInterpolating: interp }),
   setSyncStatus: (status) => set({ syncStatus: status }),
   setSyncError: (err) => set({ syncError: err }),
   setSyncCounts: (ahead, behind) => set({ syncAhead: ahead, syncBehind: behind }),
@@ -195,7 +188,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowGrimoireModal: (show) => set({ showGrimoireModal: show }),
   setShowSpecModal: (show) => set({ showSpecModal: show }),
   setShowSuggestionsModal: (show) => set({ showSuggestionsModal: show }),
-  setShowInterpolationModal: (show) => set({ showInterpolationModal: show }),
   setShowPromptsGraphModal: (show) => set({ showPromptsGraphModal: show }),
   setShowSectionMapModal: (show) => set({ showSectionMapModal: show }),
   setShowProjectFileModal: (show) => set({ showProjectFileModal: show }),

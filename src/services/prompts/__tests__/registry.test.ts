@@ -31,6 +31,8 @@ const HISTORICAL_KEYS = [
   'l1TaskInstruction',
   'refactorAnalysisPrompt',
   'refineSpecPrompt',
+  // Generate-Specs workspace (collaborative per-level co-development) — 2026-06-22.
+  'developSpecPrompt',
   'rootTaskInstruction',
   'subTaskInstruction',
   'suggestContentPrompt',

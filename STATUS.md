@@ -58,6 +58,22 @@ the in-progress UIs (replacing the static "analyzing" markers), and finished run
 optionally auditable from a viewer in the Experimental settings (saved app-global by
 default with a toggle to disable; never in project files).
 
+The **Generate-Specs workspace** shipped 2026-06-22 (see
+[`docs/migration-log.md`](docs/migration-log.md)): the old one-shot "interpolate"
+modal is now a full-screen workspace (like Compare / Glass Box / Climate) that walks
+the spec hierarchy **one level at a time, human-in-the-loop** — root → chapters →
+deeper levels. When the Agent SDK is the resolved provider for the new
+`developSpecLevel` kind (global Agent mode, or a per-project override), each level is
+co-developed with the agent in a streaming chat (prose + a fenced JSON proposal);
+otherwise the writer first writes a free-text steer note, then generates single-shot.
+Either way the proposal is **editable** before Accept, which lands it in the
+`testSuite` and unlocks the next level (its prompt constrained by the accepted
+parents). A "Run all remaining" button keeps the old non-interactive behavior. The
+batching is now strictly per-level (the old `generateSpecs` batch is reimplemented over
+the same pure building blocks and kept for any non-workspace caller). Deliberate v1
+limits: forward-only walk (re-open to restart; the one `pre-ai-write` snapshot makes it
+safe), and the multi-turn chat is agent-only (other providers get the steer path).
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered

@@ -29,7 +29,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const selectedId = useStore((s) => s.selectedId);
   const markdown = useStore((s) => s.markdown);
 
-  const setShowInterpolationModal = useStore((s) => s.setShowInterpolationModal);
+  const openInterpolate = useStore((s) => s.openInterpolate);
   const setShowGoalSprintModal = useStore((s) => s.setShowGoalSprintModal);
   const setShowContentSprintModal = useStore((s) => s.setShowContentSprintModal);
   const setShowSectionMapModal = useStore((s) => s.setShowSectionMapModal);
@@ -53,7 +53,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   });
 
   const tools: { g: string; name: string; aria: string; onClick: () => void }[] = [
-    { g: '✦', name: 'Generate specs — structural analysis', aria: 'Generate specs', onClick: () => setShowInterpolationModal(true) },
+    { g: '✦', name: 'Generate specs — structural analysis', aria: 'Generate specs', onClick: () => openInterpolate() },
     { g: '▦', name: 'Goal map — section goal editor', aria: 'Goal map', onClick: () => setShowSectionMapModal(true) },
     { g: '◈', name: 'Dependencies — section graph', aria: 'Dependencies', onClick: () => setShowGraphModal(true) },
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },

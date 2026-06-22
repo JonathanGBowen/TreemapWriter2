@@ -16,6 +16,7 @@ import systemInstruction from './system-instruction.md?raw';
 import l1TaskInstruction from './l1-task.md?raw';
 import subTaskInstruction from './sub-task.md?raw';
 import rootTaskInstruction from './root-task.md?raw';
+import developSpecPrompt from './develop-spec.md?raw';
 import suggestContentPrompt from './suggest-content.md?raw';
 import coachPrompt from './coach.md?raw';
 import refineSpecPrompt from './refine-spec.md?raw';
@@ -145,6 +146,17 @@ export const PROMPT_REGISTRY = [
     description: "The rules used when manually refining a section's specification.",
     category: 'spec-generation',
     flow: 'refineSpec',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'developSpecPrompt',
+    defaultText: strip(developSpecPrompt),
+    label: 'Spec Co-Development',
+    description:
+      'Generate-Specs workspace: the conversation + output contract for iterating on a level’s spec with the agent (reuses the per-level task prompts as the field rubric).',
+    category: 'spec-generation',
+    flow: 'developSpecLevel',
     editability: 'editable',
     variables: [],
   },

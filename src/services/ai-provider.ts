@@ -23,6 +23,7 @@ import type {
   ReadingMode,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
+import type { SpecStage } from './ai/ai-provider.specs';
 
 /**
  * AI provider boundary. Components and slices call this interface; only the
@@ -74,6 +75,21 @@ export interface AIProvider {
   decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]>;
   compareVersions(input: CompareVersionsInput): Promise<VersionComparison>;
   analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string>;
+  /**
+   * Generate ONE level of the spec hierarchy in a single shot — the non-agent
+   * path of the Generate-Specs workspace (write a steer note → generate) and its
+   * "run all remaining". Root returns `{ root: spec }`; a level returns specs
+   * keyed by section id. Parent context comes from the accepted `specCache`.
+   */
+  generateSpecLevel(input: GenerateSpecLevelInput): Promise<Record<string, SectionSpec>>;
+  /**
+   * Collaborative, streaming co-development of ONE level's spec with the agent —
+   * the Generate-Specs workspace's iterate-with-the-agent path (routed through the
+   * Agent SDK when Agent mode is on). Mirrors `continueDialogue`: the full
+   * conversation travels each turn, and the model streams prose plus a fenced
+   * ```json``` proposal block the caller parses on commit.
+   */
+  developSpecLevel(input: DevelopSpecLevelInput): AsyncIterable<string>;
 }
 
 /** Compact, in-memory backlog summary shown as context chips in the Brief. */
@@ -160,6 +176,31 @@ export interface GenerateSpecsInput {
   modelChoice?: ModelChoice;
   onBatchComplete: (specs: Record<string, SectionSpec>) => void;
   onError?: (error: Error) => void;
+}
+
+/** Shared stage framing for the two per-level spec calls. `specCache` holds the
+ *  ACCEPTED specs above this stage (keyed by section id, `'root'` for the doc level). */
+interface SpecLevelBase {
+  stage: SpecStage;
+  sections: Section[];
+  markdown: string;
+  specCache: Record<string, SectionSpec>;
+  /** Root stage only: include the full document text (false degrades to the outline). */
+  rootFullText?: boolean;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface GenerateSpecLevelInput extends SpecLevelBase {
+  /** The author's free-text guidance for this level (the non-agent "steer note"). */
+  steer?: string;
+}
+
+export interface DevelopSpecLevelInput extends SpecLevelBase {
+  /** Full conversation history; the last message is the new user turn. */
+  messages: DialogueMessage[];
 }
 
 export interface RunDiagnosticInput {
