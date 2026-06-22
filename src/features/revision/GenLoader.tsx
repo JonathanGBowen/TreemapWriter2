@@ -1,3 +1,5 @@
+import { AgentTraceTicker } from '../shared/AgentTraceTicker';
+
 /** Generating-phase loader. The line is load-bearing: it states the guarantee. */
 export function GenLoader() {
   return (
@@ -9,6 +11,10 @@ export function GenLoader() {
       <div className="font-mono text-[9px] text-hld-muted-text max-w-[240px] leading-[1.6]">
         Every proposal will carry a verbatim quote from your sources. No claim without a receipt.
       </div>
+      <AgentTraceTicker
+        kinds={['generateRevisions']}
+        className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted max-w-[300px] min-w-0"
+      />
     </div>
   );
 }

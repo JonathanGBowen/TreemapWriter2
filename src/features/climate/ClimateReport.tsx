@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import { useStore } from '../../state';
 import { CopyButton } from '../shared/CopyButton';
+import { AgentTraceTicker } from '../shared/AgentTraceTicker';
 import type { AtmosphericInstrument } from '../../types';
 
 const TITLE: Record<AtmosphericInstrument, string> = {
@@ -47,6 +48,10 @@ export function ClimateReport() {
               <div className="font-mono text-[9px] text-hld-muted-text max-w-[260px] leading-[1.6]">
                 Tracing pressure, accumulation, and discharge across the text.
               </div>
+              <AgentTraceTicker
+                kinds={['analyzeAtmosphere']}
+                className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted max-w-[320px] min-w-0"
+              />
             </div>
           ) : !report ? (
             <div className="px-2 py-16 text-center">

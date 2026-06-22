@@ -8,6 +8,7 @@ import { useStore } from "../../store";
 import { aiProvider } from "../../services/ai-provider-registry";
 import { guardContextFit } from "../shared/context-guard";
 import { notifyAiError } from "../shared/ai-error";
+import { AgentTraceTicker } from "../shared/AgentTraceTicker";
 import { ModelPicker } from "./ModelPicker";
 import { useModelChoice } from "./use-model-choice";
 
@@ -117,6 +118,10 @@ export const ContentSuggestionsModal: React.FC<ContentSuggestionsModalProps> = (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
               <p className="text-sm font-mono uppercase tracking-widest text-hld-muted animate-pulse">Analyzing Content...</p>
+              <AgentTraceTicker
+                kinds={['getContentSuggestions']}
+                className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted max-w-md min-w-0 px-4"
+              />
             </div>
           ) : (
             <div className="prose prose-invert max-w-none font-sans">

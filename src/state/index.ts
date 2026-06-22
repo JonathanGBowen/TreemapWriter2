@@ -7,7 +7,8 @@ import { createUIStateSlice, type UIStateSlice } from './ui-state';
 import { createRevisionSlice, type RevisionSlice } from './revision-state';
 import { createComparisonSlice, type ComparisonSlice } from './comparison-state';
 import { createClimateSlice, type ClimateSlice } from './climate-state';
-import { setModelConfigSource } from '../services/ai-provider-registry';
+import { createTraceSlice, type TraceSlice } from './trace-state';
+import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider-registry';
 
 /**
  * The combined state of the application, partitioned by lifecycle:
@@ -32,7 +33,8 @@ export type AppState =
   & AIStateSlice
   & RevisionSlice
   & ComparisonSlice
-  & ClimateSlice;
+  & ClimateSlice
+  & TraceSlice;
 
 export const useStore = create<AppState>()((...args) => ({
   ...createUIStateSlice(...args),
@@ -43,11 +45,23 @@ export const useStore = create<AppState>()((...args) => ({
   ...createRevisionSlice(...args),
   ...createComparisonSlice(...args),
   ...createClimateSlice(...args),
+  ...createTraceSlice(...args),
 }));
 
 // Wire model resolution to live state without the registry importing the store
 // (avoids a cycle). The provider reads the active per-project + global config here.
 setModelConfigSource(() => {
   const s = useStore.getState();
-  return { projectConfig: s.modelConfig, globalDefault: s.globalModelDefault };
+  return {
+    projectConfig: s.modelConfig,
+    globalDefault: s.globalModelDefault,
+    agentMode: s.agentModeEnabled,
+    agentModel: s.agentSdkModel,
+  };
 });
+
+// Feed the Agent SDK activity trace into the store (the client never imports the
+// store — avoids a cycle, mirroring setModelConfigSource). Then load any
+// persisted traces + the saving flag.
+setAgentTraceSink((e) => useStore.getState().applyTraceEvent(e));
+void useStore.getState().hydrateTraces();

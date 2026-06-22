@@ -16,7 +16,19 @@
 // Model resolution is injected: `setModelConfigSource` lets boot wire the store
 // in without this module importing the store (avoids a cycle).
 
-import { GeminiClient, AnthropicClient, OllamaClient, DEFAULT_OLLAMA_BASE_URL } from './ai/clients';
+import {
+  GeminiClient,
+  AnthropicClient,
+  OllamaClient,
+  AgentSdkClient,
+  DEFAULT_OLLAMA_BASE_URL,
+  DEFAULT_AGENT_SIDECAR_URL,
+} from './ai/clients';
+import type { AgentSidecarHealth } from './ai/clients';
+// Re-exported so boot can wire the trace store into the agent client without the
+// client importing the store (mirrors setModelConfigSource).
+export { setAgentTraceSink } from './ai/clients';
+export type { AgentTraceSinkEvent } from './ai/clients';
 import { MultiProviderAIProvider } from './ai/ai-provider.impl';
 import { resolveModelChoice } from './ai/resolve-model-choice';
 import { getSecret } from './credentials';
@@ -30,11 +42,19 @@ const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
 const gemini = new GeminiClient(geminiKey);
 const anthropic = new AnthropicClient(anthropicKey);
 const ollama = new OllamaClient(DEFAULT_OLLAMA_BASE_URL);
+// Experimental: proxies to the local Node helper running the Claude Agent SDK.
+// Constructed unconditionally but only dispatched to when Agent mode routes a
+// call kind to the 'agent-sdk' provider (default off).
+const agentSdk = new AgentSdkClient(DEFAULT_AGENT_SIDECAR_URL);
 
 /** Where the resolver reads the active per-project + global model config from. */
 export interface ModelConfigSource {
   projectConfig?: ModelConfig | null;
   globalDefault?: ModelConfig | null;
+  /** Global "Agent mode" toggle — routes dialogue + coaching to the Agent SDK. */
+  agentMode?: boolean;
+  /** The agent-sdk model id to run when Agent mode is on. */
+  agentModel?: string;
 }
 
 let configSource: () => ModelConfigSource = () => ({});
@@ -45,11 +65,13 @@ export function setModelConfigSource(source: () => ModelConfigSource): void {
 }
 
 const resolveChoice = (kind: AICallKind) => {
-  const { projectConfig, globalDefault } = configSource();
-  return resolveModelChoice(kind, projectConfig, globalDefault);
+  const { projectConfig, globalDefault, agentMode, agentModel } = configSource();
+  const agent =
+    agentMode && agentModel ? { enabled: true, model: agentModel } : undefined;
+  return resolveModelChoice(kind, projectConfig, globalDefault, agent);
 };
 
-const impl = new MultiProviderAIProvider({ gemini, anthropic, ollama }, resolveChoice);
+const impl = new MultiProviderAIProvider({ gemini, anthropic, ollama, agentSdk }, resolveChoice);
 
 export const aiProvider: AIProvider = impl;
 
@@ -81,6 +103,17 @@ export function refreshAnthropicKey(newKey: string): void {
 /** Point the Ollama transport at a new local endpoint (global preference). */
 export function setOllamaBaseUrl(url: string): void {
   if (url && url.length > 0) ollama.setBaseUrl(url);
+}
+
+/** Point the Agent SDK transport at the local helper's URL (global preference). */
+export function setAgentSidecarUrl(url: string): void {
+  if (url && url.length > 0) agentSdk.setBaseUrl(url);
+}
+
+/** Probe the Agent SDK helper for reachability + auth (for the settings UI). */
+export async function pingAgentSidecar(url?: string): Promise<AgentSidecarHealth> {
+  if (url) agentSdk.setBaseUrl(url);
+  return agentSdk.ping();
 }
 
 /** List installed Ollama models for the editable catalog (GET /api/tags). */

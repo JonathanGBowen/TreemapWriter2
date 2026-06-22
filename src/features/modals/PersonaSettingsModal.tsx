@@ -10,6 +10,7 @@ import { guardContextFit } from "../shared/context-guard";
 import { ModalShell } from "./ModalShell";
 import { Disclosure } from "../shared/Disclosure";
 import { AiSettingsSection } from "./AiSettingsSection";
+import { AgentTraceTicker } from "../shared/AgentTraceTicker";
 
 interface PersonaSettingsModalProps {
   activePersonaId: string;
@@ -207,6 +208,10 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
           {isGenerating ? <span className="animate-spin">✦</span> : <Sparkles size={12} />}
           {isGenerating ? 'Analyzing draft…' : 'Suggest personas from my draft'}
         </button>
+        <AgentTraceTicker
+          kinds={['generatePersonas']}
+          className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+        />
 
         {/* Everything else folds away */}
         <div>

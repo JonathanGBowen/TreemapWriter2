@@ -49,6 +49,13 @@ describe('normalizeModelConfig', () => {
     expect(out.getCoachAdvice).toEqual({ provider: 'ollama', model: 'llama3' });
   });
 
+  it('accepts the experimental agent-sdk provider', () => {
+    const out = normalizeModelConfig({
+      continueDialogue: { provider: 'agent-sdk', model: 'claude-opus-4-8' },
+    });
+    expect(out.continueDialogue).toEqual({ provider: 'agent-sdk', model: 'claude-opus-4-8' });
+  });
+
   it('preserves a numeric thinkingBudget and omits a non-numeric one', () => {
     const out = normalizeModelConfig({
       analyzeSection: { provider: 'gemini', model: 'gemini-3.1-pro-preview', thinkingBudget: 4000 },

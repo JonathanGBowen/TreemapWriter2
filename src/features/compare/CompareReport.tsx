@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../state';
 import { Pip, type PipStatus } from '../shared/Pip';
+import { AgentTraceTicker } from '../shared/AgentTraceTicker';
 import type {
   ComparisonChange,
   ComparisonDirection,
@@ -143,6 +144,10 @@ export function CompareReport() {
             <div className="font-mono text-[9px] text-hld-muted-text max-w-[240px] leading-[1.6]">
               Reconstructing how the argument changed — drift, gains, losses. No claim without a receipt.
             </div>
+            <AgentTraceTicker
+              kinds={['compareVersions']}
+              className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted max-w-[300px] min-w-0"
+            />
           </div>
         ) : !comparison ? (
           <div className="px-2 py-12 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-hld-muted-text leading-[1.8]">

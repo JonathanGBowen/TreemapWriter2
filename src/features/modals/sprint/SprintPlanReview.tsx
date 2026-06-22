@@ -13,6 +13,7 @@ import { SegControl } from '../SegControl';
 import { useModelChoice } from '../use-model-choice';
 import { Pip } from '../../shared/Pip';
 import { SprintStepRow } from './SprintStepRow';
+import { AgentTraceTicker } from '../../shared/AgentTraceTicker';
 import { aiProvider } from '../../../services/ai-provider-registry';
 import { goalPlan, minutesOf, planFromShape } from '../../../lib/sprintPlan';
 import {
@@ -231,8 +232,14 @@ export function SprintPlanReview(props: SprintPlanReviewProps) {
           </div>
 
           {processing && !plan ? (
-            <div className="flex items-center gap-[8px] px-[12px] py-[16px] text-[12px] text-hld-muted-text">
-              <Loader2 size={14} className="animate-spin" /> Breaking your goal into steps…
+            <div className="px-[12px] py-[16px] text-[12px] text-hld-muted-text">
+              <div className="flex items-center gap-[8px]">
+                <Loader2 size={14} className="animate-spin" /> Breaking your goal into steps…
+              </div>
+              <AgentTraceTicker
+                kinds={['generateSprintPlan', 'decomposeSprintStep']}
+                className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+              />
             </div>
           ) : plan ? (
             plan.moves.map((m, i) => (

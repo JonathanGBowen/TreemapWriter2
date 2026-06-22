@@ -2786,3 +2786,195 @@ files stay valid.
 (guided / chat / hybrid; WOOP or plain) and decomposes it into an editable,
 recursively-breakable plan that runs directly. The remaining profile-driven items
 are F2 (provenance marking) and F3 (the Good-Enough stop gate).
+
+---
+
+## 2026-06-21 — Optional Claude Agent SDK transport (experimental "Agent mode")
+
+**Context.** An experiment: route the app's **dialogue** features and **coaching**
+features (the latter including the structured sprint-plan output) through the
+**Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) against the user's **Claude
+Max subscription**, instead of per-token API calls — while the standard one-off
+API path stays the default and nothing breaks. The hard constraint: the Agent SDK
+is a Node library that spawns a Claude Code subprocess, so it **cannot run in the
+Tauri webview** (and the Tauri backend is Rust, not Node). The app already has the
+right seam for it — the `LLMClient` transport interface — so the SDK becomes a
+fourth provider whose webview half is a thin proxy to a local Node helper.
+
+**What changed.** Additive; front-end + a new standalone folder. No Rust, no
+on-disk project layout, no persisted project fields.
+
+- **New provider `'agent-sdk'`.** Added to `ProviderId` (`model-types.ts`),
+  accepted by `normalizeModelConfig` (`model-config.ts`), seeded in the catalog
+  (`model-catalog.ts`: Opus 4.8 / Sonnet 4.6 "via subscription"), dispatched in
+  `MultiProviderAIProvider.clientFor` (`ai-provider.impl.ts`), and surfaced in
+  `ModelPicker` + the catalog editor. Because all prompt-building/parsing lives one
+  layer up, every AI flow can route through it unchanged.
+- **Webview client (thin proxy).** `src/services/ai/clients/agent-sdk-client.ts`
+  implements `LLMClient` over a tiny localhost HTTP contract (`/health`,
+  `/generate`, NDJSON `/stream` — mirrors the Ollama fetch-streaming). The SDK is
+  **never imported here**, so it never enters the browser bundle (verified: absent
+  from `dist/`).
+- **Node helper.** `agent-sidecar/` — a standalone package (`server.mjs`, own
+  `package.json` + deps, `.env.example`, `README.md`) that runs the SDK tool-less
+  (`allowedTools: []`, `settingSources: []`) as a dialogue/structured engine. It
+  maps `responseJsonSchema` → the SDK's `outputFormat: {type:'json_schema'}` and
+  serializes `structured_output` back as text for the app's tolerant parser. **Max
+  OAuth only:** it deletes `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` at startup so
+  the subscription token (`CLAUDE_CODE_OAUTH_TOKEN` / `claude login`) wins. Verified
+  against SDK 0.3.185.
+- **"Agent mode" toggle + routing.** Global prefs (`preferences.ts`:
+  `get/setAgentModeEnabled` [default **off**], `get/setAgentSidecarUrl`
+  [`localhost:8787`], `get/setAgentSdkModel` [`claude-opus-4-8`]) hydrated into
+  `ai-state.ts`. `resolveModelChoice` gains an optional `AgentRouting`: when on, the
+  six dialogue/coaching kinds (`AGENT_DEFAULT_KINDS`: continueDialogue,
+  streamCoachAdvice, getCoachAdvice, coachSprintTurn, generateSprintPlan,
+  decomposeSprintStep) resolve to `agent-sdk`; a per-project per-kind override still
+  wins (the opt-out escape hatch), and any other kind can be opted in manually.
+  Boot wires `agentMode`/`agentModel` into the registry's `ModelConfigSource`.
+- **UI (no clutter).** `AgentSdkSettingsSection.tsx` — a collapsed disclosure inside
+  AI settings: on/off, model, helper URL + a reachability/auth **Check** (`ping`),
+  and inline setup help. No new modal, no top-level surface.
+- **Build/config.** `agent` npm script; `agent-sidecar` excluded from the webview
+  `tsconfig` + ESLint (it's a separate Node package). Tauri CSP is `null`
+  (unrestricted) so localhost works today — left unchanged to avoid breaking the
+  existing providers; if a CSP is ever added, `connect-src` must include the helper.
+
+**How to verify.** `npm run typecheck`, `npm test` (266 total — +9: resolver
+Agent-mode routing, agent-sdk client body/stream helpers, agent-sdk provider
+acceptance), and `npm run build` pass; the Agent SDK is confirmed **absent from
+`dist/`**. `npm run lint` adds **no new findings** (5 pre-existing errors remain in
+`livePreview.ts` and `SpecGeneratorModal.tsx`, untouched here). Helper boots and
+`GET /health` returns `{ok, authed, model}`. Manual E2E (needs a token): in
+`agent-sidecar/`, `claude setup-token` → export `CLAUDE_CODE_OAUTH_TOKEN` →
+`npm run agent`; in the app enable Agent mode → section Dialogue streams via the
+SDK, sprint Coach chat streams, generate-sprint-plan returns a valid structured
+plan; toggle off reverts to Gemini/Anthropic; a non-default kind (e.g. generateSpecs)
+stays on its provider until explicitly switched.
+
+**Rollback.** `git revert` — additive. Delete `agent-sidecar/`,
+`agent-sdk-client.ts`, `AgentSdkSettingsSection.tsx`; drop `'agent-sdk'` from
+`ProviderId`/catalog/`clientFor`/`ModelPicker`/`isValidChoice`; remove the
+`AgentRouting` branch in `resolve-model-choice.ts`, the agent prefs + state, the
+registry wiring (`agentSdk` client, `setAgentSidecarUrl`, `pingAgentSidecar`,
+`ModelConfigSource` fields), the `agent` script, and the tsconfig/ESLint ignores.
+No persisted data or on-disk layout to migrate.
+
+**Current state.** Dialogue + coaching can optionally run through the Claude Agent
+SDK on a Max subscription via a local helper, opt-in and off by default, with the
+standard API path unchanged. Productionization follow-ups (Rust-owned helper
+lifecycle + token from the keyring; finer token-streaming; verifying SDK option
+names on upgrade) are logged in `STATUS.md`.
+
+---
+
+## 2026-06-21 — Agent SDK: all three Claude tiers selectable + reliable JSON parity
+
+**Context.** Two follow-ups on the experimental Agent SDK provider: make Sonnet +
+Haiku selectable (and confirm the provider appears in every model picker), and make
+*every* call kind behave reliably now that `agent-sdk` is selectable for any of the
+18 kinds — not just the six dialogue/coaching defaults.
+
+**What changed.**
+
+- **Haiku added to the catalog.** `model-catalog.ts` gains a third `agent-sdk` seed
+  row (`claude-haiku-4-5`, fast tier) beside Opus 4.8 / Sonnet 4.6. No UI edits were
+  needed: `ModelPicker` is the single shared control (used by AI-settings default +
+  per-task, `CoachModal`, `RevisionSettingsModal`, `ContentSuggestionsModal`,
+  `sprint/SprintCoach`, `sprint/SprintPlanReview`) and renders the catalog unfiltered,
+  so all three tiers now appear in all six pickers + the Agent-mode dropdown. (An audit
+  confirmed every `Record<ProviderId,…>`, `clientFor`, `isValidChoice`, `context-budget`,
+  and the keyless provider design already handle `agent-sdk` — no gaps.)
+- **Helper JSON path now mirrors the Anthropic client.** `agent-sidecar/server.mjs` no
+  longer uses the SDK's strict `outputFormat` / `structured_output`. For any JSON kind
+  it adds the "respond with only JSON" instruction to the system prompt and returns the
+  result text; the app reads it back through its tolerant `safeJsonParse`
+  (`src/lib/utils.ts` — direct parse → fence → brace/bracket extraction from prose) plus
+  the per-kind normalizer, exactly as it does for Anthropic/Ollama. This removes a
+  hard-failure surface (`error_max_structured_output_retries`) that strict mode would
+  expose on the app's permissive schemas (none set `additionalProperties:false`), and
+  brings all four schema kinds (revisions, directives, sprint-plan/decompose, compare)
+  and the five schema-less JSON kinds onto one proven path. Streaming (NDJSON deltas)
+  and plain-text kinds were already correct and are unchanged.
+- **Test.** `model-catalog.test.ts` now asserts the three `agent-sdk` ids
+  (opus/sonnet/haiku) so the tiers can't silently regress.
+- **Docs.** `agent-sidecar/README.md` contract note updated (JSON via instruction +
+  tolerant parser, not `output_format`); the `STATUS.md` helper follow-up item updated
+  to log the optional future hardening (`output_format` *with graceful fallback* for
+  strict typing once it can be verified per-schema; finer token-by-token streaming).
+
+**How to verify.** `npm run typecheck`, `npm test` (267 — +1 catalog assertion),
+`npm run build` pass; Agent SDK absent from `dist/`; `node --check agent-sidecar/server.mjs`
+and a boot + `GET /health` succeed. Manual E2E (needs a token) per bucket while Agent
+mode is on: a Dialogue + sprint Coach chat stream; Coach/refine return prose; a sprint
+plan + Compare parse and normalize (the path the strict-mode removal protects); an
+Analysis/Diagnostic parses via `safeJsonParse`; Opus/Sonnet/Haiku all appear under
+"Claude Agent SDK" and Haiku runs; toggling off reverts to Gemini/Anthropic.
+
+**Rollback.** `git revert` — additive + a helper-internal behavior change. Remove the
+Haiku catalog row (and its test assertion) and restore the `outputFormat`/
+`structured_output` branch in `server.mjs` if strict mode is ever wanted back.
+
+**Current state.** The Agent SDK offers Opus/Sonnet/Haiku in every model picker, and
+each of the 18 call kinds routes through a transport path proven against the existing
+providers (streamed text, plain text, tolerant-parsed JSON).
+
+---
+
+## 2026-06-21 — Agent SDK: live thinking/activity trace in the UI + optional audit log
+
+**Context.** When the Agent SDK runs a call, the one-shot UIs showed only a static
+marker ("Evaluating…", "Thinking…"). This streams the model's live thinking/activity
+into those surfaces while it runs, and saves traces for optional, out-of-the-way
+auditing. (The helper is tool-less, so the trace is the reasoning stream + answer +
+SDK progress notices, not literal tool calls.)
+
+**What changed.** Additive; the SDK stays out of the browser bundle.
+
+- **Helper emits a typed event stream.** `agent-sidecar/server.mjs` sets
+  `includePartialMessages: true` and both endpoints now stream typed NDJSON —
+  `{t:'think'|'text'|'activity'}` then terminal `{t:'done',text}` / `{t:'error'}` —
+  mapped from the SDK's `stream_event` partial frames (`content_block_delta` →
+  text/thinking) and `thinking_tokens` system messages. (Redacted-thinking phases
+  surface as a token-estimate activity line; the feature degrades gracefully.)
+- **Client forwards a trace side-channel.** `agent-sdk-client.ts` parses the typed
+  stream, preserves its contracts (`generateText` collects `done.text`; `streamText`
+  yields `text` deltas — with a fallback to `done.text` if no deltas arrived), and
+  emits start/think/text/activity/end events to an injected sink
+  (`setAgentTraceSink`, wired in `state/index.ts` — the client never imports the
+  store, mirroring `setModelConfigSource`). New client-only `LLMRequest.traceLabel`/
+  `traceKind`, injected per call kind by a `clientFor(provider, kind)` proxy in
+  `ai-provider.impl.ts` (using the existing `AI_CALL_KIND_LABELS`).
+- **Trace store + persistence.** New ephemeral `state/trace-state.ts` slice
+  (`traceRuns` capped at 25, `activeRunIds`, coalescing of consecutive same-type
+  deltas). Finished runs mirror to IndexedDB (app-global via `preferences.ts`, never
+  in git-tracked project files) when saving is on; hydrated at boot, all writes
+  `.catch`-guarded so a storage failure can't surface as an unhandled rejection.
+- **Inline ticker (`features/shared/AgentTraceTicker.tsx`).** A muted one-liner
+  showing the latest line of the most recent in-flight run whose `callKind` matches a
+  `kinds` prop (per-surface correlation under overlap; invisible otherwise). Wired
+  into the one-shot status surfaces: Analysis/Diagnostic footer, Coach, Content
+  suggestions, Spec refine, Sprint-plan, Climate, Compare, Revisions, Personas. (The
+  few kinds without a clean status marker — generateSpecs, estimateDependencies,
+  suggestDirectives — still record runs visible in the audit viewer.)
+- **Audit viewer + entry (unobtrusive).** `features/modals/AgentTraceModal.tsx`
+  (self-mounts on `showAgentTraceModal`, `ModalShell`, expandable per-run logs, Clear)
+  opened from a "View" link beside a "Save traces" toggle inside the collapsed
+  Experimental — Claude Agent SDK disclosure.
+
+**How to verify.** `npm run typecheck`, `npm test` (272 — +6: trace-store reducer +
+client trace-line/body-trace), `npm run build` pass; SDK absent from `dist/`;
+`node --check agent-sidecar/server.mjs` + boot/`/health`. Manual E2E (token, Agent
+mode on): an Analysis shows the live thinking line in the footer; Sprint-plan/Coach/
+Compare/Climate/Revisions/Specs surfaces show their tickers; AI settings →
+Experimental → View traces lists runs with thinking logs; toggle Save traces off →
+ticker still shows live, no new saved runs; Agent mode off → no tickers/runs.
+
+**Rollback.** `git revert` — additive. Remove the trace slice + its store wiring, the
+ticker/modal, the `setAgentTraceSink` sink + `traceLabel`/`traceKind` plumbing, and
+revert `server.mjs` to emitting only `{delta}`/`{done}` text.
+
+**Current state.** While the Agent SDK works, its reasoning streams into the relevant
+in-progress UI, and finished runs are auditable (opt-out) from the Experimental
+settings — satisfying the earlier "finer token-by-token streaming" follow-up via
+`includePartialMessages`.

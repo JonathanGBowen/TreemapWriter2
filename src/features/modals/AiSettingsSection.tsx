@@ -13,6 +13,7 @@ import { AI_CALL_KINDS, AI_CALL_KIND_LABELS } from '../../services/ai/model-type
 import type { ModelChoice, ProviderId } from '../../services/ai/model-types';
 import type { CatalogModel } from '../../services/ai/model-catalog';
 import { ModelPicker } from './ModelPicker';
+import { AgentSdkSettingsSection } from './AgentSdkSettingsSection';
 
 /**
  * The AI configuration surface: provider keys/endpoint, the global default
@@ -115,6 +116,9 @@ export const AiSettingsSection: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Experimental: Claude Agent SDK (Max subscription) — collapsed by default */}
+      <AgentSdkSettingsSection />
     </div>
   );
 };
@@ -351,6 +355,7 @@ const CatalogEditor: React.FC<{
           <option value="gemini">Gemini</option>
           <option value="anthropic">Anthropic</option>
           <option value="ollama">Ollama</option>
+          <option value="agent-sdk">Agent SDK</option>
         </select>
         <input
           value={id}

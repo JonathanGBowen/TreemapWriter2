@@ -9,6 +9,7 @@ import { aiProvider } from "../../services/ai-provider-registry";
 import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
 import { guardContextFit } from "../shared/context-guard";
 import { notifyAiError } from "../shared/ai-error";
+import { AgentTraceTicker } from "../shared/AgentTraceTicker";
 
 interface SpecGeneratorModalProps {
   sectionTitle: string;
@@ -144,6 +145,10 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
                      {isThinking ? "Thinking..." : "Generate"}
                    </button>
                  </div>
+                 <AgentTraceTicker
+                   kinds={['refineSpec']}
+                   className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+                 />
                </div>
              </div>
           )}

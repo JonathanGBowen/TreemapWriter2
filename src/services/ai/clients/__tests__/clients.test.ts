@@ -3,6 +3,7 @@ import { trimToFirstUser } from '../llm-client';
 import { anthropicMessages, supportsAdaptiveThinking } from '../anthropic-client';
 import { ollamaMessages } from '../ollama-client';
 import { geminiContentsForTest } from '../gemini-client';
+import { buildAgentRequestBody, parseTraceLine } from '../agent-sdk-client';
 
 describe('trimToFirstUser', () => {
   it('drops leading non-user turns (providers require a user-first history)', () => {
@@ -92,5 +93,58 @@ describe('OllamaClient message shaping', () => {
     expect(ollamaMessages({ model: 'llama3', prompt: 'p' })).toEqual([
       { role: 'user', content: 'p' },
     ]);
+  });
+});
+
+describe('AgentSdkClient request body', () => {
+  it('includes only the fields present on the request', () => {
+    expect(buildAgentRequestBody({ model: 'm', prompt: 'hi' })).toEqual({
+      model: 'm',
+      prompt: 'hi',
+    });
+    expect(
+      buildAgentRequestBody({
+        model: 'm',
+        messages: [{ role: 'user', text: 'q' }],
+        systemInstruction: 'sys',
+        json: true,
+        responseJsonSchema: { type: 'object' },
+        maxTokens: 8000,
+      }),
+    ).toEqual({
+      model: 'm',
+      messages: [{ role: 'user', text: 'q' }],
+      systemInstruction: 'sys',
+      json: true,
+      responseJsonSchema: { type: 'object' },
+      maxTokens: 8000,
+    });
+  });
+
+  it('omits json when false and keeps an empty prompt string', () => {
+    expect(buildAgentRequestBody({ model: 'm', prompt: '', json: false })).toEqual({
+      model: 'm',
+      prompt: '',
+    });
+  });
+
+  it('never forwards client-side trace metadata to the helper', () => {
+    const body = buildAgentRequestBody({ model: 'm', prompt: 'p', traceLabel: 'Analyze', traceKind: 'analyzeSection' });
+    expect(body).toEqual({ model: 'm', prompt: 'p' });
+    expect('traceLabel' in body).toBe(false);
+    expect('traceKind' in body).toBe(false);
+  });
+});
+
+describe('AgentSdkClient trace-line parsing', () => {
+  it('parses each typed event, skips junk/unknown, throws on error', () => {
+    expect(parseTraceLine(JSON.stringify({ t: 'text', delta: 'tok' }))).toEqual({ t: 'text', delta: 'tok' });
+    expect(parseTraceLine(JSON.stringify({ t: 'think', delta: 'r' }))).toEqual({ t: 'think', delta: 'r' });
+    expect(parseTraceLine(JSON.stringify({ t: 'activity', label: 'step' }))).toEqual({ t: 'activity', label: 'step' });
+    expect(parseTraceLine(JSON.stringify({ t: 'done', text: 'x' }))).toEqual({ t: 'done', text: 'x' });
+    expect(parseTraceLine(JSON.stringify({ t: 'done' }))).toEqual({ t: 'done', text: '' });
+    expect(parseTraceLine(JSON.stringify({ t: 'huh' }))).toBeNull();
+    expect(parseTraceLine('not json')).toBeNull();
+    expect(() => parseTraceLine(JSON.stringify({ error: 'boom' }))).toThrow('boom');
   });
 });

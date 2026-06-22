@@ -2,8 +2,9 @@ import { get, set } from 'idb-keyval';
 import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
-import { DEFAULT_OLLAMA_BASE_URL } from './ai/clients';
+import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from './ai/clients';
 import type { AnalysisSpell, PromptsConfig, RevisionInstruction } from '../types';
+import type { TraceRun } from '../state/trace-state';
 
 /**
  * Global, app-level preferences that are NOT tied to a specific project.
@@ -27,6 +28,14 @@ const SPRINT_GOAL_MODEL_KEY = 'treemap_writer_sprint_goal_model';
 const PROMPTS_GLOBAL_DEFAULT_KEY = 'treemap_writer_prompts_global_default';
 const REVISION_INSTRUCTIONS_KEY = 'treemap_writer_revision_instructions';
 const REVISION_INSTRUCTION_ACTIVE_KEY = 'treemap_writer_revision_instruction_active';
+const AGENT_MODE_ENABLED_KEY = 'treemap_writer_agent_mode_enabled';
+const AGENT_SIDECAR_URL_KEY = 'treemap_writer_agent_sidecar_url';
+const AGENT_SDK_MODEL_KEY = 'treemap_writer_agent_sdk_model';
+const AGENT_TRACE_SAVING_KEY = 'treemap_writer_agent_trace_saving';
+const AGENT_TRACES_KEY = 'treemap_writer_agent_traces';
+
+/** Default agent-sdk model when Agent mode is on (the user is on a Max plan). */
+export const DEFAULT_AGENT_SDK_MODEL = 'claude-opus-4-8';
 
 export async function hasSeenTutorial(): Promise<boolean> {
   return Boolean(await get(TUTORIAL_SEEN_KEY));
@@ -162,4 +171,62 @@ export async function getActiveRevisionInstructionId(): Promise<string | null> {
 
 export async function setActiveRevisionInstructionId(id: string): Promise<void> {
   await set(REVISION_INSTRUCTION_ACTIVE_KEY, id);
+}
+
+/**
+ * Experimental Claude Agent SDK integration. Global, OFF by default — the
+ * standard one-off API path is always the default. When on, the dialogue and
+ * coaching call kinds route through the Agent SDK (via the local Node helper).
+ * The Max-subscription OAuth token is NOT stored here or in the keyring for v1;
+ * it lives in the helper's own environment (see agent-sidecar/README.md).
+ */
+export async function getAgentModeEnabled(): Promise<boolean> {
+  return Boolean(await get(AGENT_MODE_ENABLED_KEY));
+}
+
+export async function setAgentModeEnabled(enabled: boolean): Promise<void> {
+  await set(AGENT_MODE_ENABLED_KEY, enabled);
+}
+
+/** Where the local Agent SDK helper listens. Per-machine; defaults to localhost:8787. */
+export async function getAgentSidecarUrl(): Promise<string> {
+  const stored = await get<string>(AGENT_SIDECAR_URL_KEY);
+  return typeof stored === 'string' && stored.length > 0 ? stored : DEFAULT_AGENT_SIDECAR_URL;
+}
+
+export async function setAgentSidecarUrl(url: string): Promise<void> {
+  await set(AGENT_SIDECAR_URL_KEY, url);
+}
+
+/** Which model the Agent SDK runs when Agent mode is on. */
+export async function getAgentSdkModel(): Promise<string> {
+  const stored = await get<string>(AGENT_SDK_MODEL_KEY);
+  return typeof stored === 'string' && stored.length > 0 ? stored : DEFAULT_AGENT_SDK_MODEL;
+}
+
+export async function setAgentSdkModel(model: string): Promise<void> {
+  await set(AGENT_SDK_MODEL_KEY, model);
+}
+
+/**
+ * Agent SDK activity traces: whether finished runs are mirrored to IndexedDB
+ * (default on; the live in-UI trace shows regardless), and the capped list of
+ * saved runs for the optional audit viewer. App-global — never in project files.
+ */
+export async function getAgentTraceSaving(): Promise<boolean> {
+  const stored = await get(AGENT_TRACE_SAVING_KEY);
+  return stored === undefined ? true : Boolean(stored);
+}
+
+export async function setAgentTraceSaving(enabled: boolean): Promise<void> {
+  await set(AGENT_TRACE_SAVING_KEY, enabled);
+}
+
+export async function getSavedAgentTraces(): Promise<TraceRun[]> {
+  const stored = await get<TraceRun[]>(AGENT_TRACES_KEY);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export async function setSavedAgentTraces(runs: TraceRun[]): Promise<void> {
+  await set(AGENT_TRACES_KEY, runs);
 }

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "agent": "node agent-sidecar/server.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

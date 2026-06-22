@@ -44,6 +44,20 @@ control + per-step "break down") that flows straight into the runner. Phases:
 `setup → coach → plan → running`. Two AI flows added (`coachSprintTurn`,
 `decomposeSprintStep`); plan edits run through the pure `src/lib/sprintEdit.ts`.
 
+An **experimental Claude Agent SDK transport** shipped 2026-06-21 (see
+[`docs/migration-log.md`](docs/migration-log.md)): a fourth provider `'agent-sdk'`
+at the `LLMClient` seam can route **dialogue + coaching** calls through the Claude
+Agent SDK against a **Max subscription**, via a standalone local Node helper
+(`agent-sidecar/` — the SDK is a Node library that can't run in the webview, so the
+webview half is a thin localhost proxy and the SDK never enters the browser
+bundle). It is **off by default** behind an "Agent mode" toggle (AI settings →
+Experimental — Claude Agent SDK); the standard one-off API path stays the default,
+and per-task model overrides can opt any other call in. Auth is Max-OAuth-only
+(`claude setup-token`). While it runs, its live thinking/activity trace streams into
+the in-progress UIs (replacing the static "analyzing" markers), and finished runs are
+optionally auditable from a viewer in the Experimental settings (saved app-global by
+default with a toggle to disable; never in project files).
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered
@@ -144,6 +158,22 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
 - **Retire the `.env` AI-key fallback.** Kept during sync work to avoid breaking
   existing setups. Once the keyring path is verified in real use, remove the
   env-var fallback and its read in `src/services/ai-provider-registry.ts`.
+- **Productionize the Agent SDK helper (experimental).** The `agent-sidecar/` Node
+  helper is currently started by hand (`npm run agent`) and reads its own
+  `CLAUDE_CODE_OAUTH_TOKEN`. Follow-ups, by mood: have Rust own the helper's
+  lifecycle (spawn on app start) and inject the token from the OS keyring (add
+  `'claude-oauth'` to `src/services/credentials.ts`); and re-verify the SDK
+  option/message names (`query` / `options.{model,systemPrompt,allowedTools,
+  settingSources,permissionMode,includePartialMessages}` / `result` / `stream_event`,
+  tool-restriction) on each upgrade — pinned to `@anthropic-ai/claude-agent-sdk`
+  0.3.185. (Token-level streaming now ships via `includePartialMessages: true`, which
+  also feeds the live activity trace — see migration-log 2026-06-21.) JSON kinds use a prompt
+  instruction + the app's tolerant `safeJsonParse` (Anthropic/Ollama parity), not the
+  SDK's strict `output_format`; optional hardening is `output_format` **with graceful
+  fallback** to that path, for strict typing once it can be verified per-schema. The
+  webview→localhost contract is the portable path (browser-only dev can't reach a
+  desktop-spawned helper), so keep it even when Rust owns the process. ToS note:
+  subscription OAuth in a custom app is a gray area — single-user, own-machine use only.
 - **Confirm-modal usage audit.** `ConfirmModal` (and native `confirm()`) exist;
   the ADHD-UX rule is "undo, not confirm" except for project delete. Audit usages
   to verify they're destructive-only; replace any non-destructive confirm with an

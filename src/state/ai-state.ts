@@ -6,9 +6,13 @@ import type { AppState } from '.';
 import type { ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
 import { DEFAULT_CATALOG, ollamaCatalogModel } from '../services/ai/model-catalog';
-import { DEFAULT_OLLAMA_BASE_URL } from '../services/ai/clients';
+import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from '../services/ai/clients';
 import * as prefs from '../services/preferences';
-import { setOllamaBaseUrl as applyOllamaBaseUrl, detectOllamaModels } from '../services/ai-provider-registry';
+import {
+  setOllamaBaseUrl as applyOllamaBaseUrl,
+  setAgentSidecarUrl as applyAgentSidecarUrl,
+  detectOllamaModels,
+} from '../services/ai-provider-registry';
 
 /**
  * AI configuration: which persona is active, custom personas, the prompts used
@@ -67,6 +71,17 @@ export interface AIStateSlice {
   /** Per-machine Ollama endpoint. */
   ollamaBaseUrl: string;
 
+  /**
+   * Experimental Claude Agent SDK integration (global prefs). OFF by default;
+   * when on, dialogue + coaching calls route through the local Agent SDK helper
+   * against the user's Max subscription. The rest of the app is unaffected.
+   */
+  agentModeEnabled: boolean;
+  /** Per-machine URL of the local Agent SDK helper. */
+  agentSidecarUrl: string;
+  /** Which model the Agent SDK runs when Agent mode is on. */
+  agentSdkModel: string;
+
   setActivePersonaId: (id: string) => void;
   setCustomPersonas: (personas: Persona[] | ((prev: Persona[]) => Persona[])) => void;
   /** Set the effective config (e.g. from the editor UI); derives + stores the per-project override. */
@@ -93,6 +108,12 @@ export interface AIStateSlice {
   setGlobalModelDefault: (config: ModelConfig) => void;
   setModelCatalog: (catalog: CatalogModel[]) => void;
   setOllamaBaseUrl: (url: string) => void;
+  /** Toggle the experimental Agent SDK routing; writes through to preferences. */
+  setAgentModeEnabled: (enabled: boolean) => void;
+  /** Point the Agent SDK helper at a URL; applies to the registry + preferences. */
+  setAgentSidecarUrl: (url: string) => void;
+  /** Choose the Agent SDK model; writes through to preferences. */
+  setAgentSdkModel: (model: string) => void;
   /** Load global AI prefs from storage and refresh the Ollama catalog. Call once at boot. */
   hydrateAIPreferences: () => Promise<void>;
   /** Re-query the local Ollama server and merge its models into the catalog. */
@@ -118,6 +139,9 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   globalModelDefault: {},
   modelCatalog: DEFAULT_CATALOG,
   ollamaBaseUrl: DEFAULT_OLLAMA_BASE_URL,
+  agentModeEnabled: false,
+  agentSidecarUrl: DEFAULT_AGENT_SIDECAR_URL,
+  agentSdkModel: prefs.DEFAULT_AGENT_SDK_MODEL,
 
   setActivePersonaId: (id) => set({ activePersonaId: id }),
   setCustomPersonas: (personas) =>
@@ -186,6 +210,22 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     void prefs.setOllamaBaseUrl(url);
   },
 
+  setAgentModeEnabled: (enabled) => {
+    set({ agentModeEnabled: enabled });
+    void prefs.setAgentModeEnabled(enabled);
+  },
+
+  setAgentSidecarUrl: (url) => {
+    set({ agentSidecarUrl: url });
+    applyAgentSidecarUrl(url);
+    void prefs.setAgentSidecarUrl(url);
+  },
+
+  setAgentSdkModel: (model) => {
+    set({ agentSdkModel: model });
+    void prefs.setAgentSdkModel(model);
+  },
+
   hydrateAIPreferences: async () => {
     const [
       globalModelDefault,
@@ -195,6 +235,9 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       globalPromptsConfig,
       revisionInstructions,
       activeRevisionInstructionId,
+      agentModeEnabled,
+      agentSidecarUrl,
+      agentSdkModel,
     ] = await Promise.all([
       prefs.getGlobalModelDefault(),
       prefs.getModelCatalog(),
@@ -203,6 +246,9 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       prefs.getGlobalPromptsDefault(),
       prefs.getRevisionInstructions(),
       prefs.getActiveRevisionInstructionId(),
+      prefs.getAgentModeEnabled(),
+      prefs.getAgentSidecarUrl(),
+      prefs.getAgentSdkModel(),
     ]);
     // Re-resolve the effective config against the just-loaded global tier — a
     // project may already be open by the time prefs hydrate.
@@ -215,8 +261,12 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       revisionInstructions,
       activeRevisionInstructionId: activeRevisionInstructionId ?? s.activeRevisionInstructionId,
       promptsConfig: resolvePromptsConfig(s.projectPromptsOverride, globalPromptsConfig),
+      agentModeEnabled,
+      agentSidecarUrl,
+      agentSdkModel,
     }));
     applyOllamaBaseUrl(ollamaBaseUrl);
+    applyAgentSidecarUrl(agentSidecarUrl);
     // Non-blocking: surface locally-installed Ollama models if the server is up.
     void get().refreshOllamaCatalog();
   },
