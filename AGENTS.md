@@ -92,7 +92,7 @@ rebuildable from disk at any time and is gitignored.
 `src-tauri/src/commands/`. The families: `app_info`; `project_*`
 (create/open/close/list_recent/delete_recent); `project_read` / `project_write`
 (bulk document IO — there is **no** per-section `section_save`); `snapshot_*`
-(commit/list/read); `migration_import_legacy` (a stub); `credentials_*`
+(commit/list/read); `credentials_*`
 (OS-keyring); and `sync_*` (state/pull/push/resolve_merge/configure_remote).
 Full-text `search` is **not yet implemented** (see [STATUS.md](STATUS.md)).
 

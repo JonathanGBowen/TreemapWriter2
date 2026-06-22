@@ -131,3 +131,123 @@ recorded so a future pass doesn't re-investigate:
 - **P5 (second half) — a global prompt-overrides editor.** A larger lift whose
   value is unclear against the project's "fewer choices" ethos; per-project
   prompt edits already exist via the raw-JSON `ProjectFileModal`.
+
+---
+
+## 2026-06-22 — Second Pass
+
+> **A second dated snapshot.** The first pass (above) closed the data-loss and
+> silent-failure class. This pass targets what was left: a fresh project that
+> couldn't be typed into, gaps in the project-management flow, an illegible
+> glyph-only dock with no keyboard access, three overlapping AI doors, and
+> accreted dead code. As before, every finding was verified against the code
+> before any change. **Scope:** dead code, legibility / discoverability,
+> AI-surface consolidation, the project-management flow, and the empty-document
+> condition. The Climate workspace was reviewed and **kept** (not a redundancy).
+
+### How the flow changed (second pass)
+
+The diagram retraces launch → load → project entry → the workspace, foregrounding
+the second-pass markers. Two tiers join the original four: **L** = legibility /
+discoverability and **C** = consolidation (surface-area reduction). All are
+resolved unless marked *deferred*.
+
+```mermaid
+flowchart TD
+  Launch([App launch]) --> Detect{"Tauri or browser?"}
+  Detect --> Load["loadInitialState"]
+  Load --> Has{"Recent project on record?"}
+  Has -- no --> New["New / blank project<br/>localContent = '' (F3 fixed)"]
+  Has -- yes --> Open["loadProject"]
+  New --> Editor
+  Open --> Editor["Editor — now mounts even when empty;<br/>blank-page CTA seeds a heading (F3)"]
+
+  Editor --> Save["saveCurrentState (60s autosave)"]
+  Editor --> Rename["Rename in sidebar<br/>persists on blur (D10)"]
+  Editor --> Dock["Sidebar dock"]
+  Editor --> Spec["Spec Generator"]
+  Spec --> Ideas["Content ideas — folded in (C2)"]
+
+  Dock --> Sprint["» Sprint — one entry,<br/>Goal | Draft toggle (C1 · L1)"]
+  Dock --> Assist["◉ Assist — opens the palette;<br/>Coach · Generate specs · Revise (C3)"]
+  Dock --> Tools["▦ ◈ ❝ {} ≈ ≋ — 7 glyphs, was 9 (L1)"]
+  Assist --> Palette["Command palette<br/>every action by name (L2)"]
+  Tools -.->|"⌘K"| Palette
+
+  Dock --> ProjMgr["Project manager"]
+  ProjMgr --> Del["Delete → confirm first (D8)"]
+  ProjMgr --> Switch["Open another → switchProject<br/>flushes current first (D9)"]
+  ProjMgr --> Export["Export project → sparse<br/>prompts override (D11)"]
+
+  Dead[("Dead code removed: getEditStyles ·<br/>migration_import_legacy · local-IDB button (P7)")]
+```
+
+### Findings & resolutions (second pass)
+
+Severity tiers (this pass): **D** = data safety · **F** = first-run/empty-state ·
+**L** = legibility / discoverability · **C** = consolidation · **P** = polish
+(incl. dead code).
+
+#### Tier F — first-run / empty state
+
+| ID | Where | Symptom | Resolution |
+|----|-------|---------|------------|
+| F3 | `EditorPanel.tsx` / `project-state.ts` | A brand-new project seeds empty content (browser `localContent: ''`; Tauri `project_create` writes an empty `project.md`), but the editor mounted **only when non-empty**, and the lone "Start with a blank page" CTA called `.focus()` on the unmounted editor — so a fresh project couldn't be typed into on either runtime; the only escape was importing a markdown file. | The editor mounts whenever a project is open (gated on the desktop preview `needsProject`, not on emptiness); the CTA seeds a `# ` heading and focuses, so a treemap node + section appear at once. |
+
+#### Tier D — data safety
+
+| ID | Where | Symptom | Resolution |
+|----|-------|---------|------------|
+| D8 | `ProjectManagerModal.tsx` → `App.tsx` | Project delete fired immediately — the modal's own "delete asks once — the only thing here that does" copy was aspirational; the handler called `deleteProject` directly. | Routed through the existing `requestConfirm`/`ConfirmModal` with runtime-specific copy (desktop forgets the recent entry, folder kept; browser is permanent). `ConfirmModal` bumped to `z-[110]` so it sits above the open Projects modal. |
+| D9 | `App.tsx` Projects modal · `project-state.ts` | Switching projects called `loadProject` without flushing the current one, so up to 60 s of edits (since the last autosave) were lost on switch. | New `switchProject` thunk awaits `saveCurrentState` then `loadProject`; it composes with the D4 in-flight convergence guard (left untouched). |
+| D10 | `Sidebar.tsx` | The project-name input only persisted on the next 60 s autosave; an immediate switch/close dropped the rename. | Persists on blur (subscribes to `saveCurrentState` directly), restoring "Untitled Project" if the field is cleared. |
+| D11 | `App.tsx` `handleExportProject` | The `.socratic` export wrote the **resolved** prompts config, baking this machine's global tier into every field — so a re-import could never inherit a different machine's globals. | Extracted a pure, unit-tested `buildProjectExport` that emits the **sparse** `projectPromptsOverride` (+ `modelsConfig` for parity), mirroring `saveCurrentState`. |
+
+#### Tier L — legibility / discoverability
+
+| ID | Where | Symptom | Resolution |
+|----|-------|---------|------------|
+| L1 | `Dock.tsx` | Nine glyph-only tools with no persistent labels, and two identical `»` sprint buttons distinguished only by colour. | The twin sprints became one labelled **Sprint** button; the three AI glyphs collapsed to one **Assist** door (C3), so the tools strip is 7 glyphs — each captioned on hover/focus and named in the palette. |
+| L2 | app-wide | No keyboard access or command palette existed anywhere. | A **⌘/Ctrl+K command palette** (`CommandPaletteModal`) lists every primary action by name + glyph + shortcut; one global key handler also binds ⌘S (snapshot) and ⌘⏎ (run diagnostic), guarded so it never shadows the editor keymap or a modal's Enter/Escape. |
+
+#### Tier C — consolidation (fewer entry points)
+
+| ID | Where | Symptom | Resolution |
+|----|-------|---------|------------|
+| C1 | `ui-state.ts` · `SprintModal`/`SprintSetup` · `Dock`/`App` | Goal and Content sprints were two dock buttons, two ui-state flags, and two mounted `SprintModal` instances. | One `showSprintModal` + `sprintMode`; the setup screen gains a Goal \| Draft toggle and `SprintModal` reads the mode from the store — one mounted instance serving both verbs (`onSaveGoal` + `onSaveContent`). |
+| C2 | `SpecGeneratorModal` · `PanelFooter` · `App` | A standalone Content Suggestions modal — reachable only from the tests-panel footer ⚙ — overlapped the Spec Generator and Coach. | Folded into the Spec Generator as a "Content ideas" action (it already holds the section context the call needs); the standalone modal, its flag, and the footer link were removed. The `getContentSuggestions` flow is preserved. |
+| C3 | `Dock.tsx` · `App.tsx` | Coach (◉), Generate specs (✦), and Revise (⟐) were three separate dock glyphs — three "AI, help me" doors. | Grouped behind one **Assist** glyph that opens the palette, where each is a named row. The three workspaces/flags/files are unchanged — only the entry IA consolidated. |
+
+#### Tier P — polish & dead code
+
+| ID | Where | Symptom | Resolution |
+|----|-------|---------|------------|
+| P7 | several | Accreted dead code: the no-op `getEditStyles` stub + unused icon imports (`EditorPanel`); the `migration_import_legacy` Rust stub + its handler registration; and a desktop-broken "import from this device's cache" button (`MigrationModal`, which reads the always-empty webview IDB). | All removed — the Rust stub plus its `commands/mod.rs` module line and `lib.rs` registration deleted; the local-IDB button hidden on desktop. The empty `onSaveCache` body vanished with C2. |
+| P8 | `ProjectMenu.tsx` | "Import project" actually created a **new** project (the confirm dialog said so, but the label implied replace). | Relabelled "Import as new project". |
+
+### Verified non-issues (second pass)
+
+Checked against the code and found already correct — recorded so a third pass
+doesn't re-investigate:
+
+- **D4 project-switch convergence race — still intact.** The 2026-06-16 guard
+  (capture `activeProjectId`, abort the store convergence if it changed
+  mid-write) is unchanged; `switchProject` composes with it rather than replacing
+  it.
+- **Other empty states degrade gracefully.** Only the editor mount was broken —
+  the treemap ("No visible sections"), the sidebar section list, the dock
+  ("0W · 0 sections"), and the tests panel ("Select a section") all handle zero
+  sections cleanly.
+- **`project_close` (Rust) kept.** A correct 4-line command with no current
+  caller; left in place rather than deleted speculatively (it may back a future
+  handle-flush on switch).
+
+### Deferred (second pass)
+
+- **Rust-side bulk migration import.** The stub is now deleted; legacy import
+  stays JS-side (`src/features/migration/importer.ts`), which was always the real
+  path.
+- **Wiring `project_close`.** Kept, but unused for now.
+- **Browser-demo persistence asymmetry** (`hasOpenProject: !isTauri()`): the
+  browser demo persists to IndexedDB while the desktop demo is a transient
+  preview — a deliberate design choice, recorded but not changed this pass.

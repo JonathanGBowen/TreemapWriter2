@@ -48,4 +48,20 @@ describe('ui-state slice', () => {
     store.getState().setShowProjectModal(false);
     expect(store.getState().showProjectModal).toBe(false);
   });
+
+  it('the sprint surface is one flag plus a mode, defaulting to draft', () => {
+    const s = store.getState();
+    expect(s.showSprintModal).toBe(false);
+    expect(s.sprintMode).toBe('content');
+    s.setSprintMode('goal');
+    expect(store.getState().sprintMode).toBe('goal');
+    s.setShowSprintModal(true);
+    expect(store.getState().showSprintModal).toBe(true);
+  });
+
+  it('the command palette has its own flag', () => {
+    expect(store.getState().showCommandPalette).toBe(false);
+    store.getState().setShowCommandPalette(true);
+    expect(store.getState().showCommandPalette).toBe(true);
+  });
 });
