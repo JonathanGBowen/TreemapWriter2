@@ -3050,3 +3050,50 @@ original signature/behavior, so reverting the workspace doesn't touch the batch 
 cascading re-derivation to descendants (forward walk only; re-open to restart — safe via
 the snapshot); routing non-agent providers through the multi-turn chat (iteration is tied
 to the agent per the request; other providers get the steer path).
+
+---
+
+## 2026-06-22 — Test-coverage hardening (tooling + targeted suites)
+
+**What changed.** A focused pass to make coverage measurable, enforce the suite
+in CI, and fill the highest-value untested seams. No product behavior changed —
+this is test + tooling only.
+
+- **Coverage tooling.** Added `@vitest/coverage-v8` and a `coverage` block in
+  `vitest.config.ts` (v8 provider; `text`/`html`/`json-summary`; `src/types/**`
+  and test files excluded). New `npm run coverage` script; `coverage/` gitignored.
+  Floor thresholds are set at the measured baseline so the gate can only ratchet
+  up (current: ~20% lines / ~16% funcs / ~19% stmts / ~16% branches).
+- **jsdom env.** Added `jsdom` and broadened the vitest `include` glob to
+  `*.test.tsx`. The default env stays `node` (fast); DOM-needing tests opt in
+  per-file with `// @vitest-environment jsdom` (first user: the sync-policy test).
+- **CI gate.** Added `.github/workflows/ci.yml` — a frontend job (typecheck,
+  coverage, build) and a Rust job (`cargo test` with the Tauri v2 Linux system
+  deps). Tests are now enforced on push/PR rather than by convention.
+- **New TS suites.** State reducers (`document`/`ui`/`comparison`/`interpolation`/
+  `ai` slices) via the `persistence.test.ts` isolation harness; the `sync-policy`
+  singleton (debounce/throttle/latched-vs-silent error policy, under fake timers
+  + jsdom); and the `ai-provider-registry` Agent-mode resolver wiring.
+- **New Rust suites.** Inline `#[cfg(test)]` modules for `fs_io` (atomic write /
+  signature / json round-trip), `git` (LF policy, idempotent init, no-empty-commit
+  `commit_all`), `project::layout` (path tree + `looks_like_project`), and `types`
+  serde round-trips (the camelCase + `type`-rename TS-mirror contract).
+
+Suite counts after this pass: **323 TS tests / 40 files** (was 278 / 33) and
+**25 Rust tests** (was 15).
+
+**How to verify.** `npm run coverage`, `npm run typecheck`, `npm run build` pass;
+`cargo test` inside `src-tauri/` passes (needs the Tauri Linux system deps, which
+the CI rust job installs). The coverage gate fails the build if coverage drops
+below the configured floors.
+
+**Rollback.** Purely additive. `git revert` the range, or delete the new
+`__tests__` files + the `#[cfg(test)]` modules and restore the original
+`vitest.config.ts` / `package.json` scripts; remove `.github/workflows/ci.yml`.
+
+**Deliberate limits (non-goals here).** Exhaustive React component/canvas tests
+(topo/treemap/editor) and e2e/Playwright stay out of scope by design (UI-heavy by
+acknowledged intent). The DOM/`livePreview` decoration test flagged in the plan
+was left as the lowest-ROI optional item. The doc-ritual pre-commit flag (STATUS
+"Keeping this honest") remains a separate lingering item — the CI gate enforces
+tests, not the migration-log/STATUS touch.
