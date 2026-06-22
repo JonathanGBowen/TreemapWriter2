@@ -250,8 +250,19 @@ not here.)
 
 ## Keeping this honest
 
-The doc-refresh ritual (see [`AGENTS.md`](AGENTS.md) → "Definition of done") is
-currently a convention. **Optional guardrail (itself a lingering item):** add a
-lightweight pre-commit hook or PR checklist that flags a feature change which
-doesn't also touch `migration-log.md` + this file — turning the ritual into a
-real definition-of-done rather than a habit.
+A **CI gate** now enforces the *code* half of the definition of done: a GitHub
+Actions workflow (`.github/workflows/ci.yml`, 2026-06-22) runs typecheck +
+Vitest-with-coverage + build and `cargo test` on every push/PR, so a red suite
+can't merge. **Coverage is measured** (`npm run coverage`, v8) with floor
+thresholds that ratchet up. The first targeted suites (state slices, sync-policy,
+the AI-registry resolver, and the Rust fs_io/git/layout/serde backend) landed the
+same day — see [`docs/migration-log.md`](docs/migration-log.md). Raise the
+thresholds as coverage grows; the big remaining gaps are the AI-flow orchestrators
+(`ai-provider.impl` + per-flow modules) and the UI feature layer (out of scope by
+design for unit tests).
+
+The *doc-refresh* half of the ritual (see [`AGENTS.md`](AGENTS.md) → "Definition
+of done") is still a convention. **Lingering guardrail:** add a lightweight
+pre-commit hook or PR checklist that flags a feature change which doesn't also
+touch `migration-log.md` + this file — turning that ritual into a real
+definition-of-done rather than a habit. (CI now covers tests; this covers docs.)

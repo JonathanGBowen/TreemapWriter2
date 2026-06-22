@@ -120,3 +120,64 @@ pub fn now_iso() -> String {
     let now: DateTime<Utc> = Utc::now();
     now.to_rfc3339()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn init_pins_the_lf_line_ending_policy() {
+        let dir = tempdir().unwrap();
+        let repo = init(dir.path()).unwrap();
+
+        // The deterministic LF policy must be set on the project's own repo.
+        let config = repo.config().unwrap();
+        assert!(!config.get_bool("core.autocrlf").unwrap());
+        assert_eq!(config.get_string("core.eol").unwrap(), "lf");
+        assert!(dir.path().join(".gitattributes").exists());
+    }
+
+    #[test]
+    fn init_is_idempotent_and_reopens_an_existing_repo() {
+        let dir = tempdir().unwrap();
+        init(dir.path()).unwrap();
+        // A second init must open (not re-create) the repo without error.
+        let reopened = init(dir.path()).unwrap();
+        assert!(reopened.head().is_err(), "still no commits after reopen");
+    }
+
+    #[test]
+    fn commit_all_commits_changes_and_no_ops_when_clean() {
+        let dir = tempdir().unwrap();
+        let repo = init(dir.path()).unwrap();
+        fs::write(dir.path().join("project.md"), "# first\n").unwrap();
+
+        let first = commit_all(&repo, "autosave").unwrap();
+        assert!(repo.head().is_ok(), "HEAD points at a commit after the first commit");
+
+        // Nothing changed → commit_all returns the same HEAD, not a new commit.
+        let again = commit_all(&repo, "autosave").unwrap();
+        assert_eq!(first, again, "an unchanged tree must not create an empty commit");
+
+        // A real edit → a new, distinct commit.
+        fs::write(dir.path().join("project.md"), "# first\n\nmore\n").unwrap();
+        let third = commit_all(&repo, "autosave").unwrap();
+        assert_ne!(first, third, "a changed tree must create a new commit");
+    }
+
+    #[test]
+    fn ensure_initial_commit_seeds_then_is_a_no_op() {
+        let dir = tempdir().unwrap();
+        let repo = init(dir.path()).unwrap();
+        fs::write(dir.path().join("project.md"), "# seed\n").unwrap();
+
+        ensure_initial_commit(&repo, "initial").unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap().id();
+
+        // Calling again must not move HEAD (no-op once a commit exists).
+        ensure_initial_commit(&repo, "initial again").unwrap();
+        assert_eq!(head, repo.head().unwrap().peel_to_commit().unwrap().id());
+    }
+}
