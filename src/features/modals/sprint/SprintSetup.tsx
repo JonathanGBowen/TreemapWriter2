@@ -18,13 +18,14 @@ const TOTAL_PRESETS: Record<'goal' | 'content', number[]> = {
 
 interface SprintSetupProps {
   mode: 'goal' | 'content';
+  onModeChange: (mode: 'goal' | 'content') => void;
   sectionTitle: string;
   onStart: (shape: ArgumentShape | null, totalMin: number) => void;
   onCoach: (shape: ArgumentShape | null, totalMin: number) => void;
   onClose: () => void;
 }
 
-export function SprintSetup({ mode, sectionTitle, onStart, onCoach, onClose }: SprintSetupProps) {
+export function SprintSetup({ mode, onModeChange, sectionTitle, onStart, onCoach, onClose }: SprintSetupProps) {
   const presets = TOTAL_PRESETS[mode];
   const [totalMin, setTotalMin] = useState(mode === 'content' ? 35 : 10);
   const [shapeId, setShapeId] = useState<string | null>(
@@ -62,6 +63,37 @@ export function SprintSetup({ mode, sectionTitle, onStart, onCoach, onClose }: S
       footer={footer}
     >
       <div className="flex flex-col gap-[16px]">
+        <div>
+          <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-hld-muted-text mb-[8px]">
+            Sprint type
+          </div>
+          <div className="flex gap-[8px]">
+            <button
+              type="button"
+              onClick={() => onModeChange('goal')}
+              aria-pressed={mode === 'goal'}
+              className={`flex-1 py-[10px] border font-mono text-[11px] tracking-[0.1em] uppercase transition-colors ${
+                mode === 'goal'
+                  ? 'border-hld-cyan text-hld-cyan bg-hld-cyan/[0.06]'
+                  : 'border-hld-border text-hld-muted-text hover:text-hld-text'
+              }`}
+            >
+              Goal
+            </button>
+            <button
+              type="button"
+              onClick={() => onModeChange('content')}
+              aria-pressed={mode === 'content'}
+              className={`flex-1 py-[10px] border font-mono text-[11px] tracking-[0.1em] uppercase transition-colors ${
+                mode === 'content'
+                  ? 'border-hld-cyan text-hld-cyan bg-hld-cyan/[0.06]'
+                  : 'border-hld-border text-hld-muted-text hover:text-hld-text'
+              }`}
+            >
+              Draft
+            </button>
+          </div>
+        </div>
         <div>
           <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-hld-muted-text mb-[8px]">
             Total time
