@@ -69,3 +69,43 @@ impl Layout {
         root.join("project.md").is_file() && root.join(".twriter").is_dir()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn paths_match_the_documented_on_disk_tree() {
+        let layout = Layout::new("/projects/diss");
+        assert_eq!(layout.project_md(), Path::new("/projects/diss/project.md"));
+        assert_eq!(layout.twriter_dir(), Path::new("/projects/diss/.twriter"));
+        assert_eq!(layout.settings_json(), Path::new("/projects/diss/.twriter/settings.json"));
+        assert_eq!(layout.specs_dir(), Path::new("/projects/diss/.twriter/specs"));
+        assert_eq!(layout.cache_sqlite(), Path::new("/projects/diss/.twriter/index.sqlite"));
+        assert_eq!(layout.gitignore(), Path::new("/projects/diss/.gitignore"));
+    }
+
+    #[test]
+    fn spec_yaml_is_named_per_section_id() {
+        let layout = Layout::new("/projects/diss");
+        assert_eq!(
+            layout.spec_yaml("intro-0"),
+            Path::new("/projects/diss/.twriter/specs/intro-0.spec.yaml")
+        );
+    }
+
+    #[test]
+    fn looks_like_project_requires_both_marker_files() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        assert!(!Layout::looks_like_project(root), "empty dir is not a project");
+
+        fs::write(root.join("project.md"), "# doc").unwrap();
+        assert!(!Layout::looks_like_project(root), "project.md alone is not enough");
+
+        fs::create_dir(root.join(".twriter")).unwrap();
+        assert!(Layout::looks_like_project(root), "both markers present → a project");
+    }
+}

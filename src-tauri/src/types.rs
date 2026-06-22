@@ -420,3 +420,65 @@ pub struct UiState {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub active_line_index: Option<i32>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_meta_uses_camel_case_keys_for_the_ts_mirror() {
+        let meta = ProjectMeta {
+            id: "p1".into(),
+            name: "Diss".into(),
+            last_modified: 1_700_000_000_000,
+            word_count: 4200,
+            path: Some("/projects/diss".into()),
+        };
+        let json = serde_json::to_string(&meta).unwrap();
+        // The TS side reads camelCase — snake_case here would silently desync it.
+        assert!(json.contains("\"lastModified\":1700000000000"));
+        assert!(json.contains("\"wordCount\":4200"));
+
+        let back: ProjectMeta = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.id, "p1");
+        assert_eq!(back.last_modified, 1_700_000_000_000);
+        assert_eq!(back.word_count, 4200);
+    }
+
+    #[test]
+    fn section_spec_round_trips_through_yaml_with_camel_case() {
+        // The spec sidecars are YAML; this is the on-disk format for a section.
+        let spec = SectionSpec {
+            function: "argue".into(),
+            main_claim: "The claim.".into(),
+            required_moves: vec![RequiredMove {
+                id: "m1".into(),
+                description: "Establish the premise.".into(),
+                after: None,
+            }],
+            incoming_context: vec!["prior result".into()],
+            outgoing_commitments: vec![],
+        };
+        let yaml = serde_yaml::to_string(&spec).unwrap();
+        assert!(yaml.contains("mainClaim:"));
+        assert!(yaml.contains("requiredMoves:"));
+        assert!(yaml.contains("incomingContext:"));
+
+        let back: SectionSpec = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(back.main_claim, "The claim.");
+        assert_eq!(back.required_moves.len(), 1);
+        assert_eq!(back.required_moves[0].id, "m1");
+    }
+
+    #[test]
+    fn dependency_serializes_kind_as_the_reserved_type_key() {
+        let dep = Dependency { id: "s0".into(), kind: "prerequisite".into() };
+        let json = serde_json::to_string(&dep).unwrap();
+        // `kind` is renamed to `type` to match the TS Dependency shape.
+        assert!(json.contains("\"type\":\"prerequisite\""));
+        assert!(!json.contains("\"kind\""));
+
+        let back: Dependency = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.kind, "prerequisite");
+    }
+}
