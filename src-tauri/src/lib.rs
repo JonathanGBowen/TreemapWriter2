@@ -105,8 +105,6 @@ pub fn run() {
             commands::snapshot::snapshot_commit,
             commands::snapshot::snapshot_list,
             commands::snapshot::snapshot_read,
-            // commands/migration.rs
-            commands::migration::migration_import_legacy,
             // commands/credentials.rs (Phase 4a)
             commands::credentials::credentials_set,
             commands::credentials::credentials_get,

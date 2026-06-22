@@ -16,6 +16,7 @@ import { Archive, FolderOpen, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useStore } from '../../store';
+import { isTauri } from '../../services/tauri-environment';
 import {
   executePlan,
   plan as planImport,
@@ -151,21 +152,28 @@ export const MigrationModal: React.FC = () => {
                   </span>
                 </div>
               </button>
-              <button
-                onClick={importFromLocalIdb}
-                className="flex items-center gap-2 p-3 border border-hld-yellow/30 hover:bg-hld-yellow/5 rounded text-[12px] text-hld-text"
-              >
-                <Archive size={14} className="shrink-0" />
-                <div className="flex flex-col items-start">
-                  <span className="font-mono uppercase tracking-wider text-[10px] text-hld-yellow">
-                    Import from this device&rsquo;s cache
-                  </span>
-                  <span className="text-[10px] opacity-70">
-                    Use only if you ran an early desktop build that wrote
-                    projects into the app&rsquo;s local cache.
-                  </span>
-                </div>
-              </button>
+              {/* The local-IDB path reads the *webview's* IndexedDB, which on the
+                  desktop build is effectively always empty (browser-only projects
+                  live in the browser's IDB, a different storage origin). Showing it
+                  here only misleads, so it's hidden on desktop; the backup-file path
+                  above is the real migration route. */}
+              {!isTauri() && (
+                <button
+                  onClick={importFromLocalIdb}
+                  className="flex items-center gap-2 p-3 border border-hld-yellow/30 hover:bg-hld-yellow/5 rounded text-[12px] text-hld-text"
+                >
+                  <Archive size={14} className="shrink-0" />
+                  <div className="flex flex-col items-start">
+                    <span className="font-mono uppercase tracking-wider text-[10px] text-hld-yellow">
+                      Import from this device&rsquo;s cache
+                    </span>
+                    <span className="text-[10px] opacity-70">
+                      Use only if you ran an early desktop build that wrote
+                      projects into the app&rsquo;s local cache.
+                    </span>
+                  </div>
+                </button>
+              )}
               <button
                 onClick={skip}
                 className="flex items-center gap-2 p-3 border border-hld-border hover:bg-hld-surface2 rounded text-[12px] text-hld-muted"
