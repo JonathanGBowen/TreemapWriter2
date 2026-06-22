@@ -11,7 +11,7 @@ pub mod remote;
 
 use crate::error::{AppError, AppResult};
 use chrono::{DateTime, Utc};
-use git2::{Repository, Signature};
+use git2::{Oid, Repository, Signature};
 use std::path::Path;
 
 /// The author identity used for app-generated commits. Single-user app, so
@@ -107,6 +107,73 @@ fn signature<'a>() -> AppResult<Signature<'a>> {
     Signature::now(AUTHOR_NAME, AUTHOR_EMAIL).map_err(AppError::from)
 }
 
+// --- Tags & refs (session boundaries) -----------------------------------
+//
+// Sessions are commit ranges on `main`, bracketed by a pair of lightweight
+// tags: `session/<ts>/start` and `session/<ts>/end`. Tag names may contain
+// slashes — that is valid in git ref names. These primitives let the TS
+// session lifecycle bracket a writing session without ever exposing git to
+// the writer.
+
+/// Create a lightweight tag `name` pointing at `oid`. With `force`, an
+/// existing tag of the same name is moved instead of erroring — so
+/// re-bracketing a session is idempotent.
+pub fn create_tag(repo: &Repository, name: &str, oid: Oid, force: bool) -> AppResult<()> {
+    let object = repo.find_object(oid, None)?;
+    repo.tag_lightweight(name, &object, force)?;
+    Ok(())
+}
+
+/// List tag names, optionally filtered by a glob `pattern` (e.g. `session/*`).
+pub fn list_tags(repo: &Repository, pattern: Option<&str>) -> AppResult<Vec<String>> {
+    let names = repo.tag_names(pattern)?;
+    Ok(names.iter().flatten().map(|s| s.to_string()).collect())
+}
+
+/// Resolve a ref (tag name, branch, OID, or `HEAD`) to a commit OID hex
+/// string. Returns `None` when it cannot be resolved (e.g. a tag from another
+/// machine that hasn't synced). Used by Version Compare to turn a session tag
+/// into a selectable snapshot id.
+pub fn resolve_ref(repo: &Repository, refname: &str) -> AppResult<Option<String>> {
+    Ok(commit_oid_of(repo, refname).map(|oid| oid.to_string()))
+}
+
+/// Word-count delta of `project.md` between two refs (tag/branch/OID/HEAD),
+/// computed as `to_words - from_words`. A side whose ref can't be resolved, or
+/// that has no `project.md`, counts as 0 words. This is the brief's 2D
+/// function; per-section deltas are computed in TS from section word counts.
+pub fn word_count_delta(repo: &Repository, from_ref: &str, to_ref: &str) -> AppResult<i32> {
+    let from = ref_md_word_count(repo, from_ref)?;
+    let to = ref_md_word_count(repo, to_ref)?;
+    Ok(to - from)
+}
+
+/// Peel a ref to the commit it ultimately points at (lightweight or annotated
+/// tags both resolve correctly). `None` if the ref doesn't resolve.
+fn commit_oid_of(repo: &Repository, refname: &str) -> Option<Oid> {
+    repo.revparse_single(refname)
+        .ok()
+        .and_then(|obj| obj.peel(git2::ObjectType::Commit).ok())
+        .map(|commit| commit.id())
+}
+
+fn ref_md_word_count(repo: &Repository, refname: &str) -> AppResult<i32> {
+    let oid = match commit_oid_of(repo, refname) {
+        Some(o) => o,
+        None => return Ok(0),
+    };
+    let commit = repo.find_commit(oid)?;
+    let tree = commit.tree()?;
+    let entry = match tree.get_path(Path::new("project.md")) {
+        Ok(e) => e,
+        Err(_) => return Ok(0),
+    };
+    let blob = repo.find_blob(entry.id())?;
+    Ok(String::from_utf8_lossy(blob.content())
+        .split_whitespace()
+        .count() as i32)
+}
+
 /// Helper to render a commit-time epoch-millis from a chrono UTC DateTime.
 /// Used by the snapshot list view.
 #[allow(dead_code)]
@@ -119,4 +186,59 @@ pub fn time_to_epoch_ms(t: git2::Time) -> i64 {
 pub fn now_iso() -> String {
     let now: DateTime<Utc> = Utc::now();
     now.to_rfc3339()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Init a repo in a temp dir, write `project.md`, and commit it. Returns
+    /// the repo, the temp dir guard (kept alive by the caller), and the OID.
+    fn commit_md(dir: &Path, text: &str) -> (Repository, String) {
+        let repo = init(dir).unwrap();
+        std::fs::write(dir.join("project.md"), text).unwrap();
+        let oid = commit_all(&repo, "manual: test\n\nScope: all").unwrap();
+        (repo, oid)
+    }
+
+    #[test]
+    fn word_count_delta_counts_added_words() {
+        let dir = std::env::temp_dir().join(format!("tw-git-wc-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let (repo, start) = commit_md(&dir, "one two three");
+        create_tag(&repo, "session/t/start", Oid::from_str(&start).unwrap(), true).unwrap();
+
+        std::fs::write(dir.join("project.md"), "one two three four five").unwrap();
+        let end = commit_all(&repo, "manual: more\n\nScope: all").unwrap();
+
+        // +2 words between start tag and the new commit.
+        assert_eq!(
+            word_count_delta(&repo, "session/t/start", &end).unwrap(),
+            2
+        );
+        // Symmetric: removing words is negative.
+        assert_eq!(word_count_delta(&repo, &end, "session/t/start").unwrap(), -2);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tags_resolve_to_their_commit() {
+        let dir = std::env::temp_dir().join(format!("tw-git-tag-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let (repo, oid) = commit_md(&dir, "alpha beta");
+        create_tag(&repo, "session/x/start", Oid::from_str(&oid).unwrap(), true).unwrap();
+
+        assert_eq!(resolve_ref(&repo, "session/x/start").unwrap().as_deref(), Some(oid.as_str()));
+        assert!(resolve_ref(&repo, "session/nope/start").unwrap().is_none());
+
+        let tags = list_tags(&repo, Some("session/*")).unwrap();
+        assert!(tags.iter().any(|t| t == "session/x/start"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

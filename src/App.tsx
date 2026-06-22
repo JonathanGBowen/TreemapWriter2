@@ -23,6 +23,8 @@ import { RevisionSettingsModal } from "./features/modals/RevisionSettingsModal";
 import { CompareWorkspace } from "./features/compare/CompareWorkspace";
 import { ClimateWorkspace } from "./features/climate/ClimateWorkspace";
 import { InterpolateWorkspace } from "./features/interpolate/InterpolateWorkspace";
+import { DashboardWorkspace } from "./features/dashboard/DashboardWorkspace";
+import { SessionModal } from "./features/modals/SessionModal";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
@@ -947,6 +949,10 @@ export const App = () => {
         <ClimateWorkspace />
 
         <InterpolateWorkspace />
+
+        <DashboardWorkspace />
+
+        <SessionModal />
 
         <Toaster position="bottom-right" richColors />
       </div>

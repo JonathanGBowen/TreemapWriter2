@@ -79,6 +79,8 @@ export interface UIStateSlice {
   // project.md changed on disk outside the app while the editor had unsaved
   // edits — prompt the user to reload or overwrite (see sync-policy).
   showExternalChangeModal: boolean;
+  /** Session ceremony check-in / check-out (the standalone Start/End boundary). */
+  showSessionModal: boolean;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -119,6 +121,7 @@ export interface UIStateSlice {
   setShowRevisionSettingsModal: (show: boolean) => void;
   setShowAgentTraceModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
+  setShowSessionModal: (show: boolean) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
@@ -164,6 +167,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showRevisionSettingsModal: false,
   showAgentTraceModal: false,
   showExternalChangeModal: false,
+  showSessionModal: false,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -203,4 +207,5 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowRevisionSettingsModal: (show) => set({ showRevisionSettingsModal: show }),
   setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
+  setShowSessionModal: (show) => set({ showSessionModal: show }),
 });

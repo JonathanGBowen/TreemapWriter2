@@ -105,6 +105,13 @@ pub fn run() {
             commands::snapshot::snapshot_commit,
             commands::snapshot::snapshot_list,
             commands::snapshot::snapshot_read,
+            commands::snapshot::git_create_tag,
+            commands::snapshot::git_list_tags,
+            commands::snapshot::git_resolve_ref,
+            commands::snapshot::git_word_count_delta,
+            // commands/session.rs
+            commands::session::session_list,
+            commands::session::session_save,
             // commands/migration.rs
             commands::migration::migration_import_legacy,
             // commands/credentials.rs (Phase 4a)

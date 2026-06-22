@@ -271,6 +271,81 @@ pub struct StoredProjectData {
     pub ui_state: Option<UiState>,
 }
 
+// Session ceremony — mirror of the Sessions layer in src/types/index.ts.
+//
+// One record per writing session, persisted as `.twriter/sessions/<id>.yaml`
+// (committed, like the spec sidecars). The `id` is the hyphenated ISO start
+// timestamp and doubles as the linking key for the `session/<id>/start|end`
+// git tag pair. Written by the TS session lifecycle via `session_save`; loose
+// by design so older records still load.
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionGoal {
+    pub wish: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub outcome: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub obstacle: Option<String>,
+    /// The "if [obstacle], then I will …" implementation intention.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub plan: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionStep {
+    pub id: String,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub estimated_minutes: Option<i32>,
+    #[serde(default)]
+    pub completed: bool,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub implementation_intention: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarryForward {
+    pub step_id: String,
+    pub next_action: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionRecord {
+    pub id: String,
+    pub start_tag: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub end_tag: Option<String>,
+    pub goal: SessionGoal,
+    #[serde(default)]
+    pub steps: Vec<SessionStep>,
+    #[serde(default)]
+    pub carry_forward: Vec<CarryForward>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reflection: Option<String>,
+    #[serde(default)]
+    pub word_delta: i32,
+    #[serde(default)]
+    pub word_delta_by_node: HashMap<String, i32>,
+    #[serde(default)]
+    pub nodes_modified: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub commitment_level: Option<i32>,
+    #[serde(default)]
+    pub duration_minutes: i32,
+    /// How the session was created: "manual" (the standalone Start/End) or
+    /// "sprint" (a completed Living Sprint). Defaults to "manual".
+    #[serde(default = "default_session_source")]
+    pub source: String,
+}
+
+fn default_session_source() -> String {
+    "manual".to_string()
+}
+
 // Phase 4 — sync (git pull/push) outcomes.
 //
 // Tagged unions, externally tagged. JS side reads `kind` and switches.

@@ -394,6 +394,10 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
             data.uiState.activeLineIndex !== undefined ? data.uiState.activeLineIndex : get().activeLineIndex,
         });
       }
+      // A session belongs to one project; clear any in-flight session and load
+      // the new project's recorded log for the Progress Dashboard.
+      set({ activeSession: null });
+      void get().loadSessions();
       return true;
     } catch {
       return false;

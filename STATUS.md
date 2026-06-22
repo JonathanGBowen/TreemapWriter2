@@ -74,6 +74,26 @@ the same pure building blocks and kept for any non-workspace caller). Deliberate
 limits: forward-only walk (re-open to restart; the one `pre-ai-write` snapshot makes it
 safe), and the multi-turn chat is agent-only (other providers get the steer path).
 
+The **Session ceremony — invisible git + Progress Dashboard** shipped 2026-06-22
+(see [`docs/migration-log.md`](docs/migration-log.md)): Feature Sets 2 & 3 of the
+session-coaching brief. A writing *session* is now bracketed silently by a pair of
+git tags (`session/<id>/start|end`) and a **semantic end-commit** whose trailers
+(`GMT-step` · `Session` · `WOOP-obstacle` · `Steps-completed` · `Word-delta`) are
+machine-parseable, and is saved as a `.twriter/sessions/<id>.yaml` sidecar.
+Sessions are created two ways — a skeletal standalone **check-in/check-out**
+(`SessionModal`, Dock session button) and **completed Living Sprints** (which
+bracket a session automatically) — both through one lifecycle in
+`state/session-state.ts`. A read-only **Progress Dashboard** (`features/dashboard/`,
+Dock `▤`) surfaces accumulated totals, a words-over-time Plotly chart, per-section
+attention, and the recent-sessions log — framed as evidence, no streaks/targets/
+pass-fail color. Version Compare gained session tags as selectable refs. Two brief
+assumptions were corrected at plan time: **no task system exists on nodes** (per-node
+progress is section-based; `Task:` trailers + task sync omitted), and **idle
+auto-commit was declined** (the explicit-snapshot model is kept; tags + semantic
+commits + word-count layer on top). New git primitives (`create_tag`, `list_tags`,
+`resolve_ref`, `word_count_delta`) live in `src-tauri/src/git/mod.rs`; the
+`SessionRecord` family is mirrored TS↔Rust.
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered
@@ -101,6 +121,20 @@ still rides the existing `.md` upload; bibliographies are session-only, and BibT
 the live Zotero local-API picker / Web-API sync are deliberately out of scope (below).
 
 ## Next (felt priorities)
+
+- **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
+  2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress
+  Dashboard (Set 3) with a deliberately *skeletal* check-in/check-out
+  (`SessionModal`). The richer Feature 1 is deferred: the sequential WOOP prompts
+  (Wish→Outcome→Obstacle→Plan presented one at a time), the GMT five-step framing,
+  a granularity slider + "use tasks from node" pull in check-in, the GROW
+  commitment-branch ("if commitment < 7, simplify"), and the idle-timeout-driven
+  check-out. The data model (`SessionRecord` / `SessionGoal` / `SessionStep` /
+  `CarryForward`) and lifecycle thunks already exist, so this is UI on top of a
+  settled spine. Two smaller follow-ons flagged by the brief: surfacing *last
+  session's carry-forward* at the next check-in (the records already store it),
+  and a **spec-evaluation delta** between the session start/end snapshots (a TODO
+  integration point — the start tag is the ready-made baseline ref).
 
 - **Profile-driven wave, remaining items (F2 · F3 · F5).** The 2026-06-20 wave
   shipped F1/F4/F6; the analysis flagged three more, ranked by clinical leverage:

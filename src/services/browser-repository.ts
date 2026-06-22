@@ -6,6 +6,7 @@ import type {
   PullOutcome,
   PushOutcome,
   ResolveOutcome,
+  SessionRecord,
   Snapshot,
   SnapshotMeta,
   SyncState,
@@ -13,6 +14,7 @@ import type {
 import type { Repository, StoredProjectData } from './repository';
 
 const STORAGE_PREFIX = 'socratic_p_';
+const SESSIONS_PREFIX = 'socratic_sessions_';
 const META_KEY = 'socratic_meta_v1';
 const VERY_OLD_LEGACY_KEY = 'socratic_project_v1';
 
@@ -127,6 +129,53 @@ export const browserRepository: Repository = {
     if (!lastOpenedId) return null;
     const proj = await browserRepository.getProject(lastOpenedId);
     return proj?.revisions?.find((r) => r.id === id) ?? null;
+  },
+
+  // --- Session ceremony (browser: no git; sessions live in IndexedDB) ---
+
+  async createTag(): Promise<void> {
+    // No git in the browser — session boundaries are recorded in the YAML-free
+    // session store instead. Nothing to tag.
+  },
+
+  async listTags(): Promise<string[]> {
+    return [];
+  },
+
+  async resolveRef(refname: string): Promise<string | null> {
+    // The browser has no git refs; only an in-memory revision id resolves.
+    if (!lastOpenedId) return null;
+    const proj = await browserRepository.getProject(lastOpenedId);
+    return proj?.revisions?.some((r) => r.id === refname) ? refname : null;
+  },
+
+  async wordCountDelta(fromRef: string, toRef: string): Promise<number> {
+    if (!lastOpenedId) return 0;
+    const proj = await browserRepository.getProject(lastOpenedId);
+    const wc = (ref: string): number => {
+      if (ref === 'current' || ref === 'HEAD') return wordCountOf(proj?.markdown ?? '');
+      const snap = proj?.revisions?.find((r) => r.id === ref);
+      return snap ? wordCountOf(snap.markdown) : 0;
+    };
+    return wc(toRef) - wc(fromRef);
+  },
+
+  async listSessions(): Promise<SessionRecord[]> {
+    if (!lastOpenedId) return [];
+    const stored = await idbGet(SESSIONS_PREFIX + lastOpenedId);
+    const list = parseIfString<SessionRecord[]>(stored ?? []);
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => b.id.localeCompare(a.id));
+  },
+
+  async saveSession(record: SessionRecord): Promise<void> {
+    if (!lastOpenedId) return;
+    const key = SESSIONS_PREFIX + lastOpenedId;
+    const existing = parseIfString<SessionRecord[]>((await idbGet(key)) ?? []);
+    const list = Array.isArray(existing) ? existing : [];
+    const next = list.filter((r) => r.id !== record.id);
+    next.push(record);
+    await idbSet(key, next);
   },
 
   async migrateVeryOldLegacy() {

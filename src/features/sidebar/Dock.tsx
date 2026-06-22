@@ -40,6 +40,9 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
   const openCompare = useStore((s) => s.openCompare);
   const openClimate = useStore((s) => s.openClimate);
+  const setShowSessionModal = useStore((s) => s.setShowSessionModal);
+  const openDashboard = useStore((s) => s.openDashboard);
+  const sessionActive = useStore((s) => s.activeSession !== null);
 
   const continueLabel = (selectedId ? findTitleById(sections, selectedId) : null) ?? sections[0]?.title ?? 'Begin';
   const wordCount = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
@@ -62,6 +65,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
+    { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
   ];
 
   return (
@@ -78,13 +82,16 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
       </button>
 
       <div className="flex gap-[5px]">
+        <button type="button" onClick={() => setShowSessionModal(true)} aria-label={sessionActive ? 'Check out of session' : 'Start a session'}
+          {...cap(sessionActive ? 'Session — check out' : 'Session — check in')}
+          className="flex-1 py-[6px] border border-hld-cyan/30 text-hld-cyan text-[12px] leading-none hover:bg-hld-cyan/10 transition-colors">{sessionActive ? '◉' : '◷'}</button>
         <button type="button" onClick={() => setShowGoalSprintModal(true)} aria-label="Goal sprint" {...cap('Goal sprint')}
           className="flex-1 py-[6px] border border-hld-green/25 text-hld-green text-[12px] leading-none hover:bg-hld-green/10 transition-colors">»</button>
         <button type="button" onClick={() => setShowContentSprintModal(true)} aria-label="Content sprint" {...cap('Content sprint — draft')}
           className="flex-1 py-[6px] border border-amber-500/25 text-amber-500 text-[12px] leading-none hover:bg-amber-500/10 transition-colors">»</button>
       </div>
 
-      <div className="grid grid-cols-9 gap-[2px]">
+      <div className="grid grid-cols-10 gap-[2px]">
         {tools.map((t) => (
           <button
             key={t.aria}

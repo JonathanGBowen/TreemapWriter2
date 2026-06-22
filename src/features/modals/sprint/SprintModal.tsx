@@ -14,6 +14,8 @@ import type {
   ArgumentShape,
   PromptsConfig,
   Section,
+  SessionGoal,
+  SessionStep,
   SprintGoalFraming,
   SprintPlan,
   TestSuite,
@@ -70,12 +72,19 @@ export function SprintModal({
   const showContent = useStore((s) => s.showContentSprintModal);
   const setShowContent = useStore((s) => s.setShowContentSprintModal);
   const selectedId = useStore((s) => s.selectedId);
+  const startSession = useStore((s) => s.startSession);
+  const endSession = useStore((s) => s.endSession);
+  const sessionActive = useStore((s) => s.activeSession !== null);
 
   const isOpen = mode === 'goal' ? showGoal : showContent;
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [plan, setPlan] = useState<SprintPlan | null>(null);
   const [goalCtx, setGoalCtx] = useState<GoalContext | null>(null);
+  // True when THIS sprint started the active session (so it should close it).
+  // If a standalone session is already running, the sprint's work just counts
+  // toward it and we leave it open.
+  const [ownsSession, setOwnsSession] = useState(false);
   const [briefSeed, setBriefSeed] = useState<{ shape: ArgumentShape | null; totalMin: number }>({
     shape: null,
     totalMin: mode === 'content' ? 35 : 10,
@@ -101,12 +110,21 @@ export function SprintModal({
       setPhase('setup');
       setPlan(null);
       setGoalCtx(null);
+      setOwnsSession(false);
     }
   }, [isOpen]);
 
   if (!isOpen || !section) return null;
 
   const onClose = () => {
+    // A sprint that opened its own session checks out as that session ends —
+    // the same tags + semantic commit + record as a standalone session. Mark
+    // nothing as completed (we don't track per-move done state); the word delta
+    // and duration carry the evidence.
+    if (ownsSession) {
+      void endSession({ completedStepIds: [], carryForward: [], reflection: null });
+      setOwnsSession(false);
+    }
     if (mode === 'goal') setShowGoal(false);
     else setShowContent(false);
     setPhase('setup');
@@ -125,6 +143,26 @@ export function SprintModal({
   const startWithPlan = (p: SprintPlan) => {
     setPlan(p);
     setPhase('running');
+    // Bracket the sprint as a recorded session — but only if one isn't already
+    // running (then the sprint just contributes to the open session).
+    if (!sessionActive) {
+      const framing = p.goal;
+      const goal: SessionGoal = {
+        wish: framing?.wish?.trim() || `Sprint — ${section.title}`,
+        outcome: null,
+        obstacle: framing?.obstacle ?? null,
+        plan: framing?.ifThen ?? null,
+      };
+      const steps: SessionStep[] = p.moves.map((m) => ({
+        id: m.id,
+        description: m.title,
+        estimatedMinutes: Math.round(m.durationSec / 60) || null,
+        completed: false,
+        implementationIntention: null,
+      }));
+      setOwnsSession(true);
+      void startSession({ goal, steps, source: 'sprint' });
+    }
   };
 
   const onStartSetup = (shape: ArgumentShape | null, totalMin: number) => {

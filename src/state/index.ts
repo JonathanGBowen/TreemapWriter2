@@ -9,6 +9,7 @@ import { createComparisonSlice, type ComparisonSlice } from './comparison-state'
 import { createClimateSlice, type ClimateSlice } from './climate-state';
 import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
+import { createSessionSlice, type SessionSlice } from './session-state';
 import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider-registry';
 
 /**
@@ -37,7 +38,8 @@ export type AppState =
   & ComparisonSlice
   & ClimateSlice
   & InterpolationSlice
-  & TraceSlice;
+  & TraceSlice
+  & SessionSlice;
 
 export const useStore = create<AppState>()((...args) => ({
   ...createUIStateSlice(...args),
@@ -50,6 +52,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createClimateSlice(...args),
   ...createInterpolationSlice(...args),
   ...createTraceSlice(...args),
+  ...createSessionSlice(...args),
 }));
 
 // Wire model resolution to live state without the registry importing the store

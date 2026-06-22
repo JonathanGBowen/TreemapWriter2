@@ -8,12 +8,19 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  SessionRecord,
   Snapshot,
   SnapshotMeta,
   SyncState,
   TestSuite,
 } from '../types';
 import type { ModelConfig } from './ai/model-types';
+
+/** One `Key: value` git trailer on a semantic session commit. Ordered. */
+export interface CommitTrailer {
+  key: string;
+  value: string;
+}
 
 /**
  * The shape of a project as actually stored on disk. All fields are optional
@@ -115,7 +122,53 @@ export interface Repository {
     message: string,
     trigger: 'manual' | 'autosave' | 'pre-ai-write',
     affectedScope: 'all' | { sectionIds: string[] },
+    /**
+     * Optional git trailers, supplied only for session-end *semantic* commits.
+     * When present, the commit subject becomes `Session goal: <message>` and the
+     * trailers (`GMT-step`, `Session`, `WOOP-obstacle`, `Steps-completed`,
+     * `Word-delta`) are appended machine-parseably. Ordered. Browser ignores it.
+     */
+    trailers?: CommitTrailer[],
   ): Promise<string | null>;
+
+  // --- Session ceremony: git tags, refs, word-count delta, session sidecar ---
+
+  /**
+   * Create or move a lightweight git tag (`session/<id>/start|end`) at a commit.
+   * Idempotent (force). Browser: no-op (no git). Used to bracket a session.
+   */
+  createTag(tagName: string, commitId: string): Promise<void>;
+
+  /**
+   * List tag names, optionally filtered by a glob (e.g. `session/*`). Browser: [].
+   */
+  listTags(pattern?: string): Promise<string[]>;
+
+  /**
+   * Resolve a ref (tag/branch/OID/HEAD) to a commit OID, or null if unresolved
+   * (e.g. an unsynced tag). Lets Version Compare turn a session tag into a
+   * selectable snapshot id. Browser: returns the input unchanged if it names a
+   * known in-memory revision, else null.
+   */
+  resolveRef(refname: string): Promise<string | null>;
+
+  /**
+   * Word-count delta of `project.md` between two refs (`to - from`). Desktop
+   * uses git blobs; the browser computes it from in-memory `revisions` markdown.
+   */
+  wordCountDelta(fromRef: string, toRef: string): Promise<number>;
+
+  /**
+   * All recorded sessions for the open project, newest first. Desktop reads
+   * `.twriter/sessions/*.yaml`; the browser reads its IndexedDB session store.
+   */
+  listSessions(): Promise<SessionRecord[]>;
+
+  /**
+   * Persist one session record (create or overwrite by `id`). Desktop writes a
+   * single YAML sidecar; the browser updates its IndexedDB session store.
+   */
+  saveSession(record: SessionRecord): Promise<void>;
 
   /**
    * Blob-free listing of the open project's snapshot history, newest first.
