@@ -33,6 +33,7 @@ import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
+import { buildProjectExport } from "./lib/projectExport";
 import { normalizePromptsConfig } from "./lib/constants";
 import type { ModelChoice } from "./services/ai/model-types";
 import defaultProjectData from "./lib/defaultProject.json";
@@ -94,7 +95,7 @@ export const App = () => {
     setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing,
     setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
     
-    loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, deleteProject,
+    loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, switchProject, deleteProject,
     saveCurrentState, createSnapshot, setRevisions, updateSectionGoals
   } = useStore(useShallow(state => ({
     projectList: state.projectList,
@@ -170,6 +171,7 @@ export const App = () => {
     createNewProject: state.createNewProject,
     openExistingProject: state.openExistingProject,
     loadProject: state.loadProject,
+    switchProject: state.switchProject,
     deleteProject: state.deleteProject,
     saveCurrentState: state.saveCurrentState,
     createSnapshot: state.createSnapshot,
@@ -472,20 +474,7 @@ export const App = () => {
   };
 
   const handleExportProject = () => {
-    const s = useStore.getState();
-    const data = {
-      projectName: s.projectName,
-      markdown: s.markdown,
-      localDraft: s.localContent,
-      testSuite: s.testSuite,
-      hiddenSectionIds: s.hiddenSectionIds,
-      activePersonaId: s.activePersonaId,
-      customPersonas: s.customPersonas,
-      promptsConfig: s.promptsConfig,
-      cachedCoachAdvice: s.cachedCoachAdvice,
-      revisions: s.revisions,
-      lastModified: Date.now(),
-    };
+    const data = buildProjectExport(useStore.getState());
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -850,7 +839,9 @@ export const App = () => {
           projects={projectList}
           activeProjectId={activeProjectId || ''}
           onLoadProject={async (id) => {
-            const success = await loadProject(id);
+            // switchProject flushes the current project before loading the next,
+            // so the last <60s of edits aren't lost on switch.
+            const success = await switchProject(id);
             if (!success) {
                toast.error("Could not load project data.");
             }
@@ -858,7 +849,16 @@ export const App = () => {
           onCreateProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
           onOpenProject={isTauri() ? () => openExistingProject() : undefined}
-          onDeleteProject={deleteProject}
+          onDeleteProject={(id) => {
+            // Project delete is the one destructive action that confirms (per the
+            // "undo, not confirm — except delete" rule). Copy is runtime-specific:
+            // desktop only forgets the recent entry; browser delete is permanent.
+            const name = projectList.find((p) => p.id === id)?.name ?? 'this project';
+            const message = isTauri()
+              ? `Delete "${name}"? This removes it from your recent projects — the folder on disk is kept.`
+              : `Delete "${name}"? This permanently deletes the project and can't be undone.`;
+            requestConfirm(message, () => { void deleteProject(id); });
+          }}
         />
 
         <ContentSuggestionsModal
