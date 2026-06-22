@@ -8,6 +8,7 @@
 import type {
   Section,
   SectionAnalysis,
+  SectionSpec,
   MoveResult,
   DiagnosticResult,
   Dependency,
@@ -47,12 +48,14 @@ import type {
   DecomposeSprintStepInput,
   CompareVersionsInput,
   AnalyzeAtmosphereInput,
+  GenerateSpecLevelInput,
+  DevelopSpecLevelInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import { AI_CALL_KIND_LABELS } from './model-types';
 import type { LLMClient, LLMMessage } from './clients';
 import { getPromptText } from '../prompts';
-import { generateSpecs } from './ai-provider.specs';
+import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
 import { suggestDirectives } from './ai-provider.suggest-directives';
 import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
@@ -149,6 +152,25 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateSpecs(input: GenerateSpecsInput): Promise<void> {
     const choice = this.choose('generateSpecs', input);
     await generateSpecs(this.clientFor(choice.provider, 'generateSpecs'), choice.model, choice.thinkingBudget ?? 0, input);
+  }
+
+  async generateSpecLevel(input: GenerateSpecLevelInput): Promise<Record<string, SectionSpec>> {
+    // The non-agent single-shot path runs on the configured `generateSpecs` model.
+    const choice = this.choose('generateSpecs', input);
+    return generateSpecLevel(
+      this.clientFor(choice.provider, 'generateSpecs'),
+      choice.model,
+      choice.thinkingBudget ?? 0,
+      {
+        stage: input.stage,
+        sections: input.sections,
+        markdown: input.markdown,
+        specCache: input.specCache,
+        config: input.config,
+        rootFullText: input.rootFullText,
+        steer: input.steer,
+      },
+    );
   }
 
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {
@@ -511,6 +533,45 @@ export class MultiProviderAIProvider implements AIProvider {
 
     const choice = this.choose('coachSprintTurn', input);
     const stream = this.clientFor(choice.provider, 'coachSprintTurn').streamText({
+      model: choice.model,
+      messages,
+      systemInstruction,
+      thinkingBudget: choice.thinkingBudget,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * Collaborative, streaming per-level spec development. Like continueDialogue, the
+   * full conversation travels each turn (stateless provider). The system instruction
+   * is the conversational contract (config.developSpecPrompt) followed by the SAME
+   * per-level prompt the single-shot path builds — the spec rubric, the accepted
+   * parent context, and this level's sections — which the contract overrides on the
+   * "return only JSON" point. The fenced ```json``` proposal is parsed by the caller.
+   */
+  async *developSpecLevel(input: DevelopSpecLevelInput): AsyncIterable<string> {
+    const reference = buildStagePrompt(input.stage, {
+      sections: input.sections,
+      markdown: input.markdown,
+      specCache: input.specCache,
+      config: input.config,
+      rootFullText: input.rootFullText,
+    });
+    const systemInstruction = [
+      input.config.developSpecPrompt,
+      '',
+      '--- FIELD RUBRIC & CONTEXT FOR THIS LEVEL ---',
+      '(The conversational contract above overrides any "return only JSON" / "return a single JSON object" instruction in the rubric below.)',
+      '',
+      reference,
+    ].join('\n');
+
+    const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
+
+    const choice = this.choose('developSpecLevel', input);
+    const stream = this.clientFor(choice.provider, 'developSpecLevel').streamText({
       model: choice.model,
       messages,
       systemInstruction,

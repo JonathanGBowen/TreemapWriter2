@@ -7,7 +7,6 @@ import { TestRunnerModal } from "./features/modals/TestRunnerModal";
 import { PersonaSettingsModal } from "./features/modals/PersonaSettingsModal";
 import { GrimoireModal } from "./features/modals/GrimoireModal";
 import { SpecGeneratorModal } from "./features/modals/SpecGeneratorModal";
-import { InterpolationModal } from "./features/modals/InterpolationModal";
 import { SprintModal } from "./features/modals/sprint/SprintModal";
 import { ProjectManagerModal } from "./features/modals/ProjectManagerModal";
 import { VersionHistoryModal } from "./features/modals/VersionHistoryModal";
@@ -23,6 +22,7 @@ import { RevisionWorkspace } from "./features/revision/RevisionWorkspace";
 import { RevisionSettingsModal } from "./features/modals/RevisionSettingsModal";
 import { CompareWorkspace } from "./features/compare/CompareWorkspace";
 import { ClimateWorkspace } from "./features/climate/ClimateWorkspace";
+import { InterpolateWorkspace } from "./features/interpolate/InterpolateWorkspace";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
 import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
@@ -44,7 +44,6 @@ import { repository as repo } from './services/repository-registry';
 import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
-import { checkContextFit } from './services/ai/context-budget';
 import { guardContextFit } from './features/shared/context-guard';
 import { notifyAiError } from './features/shared/ai-error';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
@@ -82,17 +81,17 @@ export const App = () => {
     projectList, activeProjectId, hasOpenProject, markdown, projectName, testSuite, hiddenSectionIds,
     localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
     focusMode, selectedId, activeLineIndex, runTutorial, showProjectModal,
-    showRunModal, showPersonaModal, showSpecModal, showSuggestionsModal, showInterpolationModal,
+    showRunModal, showPersonaModal, showSpecModal, showSuggestionsModal,
     showPromptsGraphModal, showSectionMapModal, showProjectFileModal, showGoalSprintModal,
     showContentSprintModal, showHistoryModal, showGraphModal, showCoachModal, isProcessing,
-    isInterpolating, activePersonaId, customPersonas, promptsConfig, cachedCoachAdvice,
+    activePersonaId, customPersonas, promptsConfig, cachedCoachAdvice,
     
     setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite, setHiddenSectionIds,
     setSelectedId, setActiveLineIndex, setRunTutorial, setSidebarWidth,
     setTestsPanelWidth, setFocusMode, setShowProjectModal, setShowRunModal, setShowPersonaModal,
-    setShowSpecModal, setShowSuggestionsModal, setShowInterpolationModal, setShowPromptsGraphModal,
+    setShowSpecModal, setShowSuggestionsModal, setShowPromptsGraphModal,
     setShowSectionMapModal, setShowProjectFileModal, setShowGoalSprintModal, setShowContentSprintModal,
-    setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing, setIsInterpolating,
+    setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing,
     setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
     
     loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, deleteProject,
@@ -120,7 +119,6 @@ export const App = () => {
     showPersonaModal: state.showPersonaModal,
     showSpecModal: state.showSpecModal,
     showSuggestionsModal: state.showSuggestionsModal,
-    showInterpolationModal: state.showInterpolationModal,
     showPromptsGraphModal: state.showPromptsGraphModal,
     showSectionMapModal: state.showSectionMapModal,
     showProjectFileModal: state.showProjectFileModal,
@@ -130,7 +128,6 @@ export const App = () => {
     showGraphModal: state.showGraphModal,
     showCoachModal: state.showCoachModal,
     isProcessing: state.isProcessing,
-    isInterpolating: state.isInterpolating,
     activePersonaId: state.activePersonaId,
     customPersonas: state.customPersonas,
     promptsConfig: state.promptsConfig,
@@ -154,7 +151,6 @@ export const App = () => {
     setShowPersonaModal: state.setShowPersonaModal,
     setShowSpecModal: state.setShowSpecModal,
     setShowSuggestionsModal: state.setShowSuggestionsModal,
-    setShowInterpolationModal: state.setShowInterpolationModal,
     setShowPromptsGraphModal: state.setShowPromptsGraphModal,
     setShowSectionMapModal: state.setShowSectionMapModal,
     setShowProjectFileModal: state.setShowProjectFileModal,
@@ -164,7 +160,6 @@ export const App = () => {
     setShowGraphModal: state.setShowGraphModal,
     setShowCoachModal: state.setShowCoachModal,
     setIsProcessing: state.setIsProcessing,
-    setIsInterpolating: state.setIsInterpolating,
     setActivePersonaId: state.setActivePersonaId,
     setCustomPersonas: state.setCustomPersonas,
     setPromptsConfig: state.setPromptsConfig,
@@ -531,73 +526,6 @@ export const App = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleInterpolateTasks = async (
-  choice: ModelChoice,
-  config: PromptsConfig
-) => {
-  if (!sections || sections.length === 0) return;
-  setShowInterpolationModal(false);
-  setIsInterpolating(true);
-
-  try {
-    // Create snapshot before destructive AI action
-    await createSnapshot('pre-ai-write', 'all', config);
-
-    setPromptsConfig(config);
-
-    // Pre-flight the document-level (root) spec pass: it reads the full document,
-    // so if that would overflow the chosen model's window we degrade the ROOT pass
-    // to the outline only (chapter passes are unaffected) rather than truncating.
-    const rootFit = checkContextFit(useStore.getState().modelCatalog, choice, markdown);
-    if (rootFit.overflow) {
-      toast.warning(
-        `Document (~${Math.round(rootFit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s window; the document-level spec will use the outline only. Pick a larger-context model to include the full text.`,
-      );
-    }
-
-    await aiProvider.generateSpecs({
-      sections,
-      markdown,
-      config,
-      modelChoice: choice,
-      rootFullText: !rootFit.overflow,
-      onBatchComplete: (specs) => {
-        setTestSuite(prev => {
-          const next = { ...prev };
-          Object.entries(specs).forEach(([id, spec]) => {
-            const existing = next[id] || { goals: '', status: 'idle', history: [] };
-            next[id] = {
-              ...existing,
-              spec,
-              mainClaim: spec.mainClaim,
-              goals: spec.requiredMoves.map(m => m.description).join('\n'),
-              status: 'stale',
-              history: [
-                ...(existing.history || []),
-                {
-                  timestamp: Date.now(),
-                  goals: existing.goals,
-                  instruction: `Structured spec (${choice.model})`,
-                  type: 'ai-generate' as const
-                }
-              ]
-            };
-          });
-          return next;
-        });
-      },
-      onError: (error) => {
-        console.error("Spec generation batch error:", error);
-      }
-    });
-  } catch (e: any) {
-    console.error("Interpolation failed", e);
-    notifyAiError(e, `Task interpolation failed: ${e?.message || 'Check the console.'}`);
-  } finally {
-    setIsInterpolating(false);
-  }
-};
-
   const handleRunTests = async (
   scope: 'segment' | 'parent' | 'full',
   choice: ModelChoice,
@@ -902,12 +830,6 @@ export const App = () => {
           }}
         />
 
-        <InterpolationModal
-          onConfirm={handleInterpolateTasks}
-          documentStats={documentStats}
-          initialConfig={promptsConfig}
-        />
-
         <SprintModal
           sections={sections}
           testSuite={testSuite}
@@ -1023,6 +945,8 @@ export const App = () => {
         <CompareWorkspace />
 
         <ClimateWorkspace />
+
+        <InterpolateWorkspace />
 
         <Toaster position="bottom-right" richColors />
       </div>

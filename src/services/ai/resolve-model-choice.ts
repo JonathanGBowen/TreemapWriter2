@@ -18,9 +18,12 @@ import { DEFAULT_MODEL_CONFIG } from './model-config';
 
 /**
  * The call kinds Agent mode routes through the Claude Agent SDK by default:
- * the app's dialogue features and its coaching features (incl. the structured
- * sprint-plan calls). Everything else stays on its configured provider unless
- * the user opts it in per-kind.
+ * the app's dialogue features, its coaching features (incl. the structured
+ * sprint-plan calls), and the collaborative per-level spec development
+ * (`developSpecLevel`) that powers the Generate-Specs workspace's iterate-with-the-agent
+ * path. Everything else stays on its configured provider unless the user opts it
+ * in per-kind. (The Generate-Specs workspace reads this routing to choose between
+ * the collaborative chat and the write-a-steer-note path.)
  */
 export const AGENT_DEFAULT_KINDS: ReadonlySet<AICallKind> = new Set<AICallKind>([
   'continueDialogue',
@@ -29,6 +32,7 @@ export const AGENT_DEFAULT_KINDS: ReadonlySet<AICallKind> = new Set<AICallKind>(
   'coachSprintTurn',
   'generateSprintPlan',
   'decomposeSprintStep',
+  'developSpecLevel',
 ]);
 
 /** Agent-mode routing state passed in from live preferences. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coerceSpec, generateSpecs } from '../ai-provider.specs';
+import { coerceSpec, generateSpecs, specStages } from '../ai-provider.specs';
 import { parseMarkdown } from '../../../lib/utils';
 import type { LLMClient } from '../clients';
 import type { PromptsConfig, SectionSpec } from '../../../types';
@@ -9,6 +9,7 @@ const config: PromptsConfig = {
   l1TaskInstruction: 'L1-TASK',
   subTaskInstruction: 'SUB-TASK',
   rootTaskInstruction: 'ROOT-TASK',
+  developSpecPrompt: '',
   suggestContentPrompt: '',
   coachPrompt: '',
   refineSpecPrompt: '',
@@ -59,6 +60,26 @@ describe('coerceSpec', () => {
     expect(s.mainClaim).toBe('C');
     expect(s.requiredMoves.map((m) => m.description)).toEqual(['a', 'b']);
     expect(s.outgoingCommitments).toEqual(['o']);
+  });
+});
+
+describe('specStages', () => {
+  it('plans root first, then one stage per existing level (shallow to deep)', () => {
+    const md = '# Chapter One\nIntro.\n## Section A\nBody.\n## Section B\nBody.\n# Chapter Two\nMore.\n';
+    const sections = parseMarkdown(md);
+    const stages = specStages(sections);
+
+    expect(stages.map((s) => s.id)).toEqual(['root', 'l1', 'l2']);
+    expect(stages[0]).toMatchObject({ kind: 'root', level: 0, nodeIds: [] });
+    // Two chapters at level 1, two sections at level 2.
+    expect(stages[1]).toMatchObject({ kind: 'level', level: 1 });
+    expect(stages[1].nodeIds).toHaveLength(2);
+    expect(stages[2]).toMatchObject({ kind: 'level', level: 2 });
+    expect(stages[2].nodeIds).toHaveLength(2);
+  });
+
+  it('always includes the root stage, even with no sections', () => {
+    expect(specStages([]).map((s) => s.id)).toEqual(['root']);
   });
 });
 

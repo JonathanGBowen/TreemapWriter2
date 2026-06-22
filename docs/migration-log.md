@@ -2978,3 +2978,75 @@ revert `server.mjs` to emitting only `{delta}`/`{done}` text.
 in-progress UI, and finished runs are auditable (opt-out) from the Experimental
 settings — satisfying the earlier "finer token-by-token streaming" follow-up via
 `includePartialMessages`.
+
+---
+
+## 2026-06-22 — Generate Specs: one-shot modal → human-in-the-loop workspace
+
+**Context.** Spec generation (the `✦` "interpolate mode") was a single modal that
+fired the whole top-down batch (`generateSpecs`) at once, dumping every level into the
+`testSuite` with no review between passes. This makes it a dedicated full-screen
+**workspace** (like Version Compare / Glass Box / Climate) that walks the hierarchy
+**one level per stage** — root → chapters → deeper levels — pausing at each so the
+writer either **iterates with the agent** (when the Agent SDK is the resolved provider
+for the new `developSpecLevel` kind) or, otherwise, **writes a steer note in their own
+words** before generating. Each level's proposal is editable before Accept, which lands
+it in the `testSuite` and unlocks the next level (whose prompt uses the accepted
+parents as context — the existing top-down constraint). A "Run all remaining" button
+preserves the old one-shot behavior. The name/glyph ("Generate Specs", `✦`) are kept.
+
+**What changed.** The SDK stays out of feature code; one new editable prompt, one new
+streaming AI flow, one new ephemeral slice/workspace.
+
+- **Per-level spec service.** `services/ai/ai-provider.specs.ts` is refactored into pure
+  building blocks — `specStages(sections)` (root + one stage per existing level),
+  `buildStagePrompt(stage, ctx)` (reproduces the three original passes verbatim, plus an
+  optional author-steer block), and `generateSpecLevel(...)` (single-shot, one level).
+  The legacy batch `generateSpecs` is reimplemented as a loop over these (exact prompt
+  substrings + the inter-batch rate-limit preserved), so existing callers/tests are
+  unaffected. The 2-level batching is dropped in favor of strictly per-level (more
+  top-down-correct: Lₙ sees finalized Lₙ₋₁ parents).
+- **New AI flow `developSpecLevel`.** Streaming, conversational co-development of ONE
+  level (mirrors `coachSprintTurn`/`continueDialogue`): the system instruction is the
+  new editable `develop-spec.md` contract (converse, then emit one fenced ```json```
+  proposal) followed by the same per-level rubric/parent-context the single-shot path
+  builds. Added to `AIProvider` (+ `generateSpecLevel`), `model-types` (`AICallKind` +
+  labels), `DEFAULT_MODEL_CONFIG`, and `AGENT_DEFAULT_KINDS` (so global Agent mode — or a
+  per-project override — routes it to `agent-sdk`; a Gemini override is the opt-out).
+- **Workspace.** New ephemeral slice `state/interpolation-state.ts` (open flag,
+  materialized `stages`, `stageCursor`, `interpDepth`, a `specCache` that is the parent-
+  context authority, and per-stage `{steer, messages, proposed, status}`). New
+  `features/interpolate/` — `InterpolateWorkspace` (self-gates, ESC-to-close), `…TopBar`
+  (depth `SegControl` + progress + Run-all), `…Rail` (hierarchy ladder w/ status pips),
+  `StagePanel` (branches collaborative-vs-steer), `SpecChat` (streaming transcript, reuses
+  the Dialogue pattern + `AgentTraceTicker kinds={['developSpecLevel']}`), `SteerInput`,
+  `SpecPreview` (editable; reuses `tests-panel/MoveList` + a claim/function editor), and
+  `use-interpolate-actions` (snapshot once, generate/develop/accept/run-all). Accept reuses
+  the new pure `lib/spec-merge.ts` (extracted from the old `App.tsx` handler).
+- **Removals.** `InterpolationModal.tsx` deleted; `handleInterpolateTasks`,
+  `showInterpolationModal`, and the dead `isInterpolating` flag removed from `App.tsx` +
+  `ui-state.ts`; the Dock `✦` now calls `openInterpolate()`. `documentStats` kept (still
+  used by `TestRunnerModal`).
+
+**How to verify.** `npm run typecheck`, `npm test` (278 — +7: `specStages` plan,
+`extractFencedJson`; spec-test config widened for the new editable key), `npm run build`
+pass (the chunk-size notice is pre-existing). Manual: Dock `✦` opens the full-screen
+workspace (not a modal), ESC closes, one `pre-ai-write` snapshot at walk start. Agent
+mode OFF → steer box → Generate → editable preview → Accept descends, sidebar updates;
+oversized draft shows the root outline-degradation toast. Agent mode ON
+(`developSpecLevel` → agent-sdk) → streamed prose + a ```json``` block, multi-turn refine,
+editable proposal, Accept descends, ticker shows activity. Per-project override of
+`developSpecLevel` to a Gemini model → steer path even with Agent mode on. Run-all
+finishes the rest non-interactively.
+
+**Rollback.** `git revert` — additive apart from the modal deletion. Restore
+`InterpolationModal.tsx` + its `App.tsx`/`ui-state.ts` wiring and the Dock `onClick`;
+remove `features/interpolate/`, `interpolation-state.ts`, `lib/spec-merge.ts`,
+`lib/fenced-json.ts`, `develop-spec.md` + its registry entry, and the `developSpecLevel`/
+`generateSpecLevel` provider methods + `developSpecLevel` kind. `generateSpecs` keeps its
+original signature/behavior, so reverting the workspace doesn't touch the batch path.
+
+**Deliberate limits (non-goals for v1).** Editing an already-accepted ancestor level and
+cascading re-derivation to descendants (forward walk only; re-open to restart — safe via
+the snapshot); routing non-agent providers through the multi-turn chat (iteration is tied
+to the agent per the request; other providers get the steer path).
