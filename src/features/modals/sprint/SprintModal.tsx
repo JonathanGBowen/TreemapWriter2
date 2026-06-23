@@ -150,8 +150,8 @@ export function SprintModal({
       const goal: SessionGoal = {
         wish: framing?.wish?.trim() || `Sprint — ${section.title}`,
         outcome: null,
-        obstacle: framing?.obstacle ?? null,
-        plan: framing?.ifThen ?? null,
+        obstacle: framing?.obstacle?.trim() || null,
+        plan: framing?.ifThen?.trim() || null,
       };
       const steps: SessionStep[] = p.moves.map((m) => ({
         id: m.id,

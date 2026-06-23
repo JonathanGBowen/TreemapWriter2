@@ -2,6 +2,8 @@ import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
 import type { CommitTrailer } from '../services/repository';
 import { repository as repo } from '../services/repository-registry';
+import { isTauri } from '../services/tauri-environment';
+import { countWords } from '../lib/utils';
 import type { CarryForward, Section, SessionGoal, SessionRecord, SessionStep } from '../types';
 
 /**
@@ -25,11 +27,6 @@ function sessionIdNow(): string {
   // 2026-06-21T09:15:00.000Z → 2026-06-21T09-15-00 (colons are invalid in tags).
   return new Date().toISOString().slice(0, 19).replace(/:/g, '-');
 }
-
-const wordCountOf = (text: string): number => {
-  const t = text.trim();
-  return t === '' ? 0 : t.split(/\s+/).length;
-};
 
 /** Flatten the section tree to a `{ sectionId: wordCount }` map. */
 function wordCountByNode(sections: Section[]): Record<string, number> {
@@ -133,7 +130,7 @@ export const createSessionSlice: StateCreator<AppState, [], [], SessionSlice> = 
     set({
       activeSession: record,
       sessionStartedAt: Date.now(),
-      sessionStartTotalWords: wordCountOf(get().localContent),
+      sessionStartTotalWords: countWords(get().localContent),
       sessionStartWordByNode: wordCountByNode(get().sections),
     });
     try {
@@ -165,7 +162,7 @@ export const createSessionSlice: StateCreator<AppState, [], [], SessionSlice> = 
     }
     const nodesModified = Object.keys(wordDeltaByNode);
 
-    const endTotal = wordCountOf(state.localContent);
+    const endTotal = countWords(state.localContent);
     const wordDelta = endTotal - state.sessionStartTotalWords;
     const durationMinutes = state.sessionStartedAt
       ? Math.max(0, Math.round((Date.now() - state.sessionStartedAt) / 60000))
@@ -207,13 +204,26 @@ export const createSessionSlice: StateCreator<AppState, [], [], SessionSlice> = 
       }
     }
 
+    // On desktop, record the authoritative delta from the committed git blobs
+    // (history is the source of truth — equals the buffer delta after the save
+    // above, but read from the tagged commits). Browser keeps the buffer delta.
+    let recordedDelta = wordDelta;
+    const toRef = endCommit ?? tagTarget;
+    if (isTauri() && toRef) {
+      try {
+        recordedDelta = await repo.wordCountDelta(rec.startTag, toRef);
+      } catch (e) {
+        console.warn('git word delta failed; using buffer delta:', e);
+      }
+    }
+
     const finalized: SessionRecord = {
       ...rec,
       endTag,
       steps,
       carryForward,
       reflection,
-      wordDelta,
+      wordDelta: recordedDelta,
       wordDeltaByNode,
       nodesModified,
       durationMinutes,

@@ -176,9 +176,16 @@ fn commit_to_meta(commit: &Commit<'_>) -> SnapshotMeta {
 fn parse_commit_message(raw: &str) -> (String, String, serde_json::Value) {
     let mut lines = raw.lines();
     let first = lines.next().unwrap_or("");
-    let (trigger, message) = match first.split_once(':') {
-        Some((t, rest)) => (t.trim().to_string(), rest.trim().to_string()),
-        None => ("manual".to_string(), first.trim().to_string()),
+    // Session-end semantic commits use the subject `Session goal: <wish>`.
+    // Classify them as a `manual` checkpoint (a meaningful, non-autosave
+    // version) so the Compare day-picker surfaces them and the `trigger` stays
+    // within its declared taxonomy — the raw subject keeps the human marker.
+    let (trigger, message) = if let Some(rest) = first.strip_prefix("Session goal:") {
+        ("manual".to_string(), rest.trim().to_string())
+    } else if let Some((t, rest)) = first.split_once(':') {
+        (t.trim().to_string(), rest.trim().to_string())
+    } else {
+        ("manual".to_string(), first.trim().to_string())
     };
     let mut scope = serde_json::Value::String("all".to_string());
     for line in lines {
@@ -272,4 +279,35 @@ fn read_specs_at(repo: &Repository, tree: &git2::Tree<'_>) -> AppResult<TestSuit
         suite.insert(section_id, persisted.into_entry());
     }
     Ok(suite)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_goal_commit_parses_as_manual_checkpoint() {
+        let raw = "Session goal: draft intro\n\nScope: all\nGMT-step: Check\nWord-delta: +12";
+        let (trigger, message, scope) = parse_commit_message(raw);
+        assert_eq!(trigger, "manual"); // surfaced by the Compare checkpoint filter
+        assert_eq!(message, "draft intro");
+        assert_eq!(scope, serde_json::Value::String("all".to_string()));
+    }
+
+    #[test]
+    fn ordinary_commit_keeps_its_trigger() {
+        let (trigger, message, _) = parse_commit_message("autosave: tick\n\nScope: all");
+        assert_eq!(trigger, "autosave");
+        assert_eq!(message, "tick");
+    }
+
+    #[test]
+    fn trailers_render_after_scope() {
+        let block = encode_trailers(&[
+            Trailer { key: "GMT-step".into(), value: "Check".into() },
+            Trailer { key: " ".into(), value: "skip-empty-key".into() },
+            Trailer { key: "Word-delta".into(), value: "+12".into() },
+        ]);
+        assert_eq!(block, "GMT-step: Check\nWord-delta: +12");
+    }
 }

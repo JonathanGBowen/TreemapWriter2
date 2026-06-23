@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useStore } from '../../state';
+import { countWords } from '../../lib/utils';
 import type { CarryForward, SessionGoal, SessionStep } from '../../types';
 import { ModalShell } from './ModalShell';
 
@@ -13,11 +15,6 @@ import { ModalShell } from './ModalShell';
  * (review steps, see the word delta, capture a next-action for anything
  * unfinished). Warm and non-judgmental throughout; leaving is never blocked.
  */
-
-const wordCountOf = (text: string): number => {
-  const t = text.trim();
-  return t === '' ? 0 : t.split(/\s+/).length;
-};
 
 let stepSeq = 0;
 const newStepId = () => `step_${Date.now()}_${stepSeq++}`;
@@ -116,20 +113,23 @@ function CheckIn({ onClose }: { onClose: () => void }) {
 }
 
 function CheckOut({ onClose }: { onClose: () => void }) {
-  const session = useStore((s) => s.activeSession)!;
+  const session = useStore((s) => s.activeSession);
   const endSession = useStore((s) => s.endSession);
   const localContent = useStore((s) => s.localContent);
   const startTotal = useStore((s) => s.sessionStartTotalWords);
   const startedAt = useStore((s) => s.sessionStartedAt);
 
   const [done, setDone] = useState<Set<string>>(
-    () => new Set(session.steps.filter((st) => st.completed).map((st) => st.id)),
+    () => new Set((session?.steps ?? []).filter((st) => st.completed).map((st) => st.id)),
   );
   const [carry, setCarry] = useState<Record<string, string>>({});
   const [reflection, setReflection] = useState('');
   const [closing, setClosing] = useState(false);
 
-  const wordDelta = wordCountOf(localContent) - startTotal;
+  // Guard the rare interleaving where the session is cleared before unmount.
+  if (!session) return null;
+
+  const wordDelta = countWords(localContent) - startTotal;
   const minutes = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 60000)) : 0;
   const incomplete = session.steps.filter((st) => !done.has(st.id));
 
@@ -170,7 +170,7 @@ function CheckOut({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={close}
             disabled={closing}
-            style={{ '--br-color': 'var(--color-hld-cyan)' } as React.CSSProperties}
+            style={{ '--br-color': 'var(--color-hld-cyan)' } as CSSProperties}
             className="bracketed hld-lit px-[20px] py-[10px] font-mono text-[10px] font-bold tracking-[0.14em] uppercase disabled:opacity-40"
           >
             Close session

@@ -5,6 +5,12 @@ export const generateId = (title: string, index: number) => {
   return `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`;
 };
 
+/** Whitespace-split word count of a string (0 for blank). The one definition. */
+export const countWords = (text: string): number => {
+  const trimmed = text.trim();
+  return trimmed === '' ? 0 : trimmed.split(/\s+/).length;
+};
+
 export const computeHash = (str: string): string => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
