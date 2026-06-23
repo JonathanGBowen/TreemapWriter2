@@ -116,7 +116,7 @@ export function ProjectMenu({
           <MenuRow label="Compare versions" meta="≈" onClick={() => run(openCompare)} />
           <Divider />
           <MenuRow label="Import markdown" onClick={() => run(() => mdInputRef.current?.click())} />
-          <MenuRow label="Import project" onClick={() => run(() => projectInputRef.current?.click())} />
+          <MenuRow label="Import as new project" onClick={() => run(() => projectInputRef.current?.click())} />
           <MenuRow label="Export markdown" onClick={() => run(onExportMarkdown)} />
           <MenuRow label="Export project" meta=".socratic" onClick={() => run(onExportProject)} />
           <MenuRow label="Export specs" meta=".json" onClick={() => run(onExportSpecs)} />

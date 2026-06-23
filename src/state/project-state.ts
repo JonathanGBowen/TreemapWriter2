@@ -57,6 +57,12 @@ export interface ProjectStateSlice {
    */
   createProjectWithRemote: (url: string, token: string) => Promise<boolean>;
   loadProject: (id: string) => Promise<boolean>;
+  /**
+   * Switch to another project, flushing the current project's live buffer to
+   * disk first so the last (up to 60s of) edits survive the switch. Resolves to
+   * loadProject's success boolean.
+   */
+  switchProject: (id: string) => Promise<boolean>;
   deleteProject: (id: string) => Promise<void>;
   saveCurrentState: () => Promise<void>;
   createSnapshot: (
@@ -394,14 +400,32 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
             data.uiState.activeLineIndex !== undefined ? data.uiState.activeLineIndex : get().activeLineIndex,
         });
       }
-      // A session belongs to one project; clear any in-flight session and load
-      // the new project's recorded log for the Progress Dashboard.
-      set({ activeSession: null });
-      void get().loadSessions();
+      // A session belongs to one project; clear any in-flight session + the
+      // previous project's stale log. The Progress Dashboard reloads the new
+      // project's records when it opens (openDashboard → loadSessions), so we
+      // avoid a cross-slice action call here — keeping loadProject usable when
+      // only the project slice is mounted (see project-switch tests).
+      set({ activeSession: null, sessionLog: [] });
       return true;
     } catch {
       return false;
     }
+  },
+
+  switchProject: async (id) => {
+    const current = get().activeProjectId;
+    // Flush the current project's live buffer before loading the next, so the
+    // last (up to 60s of) edits aren't lost on switch. Awaiting the save fully
+    // before loadProject keeps saveCurrentState's in-flight convergence guard
+    // valid — the captured id still matches the active id when it converges.
+    if (current && current !== id) {
+      try {
+        await get().saveCurrentState();
+      } catch (e) {
+        console.error('Save before project switch failed', e);
+      }
+    }
+    return get().loadProject(id);
   },
 
   deleteProject: async (id: string) => {
@@ -413,15 +437,17 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     await repo.setMeta(updatedMeta);
 
     if (get().activeProjectId === id) {
-      if (updatedMeta.length > 0) {
-        let loaded = false;
-        for (const p of updatedMeta) {
-          loaded = await get().loadProject(p.id);
-          if (loaded) break;
+      let loaded = false;
+      for (const p of updatedMeta) {
+        loaded = await get().loadProject(p.id);
+        if (loaded) {
+          toast.success(`Switched to "${get().projectName}".`);
+          break;
         }
-        if (!loaded) await get().createDemoProject();
-      } else {
+      }
+      if (!loaded) {
         await get().createDemoProject();
+        toast.message('That was your last project — loaded the demo.');
       }
     }
   },

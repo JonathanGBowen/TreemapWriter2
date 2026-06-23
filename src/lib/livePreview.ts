@@ -35,7 +35,7 @@ class MermaidWidget extends WidgetType {
   }
 
   toDOM(view: EditorView) {
-    let div = document.createElement("div");
+    const div = document.createElement("div");
     div.className = "cm-mermaid-widget overflow-x-auto my-4 p-4 rounded-md border border-[rgba(255,16,96,0.2)] bg-[#05090d] text-center flex justify-center min-h-[100px]";
     
     const id = `mermaid-${++mermaidCounter}`;
@@ -96,7 +96,7 @@ class TableWidget extends WidgetType {
   }
 
   toDOM() {
-    let div = document.createElement("div");
+    const div = document.createElement("div");
     div.className = "cm-table-widget overflow-x-auto my-4 rounded-md border border-[rgba(0,232,245,0.2)] bg-[#0c1520] text-hld-text";
     div.appendChild(this.tableHtml);
     return div;
@@ -271,7 +271,7 @@ function buildDecorations(state: any): DecorationSet {
   }
 
   // Robust Inline Math: $ ... $
-  const inlineMathRegex = /([^\\]|^)\$([^\s\$](?:[\s\S]*?[^\s\$])?)\$/g;
+  const inlineMathRegex = /([^\\]|^)\$([^\s$](?:[\s\S]*?[^\s$])?)\$/g;
   while ((match = inlineMathRegex.exec(text)) !== null) {
     const prefix = match[1];
     const mathContent = match[2];

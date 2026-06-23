@@ -13,7 +13,6 @@ export function PanelFooter({ runDisabled }: { runDisabled: boolean }) {
   const customPersonas = useStore((s) => s.customPersonas);
   const isProcessing = useStore((s) => s.isProcessing);
   const setShowPersonaModal = useStore((s) => s.setShowPersonaModal);
-  const setShowSuggestionsModal = useStore((s) => s.setShowSuggestionsModal);
   const setShowRunModal = useStore((s) => s.setShowRunModal);
 
   const persona = useMemo(
@@ -45,16 +44,6 @@ export function PanelFooter({ runDisabled }: { runDisabled: boolean }) {
           className="truncate border-b border-hld-border hover:text-hld-cyan hover:border-hld-cyan/40 transition-colors"
         >
           {persona.name}
-        </button>
-        <span className="text-hld-muted shrink-0">·</span>
-        <button
-          type="button"
-          onClick={() => setShowSuggestionsModal(true)}
-          disabled={isProcessing}
-          title="Content suggestions"
-          className="shrink-0 border-b border-hld-border hover:text-hld-cyan hover:border-hld-cyan/40 transition-colors disabled:opacity-40"
-        >
-          suggestions
         </button>
       </div>
     </div>

@@ -112,8 +112,6 @@ pub fn run() {
             // commands/session.rs
             commands::session::session_list,
             commands::session::session_save,
-            // commands/migration.rs
-            commands::migration::migration_import_legacy,
             // commands/credentials.rs (Phase 4a)
             commands::credentials::credentials_set,
             commands::credentials::credentials_get,

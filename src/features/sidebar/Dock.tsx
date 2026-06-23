@@ -12,9 +12,10 @@ function findTitleById(nodes: Section[], id: string): string | null {
 }
 
 /**
- * The sidebar dock: the one lit re-entry action (CONTINUE), the two sprint
- * verbs, the monochrome tools strip, and the fixed caption line — the single
- * place words appear (idle stats at rest, a control's name on hover/focus).
+ * The sidebar dock: the one lit re-entry action (CONTINUE), the sprint verb,
+ * the monochrome tools strip (Assist opens the ⌘K command palette), and the
+ * fixed caption line — the single place words appear (idle stats at rest, a
+ * control's name on hover/focus).
  */
 interface DockProps {
   onContinue: () => void;
@@ -29,15 +30,12 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const selectedId = useStore((s) => s.selectedId);
   const markdown = useStore((s) => s.markdown);
 
-  const openInterpolate = useStore((s) => s.openInterpolate);
-  const setShowGoalSprintModal = useStore((s) => s.setShowGoalSprintModal);
-  const setShowContentSprintModal = useStore((s) => s.setShowContentSprintModal);
+  const setShowSprintModal = useStore((s) => s.setShowSprintModal);
+  const setShowCommandPalette = useStore((s) => s.setShowCommandPalette);
   const setShowSectionMapModal = useStore((s) => s.setShowSectionMapModal);
   const setShowGraphModal = useStore((s) => s.setShowGraphModal);
   const setShowPromptsGraphModal = useStore((s) => s.setShowPromptsGraphModal);
   const setShowProjectFileModal = useStore((s) => s.setShowProjectFileModal);
-  const setShowCoachModal = useStore((s) => s.setShowCoachModal);
-  const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
   const openCompare = useStore((s) => s.openCompare);
   const openClimate = useStore((s) => s.openClimate);
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
@@ -56,13 +54,11 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   });
 
   const tools: { g: string; name: string; aria: string; onClick: () => void }[] = [
-    { g: '✦', name: 'Generate specs — structural analysis', aria: 'Generate specs', onClick: () => openInterpolate() },
+    { g: '◉', name: 'Assist — Coach · Generate specs · Revise · every action (⌘K)', aria: 'Assist', onClick: () => setShowCommandPalette(true) },
     { g: '▦', name: 'Goal map — section goal editor', aria: 'Goal map', onClick: () => setShowSectionMapModal(true) },
     { g: '◈', name: 'Dependencies — section graph', aria: 'Dependencies', onClick: () => setShowGraphModal(true) },
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
     { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
-    { g: '◉', name: 'Coach — stuck? start here', aria: 'Coach', onClick: () => setShowCoachModal(true) },
-    { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
     { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
@@ -82,16 +78,22 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
       </button>
 
       <div className="flex gap-[5px]">
-        <button type="button" onClick={() => setShowSessionModal(true)} aria-label={sessionActive ? 'Check out of session' : 'Start a session'}
+        <button type="button" onClick={() => setShowSessionModal(true)}
+          aria-label={sessionActive ? 'Check out of session' : 'Start a session'}
           {...cap(sessionActive ? 'Session — check out' : 'Session — check in')}
-          className="flex-1 py-[6px] border border-hld-cyan/30 text-hld-cyan text-[12px] leading-none hover:bg-hld-cyan/10 transition-colors">{sessionActive ? '◉' : '◷'}</button>
-        <button type="button" onClick={() => setShowGoalSprintModal(true)} aria-label="Goal sprint" {...cap('Goal sprint')}
-          className="flex-1 py-[6px] border border-hld-green/25 text-hld-green text-[12px] leading-none hover:bg-hld-green/10 transition-colors">»</button>
-        <button type="button" onClick={() => setShowContentSprintModal(true)} aria-label="Content sprint" {...cap('Content sprint — draft')}
-          className="flex-1 py-[6px] border border-amber-500/25 text-amber-500 text-[12px] leading-none hover:bg-amber-500/10 transition-colors">»</button>
+          className="flex-1 py-[6px] border border-hld-cyan/30 text-hld-cyan leading-none hover:bg-hld-cyan/10 transition-colors flex items-center justify-center gap-2">
+          <span className="text-[12px]">{sessionActive ? '◉' : '◷'}</span>
+          <span className="font-mono text-[9px] tracking-[0.14em] uppercase">Session</span>
+        </button>
+        <button type="button" onClick={() => setShowSprintModal(true)} aria-label="Sprint" {...cap('Sprint — goal or draft, timed')}
+          className="flex-1 py-[6px] border border-hld-green/25 text-hld-green leading-none hover:bg-hld-green/10 transition-colors flex items-center justify-center gap-2">
+          <span className="text-[12px]">»</span>
+          <span className="font-mono text-[9px] tracking-[0.14em] uppercase">Sprint</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-10 gap-[2px]">
+      <div className="grid grid-cols-8 gap-[2px]">
+
         {tools.map((t) => (
           <button
             key={t.aria}

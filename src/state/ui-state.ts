@@ -55,16 +55,18 @@ export interface UIStateSlice {
 
   // Modal openness flags (one boolean per modal, like the original store)
   showProjectModal: boolean;
+  /** Cmd/Ctrl+K command palette — the keyboard door to every primary action. */
+  showCommandPalette: boolean;
   showRunModal: boolean;
   showPersonaModal: boolean;
   showGrimoireModal: boolean;
   showSpecModal: boolean;
-  showSuggestionsModal: boolean;
   showPromptsGraphModal: boolean;
   showSectionMapModal: boolean;
   showProjectFileModal: boolean;
-  showGoalSprintModal: boolean;
-  showContentSprintModal: boolean;
+  /** One sprint surface; `sprintMode` selects goal-framing vs drafting. */
+  showSprintModal: boolean;
+  sprintMode: 'goal' | 'content';
   showHistoryModal: boolean;
   showGraphModal: boolean;
   showCoachModal: boolean;
@@ -101,16 +103,16 @@ export interface UIStateSlice {
   setSyncCounts: (ahead: number, behind: number) => void;
   setPendingMerge: (merge: PendingMerge | null) => void;
   setShowProjectModal: (show: boolean) => void;
+  setShowCommandPalette: (show: boolean) => void;
   setShowRunModal: (show: boolean) => void;
   setShowPersonaModal: (show: boolean) => void;
   setShowGrimoireModal: (show: boolean) => void;
   setShowSpecModal: (show: boolean) => void;
-  setShowSuggestionsModal: (show: boolean) => void;
   setShowPromptsGraphModal: (show: boolean) => void;
   setShowSectionMapModal: (show: boolean) => void;
   setShowProjectFileModal: (show: boolean) => void;
-  setShowGoalSprintModal: (show: boolean) => void;
-  setShowContentSprintModal: (show: boolean) => void;
+  setShowSprintModal: (show: boolean) => void;
+  setSprintMode: (mode: 'goal' | 'content') => void;
   setShowHistoryModal: (show: boolean) => void;
   setShowGraphModal: (show: boolean) => void;
   setShowCoachModal: (show: boolean) => void;
@@ -147,16 +149,16 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   pendingMerge: null,
 
   showProjectModal: false,
+  showCommandPalette: false,
   showRunModal: false,
   showPersonaModal: false,
   showGrimoireModal: false,
   showSpecModal: false,
-  showSuggestionsModal: false,
   showPromptsGraphModal: false,
   showSectionMapModal: false,
   showProjectFileModal: false,
-  showGoalSprintModal: false,
-  showContentSprintModal: false,
+  showSprintModal: false,
+  sprintMode: 'content',
   showHistoryModal: false,
   showGraphModal: false,
   showCoachModal: false,
@@ -187,16 +189,16 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setSyncCounts: (ahead, behind) => set({ syncAhead: ahead, syncBehind: behind }),
   setPendingMerge: (merge) => set({ pendingMerge: merge }),
   setShowProjectModal: (show) => set({ showProjectModal: show }),
+  setShowCommandPalette: (show) => set({ showCommandPalette: show }),
   setShowRunModal: (show) => set({ showRunModal: show }),
   setShowPersonaModal: (show) => set({ showPersonaModal: show }),
   setShowGrimoireModal: (show) => set({ showGrimoireModal: show }),
   setShowSpecModal: (show) => set({ showSpecModal: show }),
-  setShowSuggestionsModal: (show) => set({ showSuggestionsModal: show }),
   setShowPromptsGraphModal: (show) => set({ showPromptsGraphModal: show }),
   setShowSectionMapModal: (show) => set({ showSectionMapModal: show }),
   setShowProjectFileModal: (show) => set({ showProjectFileModal: show }),
-  setShowGoalSprintModal: (show) => set({ showGoalSprintModal: show }),
-  setShowContentSprintModal: (show) => set({ showContentSprintModal: show }),
+  setShowSprintModal: (show) => set({ showSprintModal: show }),
+  setSprintMode: (mode) => set({ sprintMode: mode }),
   setShowHistoryModal: (show) => set({ showHistoryModal: show }),
   setShowGraphModal: (show) => set({ showGraphModal: show }),
   setShowCoachModal: (show) => set({ showCoachModal: show }),

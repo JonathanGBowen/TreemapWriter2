@@ -3053,6 +3053,99 @@ to the agent per the request; other providers get the steer path).
 
 ---
 
+## 2026-06-22 — Test-coverage hardening (tooling + targeted suites)
+
+**What changed.** A focused pass to make coverage measurable, enforce the suite
+in CI, and fill the highest-value untested seams. No product behavior changed —
+this is test + tooling only.
+
+- **Coverage tooling.** Added `@vitest/coverage-v8` and a `coverage` block in
+  `vitest.config.ts` (v8 provider; `text`/`html`/`json-summary`; `src/types/**`
+  and test files excluded). New `npm run coverage` script; `coverage/` gitignored.
+  Floor thresholds are set at the measured baseline so the gate can only ratchet
+  up (current: ~20% lines / ~16% funcs / ~19% stmts / ~16% branches).
+- **jsdom env.** Added `jsdom` and broadened the vitest `include` glob to
+  `*.test.tsx`. The default env stays `node` (fast); DOM-needing tests opt in
+  per-file with `// @vitest-environment jsdom` (first user: the sync-policy test).
+- **CI gate.** Added `.github/workflows/ci.yml` — a frontend job (typecheck,
+  coverage, build) and a Rust job (`cargo test` with the Tauri v2 Linux system
+  deps). Tests are now enforced on push/PR rather than by convention.
+- **New TS suites.** State reducers (`document`/`ui`/`comparison`/`interpolation`/
+  `ai` slices) via the `persistence.test.ts` isolation harness; the `sync-policy`
+  singleton (debounce/throttle/latched-vs-silent error policy, under fake timers
+  + jsdom); and the `ai-provider-registry` Agent-mode resolver wiring.
+- **New Rust suites.** Inline `#[cfg(test)]` modules for `fs_io` (atomic write /
+  signature / json round-trip), `git` (LF policy, idempotent init, no-empty-commit
+  `commit_all`), `project::layout` (path tree + `looks_like_project`), and `types`
+  serde round-trips (the camelCase + `type`-rename TS-mirror contract).
+
+Suite counts after this pass: **323 TS tests / 40 files** (was 278 / 33) and
+**25 Rust tests** (was 15).
+
+**How to verify.** `npm run coverage`, `npm run typecheck`, `npm run build` pass;
+`cargo test` inside `src-tauri/` passes (needs the Tauri Linux system deps, which
+the CI rust job installs). The coverage gate fails the build if coverage drops
+below the configured floors.
+
+**Rollback.** Purely additive. `git revert` the range, or delete the new
+`__tests__` files + the `#[cfg(test)]` modules and restore the original
+`vitest.config.ts` / `package.json` scripts; remove `.github/workflows/ci.yml`.
+
+**Deliberate limits (non-goals here).** Exhaustive React component/canvas tests
+(topo/treemap/editor) and e2e/Playwright stay out of scope by design (UI-heavy by
+acknowledged intent). The DOM/`livePreview` decoration test flagged in the plan
+was left as the lowest-ROI optional item. The doc-ritual pre-commit flag (STATUS
+"Keeping this honest") remains a separate lingering item — the CI gate enforces
+tests, not the migration-log/STATUS touch.
+
+---
+
+## 2026-06-22 — UX second pass (empty-doc · project-management · consolidation · ⌘K palette)
+
+**What changed.** A second remediation pass over the desktop/browser UX, following
+the 2026-06-18 audit. Full detail + a flow diagram are in
+[`docs/ux-audit.md`](ux-audit.md) ("2026-06-22 — Second Pass"). Headlines:
+
+- **Empty document is typeable again (both runtimes).** A new project seeds empty
+  content, but `EditorPanel` mounted the editor **only when non-empty** and the
+  "Start with a blank page" CTA focused an unmounted editor — so a fresh project
+  couldn't be typed into (the only escape was importing markdown). The editor now
+  mounts whenever a project is open (gated on the desktop preview, not on
+  emptiness) and the CTA seeds a `# ` heading + focuses.
+- **Project-management data safety.** Delete now confirms (runtime-specific copy;
+  `ConfirmModal` → `z-[110]`); a new `switchProject` thunk flushes the current
+  project before loading the next (composes with the D4 race guard, untouched);
+  the sidebar rename persists on blur; project export emits the **sparse** prompts
+  override (+ `modelsConfig`) via a pure `buildProjectExport`.
+- **Consolidation.** Twin Goal/Content sprints → one `showSprintModal` +
+  `sprintMode` with a Goal|Draft toggle (one mounted `SprintModal`); Content
+  Suggestions folded into the Spec Generator as "Content ideas"; Coach /
+  Generate-specs / Revise grouped behind one "Assist" dock glyph. Dock tools: 9 → 7.
+- **Discoverability.** A ⌘/Ctrl+K command palette (`CommandPaletteModal`) names
+  every primary action; one global key handler adds ⌘S (snapshot) and ⌘⏎ (run).
+- **Dead code.** Removed `getEditStyles` + unused icon imports; deleted the
+  `migration_import_legacy` Rust stub and its `mod.rs`/`lib.rs` registration; hid
+  the desktop-broken local-IDB import button. "Import project" → "Import as new
+  project".
+
+New tests: `project-switch.test.ts` (flush-before-load; delete auto-switch + demo
+fallback), `projectExport.test.ts` (sparse override), and `ui-state.test.ts`
+extended (sprint/palette flags). Suite: **328 TS tests / 42 files**.
+
+**How to verify.** `npm run typecheck`, `npm test`, `npm run lint` (0 errors), and
+`npm run build` pass. `cargo test` inside `src-tauri/` (CI rust job; needs the
+Tauri Linux deps) builds with the stub removed. Manual: create a new project →
+type immediately; "Start with a blank page" seeds a heading; delete → confirm;
+switch projects → recent edits survive; ⌘K opens the palette; one Sprint door
+offers Goal/Draft; one Assist door offers Coach/Generate-specs/Revise; "Content
+ideas" appears inside the Spec Generator.
+
+**Rollback.** UI/state-only except the backend stub deletion. `git revert` the
+range; or restore `src-tauri/src/commands/migration.rs` + its `mod.rs`/`lib.rs`
+lines, re-add the removed ui-state flags + the two `SprintModal` mounts +
+`ContentSuggestionsModal`, and revert the `EditorPanel` mount condition. No data
+migration and no on-disk schema change — the export-shape fix only affects newly
+written `.socratic` backups.
 ## 2026-06-22 — Session ceremony: invisible git + Progress Dashboard
 
 **What changed.** Shipped Feature Set 2 (Invisible Git Integration) and Feature

@@ -69,3 +69,65 @@ pub fn read_json<T: DeserializeOwned>(path: &Path) -> AppResult<Option<T>> {
         None => Ok(None),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn atomic_write_creates_parents_round_trips_and_leaves_no_tmp() {
+        let dir = tempdir().unwrap();
+        // A nested path whose parent does not exist yet.
+        let path = dir.path().join("a/b/c/project.md");
+        atomic_write_str(&path, "hello\nworld\n").unwrap();
+
+        assert_eq!(
+            read_to_string_optional(&path).unwrap().as_deref(),
+            Some("hello\nworld\n")
+        );
+        // The sibling .tmp must have been renamed away, not left behind.
+        let tmp = path.with_extension("md.tmp");
+        assert!(!tmp.exists(), "temp file should not survive a successful write");
+    }
+
+    #[test]
+    fn atomic_write_overwrites_existing() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("doc.md");
+        atomic_write_str(&path, "first").unwrap();
+        atomic_write_str(&path, "second").unwrap();
+        assert_eq!(read_to_string_optional(&path).unwrap().as_deref(), Some("second"));
+    }
+
+    #[test]
+    fn read_and_signature_are_none_for_missing_files() {
+        let dir = tempdir().unwrap();
+        let missing = dir.path().join("nope.md");
+        assert_eq!(read_to_string_optional(&missing).unwrap(), None);
+        assert_eq!(signature_optional(&missing).unwrap(), None);
+    }
+
+    #[test]
+    fn signature_reflects_size_and_changes_on_rewrite() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("doc.md");
+        atomic_write_str(&path, "abcde").unwrap();
+        let (_mtime, size) = signature_optional(&path).unwrap().unwrap();
+        assert_eq!(size, 5);
+
+        atomic_write_str(&path, "abcdefghij").unwrap();
+        let (_mtime2, size2) = signature_optional(&path).unwrap().unwrap();
+        assert_eq!(size2, 10);
+    }
+
+    #[test]
+    fn json_round_trips() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(".twriter/hidden.json");
+        let value = vec!["s1".to_string(), "s2".to_string()];
+        write_json(&path, &value).unwrap();
+        let read: Vec<String> = read_json(&path).unwrap().unwrap();
+        assert_eq!(read, value);
+    }
+}

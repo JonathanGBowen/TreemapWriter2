@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { Eye, Clock, RefreshCw, EyeOff, Type, FilePlus, FolderOpen, PenTool, Crosshair, History, GitBranch } from "lucide-react";
+import { Clock, FilePlus, FolderOpen, PenTool, History, GitBranch } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
 import { isTauri } from "../../services/tauri-environment";
@@ -266,9 +266,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     event.target.value = '';
   };
 
-    const getEditStyles = (line: string) => { return ""; };
-
-
   const isHidden = currentSection ? (hiddenSectionIds || []).includes(currentSection.id) : false;
 
   return (
@@ -419,9 +416,18 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                        </button>
                        <div className="pt-4 text-center">
                           <button onClick={() => {
-                            if (cmRef.current?.view) {
-                               cmRef.current.view.focus();
-                            }
+                            // Seed a single heading so a treemap node + currentSection
+                            // appear immediately, then focus the (now-mounted) editor
+                            // on the next frame and drop the cursor at the end.
+                            setLocalContent('# ');
+                            requestAnimationFrame(() => {
+                              const view = cmRef.current?.view;
+                              if (view) {
+                                view.focus();
+                                const end = view.state.doc.length;
+                                view.dispatch({ selection: { anchor: end, head: end } });
+                              }
+                            });
                           }} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
                              <PenTool size={12} /> Start with a blank page
                           </button>
@@ -435,8 +441,10 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             </div>
           )}
  
-          {/* Unified Editor Area */}
-          {!isEmptyState && (
+          {/* Unified Editor Area — mounted whenever a project is open (real or
+              browser), even when empty, so a blank document is immediately
+              typeable. Only the desktop preview (needsProject) withholds it. */}
+          {!needsProject && (
             <div className="flex-1 h-full max-w-[800px] mx-auto overflow-hidden">
               {focusMode && currentSection ? (
                 <CodeMirror
