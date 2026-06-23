@@ -556,6 +556,66 @@ export interface ArgumentShape {
   moves: Array<Omit<SprintMove, 'id' | 'durationSec'> & { weight: number }>;
 }
 
+// --- SESSION CEREMONY TYPES ---
+// A *session* is a writing sitting, recorded as evidence (never a score). It is
+// bracketed on disk by a pair of git tags (`session/<id>/start|end`) and saved
+// as `.twriter/sessions/<id>.yaml`. Two paths create one: the lightweight
+// standalone Start/End boundary, and a completed Living Sprint. The WOOP goal
+// reuses the same Wish/Outcome/Obstacle/Plan vocabulary as `SprintGoalFraming`.
+// Mirror of the Rust structs in src-tauri/src/types.rs — keep the two in step.
+
+export interface SessionGoal {
+  /** "What do you want to accomplish this session?" — required; the minimal session. */
+  wish: string;
+  /** "If this goes well, what will you have at the end?" — mental-contrasting anchor. */
+  outcome: string | null;
+  /** The main *inner* obstacle (WOOP). */
+  obstacle: string | null;
+  /** The "if [obstacle], then I will …" implementation intention. */
+  plan: string | null;
+}
+
+export interface SessionStep {
+  id: string;
+  description: string;
+  estimatedMinutes: number | null;
+  completed: boolean;
+  /** Optional "if X, then Y" for this step. */
+  implementationIntention: string | null;
+}
+
+/**
+ * The concrete next-action captured for an incomplete step at check-out. Per
+ * Masicampo-Baumeister, writing the plan down is the intervention — it
+ * discharges the cognitive intrusion of the unfinished task.
+ */
+export interface CarryForward {
+  stepId: string;
+  nextAction: string;
+}
+
+export interface SessionRecord {
+  /** Hyphenated ISO start timestamp; doubles as the session-tag linking key. */
+  id: string;
+  startTag: string;
+  /** null until check-out completes. */
+  endTag: string | null;
+  goal: SessionGoal;
+  steps: SessionStep[];
+  carryForward: CarryForward[];
+  reflection: string | null;
+  /** Total words added/removed across the session. */
+  wordDelta: number;
+  /** Per treemap-section word delta, keyed by section id. */
+  wordDeltaByNode: Record<string, number>;
+  nodesModified: string[];
+  /** 1-10 from check-in, if captured. */
+  commitmentLevel: number | null;
+  durationMinutes: number;
+  /** How the session was created. */
+  source: 'manual' | 'sprint';
+}
+
 // --- PHASE 4 SYNC TYPES ---
 // Wire-format mirrors of src-tauri/src/types.rs. Rust enums are externally
 // tagged with `tag = "kind"`; TS discriminated unions match.

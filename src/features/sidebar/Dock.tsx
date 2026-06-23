@@ -38,6 +38,9 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowProjectFileModal = useStore((s) => s.setShowProjectFileModal);
   const openCompare = useStore((s) => s.openCompare);
   const openClimate = useStore((s) => s.openClimate);
+  const setShowSessionModal = useStore((s) => s.setShowSessionModal);
+  const openDashboard = useStore((s) => s.openDashboard);
+  const sessionActive = useStore((s) => s.activeSession !== null);
 
   const continueLabel = (selectedId ? findTitleById(sections, selectedId) : null) ?? sections[0]?.title ?? 'Begin';
   const wordCount = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
@@ -58,6 +61,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
+    { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
   ];
 
   return (
@@ -74,6 +78,13 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
       </button>
 
       <div className="flex gap-[5px]">
+        <button type="button" onClick={() => setShowSessionModal(true)}
+          aria-label={sessionActive ? 'Check out of session' : 'Start a session'}
+          {...cap(sessionActive ? 'Session — check out' : 'Session — check in')}
+          className="flex-1 py-[6px] border border-hld-cyan/30 text-hld-cyan leading-none hover:bg-hld-cyan/10 transition-colors flex items-center justify-center gap-2">
+          <span className="text-[12px]">{sessionActive ? '◉' : '◷'}</span>
+          <span className="font-mono text-[9px] tracking-[0.14em] uppercase">Session</span>
+        </button>
         <button type="button" onClick={() => setShowSprintModal(true)} aria-label="Sprint" {...cap('Sprint — goal or draft, timed')}
           className="flex-1 py-[6px] border border-hld-green/25 text-hld-green leading-none hover:bg-hld-green/10 transition-colors flex items-center justify-center gap-2">
           <span className="text-[12px]">»</span>
@@ -81,7 +92,8 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-[2px]">
+      <div className="grid grid-cols-8 gap-[2px]">
+
         {tools.map((t) => (
           <button
             key={t.aria}

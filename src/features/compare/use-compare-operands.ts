@@ -1,7 +1,32 @@
 import { useEffect } from 'react';
 import { useStore } from '../../state';
-import type { VersionRef } from '../../state/comparison-state';
+import type { SessionRefOption, VersionRef } from '../../state/comparison-state';
 import { repository } from '../../services/repository-registry';
+
+/** `2026-06-21T09-15-00` → `06-21 09:15` for a compact session-ref label. */
+function prettySession(id: string): string {
+  const day = id.slice(5, 10); // MM-DD
+  const time = id.slice(11, 16).replace('-', ':'); // HH:MM
+  return time ? `${day} ${time}` : day;
+}
+
+/**
+ * Resolve the project's `session/*` tags to commit OIDs so they can be offered
+ * as selectable compare refs (e.g. "session start vs current"). Desktop-only in
+ * effect — the browser has no git tags and returns [].
+ */
+async function loadSessionRefs(): Promise<SessionRefOption[]> {
+  const tags = await repository.listTags('session/*');
+  const opts: SessionRefOption[] = [];
+  for (const tag of [...tags].sort()) {
+    const m = /^session\/(.+)\/(start|end)$/.exec(tag);
+    if (!m) continue;
+    const commitId = await repository.resolveRef(tag);
+    if (!commitId) continue;
+    opts.push({ commitId, label: `${prettySession(m[1])} · ${m[2]}` });
+  }
+  return opts;
+}
 
 /**
  * Lazy data loading for the Version Compare workspace. Mounted by the workspace
@@ -36,6 +61,22 @@ export function useCompareOperands() {
       })
       .catch(() => {
         if (!cancelled) useStore.getState().setIndexStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // Resolve session-boundary tags into selectable refs each time it opens.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    loadSessionRefs()
+      .then((refs) => {
+        if (!cancelled) useStore.getState().setSessionRefs(refs);
+      })
+      .catch(() => {
+        if (!cancelled) useStore.getState().setSessionRefs([]);
       });
     return () => {
       cancelled = true;

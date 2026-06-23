@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useStore } from '../../state';
-import type { VersionRef } from '../../state/comparison-state';
+import type { SessionRefOption, VersionRef } from '../../state/comparison-state';
 import type { SnapshotMeta } from '../../types';
 import { DEFAULT_COMPARE_LENSES } from '../../lib/defaultCompareLenses';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
@@ -13,12 +13,14 @@ function VersionSelect({
   value,
   onChange,
   groups,
+  sessionRefs,
   accent,
   label,
 }: {
   value: VersionRef | null;
   onChange: (ref: VersionRef) => void;
   groups: DayGroup[];
+  sessionRefs: SessionRefOption[];
   accent: 'magenta' | 'green';
   label: string;
 }) {
@@ -35,6 +37,13 @@ function VersionSelect({
         className={`max-w-[230px] truncate font-mono text-[10px] px-2 py-1 rounded border outline-none cursor-pointer ${ring}`}
       >
         <option value="current">Current Draft</option>
+        {sessionRefs.length > 0 && (
+          <optgroup label="Session boundaries">
+            {sessionRefs.map((s) => (
+              <option key={`${s.commitId}-${s.label}`} value={s.commitId}>{s.label}</option>
+            ))}
+          </optgroup>
+        )}
         {groups.map((g) => (
           <optgroup key={g.dateKey} label={g.dayLabel}>
             {g.options.map((o) => (
@@ -55,6 +64,7 @@ export function CompareTopBar() {
   const indexStatus = useStore((s) => s.indexStatus);
   const showAllSaves = useStore((s) => s.showAllSaves);
   const setShowAllSaves = useStore((s) => s.setShowAllSaves);
+  const sessionRefs = useStore((s) => s.sessionRefs);
   const versionAId = useStore((s) => s.versionAId);
   const versionBId = useStore((s) => s.versionBId);
   const setVersionA = useStore((s) => s.setVersionA);
@@ -108,9 +118,9 @@ export function CompareTopBar() {
       </div>
 
       <div className="flex items-center gap-3 min-w-0">
-        <VersionSelect value={versionAId} onChange={setVersionA} groups={groups} accent="magenta" label="A" />
+        <VersionSelect value={versionAId} onChange={setVersionA} groups={groups} sessionRefs={sessionRefs} accent="magenta" label="A" />
         <span className="text-hld-muted-text text-[11px]">→</span>
-        <VersionSelect value={versionBId} onChange={setVersionB} groups={groups} accent="green" label="B" />
+        <VersionSelect value={versionBId} onChange={setVersionB} groups={groups} sessionRefs={sessionRefs} accent="green" label="B" />
         <button
           type="button"
           onClick={() => setShowAllSaves(!showAllSaves)}

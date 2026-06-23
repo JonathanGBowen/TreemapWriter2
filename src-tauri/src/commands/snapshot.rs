@@ -17,8 +17,18 @@ use crate::error::AppResult;
 use crate::project::AppState;
 use crate::types::{PersistedTestEntry, Snapshot, SnapshotMeta, TestSuite};
 use git2::{Commit, Repository};
+use serde::Deserialize;
 use std::path::Path;
 use tauri::State;
+
+/// One git trailer line on a semantic session commit (`Key: value`). Ordered
+/// (the caller sends an array) so the trailer block reads in a stable order.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Trailer {
+    pub key: String,
+    pub value: String,
+}
 
 #[tauri::command]
 pub async fn snapshot_commit(
@@ -26,17 +36,70 @@ pub async fn snapshot_commit(
     message: String,
     trigger: String,
     affected_scope: serde_json::Value, // JS sends as `affectedScope`: a string ("all") or `{ sectionIds: [...] }`
+    // Optional, present only for session-end semantic commits. When supplied the
+    // subject line becomes `Session goal: <message>` (the brief's visual marker)
+    // and the trailer block is appended after the Scope line — machine-parseable
+    // via `git log --format='%(trailers:key=...)'`. Older callers omit it (None).
+    trailers: Option<Vec<Trailer>>,
 ) -> AppResult<String> {
     state.with_current(|h| {
-        let full_message = format!(
-            "{}: {}\n\n{}",
-            trigger,
-            message,
-            encode_scope(&affected_scope)
-        );
+        let mut full_message = if trailers.is_some() {
+            format!("Session goal: {}\n\n{}", message, encode_scope(&affected_scope))
+        } else {
+            format!("{}: {}\n\n{}", trigger, message, encode_scope(&affected_scope))
+        };
+        if let Some(items) = &trailers {
+            let block = encode_trailers(items);
+            if !block.is_empty() {
+                full_message.push('\n');
+                full_message.push_str(&block);
+            }
+        }
         let oid = crate::git::commit_all(&h.git, &full_message)?;
         Ok(oid)
     })
+}
+
+/// Create or move a lightweight git tag (`session/<ts>/start|end`) at a commit.
+/// Idempotent — re-tagging the same name moves it rather than erroring.
+#[tauri::command]
+pub async fn git_create_tag(
+    state: State<'_, AppState>,
+    tag_name: String,
+    commit_id: String,
+) -> AppResult<()> {
+    state.with_current(|h| {
+        let oid = git2::Oid::from_str(&commit_id)?;
+        crate::git::create_tag(&h.git, &tag_name, oid, true)
+    })
+}
+
+/// List tag names, optionally filtered by a glob `pattern` (e.g. `session/*`).
+#[tauri::command]
+pub async fn git_list_tags(
+    state: State<'_, AppState>,
+    pattern: Option<String>,
+) -> AppResult<Vec<String>> {
+    state.with_current(|h| crate::git::list_tags(&h.git, pattern.as_deref()))
+}
+
+/// Resolve a ref (tag/branch/OID/HEAD) to a commit OID, or `None` if unresolved.
+#[tauri::command]
+pub async fn git_resolve_ref(
+    state: State<'_, AppState>,
+    refname: String,
+) -> AppResult<Option<String>> {
+    state.with_current(|h| crate::git::resolve_ref(&h.git, &refname))
+}
+
+/// Word-count delta of `project.md` between two refs (`to - from`).
+#[tauri::command]
+pub async fn git_word_count_delta(
+    state: State<'_, AppState>,
+    from_ref: String,
+    to_ref: String,
+) -> AppResult<i32> {
+    state.with_current(|h| crate::git::word_count_delta(&h.git, &from_ref, &to_ref))
 }
 
 #[tauri::command]
@@ -113,9 +176,16 @@ fn commit_to_meta(commit: &Commit<'_>) -> SnapshotMeta {
 fn parse_commit_message(raw: &str) -> (String, String, serde_json::Value) {
     let mut lines = raw.lines();
     let first = lines.next().unwrap_or("");
-    let (trigger, message) = match first.split_once(':') {
-        Some((t, rest)) => (t.trim().to_string(), rest.trim().to_string()),
-        None => ("manual".to_string(), first.trim().to_string()),
+    // Session-end semantic commits use the subject `Session goal: <wish>`.
+    // Classify them as a `manual` checkpoint (a meaningful, non-autosave
+    // version) so the Compare day-picker surfaces them and the `trigger` stays
+    // within its declared taxonomy — the raw subject keeps the human marker.
+    let (trigger, message) = if let Some(rest) = first.strip_prefix("Session goal:") {
+        ("manual".to_string(), rest.trim().to_string())
+    } else if let Some((t, rest)) = first.split_once(':') {
+        (t.trim().to_string(), rest.trim().to_string())
+    } else {
+        ("manual".to_string(), first.trim().to_string())
     };
     let mut scope = serde_json::Value::String("all".to_string());
     for line in lines {
@@ -125,6 +195,15 @@ fn parse_commit_message(raw: &str) -> (String, String, serde_json::Value) {
         }
     }
     (trigger, message, scope)
+}
+
+fn encode_trailers(items: &[Trailer]) -> String {
+    items
+        .iter()
+        .filter(|t| !t.key.trim().is_empty())
+        .map(|t| format!("{}: {}", t.key.trim(), t.value.trim()))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn encode_scope(value: &serde_json::Value) -> String {
@@ -200,4 +279,35 @@ fn read_specs_at(repo: &Repository, tree: &git2::Tree<'_>) -> AppResult<TestSuit
         suite.insert(section_id, persisted.into_entry());
     }
     Ok(suite)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_goal_commit_parses_as_manual_checkpoint() {
+        let raw = "Session goal: draft intro\n\nScope: all\nGMT-step: Check\nWord-delta: +12";
+        let (trigger, message, scope) = parse_commit_message(raw);
+        assert_eq!(trigger, "manual"); // surfaced by the Compare checkpoint filter
+        assert_eq!(message, "draft intro");
+        assert_eq!(scope, serde_json::Value::String("all".to_string()));
+    }
+
+    #[test]
+    fn ordinary_commit_keeps_its_trigger() {
+        let (trigger, message, _) = parse_commit_message("autosave: tick\n\nScope: all");
+        assert_eq!(trigger, "autosave");
+        assert_eq!(message, "tick");
+    }
+
+    #[test]
+    fn trailers_render_after_scope() {
+        let block = encode_trailers(&[
+            Trailer { key: "GMT-step".into(), value: "Check".into() },
+            Trailer { key: " ".into(), value: "skip-empty-key".into() },
+            Trailer { key: "Word-delta".into(), value: "+12".into() },
+        ]);
+        assert_eq!(block, "GMT-step: Check\nWord-delta: +12");
+    }
 }

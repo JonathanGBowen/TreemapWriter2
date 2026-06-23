@@ -9,5 +9,6 @@
 pub mod credentials;
 pub mod document;
 pub mod project;
+pub mod session;
 pub mod snapshot;
 pub mod sync;

@@ -55,6 +55,14 @@ impl Layout {
         self.specs_dir().join(format!("{section_id}.spec.yaml"))
     }
 
+    pub fn sessions_dir(&self) -> PathBuf {
+        self.twriter_dir().join("sessions")
+    }
+
+    pub fn session_yaml(&self, id: &str) -> PathBuf {
+        self.sessions_dir().join(format!("{id}.yaml"))
+    }
+
     pub fn cache_sqlite(&self) -> PathBuf {
         self.twriter_dir().join("index.sqlite")
     }

@@ -18,11 +18,12 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  SessionRecord,
   Snapshot,
   SnapshotMeta,
   SyncState,
 } from '../types';
-import type { Repository, StoredProjectData } from './repository';
+import type { CommitTrailer, Repository, StoredProjectData } from './repository';
 
 /** Number of commits eagerly fetched into in-memory `revisions` on project open. */
 const REVISIONS_WINDOW = 20;
@@ -144,12 +145,59 @@ export const tauriRepository: Repository = {
     message: string,
     trigger: 'manual' | 'autosave' | 'pre-ai-write',
     affectedScope: 'all' | { sectionIds: string[] },
+    trailers?: CommitTrailer[],
   ): Promise<string> {
     return invoke<string>('snapshot_commit', {
       message,
       trigger,
       affectedScope,
+      // Omitted (undefined) for ordinary snapshots → Rust sees None.
+      trailers: trailers ?? null,
     });
+  },
+
+  async createTag(tagName: string, commitId: string): Promise<void> {
+    await invoke('git_create_tag', { tagName, commitId });
+  },
+
+  async listTags(pattern?: string): Promise<string[]> {
+    try {
+      return await invoke<string[]>('git_list_tags', { pattern: pattern ?? null });
+    } catch (e) {
+      console.warn('git_list_tags failed (probably empty repo):', e);
+      return [];
+    }
+  },
+
+  async resolveRef(refname: string): Promise<string | null> {
+    try {
+      return await invoke<string | null>('git_resolve_ref', { refname });
+    } catch (e) {
+      console.warn('git_resolve_ref failed:', e);
+      return null;
+    }
+  },
+
+  async wordCountDelta(fromRef: string, toRef: string): Promise<number> {
+    try {
+      return await invoke<number>('git_word_count_delta', { fromRef, toRef });
+    } catch (e) {
+      console.warn('git_word_count_delta failed:', e);
+      return 0;
+    }
+  },
+
+  async listSessions(): Promise<SessionRecord[]> {
+    try {
+      return await invoke<SessionRecord[]>('session_list');
+    } catch (e) {
+      console.warn('session_list failed:', e);
+      return [];
+    }
+  },
+
+  async saveSession(record: SessionRecord): Promise<void> {
+    await invoke('session_save', { record });
   },
 
   async listSnapshotMeta(limit?: number): Promise<SnapshotMeta[]> {

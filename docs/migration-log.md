@@ -3146,3 +3146,74 @@ lines, re-add the removed ui-state flags + the two `SprintModal` mounts +
 `ContentSuggestionsModal`, and revert the `EditorPanel` mount condition. No data
 migration and no on-disk schema change — the export-shape fix only affects newly
 written `.socratic` backups.
+## 2026-06-22 — Session ceremony: invisible git + Progress Dashboard
+
+**What changed.** Shipped Feature Set 2 (Invisible Git Integration) and Feature
+Set 3 (Progress Dashboard) of the session-coaching brief. Feature Set 1 (the
+full check-in/check-out coaching ceremony) stays out of scope; a deliberately
+skeletal Start/End boundary stands in so 2 & 3 have real data. Two brief
+assumptions didn't hold and were resolved with the user: there is **no task
+system on treemap nodes** (so per-node progress is section-based; the `Task:`
+trailer and bidirectional task-sync are omitted), and **idle auto-commit was
+declined** (the existing explicit-snapshot model is kept; session tags +
+semantic commits + word-count layer on top).
+
+- **Git primitives** (`src-tauri/src/git/mod.rs`): `create_tag`, `list_tags`,
+  `resolve_ref`, `word_count_delta` (project.md word diff between two refs).
+  Exposed as commands in `commands/snapshot.rs` (`git_create_tag`,
+  `git_list_tags`, `git_resolve_ref`, `git_word_count_delta`) and registered in
+  `lib.rs`. `snapshot_commit` gained an optional ordered `trailers` param: when
+  present the subject becomes `Session goal: <wish>` and the trailer block
+  (`GMT-step`, `Session`, `WOOP-obstacle`, `Steps-completed`, `Word-delta`) is
+  appended — machine-parseable via `git log --format='%(trailers:key=...)'`.
+- **Session records** persist as `.twriter/sessions/<id>.yaml` (committed, like
+  the spec sidecars) via dedicated `session_list` / `session_save` commands
+  (`commands/session.rs`), with the `SessionRecord` family mirrored in
+  `types.rs` and `src/types/index.ts`, and path helpers in `layout.rs`.
+- **Repository seam**: `createTag` / `listTags` / `resolveRef` / `wordCountDelta`
+  / `listSessions` / `saveSession` + the optional `trailers` on `commitSnapshot`
+  added to the interface and both impls (Tauri wraps the IPC; browser keeps
+  sessions in IndexedDB, computes word delta from in-memory revisions, and
+  no-ops tags).
+- **Lifecycle** (`src/state/session-state.ts`): `startSession` commits a
+  baseline + tags `session/<id>/start`; `endSession` computes the word delta
+  (markdown totals) and per-section deltas, makes the semantic end-commit, tags
+  `session/<id>/end`, and finalizes the record. `loadSessions` hydrates the log
+  on project open (`project-state.ts`).
+- **Entry points (both).** A flat `SessionModal` (check-in: Wish + optional WOOP
+  + steps; check-out: step review, word delta, carry-forward, reflection),
+  launched from a new Dock session button; and **completed Living Sprints**
+  bracket a session automatically (only when one isn't already running), reusing
+  the same lifecycle thunks (`SprintModal`).
+- **Progress Dashboard** (`src/features/dashboard/`): a read-only full-screen
+  workspace (Dock `▤`) — accumulated totals, a cumulative words-over-time Plotly
+  area chart (reuses the existing Plotly dep — no new dependency), per-section
+  attention, and an expandable recent-sessions log. No streaks, targets, or
+  pass/fail color, per the brief. Pure aggregations in `dashboardData.ts`.
+- **Compare integration**: session start/end tags resolve to commit OIDs and
+  appear as a "Session boundaries" optgroup in the Version Compare pickers
+  (`use-compare-operands.ts`, `CompareTopBar.tsx`, `comparison-state.ts`).
+
+**How to verify.** `cd src-tauri && cargo test` (12 — +2: `word_count_delta`,
+tag resolution). `npm run typecheck`, `npm test` (282 — +4: dashboard
+aggregations), `npm run build` pass (chunk-size notice pre-existing). Manual
+(desktop): start a session → `git tag --list 'session/*'` shows a `/start`; edit
++ end → a `/end` tag and a `Session goal: …` commit whose `Word-delta` trailer
+`git log --format='%(trailers:key=Word-delta)'` extracts; `.twriter/sessions/`
+holds the YAML; the Dock `▤` dashboard lists the session with totals + chart; a
+Living Sprint to completion produces an equivalent record + tags; Compare offers
+the session tags as refs.
+
+**Rollback.** `git revert` — almost entirely additive. Remove
+`features/dashboard/`, `SessionModal.tsx`, `state/session-state.ts`,
+`commands/session.rs`, the new `git_*` commands + git helpers, the
+`SessionRecord` mirrors, and the Dock/App/Compare/Sprint wiring; drop the new
+Repository methods from the interface + both impls and the optional `trailers`
+on `snapshot_commit` (older callers never passed it). Existing
+`.twriter/sessions/` files become inert.
+
+**Deliberate limits (non-goals for this build).** Feature Set 1's full GMT/GROW
+ceremony (sequential WOOP prompts, granularity slider, commitment branching,
+idle-timeout check-out); idle/background auto-commit; any task system on nodes,
+`Task:` trailers, or task sync; spec-evaluation delta between session
+start/end snapshots (a future integration point).

@@ -400,6 +400,12 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
             data.uiState.activeLineIndex !== undefined ? data.uiState.activeLineIndex : get().activeLineIndex,
         });
       }
+      // A session belongs to one project; clear any in-flight session + the
+      // previous project's stale log. The Progress Dashboard reloads the new
+      // project's records when it opens (openDashboard → loadSessions), so we
+      // avoid a cross-slice action call here — keeping loadProject usable when
+      // only the project slice is mounted (see project-switch tests).
+      set({ activeSession: null, sessionLog: [] });
       return true;
     } catch {
       return false;

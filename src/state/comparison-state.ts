@@ -21,6 +21,12 @@ export type IndexStatus = 'idle' | 'loading' | 'ready' | 'error';
 /** A comparison operand: a snapshot id, or the live unsaved draft. */
 export type VersionRef = string | 'current';
 
+/** A session boundary as a selectable ref: its resolved commit OID + a label. */
+export interface SessionRefOption {
+  commitId: string;
+  label: string;
+}
+
 export interface ComparisonSlice {
   comparisonOpen: boolean;
   /** Selected operands. null means "unset" — the workspace resolves a default on open. */
@@ -41,6 +47,8 @@ export interface ComparisonSlice {
   loadedB: Snapshot | null;
   /** Picker mode: false folds routine autosaves to day-start + checkpoints; true shows every save. */
   showAllSaves: boolean;
+  /** Session start/end tags resolved to commit OIDs, offered as selectable refs. */
+  sessionRefs: SessionRefOption[];
 
   openCompare: () => void;
   closeCompare: () => void;
@@ -55,6 +63,7 @@ export interface ComparisonSlice {
   setLoadedA: (snap: Snapshot | null) => void;
   setLoadedB: (snap: Snapshot | null) => void;
   setShowAllSaves: (on: boolean) => void;
+  setSessionRefs: (refs: SessionRefOption[]) => void;
 }
 
 export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSlice> = (set) => ({
@@ -70,6 +79,7 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   loadedA: null,
   loadedB: null,
   showAllSaves: false,
+  sessionRefs: [],
 
   openCompare: () => set({ comparisonOpen: true }),
   // Closing keeps the selections + last report (regenerable, cheap to keep) but
@@ -86,4 +96,5 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   setLoadedA: (snap) => set({ loadedA: snap }),
   setLoadedB: (snap) => set({ loadedB: snap }),
   setShowAllSaves: (on) => set({ showAllSaves: on }),
+  setSessionRefs: (refs) => set({ sessionRefs: refs }),
 });
