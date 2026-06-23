@@ -9,10 +9,13 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-21.** Update this file whenever a feature ships or is
+> **Current as of 2026-06-22.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
-> issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md).
+> issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
+> **second pass** (2026-06-22) covering the empty-document fix, the
+> project-management flow, dock legibility + a ⌘K command palette, and AI-surface
+> consolidation.
 
 ## Where things stand
 
@@ -168,9 +171,11 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   are also covered — fully restoring the draft/committed split the browser already
   has. The TS slice already sends and reads `localDraft`; only the Rust read/write
   + the gitignore line are missing.
-- **`migration_import_legacy` stub.** `src-tauri/src/commands/migration.rs`
-  returns `Err`. Decide: implement bulk import in Rust, or delete the stub and
-  keep import on the JS side.
+- ~~**`migration_import_legacy` stub.**~~ Resolved 2026-06-22 (UX second pass; see
+  [`docs/migration-log.md`](docs/migration-log.md) and
+  [`docs/ux-audit.md`](docs/ux-audit.md)). The dead Rust stub and its `mod.rs` /
+  `lib.rs` registration were deleted; legacy import stays JS-side
+  (`src/features/migration/importer.ts`), which was always the real path.
 - **Retire the `.env` AI-key fallback.** Kept during sync work to avoid breaking
   existing setups. Once the keyring path is verified in real use, remove the
   env-var fallback and its read in `src/services/ai-provider-registry.ts`.
@@ -191,9 +196,10 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   desktop-spawned helper), so keep it even when Rust owns the process. ToS note:
   subscription OAuth in a custom app is a gray area — single-user, own-machine use only.
 - **Confirm-modal usage audit.** `ConfirmModal` (and native `confirm()`) exist;
-  the ADHD-UX rule is "undo, not confirm" except for project delete. Audit usages
-  to verify they're destructive-only; replace any non-destructive confirm with an
-  undo affordance.
+  the ADHD-UX rule is "undo, not confirm" except for project delete — which **now
+  confirms** as designed (wired 2026-06-22, UX second pass). Still to do: audit the
+  remaining usages to verify they're destructive-only, and replace any
+  non-destructive confirm with an undo affordance.
 - **Opportunistic 300-line decomposition.** `App.tsx` (~988 lines, target a thin
   layout shell) plus ~14 other files exceed the cognitive-load target. Not a
   build gate (ESLint warns, doesn't error); decompose when you're already in the

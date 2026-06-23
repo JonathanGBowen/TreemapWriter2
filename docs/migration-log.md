@@ -3097,3 +3097,52 @@ acknowledged intent). The DOM/`livePreview` decoration test flagged in the plan
 was left as the lowest-ROI optional item. The doc-ritual pre-commit flag (STATUS
 "Keeping this honest") remains a separate lingering item — the CI gate enforces
 tests, not the migration-log/STATUS touch.
+
+---
+
+## 2026-06-22 — UX second pass (empty-doc · project-management · consolidation · ⌘K palette)
+
+**What changed.** A second remediation pass over the desktop/browser UX, following
+the 2026-06-18 audit. Full detail + a flow diagram are in
+[`docs/ux-audit.md`](ux-audit.md) ("2026-06-22 — Second Pass"). Headlines:
+
+- **Empty document is typeable again (both runtimes).** A new project seeds empty
+  content, but `EditorPanel` mounted the editor **only when non-empty** and the
+  "Start with a blank page" CTA focused an unmounted editor — so a fresh project
+  couldn't be typed into (the only escape was importing markdown). The editor now
+  mounts whenever a project is open (gated on the desktop preview, not on
+  emptiness) and the CTA seeds a `# ` heading + focuses.
+- **Project-management data safety.** Delete now confirms (runtime-specific copy;
+  `ConfirmModal` → `z-[110]`); a new `switchProject` thunk flushes the current
+  project before loading the next (composes with the D4 race guard, untouched);
+  the sidebar rename persists on blur; project export emits the **sparse** prompts
+  override (+ `modelsConfig`) via a pure `buildProjectExport`.
+- **Consolidation.** Twin Goal/Content sprints → one `showSprintModal` +
+  `sprintMode` with a Goal|Draft toggle (one mounted `SprintModal`); Content
+  Suggestions folded into the Spec Generator as "Content ideas"; Coach /
+  Generate-specs / Revise grouped behind one "Assist" dock glyph. Dock tools: 9 → 7.
+- **Discoverability.** A ⌘/Ctrl+K command palette (`CommandPaletteModal`) names
+  every primary action; one global key handler adds ⌘S (snapshot) and ⌘⏎ (run).
+- **Dead code.** Removed `getEditStyles` + unused icon imports; deleted the
+  `migration_import_legacy` Rust stub and its `mod.rs`/`lib.rs` registration; hid
+  the desktop-broken local-IDB import button. "Import project" → "Import as new
+  project".
+
+New tests: `project-switch.test.ts` (flush-before-load; delete auto-switch + demo
+fallback), `projectExport.test.ts` (sparse override), and `ui-state.test.ts`
+extended (sprint/palette flags). Suite: **328 TS tests / 42 files**.
+
+**How to verify.** `npm run typecheck`, `npm test`, `npm run lint` (0 errors), and
+`npm run build` pass. `cargo test` inside `src-tauri/` (CI rust job; needs the
+Tauri Linux deps) builds with the stub removed. Manual: create a new project →
+type immediately; "Start with a blank page" seeds a heading; delete → confirm;
+switch projects → recent edits survive; ⌘K opens the palette; one Sprint door
+offers Goal/Draft; one Assist door offers Coach/Generate-specs/Revise; "Content
+ideas" appears inside the Spec Generator.
+
+**Rollback.** UI/state-only except the backend stub deletion. `git revert` the
+range; or restore `src-tauri/src/commands/migration.rs` + its `mod.rs`/`lib.rs`
+lines, re-add the removed ui-state flags + the two `SprintModal` mounts +
+`ContentSuggestionsModal`, and revert the `EditorPanel` mount condition. No data
+migration and no on-disk schema change — the export-shape fix only affects newly
+written `.socratic` backups.

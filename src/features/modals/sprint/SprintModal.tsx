@@ -1,12 +1,12 @@
 // Living Sprints — the orchestrator. Evolves the original Goal/Content sprint
 // modal: instead of marching every section, a sprint targets ONE section (the
-// active selection) and runs an ordered sequence of timed *moves*. It reads its
-// own openness from ui-state by `mode`, owns the phase (setup → brief → running)
-// and the in-flight plan (ephemeral — never persisted; the prose is saved
-// continuously via the existing onSaveContent/onSaveGoal path), and resolves the
-// reinstatement + backlog context the inner screens need. Each phase renders its
-// own overlay, so only one is mounted at a time. Public name/props unchanged so
-// App.tsx wiring is a one-line import swap.
+// active selection) and runs an ordered sequence of timed *moves*. It opens on
+// the single `showSprintModal` flag and reads `sprintMode` (goal vs draft) from
+// the store — flipped from the setup screen — owning the phase (setup → brief →
+// running) and the in-flight plan (ephemeral — never persisted; the prose is
+// saved continuously via the existing onSaveContent/onSaveGoal path), and
+// resolves the reinstatement + backlog context the inner screens need. Each
+// phase renders its own overlay, so only one is mounted at a time.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../../store';
@@ -29,7 +29,6 @@ import { SprintRunner } from './SprintRunner';
 export interface SprintModalProps {
   sections: Section[];
   testSuite: TestSuite;
-  mode: 'goal' | 'content';
   onSaveContent?: (id: string, content: string) => void;
   onSaveGoal?: (id: string, goal: string, type: 'manual') => void;
   promptsConfig: PromptsConfig;
@@ -60,18 +59,15 @@ function daysSince(ts: number | undefined): number | null {
 export function SprintModal({
   sections,
   testSuite,
-  mode,
   onSaveContent,
   onSaveGoal,
   promptsConfig,
 }: SprintModalProps) {
-  const showGoal = useStore((s) => s.showGoalSprintModal);
-  const setShowGoal = useStore((s) => s.setShowGoalSprintModal);
-  const showContent = useStore((s) => s.showContentSprintModal);
-  const setShowContent = useStore((s) => s.setShowContentSprintModal);
+  const isOpen = useStore((s) => s.showSprintModal);
+  const setShowSprint = useStore((s) => s.setShowSprintModal);
+  const mode = useStore((s) => s.sprintMode);
+  const setSprintMode = useStore((s) => s.setSprintMode);
   const selectedId = useStore((s) => s.selectedId);
-
-  const isOpen = mode === 'goal' ? showGoal : showContent;
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [plan, setPlan] = useState<SprintPlan | null>(null);
@@ -107,8 +103,7 @@ export function SprintModal({
   if (!isOpen || !section) return null;
 
   const onClose = () => {
-    if (mode === 'goal') setShowGoal(false);
-    else setShowContent(false);
+    setShowSprint(false);
     setPhase('setup');
     setPlan(null);
     setGoalCtx(null);
@@ -187,7 +182,9 @@ export function SprintModal({
 
   return (
     <SprintSetup
+      key={mode}
       mode={mode}
+      onModeChange={setSprintMode}
       sectionTitle={section.title}
       onStart={onStartSetup}
       onCoach={(shape, totalMin) => {

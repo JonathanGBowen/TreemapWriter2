@@ -65,6 +65,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const projectName = useStore((s) => s.projectName);
   const setProjectName = useStore((s) => s.setProjectName);
+  const saveCurrentState = useStore((s) => s.saveCurrentState);
+  const activeProjectId = useStore((s) => s.activeProjectId);
   const width = useStore((s) => s.sidebarWidth);
   const setWidth = useStore((s) => s.setSidebarWidth);
   const setShowConflictModal = useStore((s) => s.setShowConflictModal);
@@ -118,6 +120,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <input
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
+          onBlur={() => {
+            // Persist the rename on blur rather than waiting up to 60s for the
+            // next autosave, so it survives an immediate project switch/close.
+            if (!projectName.trim()) setProjectName('Untitled Project');
+            if (activeProjectId) void saveCurrentState();
+          }}
           className="flex-1 min-w-0 font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-hld-text bg-transparent outline-none border-b border-transparent hover:border-hld-border focus:border-hld-cyan truncate transition-colors"
           placeholder="Project Name"
           title="Click to rename"

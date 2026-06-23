@@ -10,7 +10,7 @@ import { SpecGeneratorModal } from "./features/modals/SpecGeneratorModal";
 import { SprintModal } from "./features/modals/sprint/SprintModal";
 import { ProjectManagerModal } from "./features/modals/ProjectManagerModal";
 import { VersionHistoryModal } from "./features/modals/VersionHistoryModal";
-import { ContentSuggestionsModal } from "./features/modals/ContentSuggestionsModal";
+import { CommandPaletteModal, type Command } from "./features/modals/CommandPaletteModal";
 import { DependencyGraphModal } from "./features/modals/DependencyGraphModal";
 import { PromptsGraphModal } from "./features/modals/PromptsGraphModal";
 import { SectionMapModal } from "./features/modals/SectionMapModal";
@@ -33,6 +33,7 @@ import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown } from "./lib/utils";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
+import { buildProjectExport } from "./lib/projectExport";
 import { normalizePromptsConfig } from "./lib/constants";
 import type { ModelChoice } from "./services/ai/model-types";
 import defaultProjectData from "./lib/defaultProject.json";
@@ -81,20 +82,20 @@ export const App = () => {
     projectList, activeProjectId, hasOpenProject, markdown, projectName, testSuite, hiddenSectionIds,
     localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
     focusMode, selectedId, activeLineIndex, runTutorial, showProjectModal,
-    showRunModal, showPersonaModal, showSpecModal, showSuggestionsModal,
-    showPromptsGraphModal, showSectionMapModal, showProjectFileModal, showGoalSprintModal,
-    showContentSprintModal, showHistoryModal, showGraphModal, showCoachModal, isProcessing,
+    showRunModal, showPersonaModal, showSpecModal,
+    showPromptsGraphModal, showSectionMapModal, showProjectFileModal,
+    showHistoryModal, showGraphModal, showCoachModal, isProcessing,
     activePersonaId, customPersonas, promptsConfig, cachedCoachAdvice,
     
     setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite, setHiddenSectionIds,
     setSelectedId, setActiveLineIndex, setRunTutorial, setSidebarWidth,
     setTestsPanelWidth, setFocusMode, setShowProjectModal, setShowRunModal, setShowPersonaModal,
-    setShowSpecModal, setShowSuggestionsModal, setShowPromptsGraphModal,
-    setShowSectionMapModal, setShowProjectFileModal, setShowGoalSprintModal, setShowContentSprintModal,
+    setShowSpecModal, setShowPromptsGraphModal,
+    setShowSectionMapModal, setShowProjectFileModal,
     setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing,
     setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
     
-    loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, deleteProject,
+    loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, switchProject, deleteProject,
     saveCurrentState, createSnapshot, setRevisions, updateSectionGoals
   } = useStore(useShallow(state => ({
     projectList: state.projectList,
@@ -118,12 +119,9 @@ export const App = () => {
     showRunModal: state.showRunModal,
     showPersonaModal: state.showPersonaModal,
     showSpecModal: state.showSpecModal,
-    showSuggestionsModal: state.showSuggestionsModal,
     showPromptsGraphModal: state.showPromptsGraphModal,
     showSectionMapModal: state.showSectionMapModal,
     showProjectFileModal: state.showProjectFileModal,
-    showGoalSprintModal: state.showGoalSprintModal,
-    showContentSprintModal: state.showContentSprintModal,
     showHistoryModal: state.showHistoryModal,
     showGraphModal: state.showGraphModal,
     showCoachModal: state.showCoachModal,
@@ -150,12 +148,9 @@ export const App = () => {
     setShowRunModal: state.setShowRunModal,
     setShowPersonaModal: state.setShowPersonaModal,
     setShowSpecModal: state.setShowSpecModal,
-    setShowSuggestionsModal: state.setShowSuggestionsModal,
     setShowPromptsGraphModal: state.setShowPromptsGraphModal,
     setShowSectionMapModal: state.setShowSectionMapModal,
     setShowProjectFileModal: state.setShowProjectFileModal,
-    setShowGoalSprintModal: state.setShowGoalSprintModal,
-    setShowContentSprintModal: state.setShowContentSprintModal,
     setShowHistoryModal: state.setShowHistoryModal,
     setShowGraphModal: state.setShowGraphModal,
     setShowCoachModal: state.setShowCoachModal,
@@ -170,6 +165,7 @@ export const App = () => {
     createNewProject: state.createNewProject,
     openExistingProject: state.openExistingProject,
     loadProject: state.loadProject,
+    switchProject: state.switchProject,
     deleteProject: state.deleteProject,
     saveCurrentState: state.saveCurrentState,
     createSnapshot: state.createSnapshot,
@@ -311,6 +307,33 @@ export const App = () => {
       void createSnapshot('manual');
     }
   };
+
+  // The one global key handler. ⌘/Ctrl+K toggles the command palette (the
+  // keyboard door to every action); ⌘/Ctrl+S commits a snapshot; ⌘/Ctrl+Enter
+  // runs the diagnostic. Modified chords don't insert text, so no input guard is
+  // needed; the latter two are suppressed while the palette is open so they
+  // don't fire underneath it. Modal Escape/Enter live in ModalShell, untouched.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      const s = useStore.getState();
+      if (key === 'k') {
+        e.preventDefault();
+        s.setShowCommandPalette(!s.showCommandPalette);
+      } else if (s.showCommandPalette) {
+        return;
+      } else if (key === 's') {
+        e.preventDefault();
+        if (s.activeProjectId) void s.createSnapshot('manual');
+      } else if (key === 'enter') {
+        e.preventDefault();
+        s.setShowRunModal(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // --- HELPERS ---
 
@@ -472,20 +495,7 @@ export const App = () => {
   };
 
   const handleExportProject = () => {
-    const s = useStore.getState();
-    const data = {
-      projectName: s.projectName,
-      markdown: s.markdown,
-      localDraft: s.localContent,
-      testSuite: s.testSuite,
-      hiddenSectionIds: s.hiddenSectionIds,
-      activePersonaId: s.activePersonaId,
-      customPersonas: s.customPersonas,
-      promptsConfig: s.promptsConfig,
-      cachedCoachAdvice: s.cachedCoachAdvice,
-      revisions: s.revisions,
-      lastModified: Date.now(),
-    };
+    const data = buildProjectExport(useStore.getState());
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -735,6 +745,31 @@ export const App = () => {
     activeLineIndexRef.current = index;
   }, []);
 
+  // Command palette entries — the named, searchable door to every primary action
+  // (the consolidation of the Coach/Generate-specs/Revise glyphs). Built each
+  // render so the App-level handlers stay current; store openers are reached via
+  // getState() to avoid widening the selector.
+  const paletteCommands: Command[] = [
+    { id: 'sprint', label: 'Sprint', hint: 'Goal or draft · timed', glyph: '»', run: () => useStore.getState().setShowSprintModal(true) },
+    { id: 'coach', label: 'Coach', hint: 'Stuck? Find the bottleneck', glyph: '◉', run: () => useStore.getState().setShowCoachModal(true) },
+    { id: 'generate-specs', label: 'Generate specs', hint: 'Structural analysis, top-down', glyph: '✦', run: () => useStore.getState().openInterpolate() },
+    { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
+    { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
+    { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
+    { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
+    { id: 'prompts', label: 'Prompts', hint: 'AI routing', glyph: '❝', run: () => useStore.getState().setShowPromptsGraphModal(true) },
+    { id: 'raw-data', label: 'Raw data', hint: 'JSON editor', glyph: '{}', run: () => useStore.getState().setShowProjectFileModal(true) },
+    { id: 'compare', label: 'Compare versions', hint: 'A/B evaluation', glyph: '≈', run: () => useStore.getState().openCompare() },
+    { id: 'climate', label: 'Climate', hint: 'Atmospheric report', glyph: '≋', run: () => useStore.getState().openClimate() },
+    { id: 'history', label: 'Version history', hint: 'Snapshots & restore', glyph: '◷', run: () => useStore.getState().setShowHistoryModal(true) },
+    { id: 'snapshot', label: 'Snapshot now', hint: 'Commit a labeled version', glyph: '◆', shortcut: '⌘S', run: handleManualSave },
+    { id: 'new-project', label: 'New project', glyph: '＋', run: () => createNewProject() },
+    { id: 'open-projects', label: 'Open projects', glyph: '◇', run: () => useStore.getState().setShowProjectModal(true) },
+    { id: 'export-markdown', label: 'Export markdown', glyph: '↧', run: handleExportMarkdown },
+    { id: 'export-project', label: 'Export project', hint: '.socratic', glyph: '↧', run: handleExportProject },
+    { id: 'export-specs', label: 'Export specs', hint: '.json', glyph: '↧', run: handleExportSpecs },
+  ];
+
   return (
     <div className="dark">
       <ConfirmModal 
@@ -833,15 +868,7 @@ export const App = () => {
         <SprintModal
           sections={sections}
           testSuite={testSuite}
-          mode="goal"
           onSaveGoal={updateSectionGoals}
-          promptsConfig={promptsConfig}
-        />
-
-        <SprintModal
-          sections={sections}
-          testSuite={testSuite}
-          mode="content"
           onSaveContent={handleSaveContent}
           promptsConfig={promptsConfig}
         />
@@ -850,7 +877,9 @@ export const App = () => {
           projects={projectList}
           activeProjectId={activeProjectId || ''}
           onLoadProject={async (id) => {
-            const success = await loadProject(id);
+            // switchProject flushes the current project before loading the next,
+            // so the last <60s of edits aren't lost on switch.
+            const success = await switchProject(id);
             if (!success) {
                toast.error("Could not load project data.");
             }
@@ -858,27 +887,15 @@ export const App = () => {
           onCreateProject={() => createNewProject()}
           onLoadDefaultProject={() => createDemoProject()}
           onOpenProject={isTauri() ? () => openExistingProject() : undefined}
-          onDeleteProject={deleteProject}
-        />
-
-        <ContentSuggestionsModal
-          sectionTitle={currentSection?.title || ""}
-          currentGoals={currentSection ? (testSuite[currentSection.id]?.goals || "") : ""}
-          fullSectionContent={currentSection?.fullContent || ""}
-          parentGoals={getParentGoals()}
-          sectionId={currentSection?.id || ""}
-          cachedSuggestions={currentSection ? testSuite[currentSection.id]?.cachedSuggestions : undefined}
-          onSaveCache={(sectionId, inputHash, suggestions) => {
-             setTestSuite(prev => {
-                const ts = { ...prev };
-                if (!ts[sectionId]) return ts;
-                ts[sectionId] = { ...ts[sectionId], cachedSuggestions: { inputHash, suggestions } };
-                return ts;
-             });
-             if (activeProjectId) {
-                // Not calling saveCurrentState directly to avoid double render, but ideal is yes.
-                // We let next autosave catch it, or if it's critical, we can call it.
-             }
+          onDeleteProject={(id) => {
+            // Project delete is the one destructive action that confirms (per the
+            // "undo, not confirm — except delete" rule). Copy is runtime-specific:
+            // desktop only forgets the recent entry; browser delete is permanent.
+            const name = projectList.find((p) => p.id === id)?.name ?? 'this project';
+            const message = isTauri()
+              ? `Delete "${name}"? This removes it from your recent projects — the folder on disk is kept.`
+              : `Delete "${name}"? This permanently deletes the project and can't be undone.`;
+            requestConfirm(message, () => { void deleteProject(id); });
           }}
         />
 
@@ -947,6 +964,8 @@ export const App = () => {
         <ClimateWorkspace />
 
         <InterpolateWorkspace />
+
+        <CommandPaletteModal commands={paletteCommands} />
 
         <Toaster position="bottom-right" richColors />
       </div>

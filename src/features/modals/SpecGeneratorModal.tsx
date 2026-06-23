@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, ArrowRight, X, Check, History, GitCompare } from "lucide-react";
+import { Sparkles, ArrowRight, X, Check, History, GitCompare, Lightbulb } from "lucide-react";
 import * as Diff from "diff";
+import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { PromptsConfig } from "../../types";
 import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
@@ -36,6 +37,10 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
   const [proposedGoals, setProposedGoals] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [mode, setMode] = useState<'edit' | 'diff'>('edit');
+  // Content ideas — folded in from the former standalone Content Suggestions
+  // modal. Advisory prose suggestions for this section; they don't touch goals.
+  const [ideas, setIdeas] = useState<string | null>(null);
+  const [ideasLoading, setIdeasLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +48,7 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
       setProposedGoals(null);
       setMode('edit');
       setInstruction("");
+      setIdeas(null);
     }
   }, [isOpen]);
 
@@ -75,6 +81,31 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
       notifyAiError(e, "Failed to generate specs. Please check your connection and try again.");
     } finally {
       setIsThinking(false);
+    }
+  };
+
+  const handleSuggestIdeas = async () => {
+    const { modelCatalog, modelConfig, globalModelDefault } = useStore.getState();
+    const choice = resolveModelChoice('getContentSuggestions', modelConfig, globalModelDefault);
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: fullSectionContent, what: 'This section', setting: 'Content ideas' })) {
+      return;
+    }
+    setIdeasLoading(true);
+    try {
+      const text = await aiProvider.getContentSuggestions({
+        sectionTitle,
+        currentGoals: draftGoals,
+        fullSectionContent,
+        parentGoals,
+        config: promptsConfig,
+        modelChoice: choice,
+      });
+      setIdeas(text);
+    } catch (e) {
+      console.error(e);
+      notifyAiError(e, "Failed to suggest content ideas. Please try again.");
+    } finally {
+      setIdeasLoading(false);
     }
   };
 
@@ -146,6 +177,37 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
                  </div>
                  <AgentTraceTicker
                    kinds={['refineSpec']}
+                   className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+                 />
+               </div>
+
+               <div className="bg-hld-surface2 p-4 rounded-lg border border-hld-border">
+                 <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-yellow mb-1 block flex items-center gap-2">
+                    <Lightbulb size={12} /> Content ideas
+                 </label>
+                 <p className="text-[11px] text-hld-muted mb-2 font-sans">Advisory prose suggestions for this section — they don&rsquo;t change your goals.</p>
+                 {ideas && (
+                   <div className="prose prose-invert max-w-none font-sans text-sm bg-hld-bg p-3 rounded border border-hld-border max-h-64 overflow-y-auto mb-2">
+                     <ReactMarkdown
+                       components={{
+                         p: ({children}) => <p className="mb-3 leading-relaxed text-hld-text">{children}</p>,
+                         li: ({children}) => <li className="mb-1.5 text-hld-text">{children}</li>,
+                       }}
+                     >
+                       {ideas}
+                     </ReactMarkdown>
+                   </div>
+                 )}
+                 <button
+                   onClick={handleSuggestIdeas}
+                   disabled={ideasLoading}
+                   className="px-4 py-2 bg-hld-surface border border-hld-border rounded-md text-[10px] font-mono uppercase tracking-widest font-semibold hover:bg-hld-border text-hld-text transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   <Lightbulb size={14} className={ideasLoading ? 'animate-pulse' : ''} />
+                   {ideasLoading ? 'Thinking…' : ideas ? 'Regenerate ideas' : 'Suggest content ideas'}
+                 </button>
+                 <AgentTraceTicker
+                   kinds={['getContentSuggestions']}
                    className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
                  />
                </div>
