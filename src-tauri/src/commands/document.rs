@@ -86,6 +86,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.models_json())?;
     let reverse_outlines: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.reverse_outline_json())?;
+    let gist: Option<serde_json::Value> = crate::fs_io::read_json(&layout.gist_json())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -108,6 +109,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         interpolation_config: None, // legacy alias; importer normalizes
         models_config,
         reverse_outlines,
+        gist,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -143,6 +145,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(ro) = &data.reverse_outlines {
         crate::fs_io::write_json(&layout.reverse_outline_json(), ro)?;
+    }
+    if let Some(g) = &data.gist {
+        crate::fs_io::write_json(&layout.gist_json(), g)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;
@@ -245,5 +250,39 @@ mod tests {
         // ...and survives a read round-trip byte-for-byte.
         let back = read_from(&layout).unwrap();
         assert_eq!(back.reverse_outlines, Some(outline));
+    }
+
+    #[test]
+    fn gist_round_trips_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the StoredGist shape; Rust round-trips it as an opaque Value.
+        let gist = serde_json::json!({
+            "generatedAt": 1_700_000_000_000_i64,
+            "model": "gemini-3.1-pro-preview",
+            "segmentation": [
+                { "id": "intro-0", "headingPath": ["Introduction"], "anchor": "We fare forth", "sourceHash": "abc" }
+            ],
+            "analysis": { "segments": [], "thesis": "Insight is not search.", "style": { "person": "first", "register": "wry", "cadence": "short", "signature_moves": "" } },
+            "budgets": { "total": 250, "target": 220, "g0": 40, "coarse": 90, "fine": 250 },
+            "g0": "I want insight back, naturalized.",
+            "coarse": [ { "id": "intro-0", "text": "Something goes wrong; I want insight back." } ],
+            "fine": [ { "id": "intro-0", "text": "We fare forth, then something goes wrong." } ],
+            "staleSegmentIds": [],
+            "orphanedSegmentIds": []
+        });
+
+        let data = StoredProjectData {
+            markdown: Some("# Introduction\n\nWe fare forth.".to_string()),
+            gist: Some(gist.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        assert!(layout.gist_json().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.gist, Some(gist));
     }
 }

@@ -68,6 +68,7 @@ export class AnthropicClient implements LLMClient {
     };
     const system = anthropicSystem(req);
     if (system) params.system = system;
+    if (typeof req.temperature === 'number') params.temperature = req.temperature;
     // Adaptive thinking improves the one-shot reasoning calls (specs, analysis).
     if (supportsAdaptiveThinking(req.model)) {
       params.thinking = { type: 'adaptive' };

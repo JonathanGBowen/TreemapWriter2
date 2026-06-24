@@ -85,6 +85,8 @@ export interface UIStateSlice {
   showRevisionSettingsModal: boolean;
   /** Parallel Editor settings (voice · model · token preview · prompts). */
   showParallelSettingsModal: boolean;
+  /** Gist Editor settings (model depth · prompts). */
+  showGistSettingsModal: boolean;
   /** Agent SDK activity-trace audit viewer (opened from AI settings; not front-and-center). */
   showAgentTraceModal: boolean;
   // project.md changed on disk outside the app while the editor had unsaved
@@ -139,6 +141,7 @@ export interface UIStateSlice {
   setShowRemoteProjectModal: (show: boolean) => void;
   setShowRevisionSettingsModal: (show: boolean) => void;
   setShowParallelSettingsModal: (show: boolean) => void;
+  setShowGistSettingsModal: (show: boolean) => void;
   setShowAgentTraceModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
   setShowSessionModal: (show: boolean) => void;
@@ -189,6 +192,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showRemoteProjectModal: false,
   showRevisionSettingsModal: false,
   showParallelSettingsModal: false,
+  showGistSettingsModal: false,
   showAgentTraceModal: false,
   showExternalChangeModal: false,
   showSessionModal: false,
@@ -265,6 +269,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
   setShowRevisionSettingsModal: (show) => set({ showRevisionSettingsModal: show }),
   setShowParallelSettingsModal: (show) => set({ showParallelSettingsModal: show }),
+  setShowGistSettingsModal: (show) => set({ showGistSettingsModal: show }),
   setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
   setShowSessionModal: (show) => set({ showSessionModal: show }),

@@ -43,6 +43,7 @@ export class OllamaClient implements LLMClient {
         messages: ollamaMessages(req),
         stream: false,
         ...(req.json ? { format: 'json' } : {}),
+        ...(typeof req.temperature === 'number' ? { options: { temperature: req.temperature } } : {}),
       }),
     });
     if (!res.ok) throw new Error(`Ollama /api/chat failed: ${res.status}`);

@@ -7,6 +7,7 @@ import type {
   Section,
   SectionSpec,
   Snapshot,
+  StoredGist,
   TestSuite,
   TestSuiteEntry,
 } from '../types';
@@ -64,6 +65,12 @@ export interface DocumentStateSlice {
    * testSuite/revisions, not in the ephemeral parallel slice.
    */
   reverseOutlines: ReverseOutlineDoc[];
+  /**
+   * The Gist Editor's persisted scale model (one per document). Domain data — it
+   * must survive closing the workspace and restarts — so it lives here, not in the
+   * ephemeral gist slice. Null until the writer first generates a gist.
+   */
+  gist: StoredGist | null;
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -74,6 +81,8 @@ export interface DocumentStateSlice {
   setReverseOutlines: (docs: ReverseOutlineDoc[]) => void;
   /** Insert or replace (by scopeKey) one persisted reverse outline. */
   upsertReverseOutline: (doc: ReverseOutlineDoc) => void;
+  /** Replace the document's persisted gist (null clears it). */
+  setGist: (gist: StoredGist | null) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -134,6 +143,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   hiddenSectionIds: [],
   revisions: [],
   reverseOutlines: [],
+  gist: null,
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -158,6 +168,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         doc,
       ],
     })),
+  setGist: (gist) => set({ gist }),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>

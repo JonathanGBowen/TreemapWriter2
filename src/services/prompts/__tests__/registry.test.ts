@@ -27,6 +27,9 @@ const HISTORICAL_KEYS = [
   // Parallel Editor (reverse-outline revision) — two new editable flows.
   'generateReverseOutlinePrompt',
   'regenerateParagraphPrompt',
+  // Gist Editor — the two generation stages (analysis + composition).
+  'gistAnalysisPrompt',
+  'gistCompositionPrompt',
   'generateSprintPlanPrompt',
   // Sprint coach start protocol (2026-06-21) — conversational goal-setting + Goblin breakdown.
   'sprintCoachPrompt',
@@ -60,6 +63,9 @@ const LOCKED_KEYS = [
   'suggestDirectivesTemplate',
   // Parallel Editor — the shipped default voice instruction (locked).
   'regenerateVoiceDefault',
+  // Gist Editor — single-span refresh + re-fit (engine internals, locked).
+  'gistRefreshSpanPrompt',
+  'gistRefitPrompt',
 ];
 
 describe('DEFAULT_PROMPTS_CONFIG (derived from the registry)', () => {

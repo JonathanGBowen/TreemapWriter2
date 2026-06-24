@@ -3365,3 +3365,90 @@ indexing (v1 is rebuild-on-open only); a browser substring-search engine (search
 is desktop-only); in-editor CodeMirror phrase highlighting and `SectionMapModal`
 highlighting; and the downstream Living-Sprints `buildReinstatement(...,
 { extraFragments })` seam (additive and read-only — left for a later slice).
+
+## 2026-06-24 — The Gist Editor (whole-at-once re-entry surface) shipped
+
+**What changed.** A new full-screen workspace (a sibling of Parallel / Glass Box /
+Compare / Climate), reachable from the command palette (`◊ Gist`). A two-pane
+**re-entry surface**: the app's editor on the right, and on the left a **Gist** — a
+scale model of the *entire* document that always fits the window (no scroll, ever)
+and doubles as a navigation instrument. The gist is *the text at low resolution,
+not metadata about it*: written in the document's own voice, carrying verbatim
+anchor terms, compressing by deletion/selection — never by abstraction. Clicking a
+gist span scrolls the editor to that section (+ a one-line pulse); moving the cursor
+there lights the matching span. Built from an external design brief + an HLD
+prototype handoff (both archived with the change).
+
+- **The core adaptation.** The brief assumed TipTap/ProseMirror block IDs; the app
+  uses **CodeMirror 6** + a first-class **`Section` tree** (heading hierarchy = the
+  brief's primary segmentation). So segments are Section nodes (coarse grain =
+  top-level sections; fine grain = every segment), anchoring is `Section.id` +
+  verbatim-anchor relocation (`findBlockByAnchor`, reused), and bidirectional
+  navigation rides the existing `selectedId` channel (cursor↔section), avoiding a
+  new editor dependency. No serif font added (per decision): the gist prose is
+  Inter, one optical step below the editor.
+- **New pure logic** (`lib/gist-helpers.ts` + `lib/gist-normalize.ts`, fully
+  unit-tested, 19 tests): segmentation→grains, normalized-text staleness hashing +
+  orphan relocation, the §6.1 budget math + per-segment weights, empirical
+  `chooseGrain` fit, the §8 validation gates (`scanBannedFrames` targets reporting
+  *frames*, never first-person "I argue"), the describe anti-pattern synthesis, and
+  tolerant model-output normalizers.
+- **Four new AI flows** (AGENTS.md recipe), prompts verbatim from the brief §9 with
+  budget/exemplar tokens moved to the app-built user message: `analyzeGist` +
+  `composeGist` (editable registry entries — the composition exemplar is the
+  highest-leverage knob), `refreshGistSpan` + `refitGist` (locked engine internals).
+  New `AICallKind`s + `DEFAULT_MODEL_CONFIG` (pro-tier). Added an optional
+  `temperature` to `LLMRequest` threaded through the Gemini/Anthropic/Ollama clients
+  (the gist flows pin **0.25** — the central guard against summary-drift, alongside
+  the exemplar, the perform-vs-describe self-audit, and the banned-frame gate).
+- **New persisted field.** `gist` (one `StoredGist` per document: segmentation +
+  the inspectable Stage-A analysis + budgets + the three grains + stale/orphan ids).
+  Plumbed the full recipe: domain types in `types/index.ts` → `StoredProjectData`
+  (`repository.ts`) → Rust `types.rs` (schema-agnostic `Value`, like
+  `reverse_outlines`) → `layout.rs` (`.twriter/gist.json`, committed) → `document.rs`
+  read/write (+ a write→read round-trip test) → **document-state** (durable) →
+  `project-state.ts` save/load. Browser round-trips the blob automatically.
+- **State + UI.** New ephemeral `state/gist-state.ts` slice (grain, panel width,
+  hover, in-flight flags, runtime staleness, the didactic voice toggle); the
+  persisted gist lives in document-state. `features/gist/` — workspace shell, top
+  bar, the resizable (260–420) gist panel that owns the fit guarantee (offscreen
+  twin measurement + grain ladder + a one-shot Prompt-D re-fit rescue), the prose
+  with roving-tabindex spans, the four-state generate button, the status row, and a
+  lean CodeMirror surface wired to the section channel with a navigation line-pulse.
+  `features/modals/GistSettingsModal.tsx`; `ui-state.ts` gained
+  `showGistSettingsModal`. HLD keyframes (`gisthldprog`/`gisthldshim`/the pulse)
+  added to `index.css` with `prefers-reduced-motion` variants.
+
+**How to verify.** `npm run typecheck`, `npm test` (383 → +19: `gist-helpers` (14)
++ `gist-normalize` (5); registry key-drift guard updated), `npm run build` pass.
+`cargo test` adds a `gist` write→read round-trip + the `gist_json` layout
+assertion — **not compile-verified locally** (this container lacks the Linux GTK
+build deps and PPAs are blocked; the change is a verbatim mirror of the tested
+`reverse_outlines` wiring, and CI runs `cargo test` with the libs present). Manual
+(browser, needs an AI key): palette → `◊ Gist` on a multi-section doc → **Generate
+gist** → the panel shows the finest grain that fits with no scroll across panel
+widths 260/336/420 and window resizes (grain ticks track FINE/COARSE/G0) → click a
+span: the editor scrolls + the landing line pulses; move the cursor: the matching
+span lights → edit a section: its span goes dotted-stale within ~2 s, `⟲` refreshes
+just it → the `✓ performs / ✕ describes` chip flips to the muted anti-pattern →
+reload: the gist restores from `.twriter/gist.json`.
+
+**Rollback.** `git revert` — additive. Remove `features/gist/`,
+`features/modals/GistSettingsModal.tsx`, `state/gist-state.ts`,
+`lib/gist-helpers.ts` + `lib/gist-normalize.ts` (+ tests), the four
+`services/ai/ai-provider.gist-*.ts` + their prompts + registry/model-types/
+model-config entries, the `temperature` field on `LLMRequest` (+ the three client
+reads), and the `gist` field from `repository.ts` / `types.rs` / `layout.rs` /
+`document.rs` / document-state / project-state, plus the App/state/ui-state wiring
+and the `index.css` keyframes. Existing `.twriter/gist.json` files become inert
+(serde drops the unknown field).
+
+**Deliberate limits (non-goals for this build).** Heading-poor documents degrade to
+a coarse/G0 gist (no LLM-proposed segmentation fallback yet); you-are-here is
+cursor/selection-based, not viewport-IntersectionObserver-based (the brief permits
+the cursor variant); the panel width + grain choice are session-ephemeral (the gist
+content persists); the editor-section hover-tint (a DOM affordance in the prototype's
+WYSIWYG) is dropped for the CodeMirror source view; whole-doc analysis doesn't
+pre-flight `checkContextFit` (relies on the large-context default model); the
+house exemplar ships empty (the generic exemplar stands until the author signs off
+on a source/gist pair — the single highest-leverage refinement).

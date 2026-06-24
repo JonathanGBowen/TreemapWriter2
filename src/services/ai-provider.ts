@@ -24,6 +24,11 @@ import type {
   VersionComparison,
   AtmosphericInstrument,
   ReadingMode,
+  GistAnalysis,
+  GistComposition,
+  GistSegmentAnalysis,
+  GistSpan,
+  GistBudgets,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
@@ -75,6 +80,25 @@ export interface AIProvider {
    * proposed_text }` result feeds `applyProposal` directly. Null ⇒ no usable rewrite.
    */
   regenerateParagraph(input: RegenerateParagraphInput): Promise<ParagraphRewrite | null>;
+  /**
+   * Gist Editor — Stage A. Extracts per-segment {claims, move, anchor terms, force,
+   * transition, weight} + the document thesis + a style fingerprint. Inspectable
+   * intermediate state: a bad gist with a good analysis is a composition problem.
+   */
+  analyzeGist(input: AnalyzeGistInput): Promise<GistAnalysis>;
+  /**
+   * Gist Editor — Stage B. Writes the three grains (g0 / coarse / fine) from the
+   * analysis under the measured budgets. The validate-and-retry loop is the caller's
+   * (it owns budgets + ids + fit), so this is one call with an optional `retryReason`.
+   */
+  composeGist(input: ComposeGistInput): Promise<GistComposition>;
+  /** Gist Editor — refresh one stale span in place (Prompt C). Null ⇒ leave it standing. */
+  refreshGistSpan(input: RefreshGistSpanInput): Promise<GistSpan | null>;
+  /**
+   * Gist Editor — compress a grain to a tighter cap without returning to source
+   * (Prompt D). Null ⇒ the model reported it can't fit, so fall back a grain.
+   */
+  refitGist(input: RefitGistInput): Promise<GistSpan[] | null>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
   /**
@@ -384,6 +408,63 @@ export interface RegenerateParagraphInput {
   voiceInstruction: string;
   sectionTitle: string;
   config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface AnalyzeGistInput {
+  documentTitle: string;
+  /** Segments in document order, each tagged with its source Section id + heading. */
+  segments: { id: string; heading: string; text: string }[];
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ComposeGistInput {
+  analysis: GistAnalysis;
+  /** Coarse-grain (top-level) section ids, in document order. */
+  coarseIds: string[];
+  /** Fine-grain segment ids, in document order. */
+  fineIds: string[];
+  budgets: GistBudgets;
+  /** Per-fine-segment word targets, by id. */
+  perSpanBudgets: Record<string, number>;
+  /** An author-approved source/gist exemplar pair, or empty (the highest-leverage knob). */
+  houseExemplar?: string;
+  /** Appended on the one corrective retry: the prior failure's gate reasons. */
+  retryReason?: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface RefreshGistSpanInput {
+  segmentId: string;
+  /** The segment's current full source text. */
+  segmentSource: string;
+  /** The segment's fresh analysis. */
+  analysis: GistSegmentAnalysis;
+  /** Word budget for this span. */
+  budget: number;
+  /** The immutable neighbouring spans (text), for a clean handoff. */
+  prevSpan?: string;
+  nextSpan?: string;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface RefitGistInput {
+  /** The grain to compress (id + text spans), in order. */
+  grain: GistSpan[];
+  /** Anchor terms per span id that must survive verbatim. */
+  anchorTermsBySpan: Record<string, string[]>;
+  /** New, tighter hard cap in words. */
+  newCap: number;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

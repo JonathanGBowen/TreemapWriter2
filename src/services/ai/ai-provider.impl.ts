@@ -20,6 +20,9 @@ import type {
   SprintMove,
   VersionComparison,
   ReadingMode,
+  GistAnalysis,
+  GistComposition,
+  GistSpan,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
 import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
@@ -46,6 +49,10 @@ import type {
   GenerateRevisionsInput,
   GenerateReverseOutlineInput,
   RegenerateParagraphInput,
+  AnalyzeGistInput,
+  ComposeGistInput,
+  RefreshGistSpanInput,
+  RefitGistInput,
   SuggestDirectivesInput,
   GenerateSprintPlanInput,
   CoachSprintTurnInput,
@@ -63,6 +70,10 @@ import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provide
 import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
+import { analyzeGist } from './ai-provider.gist-analysis';
+import { composeGist } from './ai-provider.gist-composition';
+import { refreshGistSpan } from './ai-provider.gist-refresh';
+import { refitGist } from './ai-provider.gist-refit';
 import { suggestDirectives } from './ai-provider.suggest-directives';
 import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
@@ -455,6 +466,26 @@ export class MultiProviderAIProvider implements AIProvider {
       choice.thinkingBudget,
       input,
     );
+  }
+
+  async analyzeGist(input: AnalyzeGistInput): Promise<GistAnalysis> {
+    const choice = this.choose('analyzeGist', input);
+    return analyzeGist(this.clientFor(choice.provider, 'analyzeGist'), choice.model, choice.thinkingBudget, input);
+  }
+
+  async composeGist(input: ComposeGistInput): Promise<GistComposition> {
+    const choice = this.choose('composeGist', input);
+    return composeGist(this.clientFor(choice.provider, 'composeGist'), choice.model, choice.thinkingBudget, input);
+  }
+
+  async refreshGistSpan(input: RefreshGistSpanInput): Promise<GistSpan | null> {
+    const choice = this.choose('refreshGistSpan', input);
+    return refreshGistSpan(this.clientFor(choice.provider, 'refreshGistSpan'), choice.model, choice.thinkingBudget, input);
+  }
+
+  async refitGist(input: RefitGistInput): Promise<GistSpan[] | null> {
+    const choice = this.choose('refitGist', input);
+    return refitGist(this.clientFor(choice.provider, 'refitGist'), choice.model, choice.thinkingBudget, input);
   }
 
   async suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]> {

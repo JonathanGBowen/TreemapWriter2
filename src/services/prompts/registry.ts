@@ -29,6 +29,8 @@ import dialoguePrompt from './dialogue.md?raw';
 import generateRevisionsPrompt from './generate-revisions.md?raw';
 import generateReverseOutlinePrompt from './generate-reverse-outline.md?raw';
 import regenerateParagraphPrompt from './regenerate-paragraph.md?raw';
+import gistAnalysisPrompt from './gist-analysis.md?raw';
+import gistCompositionPrompt from './gist-composition.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
 import sprintCoachPrompt from './sprint-coach.md?raw';
 import decomposeStepPrompt from './decompose-step.md?raw';
@@ -46,6 +48,8 @@ import revisionAssemblyWovenTask from './revision-assembly-woven-task.md?raw';
 import revisionTaskSourceless from './revision-task-sourceless.md?raw';
 import revisionInstructionDefault from './revision-instruction-default.md?raw';
 import regenerateVoiceDefault from './regenerate-voice-default.md?raw';
+import gistRefreshSpanPrompt from './gist-refresh.md?raw';
+import gistRefitPrompt from './gist-refit.md?raw';
 import citationsSystem from './citations-system.md?raw';
 import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
@@ -278,6 +282,28 @@ export const PROMPT_REGISTRY = [
     variables: [],
   },
   {
+    key: 'gistAnalysisPrompt',
+    defaultText: strip(gistAnalysisPrompt),
+    label: 'Gist Analysis',
+    description:
+      'Gist Editor (Stage A): extracts per-segment claims, move, anchor terms, force, transition, and weight, plus the document thesis and a style fingerprint — the inspectable input to composition.',
+    category: 'generation',
+    flow: 'analyzeGist',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'gistCompositionPrompt',
+    defaultText: strip(gistCompositionPrompt),
+    label: 'Gist Composition',
+    description:
+      "Gist Editor (Stage B): writes the three grains (g0 / coarse / fine) in the document's own voice — compress by deletion, never abstraction. The exemplar here is the highest-leverage knob (swap in a house source/gist pair).",
+    category: 'generation',
+    flow: 'composeGist',
+    editability: 'editable',
+    variables: [],
+  },
+  {
     key: 'generateSprintPlanPrompt',
     defaultText: strip(generateSprintPlanPrompt),
     label: 'Sprint Planner',
@@ -464,6 +490,28 @@ export const PROMPT_REGISTRY = [
       'Parallel Editor: the shipped default voice/style instruction for paragraph regeneration. Editable in the Parallel settings; this catalogues the built-in default.',
     category: 'revision-engine',
     flow: 'regenerateParagraph',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'gistRefreshSpanPrompt',
+    defaultText: strip(gistRefreshSpanPrompt),
+    label: 'Gist Span Refresh',
+    description:
+      'Gist Editor: regenerates exactly one stale span in place, taking the handoff from its immutable neighbours. Engine internal — not user-editable.',
+    category: 'generation',
+    flow: 'refreshGistSpan',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'gistRefitPrompt',
+    defaultText: strip(gistRefitPrompt),
+    label: 'Gist Re-fit',
+    description:
+      'Gist Editor: compresses a grain to a tighter cap without returning to source (drops flavour before any claim; emits {fits:false} to fall back a grain). Engine internal — not user-editable.',
+    category: 'generation',
+    flow: 'refitGist',
     editability: 'locked',
     variables: [],
   },
