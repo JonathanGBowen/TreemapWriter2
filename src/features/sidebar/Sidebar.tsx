@@ -81,11 +81,11 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   const documentRow = sections.length > 0 ? buildRootSection(markdown, sections, 'Whole Document') : null;
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
-      {isTauri() && <SearchBox />}
       <div className="h-px bg-hld-border" />
       <div className="flex-1 w-full border border-hld-border bg-[#080d13] relative overflow-hidden min-h-0">
         <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelect} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} matchedIds={matchedIds} />
       </div>
+      {isTauri() && <SearchBox />}
       <div className="h-px bg-hld-border" />
       <div className="max-h-[160px] overflow-y-auto section-tree">
         {documentRow && (
