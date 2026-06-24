@@ -9,6 +9,8 @@ import type {
   Resolution,
   ResolveOutcome,
   ReverseOutlineDoc,
+  SearchHit,
+  SectionInput,
   SessionRecord,
   Snapshot,
   SnapshotMeta,
@@ -245,4 +247,23 @@ export interface Repository {
    * the URL to .twriter/settings.json. Browser mode is a no-op.
    */
   configureRemote(url: string): Promise<void>;
+
+  // --- Full-text search (desktop only) ---
+
+  /**
+   * Rebuild the open project's search index from `sections` (the frontend's
+   * already-parsed section tree). Desktop wraps the `index_sections` command,
+   * which runs a whole-index rebuild OFF the document save path; the browser
+   * is a no-op (search is desktop-only). Best-effort: failures are swallowed
+   * because the cache is rebuildable and indexing must never block the app.
+   */
+  indexSections(sections: SectionInput[]): Promise<void>;
+
+  /**
+   * Full-text search over the open project's indexed sections, ranked best
+   * first. Desktop wraps `search_sections` (sanitized FTS5 MATCH); the browser
+   * returns `[]` (search is desktop-only — callers hide the UI when not Tauri).
+   * Empty / operator-only queries return `[]`.
+   */
+  searchSections(query: string, limit?: number): Promise<SearchHit[]>;
 }

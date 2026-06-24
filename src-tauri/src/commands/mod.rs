@@ -9,6 +9,7 @@
 pub mod credentials;
 pub mod document;
 pub mod project;
+pub mod search;
 pub mod session;
 pub mod snapshot;
 pub mod sync;

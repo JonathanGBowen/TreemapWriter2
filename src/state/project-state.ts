@@ -409,6 +409,16 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       // avoid a cross-slice action call here — keeping loadProject usable when
       // only the project slice is mounted (see project-switch tests).
       set({ activeSession: null, sessionLog: [] });
+
+      // Clear any stale search highlight carried over from the previous
+      // project. The new project's search index is (re)built in App.tsx once
+      // its LIVE section tree is parsed — indexing there guarantees the indexed
+      // ids match the ids the treemap renders. (A bare re-parse of the markdown
+      // here would mint different ids for duplicate-titled / reused-id sections,
+      // and runSectionSearch's live-id filter would then silently drop every
+      // hit.) Optional-chained: loadProject must stay usable when only the
+      // project slice is mounted — see the project-switch tests.
+      get().clearSearch?.();
       return true;
     } catch {
       return false;

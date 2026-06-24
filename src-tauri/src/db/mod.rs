@@ -15,11 +15,24 @@ use crate::error::{AppError, AppResult};
 use rusqlite::{Connection, OpenFlags};
 use std::path::Path;
 
+pub mod index;
+
 const SCHEMA: &str = include_str!("schema.sql");
 
-/// Open or create a SQLite DB at `path`. Applies the schema if needed.
-/// Returns the connection. Caller owns lifecycle.
+/// Open or create a SQLite DB at `path`, apply pragmas, and apply the full
+/// schema. Used for the global recent-projects DB. For the per-project cache
+/// use [`index::open_cache`], which adds schema-version checking and
+/// rebuild-on-mismatch on top of this.
 pub fn open(path: &Path) -> AppResult<Connection> {
+    let conn = raw_open(path)?;
+    apply_schema(&conn)?;
+    Ok(conn)
+}
+
+/// Open or create the DB and apply pragmas, WITHOUT applying the schema. Lets
+/// the cache layer inspect an existing DB (its stored schema version, its FTS
+/// integrity) before deciding whether to keep or rebuild it.
+pub fn raw_open(path: &Path) -> AppResult<Connection> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -27,14 +40,22 @@ pub fn open(path: &Path) -> AppResult<Connection> {
         path,
         OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE,
     )?;
-    // Sensible defaults for a single-user DB.
+    // Sensible defaults for a single-user DB. `busy_timeout` lets a momentary
+    // write-lock conflict (a concurrent index write, or an AV/indexer touching
+    // the file) wait-and-retry instead of failing immediately with SQLITE_BUSY.
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
-         PRAGMA foreign_keys = ON;",
+         PRAGMA foreign_keys = ON;
+         PRAGMA busy_timeout = 5000;",
     )?;
-    conn.execute_batch(SCHEMA)?;
     Ok(conn)
+}
+
+/// Apply the full schema. Idempotent (every statement is `… IF NOT EXISTS`).
+pub fn apply_schema(conn: &Connection) -> AppResult<()> {
+    conn.execute_batch(SCHEMA)?;
+    Ok(())
 }
 
 /// Path to the global recent-projects DB. ~/.config/twriter/recent.sqlite

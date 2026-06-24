@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { Treemap } from "../treemap/Treemap";
 import { useStore } from "../../store";
+import { isTauri } from "../../services/tauri-environment";
 import { Pip } from "../shared/Pip";
 import { ProjectMenu } from "./ProjectMenu";
 import { SectionRow } from "./SectionRow";
@@ -12,6 +14,60 @@ import { retrySync } from "../../services/sync-policy";
 import { useColumnResize } from "../shared/useColumnResize";
 import { ResizeHandle } from "../shared/ResizeHandle";
 
+/**
+ * Full-text search box (desktop only — FTS5 lives in the Rust cache). Updates
+ * the treemap highlight via `runSectionSearch`; debounced so typing doesn't
+ * spam IPC. The match count doubles as a clear button.
+ */
+function SearchBox() {
+  // Query text lives in the store (not local state) so a project switch —
+  // which calls clearSearch() — actually empties the box; a local mirror would
+  // keep showing the previous project's query with zero matches.
+  const searchQuery = useStore((s) => s.searchQuery);
+  const setSearchQuery = useStore((s) => s.setSearchQuery);
+  const runSectionSearch = useStore((s) => s.runSectionSearch);
+  const clearSearch = useStore((s) => s.clearSearch);
+  const matchCount = useStore((s) => s.searchMatchedIds.length);
+  const timer = useRef<number | null>(null);
+
+  const schedule = (next: string) => {
+    setSearchQuery(next); // reflect typing immediately; debounce the search
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => void runSectionSearch(next), 160);
+  };
+
+  const reset = () => {
+    if (timer.current) window.clearTimeout(timer.current);
+    clearSearch();
+  };
+
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
+
+  return (
+    <div className="relative flex items-center">
+      <Search size={12} className="absolute left-2 text-hld-muted-text pointer-events-none" />
+      <input
+        value={searchQuery}
+        onChange={(e) => schedule(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape") reset(); }}
+        placeholder="Search sections…"
+        aria-label="Search sections"
+        className="w-full pl-7 pr-12 py-1 bg-[#080d13] border border-hld-border text-[10px] font-mono text-hld-text placeholder:text-hld-muted-text outline-none focus:border-hld-cyan transition-colors"
+      />
+      {searchQuery.trim() !== "" && (
+        <button
+          type="button"
+          onClick={reset}
+          title="Clear search"
+          className="absolute right-1.5 text-[9px] font-mono text-hld-muted-text hover:text-hld-text uppercase tracking-wider"
+        >
+          {matchCount}×
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Map + sections zone — hairline-delimited, absorbing the space freed below. */
 function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   const sections = useStore((s) => s.sections);
@@ -19,14 +75,17 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   const hiddenSectionIds = useStore((s) => s.hiddenSectionIds);
   const testSuite = useStore((s) => s.testSuite);
   const markdown = useStore((s) => s.markdown);
+  const searchMatchedIds = useStore((s) => s.searchMatchedIds);
+  const matchedIds = useMemo(() => new Set(searchMatchedIds), [searchMatchedIds]);
   // Synthetic top row: selecting it operates on the whole document (id 'root').
   const documentRow = sections.length > 0 ? buildRootSection(markdown, sections, 'Whole Document') : null;
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
       <div className="h-px bg-hld-border" />
       <div className="flex-1 w-full border border-hld-border bg-[#080d13] relative overflow-hidden min-h-0">
-        <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelect} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} />
+        <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelect} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} matchedIds={matchedIds} />
       </div>
+      {isTauri() && <SearchBox />}
       <div className="h-px bg-hld-border" />
       <div className="max-h-[160px] overflow-y-auto section-tree">
         {documentRow && (

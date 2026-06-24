@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
-import type { PendingMerge } from '../types';
+import type { PendingMerge, Section } from '../types';
+import { repository } from '../services/repository-registry';
 
 /**
  * UI ephemera. Modal openness, panel widths, focus mode, and other state
@@ -37,6 +38,12 @@ export interface UIStateSlice {
   activeTab: 'editor' | 'preview';
   /** Which surface the right panel shows. Ephemeral, like activeTab. */
   testsPanelTab: 'spec' | 'analysis' | 'dialogue';
+
+  // Full-text search (desktop). Ephemeral — never persisted between sessions.
+  /** Live query string in the sidebar search box. */
+  searchQuery: string;
+  /** Section ids matching the current query — drives the treemap highlight. */
+  searchMatchedIds: string[];
 
   // In-flight indicators
   isProcessing: boolean;
@@ -99,6 +106,14 @@ export interface UIStateSlice {
   setCueDismissedForId: (id: string | null) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
   setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue') => void;
+  /** Set the search query text (store-driven so it survives a project switch). */
+  setSearchQuery: (q: string) => void;
+  /** Run a full-text search and update `searchMatchedIds` (validated against
+   *  the live, visible section tree, so a stale index or a hidden section can't
+   *  highlight or count a tile that isn't on screen). */
+  runSectionSearch: (query: string) => Promise<void>;
+  /** Clear the query and the highlight. */
+  clearSearch: () => void;
   setIsProcessing: (proc: boolean) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;
   setSyncError: (err: string | null) => void;
@@ -129,7 +144,7 @@ export interface UIStateSlice {
   setShowSessionModal: (show: boolean) => void;
 }
 
-export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set) => ({
+export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set, get) => ({
   sidebarWidth: 320,
   testsPanelWidth: 350,
   revisionRailWidth: 156,
@@ -142,6 +157,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   cueDismissedForId: null,
   activeTab: 'editor',
   testsPanelTab: 'spec',
+
+  searchQuery: '',
+  searchMatchedIds: [],
 
   isProcessing: false,
 
@@ -187,6 +205,41 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setCueDismissedForId: (id) => set({ cueDismissedForId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setTestsPanelTab: (tab) => set({ testsPanelTab: tab }),
+  setSearchQuery: (q) => set({ searchQuery: q }),
+  runSectionSearch: async (query) => {
+    set({ searchQuery: query });
+    const trimmed = query.trim();
+    if (!trimmed) {
+      set({ searchMatchedIds: [] });
+      return;
+    }
+    try {
+      const hits = await repository.searchSections(trimmed, 100);
+      // Validate hit ids against the live, VISIBLE section tree. Two reasons:
+      // (1) a stale index may reference sections renamed/removed since the last
+      // reindex — a dead id highlights nothing and dead-clicks on jump; (2) the
+      // treemap only renders sections that aren't hidden (a hidden node hides
+      // its whole subtree), so counting a hidden hit would overstate the match
+      // count with no visible tile to show for it.
+      const hidden = new Set(get().hiddenSectionIds ?? []);
+      const live = new Set<string>();
+      const collect = (nodes: Section[], ancestorHidden: boolean) => {
+        for (const n of nodes) {
+          const isHidden = ancestorHidden || hidden.has(n.id);
+          if (!isHidden) live.add(n.id);
+          collect(n.children, isHidden);
+        }
+      };
+      collect(get().sections, false);
+      // Ignore a result for a query the user has since changed (race guard).
+      if (get().searchQuery.trim() !== trimmed) return;
+      set({ searchMatchedIds: hits.map((h) => h.sectionId).filter((id) => live.has(id)) });
+    } catch (e) {
+      console.warn('section search failed', e);
+      set({ searchMatchedIds: [] });
+    }
+  },
+  clearSearch: () => set({ searchQuery: '', searchMatchedIds: [] }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
   setSyncStatus: (status) => set({ syncStatus: status }),
   setSyncError: (err) => set({ syncError: err }),

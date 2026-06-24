@@ -488,6 +488,38 @@ pub struct MarkdownDelta {
     pub content: Option<String>,
 }
 
+/// One full-text search hit, returned by `search_sections`. `rank` is the
+/// FTS5 bm25 score (lower = more relevant); the UI orders by it ascending.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchHit {
+    pub section_id: String,
+    pub title: String,
+    pub snippet: String,
+    pub rank: f64,
+}
+
+/// A section pushed down from the frontend parser (`src/lib/utils.ts`) for
+/// indexing. The frontend already owns markdown→section parsing, so we reuse
+/// it rather than duplicating a parser in Rust. Loose/defaulted so callers may
+/// omit fields the search index doesn't strictly need.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SectionInput {
+    pub id: String,
+    #[serde(default)]
+    pub parent_id: Option<String>,
+    pub title: String,
+    #[serde(default)]
+    pub level: i64,
+    #[serde(default)]
+    pub ordinal: i64,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub word_count: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UiState {

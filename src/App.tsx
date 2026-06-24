@@ -34,7 +34,8 @@ import { ExternalChangeModal } from "./features/modals/ExternalChangeModal";
 import { RemoteProjectModal } from "./features/modals/RemoteProjectModal";
 import { AgentTraceModal } from "./features/modals/AgentTraceModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
-import { parseMarkdown } from "./lib/utils";
+import { parseMarkdown, flattenSectionsForIndex } from "./lib/utils";
+import { repository } from "./services/repository-registry";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { buildProjectExport } from "./lib/projectExport";
@@ -365,6 +366,20 @@ export const App = () => {
     }, 300);
     return () => clearTimeout(handler);
   }, [localContent]);
+
+  // Keep the desktop search index in sync with the LIVE section tree. Indexing
+  // the same `sections` the treemap renders guarantees indexed ids == rendered
+  // ids, so every search hit maps back to a real, clickable section (a separate
+  // re-parse would mint divergent ids and the hits would be silently dropped).
+  // Debounced and fully decoupled from the save path — the Rust command rebuilds
+  // off the AppState lock, so reindexing can never delay a save.
+  useEffect(() => {
+    if (!isTauri() || !hasOpenProject) return;
+    const handler = setTimeout(() => {
+      void repository.indexSections(flattenSectionsForIndex(sections));
+    }, 600);
+    return () => clearTimeout(handler);
+  }, [sections, hasOpenProject]);
 
   // Bound orphaned testSuite growth without the old data-loss bug. The previous
   // version deleted any entry whose id wasn't in `sections` — which wiped real
