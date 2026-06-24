@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-22.** Update this file whenever a feature ships or is
+> **Current as of 2026-06-24.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -29,6 +29,19 @@ Version Compare workspace (an exegetical A/B evaluation of two saved versions �
 drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
+
+**Fixed 2026-06-24 — a silent desktop persistence outage** (see
+[`docs/migration-log.md`](docs/migration-log.md)). From 2026-06-17, every
+`project_write` (prose, specs, analyses, snapshots) had been failing silently on
+desktop: the prompts-registry refactor began sending a *sparse* `promptsConfig`,
+but the Rust mirror was a strict struct with required fields, so the whole command
+rejected it before writing. `prompts_config` (and its `interpolation_config`
+siblings) are now opaque `serde_json::Value` like `models_config` /
+`reverse_outlines`, with a serde contract test that would have caught it. Guardrail
+added: a failed save now raises a persistent banner + toast (`saveError` in
+`ui-state`) instead of dying in the console. **Lesson for the backlog:** any other
+TS→Rust payload that's persisted sparse must hit an opaque `Value`, never a strict
+mirror — the TS registry/types own those shapes.
 
 A profile-driven prosthetic wave shipped 2026-06-20 (see
 [`docs/migration-log.md`](docs/migration-log.md)): a **non-initiated ambient cue**

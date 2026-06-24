@@ -48,6 +48,17 @@ export interface UIStateSlice {
   // In-flight indicators
   isProcessing: boolean;
 
+  /**
+   * Set when a persist (`saveCurrentState` / autosave) fails — i.e. the latest
+   * edits are NOT on disk and exist only in volatile memory. A failed SAVE is
+   * more dangerous than a failed sync (a sync failure leaves work safely on
+   * disk; a save failure does not), so it is surfaced loudly and persistently
+   * and only cleared by the next SUCCESSFUL save. Guards against the class of
+   * silent total-loss bug that froze desktop persistence in 2026-06 (the strict
+   * promptsConfig mirror — see migration-log 2026-06-24).
+   */
+  saveError: string | null;
+
   // Sync status (Phase 4). 'no-remote' hides the indicator entirely.
   // 'conflict' (Phase 5) latches when a merge needs in-app resolution.
   syncStatus: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict';
@@ -117,6 +128,7 @@ export interface UIStateSlice {
   /** Clear the query and the highlight. */
   clearSearch: () => void;
   setIsProcessing: (proc: boolean) => void;
+  setSaveError: (err: string | null) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;
   setSyncError: (err: string | null) => void;
   setSyncCounts: (ahead: number, behind: number) => void;
@@ -165,6 +177,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   searchMatchedIds: [],
 
   isProcessing: false,
+  saveError: null,
 
   syncStatus: 'no-remote',
   syncError: null,
@@ -245,6 +258,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   },
   clearSearch: () => set({ searchQuery: '', searchMatchedIds: [] }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
+  setSaveError: (err) => set({ saveError: err }),
   setSyncStatus: (status) => set({ syncStatus: status }),
   setSyncError: (err) => set({ syncError: err }),
   setSyncCounts: (ahead, behind) => set({ syncAhead: ahead, syncBehind: behind }),

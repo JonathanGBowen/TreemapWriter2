@@ -19,8 +19,8 @@
 use crate::error::AppResult;
 use crate::project::{AppState, Layout};
 use crate::types::{
-    DiskSignature, MarkdownDelta, PersistedTestEntry, Persona, PromptsConfig, StoredProjectData,
-    TestSuite, UiState,
+    DiskSignature, MarkdownDelta, PersistedTestEntry, Persona, StoredProjectData, TestSuite,
+    UiState,
 };
 use std::path::PathBuf;
 use tauri::State;
@@ -80,7 +80,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
 
     let custom_personas: Option<Vec<Persona>> =
         crate::fs_io::read_json(&layout.personas_json())?;
-    let prompts_config: Option<PromptsConfig> =
+    let prompts_config: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.prompts_json())?;
     let models_config: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.models_json())?;
@@ -250,6 +250,92 @@ mod tests {
         // ...and survives a read round-trip byte-for-byte.
         let back = read_from(&layout).unwrap();
         assert_eq!(back.reverse_outlines, Some(outline));
+    }
+
+    #[test]
+    fn sparse_prompts_config_round_trips_through_write_then_read() {
+        // Regression (migration-log 2026-06-24). The TS layer persists the
+        // per-project prompt override as a SPARSE object (often `{}`) — see
+        // `diffPromptsConfig`. The Rust mirror used to be a strict struct with
+        // required fields, so a sparse override failed Tauri-arg deserialization
+        // ("missing field systemInstruction") and SILENTLY failed every
+        // project_write — prose, specs, analyses, and snapshots all frozen. The
+        // config is now an opaque `serde_json::Value`; this test pins that.
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // Shaped like what `saveCurrentState` actually sends: a sparse top-level
+        // promptsConfig AND a revision carrying a sparse interpolationConfig (the
+        // latent twin on the `revisions` write path).
+        let json = r##"{
+            "projectName": "Diss",
+            "markdown": "# Intro\n\nThe claim, defended.",
+            "localDraft": "# Intro\n\nThe claim, defended.",
+            "testSuite": { "intro-0": { "goals": "introduce the problem" } },
+            "promptsConfig": {},
+            "modelsConfig": {},
+            "reverseOutlines": [],
+            "revisions": [
+                {
+                    "id": "snap_1",
+                    "timestamp": 1700000000000,
+                    "trigger": "manual",
+                    "affectedScope": "all",
+                    "contentHash": "abc",
+                    "markdown": "# Intro",
+                    "testSuite": {},
+                    "interpolationConfig": {}
+                }
+            ],
+            "lastModified": 1700000000000
+        }"##;
+
+        // The crux: this `from_str` used to FAIL, before the strict mirror was
+        // removed — and that failure happened at the Tauri argument boundary,
+        // before `write_to` ever ran.
+        let data: StoredProjectData =
+            serde_json::from_str(json).expect("a sparse promptsConfig must deserialize");
+
+        // And the whole write must succeed — prose + spec actually land on disk,
+        // rather than the command bailing before it reaches them.
+        write_to(&layout, &data).unwrap();
+        assert_eq!(
+            crate::fs_io::read_to_string_optional(&layout.project_md())
+                .unwrap()
+                .as_deref(),
+            Some("# Intro\n\nThe claim, defended.")
+        );
+        assert!(layout.spec_yaml("intro-0").is_file());
+
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.markdown.as_deref(), Some("# Intro\n\nThe claim, defended."));
+        // The empty override round-trips as an (empty) object, not a hard error.
+        assert_eq!(back.prompts_config, Some(serde_json::json!({})));
+        assert!(back.test_suite.unwrap().contains_key("intro-0"));
+    }
+
+    #[test]
+    fn partial_prompts_config_is_preserved_not_rejected() {
+        // A user who customized ONE prompt sends a one-key override. The old
+        // strict struct rejected it (missing the other 8 required fields); the
+        // opaque Value preserves exactly what was sent.
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        let data = StoredProjectData {
+            markdown: Some("# X".to_string()),
+            prompts_config: Some(serde_json::json!({ "analysisPrompt": "my custom analysis" })),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        let back = read_from(&layout).unwrap();
+        assert_eq!(
+            back.prompts_config,
+            Some(serde_json::json!({ "analysisPrompt": "my custom analysis" }))
+        );
     }
 
     #[test]

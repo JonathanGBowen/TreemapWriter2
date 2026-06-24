@@ -296,6 +296,21 @@ export const App = () => {
            await refs.createSnapshot('autosave');
          } catch (e) {
            console.error('Autosave failed', e);
+           // A failed save means the latest edits exist ONLY in memory. Surface
+           // it loudly (toast once per failure streak) and persistently (the
+           // saveError banner), instead of dying silently in the console as it
+           // did during the 2026-06 desktop persistence outage. The banner is
+           // cleared by the next SUCCESSFUL save (see saveCurrentState).
+           const store = useStore.getState();
+           if (!store.saveError) {
+             toast.error(
+               'Save failed — your latest edits are NOT on disk. Export a backup (⌘K → Export project) and restart the app.',
+               { duration: 10000 },
+             );
+           }
+           store.setSaveError(
+             'Unsaved: your latest edits are not on disk. Export a backup (⌘K → Export project) to be safe.',
+           );
          } finally {
            isAutoSavingRef.current = false;
          }
@@ -793,9 +808,20 @@ export const App = () => {
     { id: 'export-specs', label: 'Export specs', hint: '.json', glyph: '↧', run: handleExportSpecs },
   ];
 
+  const saveError = useStore((s) => s.saveError);
+
   return (
     <div className="dark">
-      <ConfirmModal 
+      {saveError && (
+        <div
+          role="alert"
+          className="fixed top-0 inset-x-0 z-[100] flex items-center justify-center gap-3 bg-red-700 px-4 py-1.5 text-center text-sm font-semibold text-white shadow-lg"
+        >
+          <span aria-hidden>⚠</span>
+          <span>{saveError}</span>
+        </div>
+      )}
+      <ConfirmModal
         isOpen={confirmState.isOpen}
         message={confirmState.message}
         onConfirm={confirmState.onConfirm}
