@@ -3,6 +3,7 @@ import type {
   AnalysisVersion,
   Dependency,
   DialogueMessage,
+  ReverseOutlineDoc,
   Section,
   SectionSpec,
   Snapshot,
@@ -57,6 +58,12 @@ export interface DocumentStateSlice {
   testSuite: TestSuite;
   hiddenSectionIds: string[];
   revisions: Snapshot[];
+  /**
+   * Parallel Editor reverse outlines (outlineA), keyed by scope. Persisted domain
+   * data — it must survive closing the workspace — so it lives here beside
+   * testSuite/revisions, not in the ephemeral parallel slice.
+   */
+  reverseOutlines: ReverseOutlineDoc[];
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -64,6 +71,9 @@ export interface DocumentStateSlice {
   setTestSuite: (suite: TestSuite | ((prev: TestSuite) => TestSuite)) => void;
   setHiddenSectionIds: (ids: string[] | ((prev: string[]) => string[])) => void;
   setRevisions: (revs: Snapshot[] | ((prev: Snapshot[]) => Snapshot[])) => void;
+  setReverseOutlines: (docs: ReverseOutlineDoc[]) => void;
+  /** Insert or replace (by scopeKey) one persisted reverse outline. */
+  upsertReverseOutline: (doc: ReverseOutlineDoc) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -123,6 +133,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   testSuite: {},
   hiddenSectionIds: [],
   revisions: [],
+  reverseOutlines: [],
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -138,6 +149,14 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   setRevisions: (revs) =>
     set((state) => ({
       revisions: typeof revs === 'function' ? revs(state.revisions) : revs,
+    })),
+  setReverseOutlines: (docs) => set({ reverseOutlines: docs }),
+  upsertReverseOutline: (doc) =>
+    set((state) => ({
+      reverseOutlines: [
+        ...state.reverseOutlines.filter((d) => d.scopeKey !== doc.scopeKey),
+        doc,
+      ],
     })),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 

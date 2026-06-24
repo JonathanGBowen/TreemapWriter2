@@ -12,6 +12,9 @@ import type {
   RevisionMode,
   AssemblySubMode,
   SourceDocument,
+  ReverseOutlineBullet,
+  ParagraphKind,
+  ParagraphRewrite,
   DirectiveSuggestion,
   ArgumentShape,
   SprintPlan,
@@ -58,6 +61,20 @@ export interface AIProvider {
   refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis>;
   continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
+  /**
+   * Parallel Editor flow #1. Distills each input paragraph block to one faithful
+   * sentence (a reverse outline), returned 1:1 in document order. Non-prose blocks
+   * (headings/lists/code) are echoed; the caller re-aligns by `index`.
+   */
+  generateReverseOutline(input: GenerateReverseOutlineInput): Promise<ReverseOutlineBullet[]>;
+  /**
+   * Parallel Editor flow #2. The analogical rewrite: given a paragraph, its faithful
+   * distillation, and an edited target distillation, return a minimal, voice/POV-
+   * preserving rewrite that realizes the edit. An empty `originalParagraph` is the
+   * insertion case (compose a new in-voice paragraph). The `{ original_text,
+   * proposed_text }` result feeds `applyProposal` directly. Null ⇒ no usable rewrite.
+   */
+  regenerateParagraph(input: RegenerateParagraphInput): Promise<ParagraphRewrite | null>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
   /**
@@ -336,6 +353,36 @@ export interface GenerateRevisionsInput {
    * `sources` is non-empty. Falls back to the built-in default when omitted.
    */
   instruction?: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface GenerateReverseOutlineInput {
+  /** Human-readable scope label (section title, or the document title for whole-doc). */
+  sectionTitle: string;
+  /** The paragraph blocks to distill, in document order (prose + heading/list/code). */
+  blocks: { index: number; text: string; kind: ParagraphKind }[];
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface RegenerateParagraphInput {
+  /** draftA[i] verbatim. EMPTY string ⇒ the insertion case (compose new in-voice). */
+  originalParagraph: string;
+  /** outlineA[i] — the faithful bullet (empty in the insertion case). */
+  faithfulBullet: string;
+  /** outlineB[i] — the edited target bullet that drives the rewrite. */
+  editedBullet: string;
+  /** Light continuity context — the immediately neighboring paragraphs' text. */
+  precedingContext?: string;
+  followingContext?: string;
+  /** Voice/style instruction (from settings; the built-in default ships in the registry). */
+  voiceInstruction: string;
+  sectionTitle: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

@@ -1,0 +1,1 @@
+Match the surrounding prose's register exactly: formal academic philosophy, third person, present tense for stating claims, citations integrated as the original integrates them. Prefer the original's own sentence shapes and vocabulary over smoother or simpler alternatives. When in doubt, change less.

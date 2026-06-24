@@ -27,6 +27,8 @@ import analysisPrompt from './analysis.md?raw';
 import refactorAnalysisPrompt from './refactor-analysis.md?raw';
 import dialoguePrompt from './dialogue.md?raw';
 import generateRevisionsPrompt from './generate-revisions.md?raw';
+import generateReverseOutlinePrompt from './generate-reverse-outline.md?raw';
+import regenerateParagraphPrompt from './regenerate-paragraph.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
 import sprintCoachPrompt from './sprint-coach.md?raw';
 import decomposeStepPrompt from './decompose-step.md?raw';
@@ -43,6 +45,7 @@ import revisionAssemblyVerbatimTask from './revision-assembly-verbatim-task.md?r
 import revisionAssemblyWovenTask from './revision-assembly-woven-task.md?raw';
 import revisionTaskSourceless from './revision-task-sourceless.md?raw';
 import revisionInstructionDefault from './revision-instruction-default.md?raw';
+import regenerateVoiceDefault from './regenerate-voice-default.md?raw';
 import citationsSystem from './citations-system.md?raw';
 import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
@@ -253,6 +256,28 @@ export const PROMPT_REGISTRY = [
     variables: [],
   },
   {
+    key: 'generateReverseOutlinePrompt',
+    defaultText: strip(generateReverseOutlinePrompt),
+    label: 'Reverse Outline',
+    description:
+      'Parallel Editor: distills each paragraph to its single load-bearing sentence (a faithful reverse outline, not a summary).',
+    category: 'revision-engine',
+    flow: 'generateReverseOutline',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'regenerateParagraphPrompt',
+    defaultText: strip(regenerateParagraphPrompt),
+    label: 'Paragraph Regenerator',
+    description:
+      'Parallel Editor: analogical, minimal-edit rewrite of one paragraph to realize an edited reverse-outline bullet (voice/POV preserving; also composes an inserted paragraph in-voice).',
+    category: 'revision-engine',
+    flow: 'regenerateParagraph',
+    editability: 'editable',
+    variables: [],
+  },
+  {
     key: 'generateSprintPlanPrompt',
     defaultText: strip(generateSprintPlanPrompt),
     label: 'Sprint Planner',
@@ -428,6 +453,17 @@ export const PROMPT_REGISTRY = [
       'The shipped default grounding Instruction for a sourceless revision pass. The text is editable in the Revision Settings; this catalogues the built-in default.',
     category: 'revision-engine',
     flow: 'generateRevisions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'regenerateVoiceDefault',
+    defaultText: strip(regenerateVoiceDefault),
+    label: 'Default Voice',
+    description:
+      'Parallel Editor: the shipped default voice/style instruction for paragraph regeneration. Editable in the Parallel settings; this catalogues the built-in default.',
+    category: 'revision-engine',
+    flow: 'regenerateParagraph',
     editability: 'locked',
     variables: [],
   },

@@ -55,6 +55,14 @@ pub struct PromptsConfig {
     pub dialogue_prompt: String,
     #[serde(default)]
     pub generate_revisions_prompt: String,
+    // Parallel Editor prompts (added later): `default` so prompts.json files
+    // written before these existed still load. Usually defaults (so rarely on
+    // disk, since overrides persist sparse) — but the struct must accept them so
+    // a project that DID override them round-trips.
+    #[serde(default)]
+    pub generate_reverse_outline_prompt: String,
+    #[serde(default)]
+    pub regenerate_paragraph_prompt: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -263,6 +271,11 @@ pub struct StoredProjectData {
     /// thinkingBudget per call kind). Holds model choices, never secrets.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub models_config: Option<serde_json::Value>,
+    /// Parallel Editor reverse outlines (`.twriter/reverse-outline.json`). Schema-
+    /// agnostic on the Rust side — the TS layer owns the shape (an array of
+    /// `{ scopeKey, bullets, sourceHash, generatedAt }`). Committed, like specs.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reverse_outlines: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

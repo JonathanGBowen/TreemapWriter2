@@ -39,6 +39,10 @@ impl Layout {
         self.twriter_dir().join("models.json")
     }
 
+    pub fn reverse_outline_json(&self) -> PathBuf {
+        self.twriter_dir().join("reverse-outline.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }
@@ -91,6 +95,10 @@ mod tests {
         assert_eq!(layout.twriter_dir(), Path::new("/projects/diss/.twriter"));
         assert_eq!(layout.settings_json(), Path::new("/projects/diss/.twriter/settings.json"));
         assert_eq!(layout.specs_dir(), Path::new("/projects/diss/.twriter/specs"));
+        assert_eq!(
+            layout.reverse_outline_json(),
+            Path::new("/projects/diss/.twriter/reverse-outline.json")
+        );
         assert_eq!(layout.cache_sqlite(), Path::new("/projects/diss/.twriter/index.sqlite"));
         assert_eq!(layout.gitignore(), Path::new("/projects/diss/.gitignore"));
     }

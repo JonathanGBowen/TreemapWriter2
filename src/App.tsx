@@ -24,6 +24,8 @@ import { CompareWorkspace } from "./features/compare/CompareWorkspace";
 import { ClimateWorkspace } from "./features/climate/ClimateWorkspace";
 import { InterpolateWorkspace } from "./features/interpolate/InterpolateWorkspace";
 import { DashboardWorkspace } from "./features/dashboard/DashboardWorkspace";
+import { ParallelWorkspace } from "./features/parallel/ParallelWorkspace";
+import { ParallelSettingsModal } from "./features/modals/ParallelSettingsModal";
 import { SessionModal } from "./features/modals/SessionModal";
 import { MigrationModal } from "./features/migration/MigrationModal";
 import { SyncConfigModal } from "./features/modals/SyncConfigModal";
@@ -756,6 +758,7 @@ export const App = () => {
     { id: 'coach', label: 'Coach', hint: 'Stuck? Find the bottleneck', glyph: '◉', run: () => useStore.getState().setShowCoachModal(true) },
     { id: 'generate-specs', label: 'Generate specs', hint: 'Structural analysis, top-down', glyph: '✦', run: () => useStore.getState().openInterpolate() },
     { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
+    { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
@@ -968,6 +971,10 @@ export const App = () => {
         <InterpolateWorkspace />
 
         <DashboardWorkspace />
+
+        <ParallelWorkspace />
+
+        <ParallelSettingsModal />
 
         <SessionModal />
 

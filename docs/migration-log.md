@@ -3217,3 +3217,77 @@ ceremony (sequential WOOP prompts, granularity slider, commitment branching,
 idle-timeout check-out); idle/background auto-commit; any task system on nodes,
 `Task:` trailers, or task sync; spec-evaluation delta between session
 start/end snapshots (a future integration point).
+
+---
+
+## 2026-06-24 — Parallel Editor (reverse-outline-driven revision) shipped
+
+**What changed.** A new full-screen workspace (a sibling of Glass Box / Compare /
+Climate), reachable from the command palette (`▥ Parallel`). It turns revision
+into "edit a one-sentence distillation per paragraph and regenerate," on the
+proportion `draftA : outlineA :: outlineB : draftB`. Four block-aligned,
+parallel-scrolling columns: the original prose, a faithful reverse outline (one
+distilling sentence per paragraph), the writer's edited copy of that outline, and
+the regenerated draft. Only changed paragraphs are regenerated, as minimal,
+voice/POV-preserving rewrites that ride the **existing Glass-Box accept pipeline**
+(per-paragraph proposal → `applyProposal` splice → `pre-ai-write` snapshot for undo).
+
+- **Reuse, not reinvention.** `applyProposal`/`findProposalOffset`
+  (`lib/revision-helpers.ts`) are reused verbatim for the literal splice; the
+  ephemeral-slice pattern mirrors `revision-state.ts`; the single-scroll-container
+  alignment mirrors `ParallelDiff.tsx` (2→4 cells); the section rail is
+  `RevisionRail` used directly; reversion is the existing snapshot/restore path.
+- **New pure helpers.** `lib/paragraph-helpers.ts` (`segmentParagraphs` — the one
+  load-bearing invariant: every block's text is an exact substring of the source,
+  so the splice never silently no-ops; robust to headings/fenced-code/lists/CRLF)
+  and `lib/parallel-helpers.ts` (tolerant `normalizeReverseOutline` re-aligns the
+  model output 1:1 to the input blocks; `normalizeParagraphRewrite`; `sourceHashOf`).
+- **Two new AI flows** (AGENTS.md recipe): `generateReverseOutline`
+  (`services/ai/ai-provider.reverse-outline.ts`, prompt `generate-reverse-outline.md`)
+  and `regenerateParagraph` (`services/ai/ai-provider.regenerate.ts`, prompt
+  `regenerate-paragraph.md` + locked `regenerate-voice-default.md`). Both are
+  `editable` registry entries; new `AICallKind`s + `DEFAULT_MODEL_CONFIG` entries
+  (pro-tier/4000, mirroring the revision engine). The Rust `PromptsConfig` mirror
+  gained the two `#[serde(default)]` fields so an overridden prompt round-trips.
+- **New persisted field.** `reverseOutlines` (one `ReverseOutlineDoc` per scope,
+  keyed by section id or `'root'`) — only outlineA persists; outlineB/draftB are
+  ephemeral session state. Plumbed the full recipe: `StoredProjectData`
+  (`repository.ts`) → Rust `types.rs` (schema-agnostic `Value`, like `models_config`)
+  → `layout.rs` (`.twriter/reverse-outline.json`, committed) → `document.rs`
+  read/write → held in **document-state** (durable domain data) → `project-state.ts`
+  save/load. The link to source prose is a verbatim anchor (relocate-or-blank on
+  load — never guess), with a stale-source hash warning.
+- **State + UI.** New `state/parallel-state.ts` slice (wired into `state/index.ts`);
+  `features/parallel/` (workspace shell, top bar with a section⇄whole-doc toggle,
+  the 4-up grid, editable bullet cells with insert/delete, read-only draft cells
+  carrying the inline accept/reject controls, bottom action bar, the orchestration
+  hook); `features/modals/ParallelSettingsModal.tsx` (model pickers + the two
+  editable prompts); `ui-state.ts` gained `showParallelSettingsModal`.
+
+**How to verify.** `npm run typecheck`, `npm test` (364 — +30: new
+`paragraph-helpers` (9), `parallel-helpers` (9), and `parallel-state` (12) suites),
+`npm run build` pass. `cd src-tauri && cargo test` adds a
+`reverse_outlines` write→read round-trip + the `reverse_outline_json` layout
+assertion (requires the Linux GTK build deps; see AGENTS.md). Manual (browser,
+needs an AI key): palette → `▥ Parallel` → select a section → **Generate outline**
+→ col 1 paragraphs align 1:1 with col 2 bullets, columns scroll in lockstep →
+edit a col-3 bullet, insert/delete points → **Regenerate** → unchanged col-4 ==
+col-1 byte-for-byte, the edited row is a minimal rewrite → **Accept** one row →
+the section prose updates (only that paragraph), one undo via Version History.
+Reload → the saved outline (outlineA) reappears.
+
+**Rollback.** `git revert` — additive. Remove `features/parallel/`,
+`features/modals/ParallelSettingsModal.tsx`, `state/parallel-state.ts`,
+`lib/paragraph-helpers.ts`, `lib/parallel-helpers.ts`, the two
+`services/ai/ai-provider.{reverse-outline,regenerate}.ts` + their prompts +
+registry/model-types/model-config entries, and the `reverseOutlines` field from
+`repository.ts` / `types.rs` / `layout.rs` / `document.rs` / document-state /
+project-state, plus the App/state/ui-state wiring. Existing
+`.twriter/reverse-outline.json` files become inert (serde drops the unknown field).
+
+**Deliberate limits (non-goals for this build).** Equal-width columns (no per-column
+resize yet); orphaned saved bullets (whose paragraph was deleted) are dropped on
+load rather than shown greyed; the regenerate voice instruction is the locked
+default (the editable knob is the regenerate *prompt*); regenerating the whole
+outline after corrections overwrites only blank prose rows (corrections are
+preserved); an inline col-4 word-diff is a future polish.

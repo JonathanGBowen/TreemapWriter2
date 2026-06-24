@@ -8,6 +8,7 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  ReverseOutlineDoc,
   SessionRecord,
   Snapshot,
   SnapshotMeta,
@@ -45,6 +46,12 @@ export interface StoredProjectData {
   interpolationConfig?: PromptsConfig;
   /** Per-project, per-call model overrides. Sparse; resolves against the global default. */
   modelsConfig?: ModelConfig;
+  /**
+   * Parallel Editor reverse outlines (outlineA), one entry per scope the user has
+   * outlined (`.twriter/reverse-outline.json` on desktop). Only the faithful outline
+   * persists; the edited target + regenerated draft are ephemeral session state.
+   */
+  reverseOutlines?: ReverseOutlineDoc[];
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

@@ -237,6 +237,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       activeProjectId: newId,
       lastAutoSave: null,
       revisions: (defaultProjectData.revisions as Snapshot[]) || [],
+      reverseOutlines: [],
       // Browser persists to IndexedDB; desktop shows the demo as an unsaved
       // preview until the user creates/opens a real folder-backed project.
       hasOpenProject: !isTauri(),
@@ -283,6 +284,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       markdown: '',
       localContent: '',
       testSuite: {},
+      reverseOutlines: [],
       hiddenSectionIds: [],
       activePersonaId: 'default',
       customPersonas: [],
@@ -384,6 +386,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         projectPromptsOverride,
         promptsConfig: resolvePromptsConfig(projectPromptsOverride, get().globalPromptsConfig),
         modelConfig: normalizeModelConfig(data.modelsConfig),
+        reverseOutlines: data.reverseOutlines || [],
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
 
@@ -487,6 +490,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       // config), so global-tier edits keep flowing into untouched fields.
       promptsConfig: state.projectPromptsOverride,
       modelsConfig: state.modelConfig,
+      reverseOutlines: state.reverseOutlines,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
       lastModified: Date.now(),
