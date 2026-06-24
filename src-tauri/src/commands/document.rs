@@ -84,6 +84,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.prompts_json())?;
     let models_config: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.models_json())?;
+    let reverse_outlines: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.reverse_outline_json())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -105,6 +107,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         prompts_config,
         interpolation_config: None, // legacy alias; importer normalizes
         models_config,
+        reverse_outlines,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -137,6 +140,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(mc) = &data.models_config {
         crate::fs_io::write_json(&layout.models_json(), mc)?;
+    }
+    if let Some(ro) = &data.reverse_outlines {
+        crate::fs_io::write_json(&layout.reverse_outline_json(), ro)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;
@@ -201,4 +207,43 @@ fn epoch_ms_now() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn reverse_outlines_round_trip_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the shape; Rust round-trips it as an opaque Value.
+        let outline = serde_json::json!([
+            {
+                "scopeKey": "intro-0",
+                "bullets": [
+                    { "id": "b1", "sentence": "The claim.", "kind": "prose", "anchor": "The claim" }
+                ],
+                "sourceHash": "abc",
+                "generatedAt": 1_700_000_000_000_i64
+            }
+        ]);
+
+        let data = StoredProjectData {
+            markdown: Some("# Intro\n\nThe claim, defended.".to_string()),
+            reverse_outlines: Some(outline.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        // The sidecar lands under .twriter/ (committed, like specs)...
+        assert!(layout.reverse_outline_json().is_file());
+
+        // ...and survives a read round-trip byte-for-byte.
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.reverse_outlines, Some(outline));
+    }
 }

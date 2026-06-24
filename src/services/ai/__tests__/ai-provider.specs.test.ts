@@ -20,6 +20,8 @@ const config: PromptsConfig = {
   refactorAnalysisPrompt: '',
   dialoguePrompt: '',
   generateRevisionsPrompt: '',
+  generateReverseOutlinePrompt: '',
+  regenerateParagraphPrompt: '',
   generateSprintPlanPrompt: '',
   sprintCoachPrompt: '',
   decomposeStepPrompt: '',

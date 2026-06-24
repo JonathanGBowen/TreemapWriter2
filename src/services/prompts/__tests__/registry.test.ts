@@ -24,6 +24,9 @@ const HISTORICAL_KEYS = [
   'dialoguePrompt',
   'generatePersonasPrompt',
   'generateRevisionsPrompt',
+  // Parallel Editor (reverse-outline revision) — two new editable flows.
+  'generateReverseOutlinePrompt',
+  'regenerateParagraphPrompt',
   'generateSprintPlanPrompt',
   // Sprint coach start protocol (2026-06-21) — conversational goal-setting + Goblin breakdown.
   'sprintCoachPrompt',
@@ -55,6 +58,8 @@ const LOCKED_KEYS = [
   'citationsSystem',
   'citationsTask',
   'suggestDirectivesTemplate',
+  // Parallel Editor — the shipped default voice instruction (locked).
+  'regenerateVoiceDefault',
 ];
 
 describe('DEFAULT_PROMPTS_CONFIG (derived from the registry)', () => {

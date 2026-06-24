@@ -32,6 +32,10 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   refactorAnalysis: g('gemini-3.1-pro-preview', 16000),
   continueDialogue: g('gemini-3.1-pro-preview', 8192),
   generateRevisions: g('gemini-3.1-pro-preview', 4000),
+  // Distillation is reasoning-heavy but bounded; mirror the revision engine's tier.
+  generateReverseOutline: g('gemini-3.1-pro-preview', 4000),
+  // A careful per-paragraph analogical rewrite — same pro-tier as the revision engine.
+  regenerateParagraph: g('gemini-3.1-pro-preview', 4000),
   suggestDirectives: g('gemini-3.1-pro-preview', 2048),
   // Light/fast: a sprint plan is short and the Brief must feel quick (>200ms rule).
   generateSprintPlan: g('gemini-3-flash-preview', 0),

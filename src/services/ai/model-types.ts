@@ -30,6 +30,8 @@ export type AICallKind =
   | 'refactorAnalysis'
   | 'continueDialogue'
   | 'generateRevisions'
+  | 'generateReverseOutline'
+  | 'regenerateParagraph'
   | 'suggestDirectives'
   | 'generateSprintPlan'
   | 'coachSprintTurn'
@@ -52,6 +54,8 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'refactorAnalysis',
   'continueDialogue',
   'generateRevisions',
+  'generateReverseOutline',
+  'regenerateParagraph',
   'suggestDirectives',
   'generateSprintPlan',
   'coachSprintTurn',
@@ -75,6 +79,8 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   refactorAnalysis: 'Refactor analysis',
   continueDialogue: 'Dialogue',
   generateRevisions: 'Generate revisions',
+  generateReverseOutline: 'Reverse outline',
+  regenerateParagraph: 'Regenerate paragraph',
   suggestDirectives: 'Suggest directives',
   generateSprintPlan: 'Generate sprint plan',
   coachSprintTurn: 'Sprint coach (live)',

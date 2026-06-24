@@ -97,6 +97,23 @@ commits + word-count layer on top). New git primitives (`create_tag`, `list_tags
 `resolve_ref`, `word_count_delta`) live in `src-tauri/src/git/mod.rs`; the
 `SessionRecord` family is mirrored TS↔Rust.
 
+The **Parallel Editor** (reverse-outline-driven revision) shipped 2026-06-24 (see
+[`docs/migration-log.md`](docs/migration-log.md)): a fifth full-screen workspace
+(`▥ Parallel`, command palette) built on the proportion
+`draftA : outlineA :: outlineB : draftB`. Four block-aligned, parallel-scrolling
+columns — original prose · a faithful one-sentence-per-paragraph reverse outline ·
+the writer's edited copy · the regenerated draft — turn revision into "edit a
+distillation and regenerate," touching only the changed paragraphs as minimal,
+voice-preserving rewrites that ride the **existing Glass-Box accept pipeline**
+(per-paragraph proposal → `applyProposal` → `pre-ai-write` snapshot). A
+section⇄whole-document toggle lives in the top bar. Two new AI flows
+(`generateReverseOutline`, `regenerateParagraph`); one new persisted field
+(`reverseOutlines` ↔ `.twriter/reverse-outline.json` — only outlineA persists,
+linked to source by verbatim anchor with a stale-source warning). New pure helpers
+(`lib/paragraph-helpers.ts` segmenter with an exact-substring invariant;
+`lib/parallel-helpers.ts` normalizers) and the ephemeral `state/parallel-state.ts`
+slice. Deliberate v1 limits below.
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered
@@ -262,6 +279,17 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   above (so renames/reorders don't mis-pair sections). (The original 20-commit
   selection limit is resolved: a blob-free metadata index loads lazily on open and
   full content is fetched per chosen version via `readSnapshot`.)
+
+- **Parallel Editor follow-ups.** Shipped 2026-06-24. Deliberate v1 limits, by
+  mood: equal-width columns (the shared `useColumnResize`/`ResizeHandle` primitive
+  is ready to apply if per-column resize is wanted); orphaned saved bullets (whose
+  source paragraph was deleted) are dropped on load rather than shown greyed +
+  re-anchorable (the `'orphan'` display was cut from v1); the regenerate **voice**
+  instruction is the locked default (`regenerateVoiceDefault`) — the editable knob
+  is the regenerate *prompt*, so promoting voice to a per-project editable would
+  mean adding it to `PromptsConfig`; "Generate outline" fills only blank prose rows
+  (corrections preserved) with no per-row "redo this distillation"; and an inline
+  col-4 word-diff (the Glass-Box transparency idiom) is unbuilt. None block use.
 
 - **Sourceless-revision follow-ups.** Shipped 2026-06-19. Deliberate limits, by
   mood: the Instruction library is global only (no per-project active instruction

@@ -13,6 +13,8 @@ import type {
   DiagnosticResult,
   Dependency,
   RevisionProposal,
+  ReverseOutlineBullet,
+  ParagraphRewrite,
   DirectiveSuggestion,
   SprintPlan,
   SprintMove,
@@ -42,6 +44,8 @@ import type {
   RefactorAnalysisInput,
   ContinueDialogueInput,
   GenerateRevisionsInput,
+  GenerateReverseOutlineInput,
+  RegenerateParagraphInput,
   SuggestDirectivesInput,
   GenerateSprintPlanInput,
   CoachSprintTurnInput,
@@ -57,6 +61,8 @@ import type { LLMClient, LLMMessage } from './clients';
 import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
+import { generateReverseOutline } from './ai-provider.reverse-outline';
+import { regenerateParagraph } from './ai-provider.regenerate';
 import { suggestDirectives } from './ai-provider.suggest-directives';
 import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
@@ -425,6 +431,26 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('generateRevisions', input);
     return generateRevisions(
       this.clientFor(choice.provider, 'generateRevisions'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async generateReverseOutline(input: GenerateReverseOutlineInput): Promise<ReverseOutlineBullet[]> {
+    const choice = this.choose('generateReverseOutline', input);
+    return generateReverseOutline(
+      this.clientFor(choice.provider, 'generateReverseOutline'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async regenerateParagraph(input: RegenerateParagraphInput): Promise<ParagraphRewrite | null> {
+    const choice = this.choose('regenerateParagraph', input);
+    return regenerateParagraph(
+      this.clientFor(choice.provider, 'regenerateParagraph'),
       choice.model,
       choice.thinkingBudget,
       input,

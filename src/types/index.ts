@@ -361,6 +361,67 @@ export interface DirectiveSuggestion {
   directive: string;
 }
 
+// --- PARALLEL EDITOR (REVERSE-OUTLINE REVISION) ---
+// A revision workspace built on the proportion `draftA : outlineA :: outlineB :
+// draftB`: each paragraph is distilled to one faithful sentence (outlineA), the
+// writer edits a copy of that distillation (outlineB), and only the changed
+// paragraphs are regenerated as minimal, voice-preserving rewrites (draftB) that
+// ride the Glass-Box accept pipeline. A new artifact layer — a *distillation of
+// the prose* — distinct from the spec/diagnostic/analysis band; extend, never
+// collapse. Only outlineA persists (see `ReverseOutlineDoc`); outlineB/draftB are
+// ephemeral session state, exactly as Glass-Box sources/proposals are.
+
+/** What a segmented block is, so a heading/list/code block is treated differently
+ *  from a prose paragraph (a heading is its own distillation, never rewritten). */
+export type ParagraphKind = 'prose' | 'heading' | 'list' | 'code';
+
+/** One reverse-outline bullet as returned by the model, before persistence. The
+ *  `index` ties it back to the input paragraph block (1:1, in document order). */
+export interface ReverseOutlineBullet {
+  index: number;
+  sentence: string;
+  kind: ParagraphKind;
+}
+
+/**
+ * A minimal paragraph rewrite. Field names are deliberately those `applyProposal`
+ * consumes (`Pick<RevisionProposal, 'original_text' | 'proposed_text'>`) so a
+ * regenerated paragraph feeds the existing splice with zero adaptation. For an
+ * inserted paragraph `original_text` is empty; for a deletion `proposed_text` is.
+ */
+export interface ParagraphRewrite {
+  original_text: string;
+  proposed_text: string;
+}
+
+/**
+ * A persisted reverse-outline bullet (outlineA). The link to its source paragraph
+ * is a verbatim `anchor` (the first ~64 chars), NOT an offset — offsets rot on any
+ * edit. On load we relocate by anchor (literal-match-or-orphan, mirroring the
+ * Glass-Box "no-op if the span is gone" contract).
+ */
+export interface SavedOutlineBullet {
+  /** Stable id, assigned once at generation; survives re-segmentation. */
+  id: string;
+  /** The faithful distillation, possibly hand-corrected. */
+  sentence: string;
+  kind: ParagraphKind;
+  /** Verbatim anchor of the source paragraph (first ~64 chars). */
+  anchor: string;
+}
+
+/**
+ * The persisted reverse outline for one scope — a section id, or `'root'` for the
+ * whole document. Saved with the project (`.twriter/reverse-outline.json`); the
+ * `sourceHash` lets the UI warn when the prose changed since the outline was made.
+ */
+export interface ReverseOutlineDoc {
+  scopeKey: string;
+  bullets: SavedOutlineBullet[];
+  sourceHash: string;
+  generatedAt: number;
+}
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
 
 export interface TestResult {
