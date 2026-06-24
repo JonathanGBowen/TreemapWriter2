@@ -6,6 +6,7 @@ import type {
   PullOutcome,
   PushOutcome,
   ResolveOutcome,
+  SearchHit,
   SessionRecord,
   Snapshot,
   SnapshotMeta,
@@ -231,5 +232,18 @@ export const browserRepository: Repository = {
 
   async configureRemote(_url: string): Promise<void> {
     // No remote storage in the browser repository.
+  },
+
+  // --- Full-text search: desktop-only (no SQLite/FTS5 in the browser) ---
+
+  async indexSections(): Promise<void> {
+    // No-op. The browser has no per-project SQLite cache to index.
+  },
+
+  async searchSections(): Promise<SearchHit[]> {
+    // Search is a desktop feature (FTS5). Callers hide the search UI when
+    // `!isTauri()`; returning [] keeps the interface total and honest rather
+    // than shipping a second, divergent substring-scan engine.
+    return [];
   },
 };

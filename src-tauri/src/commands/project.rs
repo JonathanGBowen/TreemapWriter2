@@ -29,7 +29,7 @@ pub async fn project_create(
     // .gitignore — keep the SQLite cache + diagnostics out of git history.
     crate::fs_io::atomic_write_str(
         &layout.gitignore(),
-        ".twriter/index.sqlite\n.twriter/index.sqlite-journal\n.twriter/index.sqlite-wal\n.twriter/diagnostics.json\n",
+        ".twriter/index.sqlite\n.twriter/index.sqlite-journal\n.twriter/index.sqlite-wal\n.twriter/index.sqlite-shm\n.twriter/diagnostics.json\n",
     )?;
 
     // Empty markdown file. The user (or the importer) writes real prose later.
@@ -50,7 +50,7 @@ pub async fn project_create(
     crate::git::ensure_initial_commit(&git, "Initial commit")?;
 
     // Open the cache and become the current project.
-    let cache = crate::db::open(&layout.cache_sqlite())?;
+    let cache = crate::db::index::open_cache(&layout)?;
     let id = generate_project_id();
     let now = epoch_ms_now();
     let path_str = path.to_string_lossy().to_string();

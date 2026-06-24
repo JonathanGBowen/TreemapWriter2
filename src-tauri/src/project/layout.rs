@@ -67,6 +67,20 @@ impl Layout {
         self.twriter_dir().join("index.sqlite")
     }
 
+    /// Every on-disk file that makes up the per-project SQLite cache: the DB
+    /// itself plus its WAL/SHM sidecars. These — and ONLY these — are removed
+    /// when the cache is dropped and rebuilt (`db::index::open_cache`); the
+    /// authoritative YAML/JSON sidecars under `.twriter/` are never touched.
+    pub fn cache_files(&self) -> Vec<PathBuf> {
+        let base = self.cache_sqlite();
+        let sidecar = |suffix: &str| {
+            let mut s = base.clone().into_os_string();
+            s.push(suffix);
+            PathBuf::from(s)
+        };
+        vec![base.clone(), sidecar("-wal"), sidecar("-shm")]
+    }
+
     pub fn gitignore(&self) -> PathBuf {
         self.root.join(".gitignore")
     }

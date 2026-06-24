@@ -3217,3 +3217,80 @@ ceremony (sequential WOOP prompts, granularity slider, commitment branching,
 idle-timeout check-out); idle/background auto-commit; any task system on nodes,
 `Task:` trailers, or task sync; spec-evaluation delta between session
 start/end snapshots (a future integration point).
+
+---
+
+## 2026-06-23 — FTS5 full-text search
+
+**What changed.** Wired the long-deferred full-text search over sections, end to
+end, built so an index bug can never endanger a document save. This also turns
+the previously-inert per-project SQLite cache (the `ProjectHandle.cache` field
+that was flagged dead-code) into something actually read.
+
+- **Cache coherence + recovery (`src-tauri/src/db/index.rs`, new).** Per-project
+  caches now open through `db::index::open_cache`, which reads
+  `schema_meta.version` against the Rust constant `CACHE_SCHEMA_VERSION` (= 2) and
+  runs an FTS integrity-check probe; on mismatch or failure it drops and rebuilds
+  the cache, deleting ONLY `index.sqlite` + `-wal`/`-shm` (via the new
+  `Layout::cache_files`) — never the authoritative `.twriter/` YAML/JSON sidecars.
+  `db::open` was split into `raw_open` + `apply_schema` to support inspect-before-
+  rebuild. This makes the "cache is rebuildable" claim in VISION/STATUS real code,
+  not aspiration.
+- **Indexing (`commands/search.rs::index_sections`).** A whole-index rebuild in
+  one transaction (clear + re-insert `sections` and `sections_fts`), reusing the
+  frontend's already-parsed section tree pushed down via `flattenSectionsForIndex`
+  — no duplicate markdown parser in Rust. It reads only the cache PATH under the
+  `AppState` lock, then rebuilds on a SEPARATE connection (WAL), so it never holds
+  the lock a save takes — indexing can neither block nor poison a save. Still
+  wrapped in `catch_unwind` as belt-and-suspenders. Triggered debounced from
+  `App.tsx` whenever the LIVE section tree changes, so the indexed ids always
+  equal the ids the treemap renders (a separate re-parse would mint divergent ids
+  and every hit would be silently dropped by the live-id filter).
+- **Query (`commands/search.rs::search_sections`).** Sanitized FTS5 MATCH —
+  alphanumeric tokens are quoted and AND-ed, neutralizing every FTS operator
+  (`AND/OR/NOT/NEAR/*/:/^/"`) and the empty-query syntax error — ranked by bm25,
+  returning `SearchHit { sectionId, title, snippet, rank }`. Snippets come from
+  FTS5's own tokenizer-aware `snippet()` (shares the porter/unicode61 tokenizer,
+  so it centers on stemmed `running`↔`run` and case-folded `CAFÉ`↔`café` matches).
+  Reads the cache under the `AppState` lock but is `catch_unwind`-wrapped so a
+  search panic can never poison the lock that saves depend on.
+- **Schema (`db/schema.sql`).** `sections_fts` is now **content-storing** (dropped
+  `content=''`): a contentless FTS5 table can't return ANY column value — not even
+  `UNINDEXED` ones — so search could never read `section_id` back. No other
+  structural change; the stale STATUS note to "add `sections_fts`" was wrong (it
+  already existed). New projects' `.gitignore` also covers `index.sqlite-shm`.
+- **Frontend.** `Repository.indexSections` / `searchSections` added to the
+  interface and both impls (Tauri = `invoke`; browser = no-op / `[]` — search is
+  desktop-only, the UI hides when `!isTauri()`). Ephemeral `searchQuery` /
+  `searchMatchedIds` live in `ui-state` with a `runSectionSearch` thunk that
+  validates hit ids against the live, VISIBLE section tree (a stale index or a
+  hidden subtree can't highlight or count a tile that isn't on screen). The search
+  box is store-driven so a project switch's `clearSearch()` actually empties it. A
+  debounced sidebar search box (`Sidebar.tsx`) drives an amber treemap highlight
+  (`Treemap.tsx` `matchedIds` prop, applied after focus-mode dimming so matches
+  stay visible); click-to-jump rides the existing `setSelectedId` → editor scroll.
+
+**How to verify.** `cd src-tauri && cargo test` (38 — +8 `db::index`: ranked
+search, sanitizer neutralization, empty-query, adversarial input, parent-order/
+dangling-FK commit, tokenizer-aware snippets for stemmed/accented matches, and
+the durability test asserting a forced rebuild leaves `specs/*.yaml` +
+`settings.json` byte-identical). `npm run typecheck`, `npm test` (334) pass.
+Manual (desktop): open a project → type in the sidebar search → matching tiles
+glow amber → clicking one jumps the editor there; `.twriter/index.sqlite` is
+populated; editing/saving during a search never errors; a query of pure FTS
+operators or punctuation returns nothing rather than erroring.
+
+**Rollback.** `git revert` — additive. Remove `src-tauri/src/db/index.rs`,
+`commands/search.rs`, the two `generate_handler!` registrations, the `SearchHit`/
+`SectionInput` mirrors, `Layout::cache_files`, and the frontend search wiring
+(`ui-state` search fields, `Sidebar` box, `Treemap` `matchedIds`, the `loadProject`
+index push, the two Repository methods + both impls). Revert `sections_fts` to its
+prior definition and re-add the `cache` field's `#[allow(dead_code)]`. The cache is
+gitignored and rebuildable, so no on-disk migration is needed — existing projects'
+caches rebuild on next open.
+
+**Deliberate limits (non-goals for this build).** Save-coupled / incremental
+indexing (v1 is rebuild-on-open only); a browser substring-search engine (search
+is desktop-only); in-editor CodeMirror phrase highlighting and `SectionMapModal`
+highlighting; and the downstream Living-Sprints `buildReinstatement(...,
+{ extraFragments })` seam (additive and read-only — left for a later slice).
