@@ -28,6 +28,12 @@ export interface LLMRequest {
   responseJsonSchema?: unknown;
   /** Gemini numeric thinking budget. Anthropic maps coarsely; Ollama ignores. */
   thinkingBudget?: number;
+  /**
+   * Sampling temperature (0–1). Set per-call where fidelity matters most (e.g. the
+   * Gist flows pin 0.25). Omitted ⇒ the provider's own default. Honored by
+   * Gemini/Anthropic/Ollama; the Agent SDK ignores it.
+   */
+  temperature?: number;
   /** Required by Anthropic; ignored by Gemini/Ollama. Per-call default applies. */
   maxTokens?: number;
   /**

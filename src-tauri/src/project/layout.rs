@@ -43,6 +43,10 @@ impl Layout {
         self.twriter_dir().join("reverse-outline.json")
     }
 
+    pub fn gist_json(&self) -> PathBuf {
+        self.twriter_dir().join("gist.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }

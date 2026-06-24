@@ -22,6 +22,8 @@ const config: PromptsConfig = {
   generateRevisionsPrompt: '',
   generateReverseOutlinePrompt: '',
   regenerateParagraphPrompt: '',
+  gistAnalysisPrompt: '',
+  gistCompositionPrompt: '',
   generateSprintPlanPrompt: '',
   sprintCoachPrompt: '',
   decomposeStepPrompt: '',

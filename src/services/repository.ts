@@ -9,6 +9,7 @@ import type {
   Resolution,
   ResolveOutcome,
   ReverseOutlineDoc,
+  StoredGist,
   SearchHit,
   SectionInput,
   SessionRecord,
@@ -54,6 +55,11 @@ export interface StoredProjectData {
    * persists; the edited target + regenerated draft are ephemeral session state.
    */
   reverseOutlines?: ReverseOutlineDoc[];
+  /**
+   * The Gist Editor's persisted scale model (`.twriter/gist.json` on desktop). One
+   * per document; null/absent until the writer first generates a gist.
+   */
+  gist?: StoredGist | null;
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

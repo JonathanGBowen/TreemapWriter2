@@ -422,6 +422,122 @@ export interface ReverseOutlineDoc {
   generatedAt: number;
 }
 
+// --- GIST EDITOR (a whole-at-once re-entry surface) ---
+//
+// The Gist is the document at LOW RESOLUTION, not metadata about it: written in the
+// document's own voice, carrying the author's verbatim terms, compressing by
+// deletion/selection — never by abstraction. Three grains (g0 / coarse / fine) hold
+// the same argument at three levels of articulation; the UI renders the finest that
+// fits the panel. See docs/migration-log.md and the design plan for the rationale.
+
+/** Which grain of the gist is shown — a Prägnanz ladder, coarsest (g0) to finest. */
+export type GistGrain = 'fine' | 'coarse' | 'g0';
+
+/** The load-bearing move a segment makes (Prompt A). 'survey' covers literature ballast. */
+export type GistMove =
+  | 'define' | 'distinguish' | 'assert' | 'argue' | 'object' | 'reply'
+  | 'concede' | 'exemplify' | 'reframe' | 'survey' | 'setup' | 'conclude';
+
+/** The epistemic force of a claim — recorded separately so the gist never launders it. */
+export type GistForce = 'asserted' | 'hedged' | 'entertained' | 'denied';
+
+/**
+ * Per-segment analysis (Prompt A / Stage A). Machine-read by composition (Stage B)
+ * and persisted as inspectable intermediate state (it powers span tooltips and lets
+ * per-span regeneration reuse a still-fresh analysis). `id` is the source Section id.
+ */
+export interface GistSegmentAnalysis {
+  id: string;
+  /** The 1–3 propositions the segment advances, in the document's own voice. */
+  core_claims: string[];
+  move: GistMove;
+  /** 2–5 verbatim terms of art / coinages — the highest-value recognition cues. */
+  anchor_terms: string[];
+  force: GistForce;
+  /** A 2–6 word in-voice connective to open this segment's gist (empty for the first). */
+  transition: string;
+  /** Argumentative importance to the whole document, 1–5. */
+  weight: number;
+}
+
+/** The document's voice fingerprint (Prompt A), so composition can match its cadence. */
+export interface GistStyle {
+  person: string;
+  register: string;
+  cadence: string;
+  signature_moves: string;
+}
+
+/** Full Stage-A output: per-segment analyses + the document thesis + a style fingerprint. */
+export interface GistAnalysis {
+  segments: GistSegmentAnalysis[];
+  thesis: string;
+  style: GistStyle;
+}
+
+/**
+ * One gist span: the low-resolution text for a segment, tied to its source by `id`.
+ * Concatenated in order with single spaces, a grain's spans read as continuous prose.
+ */
+export interface GistSpan {
+  /** Source Section id, or 'thesis' for the single-span g0 grain. */
+  id: string;
+  text: string;
+}
+
+/**
+ * A segment's persisted anchor. The Section `id` is the primary link; `anchor` (a
+ * verbatim ~64-char prefix) relocates it when the id rots (rename/reorder), exactly
+ * like the reverse-outline contract — literal-match-or-orphan, never fuzzy.
+ * `headingPath` feeds aria-labels; `sourceHash` (over normalized text) drives staleness.
+ */
+export interface GistSegment {
+  id: string;
+  headingPath: string[];
+  anchor: string;
+  sourceHash: string;
+}
+
+/** Measured word budgets for one generation (design §6.1). Each grain's value is its
+ *  hard cap; `target` is where the fine grain aims (a little under `total`). */
+export interface GistBudgets {
+  total: number;
+  target: number;
+  g0: number;
+  coarse: number;
+  fine: number;
+}
+
+/**
+ * The persisted gist for a document — a scale model at three grains (design §7.3).
+ * One per project (the app is single-document). Saved as `.twriter/gist.json`. The
+ * per-segment `sourceHash` in `segmentation` lets the UI mark spans stale without
+ * rewriting them (a stable map that diverges honestly beats a map that shifts
+ * underfoot). `analysis` is retained as inspectable intermediate state.
+ */
+export interface StoredGist {
+  generatedAt: number;
+  model: string;
+  segmentation: GistSegment[];
+  analysis: GistAnalysis;
+  budgets: GistBudgets;
+  /** The thesis in the document's own voice — the terminal fallback grain, always fits. */
+  g0: string;
+  /** One span per top-level section. */
+  coarse: GistSpan[];
+  /** One span per segment (subsection-level). */
+  fine: GistSpan[];
+  staleSegmentIds: string[];
+  orphanedSegmentIds: string[];
+}
+
+/** The composition stage's output (Prompt B) before it's folded into a StoredGist. */
+export interface GistComposition {
+  g0: string;
+  coarse: GistSpan[];
+  fine: GistSpan[];
+}
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
 
 export interface TestResult {

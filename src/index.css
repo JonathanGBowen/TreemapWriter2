@@ -134,6 +134,22 @@
   }
 }
 
+/* Gist Editor motion: the generate-button sweep, the per-span refresh shimmer, and
+   the one-shot "you arrived here" line-pulse on navigation. All gated below. */
+@keyframes gisthldprog {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(280%); }
+}
+@keyframes gisthldshim {
+  0%   { background-position: -180px 0; }
+  100% { background-position: 180px 0; }
+}
+@keyframes gist-pulse-line-kf {
+  0%   { background: rgba(0, 232, 245, 0.16); }
+  100% { background: transparent; }
+}
+.gist-pulse-line { animation: gist-pulse-line-kf 600ms ease; }
+
 /* Honour reduced-motion for CSS-driven pulses. NOTE: the rotating selection
    halos in the topology map are SVG <animateTransform> (SMIL), which CSS media
    queries cannot disable — those are gated in React via useReducedMotion(). */
@@ -142,6 +158,11 @@
   [style*="hld-pulse"] { animation: none !important; }
   /* Living Sprints: freeze the runner's ambient hue cross-fade. */
   .sprint-ambient { transition: none !important; }
+  /* Gist Editor: freeze the sweep + shimmer; the landing-pulse becomes a static
+     left border instead of a fade (the design's reduced-motion substitute). */
+  [style*="gisthldprog"],
+  [style*="gisthldshim"] { animation: none !important; }
+  .gist-pulse-line { animation: none !important; box-shadow: inset 2px 0 0 0 #00e8f5; }
 }
 
 @layer utilities {
