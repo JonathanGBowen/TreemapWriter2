@@ -254,6 +254,11 @@ pub struct StoredProjectData {
     /// `{ scopeKey, bullets, sourceHash, generatedAt }`). Committed, like specs.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reverse_outlines: Option<serde_json::Value>,
+    /// Gist Editor scale model (`.twriter/gist.json`). Schema-agnostic on the Rust
+    /// side — the TS layer owns the shape (`StoredGist`: segmentation, analysis,
+    /// budgets, the three grains, stale/orphan ids). One per document; committed.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub gist: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

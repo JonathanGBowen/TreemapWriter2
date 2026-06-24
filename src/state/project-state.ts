@@ -238,6 +238,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       lastAutoSave: null,
       revisions: (defaultProjectData.revisions as Snapshot[]) || [],
       reverseOutlines: [],
+      gist: null,
       // Browser persists to IndexedDB; desktop shows the demo as an unsaved
       // preview until the user creates/opens a real folder-backed project.
       hasOpenProject: !isTauri(),
@@ -285,6 +286,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       localContent: '',
       testSuite: {},
       reverseOutlines: [],
+      gist: null,
       hiddenSectionIds: [],
       activePersonaId: 'default',
       customPersonas: [],
@@ -387,6 +389,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         promptsConfig: resolvePromptsConfig(projectPromptsOverride, get().globalPromptsConfig),
         modelConfig: normalizeModelConfig(data.modelsConfig),
         reverseOutlines: data.reverseOutlines || [],
+        gist: data.gist ?? null,
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
 
@@ -501,6 +504,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       promptsConfig: state.projectPromptsOverride,
       modelsConfig: state.modelConfig,
       reverseOutlines: state.reverseOutlines,
+      gist: state.gist,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
       lastModified: Date.now(),

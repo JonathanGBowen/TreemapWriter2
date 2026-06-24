@@ -9,6 +9,7 @@ import { createComparisonSlice, type ComparisonSlice } from './comparison-state'
 import { createClimateSlice, type ClimateSlice } from './climate-state';
 import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
 import { createParallelSlice, type ParallelSlice } from './parallel-state';
+import { createGistSlice, type GistSlice } from './gist-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
 import { createSessionSlice, type SessionSlice } from './session-state';
 import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider-registry';
@@ -26,6 +27,7 @@ import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider
  * - {@link ClimateSlice}       — Climate Artist workspace (ephemeral, unpersisted)
  * - {@link InterpolationSlice} — Generate-Specs workspace (ephemeral, unpersisted)
  * - {@link ParallelSlice}      — Parallel Editor workspace (ephemeral; outlineA persists in DocumentState)
+ * - {@link GistSlice}          — Gist Editor workspace (ephemeral; the gist persists in DocumentState)
  *
  * Components subscribe to a single slice's shape via selectors. New code
  * should not destructure the whole store; that pattern is a Phase-1 legacy.
@@ -41,6 +43,7 @@ export type AppState =
   & ClimateSlice
   & InterpolationSlice
   & ParallelSlice
+  & GistSlice
   & TraceSlice
   & SessionSlice;
 
@@ -55,6 +58,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createClimateSlice(...args),
   ...createInterpolationSlice(...args),
   ...createParallelSlice(...args),
+  ...createGistSlice(...args),
   ...createTraceSlice(...args),
   ...createSessionSlice(...args),
 }));

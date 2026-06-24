@@ -127,6 +127,23 @@ linked to source by verbatim anchor with a stale-source warning). New pure helpe
 `lib/parallel-helpers.ts` normalizers) and the ephemeral `state/parallel-state.ts`
 slice. Deliberate v1 limits below.
 
+The **Gist Editor** (a whole-at-once re-entry surface) shipped 2026-06-24 (see
+[`docs/migration-log.md`](docs/migration-log.md)): a sixth full-screen workspace
+(`◊ Gist`, command palette) built on the thesis **compress, don't abstract** — the
+gist is *the document at low resolution, not metadata about it*, in the author's own
+voice, anchor terms verbatim. Two panes: the app's CodeMirror editor on the right,
+and on the left a Gist panel that always fits the window (a three-grain ladder —
+g0/coarse/fine — measured against an offscreen twin; it never scrolls). Bidirectional
+anchoring rides the existing `selectedId` channel (span click → editor scroll + line
+pulse; cursor → span lights). Four AI flows (`analyzeGist`/`composeGist` editable,
+`refreshGistSpan`/`refitGist` locked) under verbatim brief prompts at temperature
+0.25, with app-side validation gates (banned reporting-frame scan + one corrective
+retry). Segmentation reuses the `Section` tree (the brief's TipTap block-IDs adapted
+to it); staleness is normalized-text hashing with per-span `⟲` refresh. One new
+persisted field (`gist` ↔ `.twriter/gist.json`), ephemeral `state/gist-state.ts`,
+and pure `lib/gist-helpers.ts` + `lib/gist-normalize.ts` (19 tests). Deliberate v1
+limits below.
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered
@@ -303,6 +320,22 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   mean adding it to `PromptsConfig`; "Generate outline" fills only blank prose rows
   (corrections preserved) with no per-row "redo this distillation"; and an inline
   col-4 word-diff (the Glass-Box transparency idiom) is unbuilt. None block use.
+
+- **Gist Editor follow-ups.** Shipped 2026-06-24. Deliberate v1 limits, by mood:
+  heading-poor documents degrade to a coarse/G0 gist (no LLM-proposed segmentation
+  fallback — the brief's heading-poor path); you-are-here is cursor/selection-based,
+  not a viewport IntersectionObserver (the brief permits the cursor variant — the IO
+  is the refinement); panel width + grain choice are session-ephemeral (the gist
+  content persists); the editor section hover-tint (a DOM affordance in the
+  prototype's WYSIWYG) is dropped for the CodeMirror source view, and the navigation
+  pulse is a landing-line flash rather than a paragraph fade; whole-doc analysis
+  doesn't pre-flight `checkContextFit` (relies on the large-context default model —
+  wire `guardContextFit` if a very large dissertation overflows); and the **house
+  exemplar** ships empty — replacing the generic exemplar in `gist-composition.md`
+  with an author-approved source/gist pair is the single highest-leverage refinement
+  (the brief is emphatic on this). The brief's future directions (long-hover claim
+  tooltips off the persisted analysis, local magnification, draft-to-draft gist diffs,
+  selection-scoped gists) are all out of scope for v1.
 
 - **Sourceless-revision follow-ups.** Shipped 2026-06-19. Deliberate limits, by
   mood: the Instruction library is global only (no per-project active instruction

@@ -32,6 +32,10 @@ export type AICallKind =
   | 'generateRevisions'
   | 'generateReverseOutline'
   | 'regenerateParagraph'
+  | 'analyzeGist'
+  | 'composeGist'
+  | 'refreshGistSpan'
+  | 'refitGist'
   | 'suggestDirectives'
   | 'generateSprintPlan'
   | 'coachSprintTurn'
@@ -56,6 +60,10 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'generateRevisions',
   'generateReverseOutline',
   'regenerateParagraph',
+  'analyzeGist',
+  'composeGist',
+  'refreshGistSpan',
+  'refitGist',
   'suggestDirectives',
   'generateSprintPlan',
   'coachSprintTurn',
@@ -81,6 +89,10 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   generateRevisions: 'Generate revisions',
   generateReverseOutline: 'Reverse outline',
   regenerateParagraph: 'Regenerate paragraph',
+  analyzeGist: 'Gist analysis',
+  composeGist: 'Gist composition',
+  refreshGistSpan: 'Gist span refresh',
+  refitGist: 'Gist re-fit',
   suggestDirectives: 'Suggest directives',
   generateSprintPlan: 'Generate sprint plan',
   coachSprintTurn: 'Sprint coach (live)',

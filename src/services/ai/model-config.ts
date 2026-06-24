@@ -36,6 +36,12 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   generateReverseOutline: g('gemini-3.1-pro-preview', 4000),
   // A careful per-paragraph analogical rewrite — same pro-tier as the revision engine.
   regenerateParagraph: g('gemini-3.1-pro-preview', 4000),
+  // Gist Editor: voice-fidelity is the central risk, so the strongest tier. Analysis
+  // is reasoning-heavy; composition writes the three grains; refresh/re-fit are bounded.
+  analyzeGist: g('gemini-3.1-pro-preview', 8192),
+  composeGist: g('gemini-3.1-pro-preview', 8192),
+  refreshGistSpan: g('gemini-3.1-pro-preview', 2048),
+  refitGist: g('gemini-3.1-pro-preview', 2048),
   suggestDirectives: g('gemini-3.1-pro-preview', 2048),
   // Light/fast: a sprint plan is short and the Brief must feel quick (>200ms rule).
   generateSprintPlan: g('gemini-3-flash-preview', 0),
