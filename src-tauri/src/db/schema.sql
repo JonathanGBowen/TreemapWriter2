@@ -56,17 +56,24 @@ CREATE TABLE IF NOT EXISTS dependencies (
   PRIMARY KEY (from_section, to_section, kind)
 );
 
--- FTS5 virtual table over section content for full-text search.
+-- FTS5 virtual table over section content for full-text search. Content-
+-- storing (NOT content=''): a contentless table can't return ANY column
+-- value — not even UNINDEXED ones — so `search` could never read section_id
+-- back out. Storing the text here (duplicated from project.md) is the whole
+-- point of a rebuildable cache. `section_id` is UNINDEXED (stored, not
+-- searched); `title` and `body` are the searchable columns.
 CREATE VIRTUAL TABLE IF NOT EXISTS sections_fts USING fts5(
   section_id UNINDEXED,
   title,
   body,
-  content='',
   tokenize='porter unicode61'
 );
 
--- Schema version tracking — bump on incompatible changes; the app may then
--- drop and rebuild the cache.
+-- Schema version tracking. The authoritative version for the per-project
+-- cache is the Rust constant `db::index::CACHE_SCHEMA_VERSION`, which
+-- `open_cache` writes here and checks on open — a mismatch (or failed
+-- integrity probe) drops and rebuilds the cache from disk. The literal below
+-- is only a baseline for a freshly-created DB; `write_version` overrides it.
 CREATE TABLE IF NOT EXISTS schema_meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

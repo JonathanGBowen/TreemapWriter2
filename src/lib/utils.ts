@@ -1,4 +1,4 @@
-import { Section } from "../types";
+import { Section, SectionInput } from "../types";
 
 // Simple ID generator based on title (fallback if no match)
 export const generateId = (title: string, index: number) => {
@@ -167,6 +167,33 @@ export const parseMarkdown = (
   traverse(root, lines.length);
 
   return root.children; // Return top level nodes
+};
+
+/**
+ * Flatten the parsed section tree into the rows handed DOWN to the Rust search
+ * indexer (`Repository.indexSections`). Document order; `ordinal` increments
+ * across the whole flattened list. Reuses the existing parser's output rather
+ * than duplicating a markdown parser in Rust.
+ */
+export const flattenSectionsForIndex = (nodes: Section[]): SectionInput[] => {
+  const out: SectionInput[] = [];
+  let ordinal = 0;
+  const walk = (list: Section[]) => {
+    for (const n of list) {
+      out.push({
+        id: n.id,
+        parentId: n.parentId ?? null,
+        title: n.title,
+        level: n.level,
+        ordinal: ordinal++,
+        content: n.content,
+        wordCount: n.wordCount,
+      });
+      if (n.children.length > 0) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
 };
 
 // Flatten tree for Plotly

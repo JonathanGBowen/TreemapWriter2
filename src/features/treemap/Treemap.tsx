@@ -20,14 +20,18 @@ interface TreemapProps {
   selectedId: string;
   hiddenSectionIds: string[];
   testSuite: TestSuite;
+  /** Section ids matching the active search; highlighted distinctly. Optional —
+   *  only the sidebar treemap passes it, so other usages are unaffected. */
+  matchedIds?: Set<string>;
 }
 
-export const Treemap: React.FC<TreemapProps> = ({ 
-  sections, 
+export const Treemap: React.FC<TreemapProps> = ({
+  sections,
   onSelect,
   selectedId,
   hiddenSectionIds = [],
-  testSuite
+  testSuite,
+  matchedIds,
 }) => {
   // Filter the sections tree based on hidden IDs
   // We use a recursive filter to exclude nodes (and implicitly their children if the parent is removed)
@@ -185,6 +189,16 @@ export const Treemap: React.FC<TreemapProps> = ({
         }
       }
 
+      // Search hit: a distinct amber highlight applied AFTER the focus-mode
+      // dimming so matches stay visible even when another tile is selected.
+      // The actively-selected tile keeps its cyan focus styling.
+      if (matchedIds && matchedIds.has(id) && id !== selectedId) {
+        bgColor = 'rgba(255,176,32,0.30)';
+        lineColor = '#ffb020';
+        lineWidth = 4;
+        fontColor = '#ffffff';
+      }
+
       colors.push(bgColor);
       lineColors.push(lineColor);
       lineWidths.push(lineWidth);
@@ -217,7 +231,7 @@ export const Treemap: React.FC<TreemapProps> = ({
         pad: 4
       }
     }];
-  }, [filteredSections, testSuite, selectedId]);
+  }, [filteredSections, testSuite, selectedId, matchedIds]);
 
   const layout = useMemo(() => ({
     margin: { t: 0, l: 0, r: 0, b: 0 },

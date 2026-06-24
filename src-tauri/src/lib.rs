@@ -109,6 +109,9 @@ pub fn run() {
             commands::snapshot::git_list_tags,
             commands::snapshot::git_resolve_ref,
             commands::snapshot::git_word_count_delta,
+            // commands/search.rs
+            commands::search::index_sections,
+            commands::search::search_sections,
             // commands/session.rs
             commands::session::session_list,
             commands::session::session_save,

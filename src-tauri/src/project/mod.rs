@@ -21,6 +21,9 @@ pub use layout::Layout;
 pub struct ProjectHandle {
     pub layout: Layout,
     pub git: git2::Repository,
+    /// Per-project SQLite cache (`.twriter/index.sqlite`), opened via
+    /// `db::index::open_cache`. Read by the FTS5 search commands
+    /// (`commands/search.rs`); rebuilt from disk on schema drift.
     pub cache: Connection,
 }
 
@@ -67,7 +70,9 @@ impl AppState {
         // Route through the git module to honor the "no direct git2 access
         // outside git::*" rule. `init` opens an existing repo or creates one.
         let git = crate::git::init(&path)?;
-        let cache = crate::db::open(&layout.cache_sqlite())?;
+        // Versioned open: rebuilds the cache from disk on schema drift or a
+        // failed integrity probe (never touches the authoritative sidecars).
+        let cache = crate::db::index::open_cache(&layout)?;
         self.set_current(Some(ProjectHandle { layout, git, cache }));
         Ok(())
     }

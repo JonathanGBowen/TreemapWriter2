@@ -441,6 +441,33 @@ export interface SnapshotMeta {
   contentHash: string;
   message: string;
 }
+
+/**
+ * One full-text search hit from `Repository.searchSections` (FTS5 over the
+ * per-project cache, desktop only). `rank` is the bm25 score — lower is more
+ * relevant; results arrive already ordered by it.
+ */
+export interface SearchHit {
+  sectionId: string;
+  title: string;
+  snippet: string;
+  rank: number;
+}
+
+/**
+ * One section handed DOWN to `Repository.indexSections` for the search index.
+ * Mirrors the Rust `SectionInput`. The frontend already parses markdown into
+ * sections (`src/lib/utils.ts`), so we reuse that rather than re-parsing in Rust.
+ */
+export interface SectionInput {
+  id: string;
+  parentId: string | null;
+  title: string;
+  level: number;
+  ordinal: number;
+  content: string;
+  wordCount: number;
+}
  
 export interface ProjectMeta {
   id: string;

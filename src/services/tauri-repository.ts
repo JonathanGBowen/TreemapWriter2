@@ -18,6 +18,8 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  SearchHit,
+  SectionInput,
   SessionRecord,
   Snapshot,
   SnapshotMeta,
@@ -256,5 +258,29 @@ export const tauriRepository: Repository = {
 
   async configureRemote(url: string): Promise<void> {
     await invoke('sync_configure_remote', { url });
+  },
+
+  // --- Full-text search ---
+
+  async indexSections(sections: SectionInput[]): Promise<void> {
+    // Best-effort: the Rust side is panic-safe and decoupled from saves, and a
+    // missing/partial index only weakens search — never the document. Swallow.
+    try {
+      await invoke('index_sections', { sections });
+    } catch (e) {
+      console.warn('index_sections failed (search may be stale):', e);
+    }
+  },
+
+  async searchSections(query: string, limit?: number): Promise<SearchHit[]> {
+    try {
+      return await invoke<SearchHit[]>('search_sections', {
+        query,
+        limit: limit ?? null,
+      });
+    } catch (e) {
+      console.warn('search_sections failed:', e);
+      return [];
+    }
   },
 };

@@ -173,12 +173,17 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and
   `CoachModal` streams token-by-token. `src/features/coach/` is now a real panel
   home, also hosting the ambient cue and the structural-surround rail (below).
-- **FTS5-backed full-text search.** The SQLite cache schema supports it; no
-  command or UI exists. Add a `sections_fts` virtual table to
-  [`src-tauri/src/db/schema.sql`](src-tauri/src/db/schema.sql), a `search_sections`
-  Tauri command, and a sidebar search input that highlights treemap hits. (This
-  also unblocks the deferred git-snapshot / `search()` fragments seam in Living
-  Sprints' `buildReinstatement(..., { extraFragments })`.)
+- ~~**FTS5-backed full-text search.**~~ Done 2026-06-23 (see
+  [`docs/migration-log.md`](docs/migration-log.md)). `index_sections` /
+  `search_sections` commands ([`src-tauri/src/commands/search.rs`](src-tauri/src/commands/search.rs))
+  over a content-storing `sections_fts`, plus a desktop sidebar search box that
+  highlights treemap hits. Indexing runs off the document save path and is
+  panic-safe; the cache self-rebuilds on schema-version drift
+  ([`src-tauri/src/db/index.rs`](src-tauri/src/db/index.rs)). The downstream
+  git-snapshot / `search()` fragments seam in Living Sprints'
+  `buildReinstatement(..., { extraFragments })` remains deferred (it's additive
+  and read-only), as do in-editor phrase highlighting and `SectionMapModal`
+  highlighting.
 - **Stable section IDs.** IDs are currently derived from `title.slug + index`
   ([`src/lib/utils.ts`](src/lib/utils.ts)) — fragile under duplicate titles,
   renames, and reordering. Move to opaque ULIDs assigned at section creation,
