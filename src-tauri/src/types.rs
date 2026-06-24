@@ -32,38 +32,16 @@ pub struct Persona {
     pub instruction: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PromptsConfig {
-    pub system_instruction: String,
-    pub l1_task_instruction: String,
-    pub sub_task_instruction: String,
-    pub suggest_content_prompt: String,
-    pub coach_prompt: String,
-    pub refine_spec_prompt: String,
-    pub generate_personas_prompt: String,
-    pub diagnostic_instruction: String,
-    pub dependencies_prompt: String,
-    // Analysis/Dialogue prompts (added later than the rest): `default` so
-    // prompts.json files written before these fields existed still load.
-    // The TS side merges DEFAULT_PROMPTS_CONFIG over the empty strings.
-    #[serde(default)]
-    pub analysis_prompt: String,
-    #[serde(default)]
-    pub refactor_analysis_prompt: String,
-    #[serde(default)]
-    pub dialogue_prompt: String,
-    #[serde(default)]
-    pub generate_revisions_prompt: String,
-    // Parallel Editor prompts (added later): `default` so prompts.json files
-    // written before these existed still load. Usually defaults (so rarely on
-    // disk, since overrides persist sparse) — but the struct must accept them so
-    // a project that DID override them round-trips.
-    #[serde(default)]
-    pub generate_reverse_outline_prompt: String,
-    #[serde(default)]
-    pub regenerate_paragraph_prompt: String,
-}
+// NOTE: there is deliberately NO Rust `PromptsConfig` mirror. The prompts config
+// is an opaque passthrough blob (`serde_json::Value`), exactly like
+// `models_config` and `reverse_outlines` — the TS prompt registry
+// (`src/services/prompts/registry.ts`) is the single source of truth for the
+// shape. A strict, hand-maintained Rust mirror drifted ~10 fields behind that
+// registry and, fatally, REQUIRED fields the TS layer no longer sends: the
+// per-project override is SPARSE (often `{}`), so deserializing it into the
+// strict struct failed with "missing field systemInstruction", silently failing
+// EVERY `project_write` (prose, specs, analyses, snapshots) on desktop. Keep this
+// opaque; do not reintroduce a typed mirror. (See migration-log 2026-06-24.)
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -222,7 +200,7 @@ pub struct Snapshot {
     pub markdown: String,
     pub test_suite: TestSuite,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub interpolation_config: Option<PromptsConfig>,
+    pub interpolation_config: Option<serde_json::Value>,
 }
 
 /// Lightweight metadata for the version-history list. The full `Snapshot`
@@ -260,10 +238,10 @@ pub struct StoredProjectData {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub custom_personas: Option<Vec<Persona>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub prompts_config: Option<PromptsConfig>,
+    pub prompts_config: Option<serde_json::Value>,
     /// Pre-Phase-1 alias of `promptsConfig`. Honor on read; never write.
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub interpolation_config: Option<PromptsConfig>,
+    pub interpolation_config: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cached_coach_advice: Option<serde_json::Value>,
     /// Per-project, per-call model config (`.twriter/models.json`). Schema-

@@ -518,6 +518,12 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
 
     await repo.setProject(state.activeProjectId, data);
 
+    // The durable write succeeded — clear any standing save-failure warning.
+    // Done here (right after the write, before the convergence guard) so EVERY
+    // save path — autosave, manual, analysis, project-switch — dismisses the
+    // banner the moment a save lands, not just the autosave loop.
+    if (get().saveError) set({ saveError: null });
+
     // If the user switched projects while the write was in flight, the captured
     // `state` now describes a different project than is active. Persisting the
     // data above was correct (it targeted the captured id), but converging the

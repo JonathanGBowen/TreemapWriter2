@@ -3365,3 +3365,64 @@ indexing (v1 is rebuild-on-open only); a browser substring-search engine (search
 is desktop-only); in-editor CodeMirror phrase highlighting and `SectionMapModal`
 highlighting; and the downstream Living-Sprints `buildReinstatement(...,
 { extraFragments })` seam (additive and read-only — left for a later slice).
+
+---
+
+## 2026-06-24 — Fix: a sparse `promptsConfig` silently broke EVERY desktop save
+
+**What changed.** Desktop persistence had been silently dead since 2026-06-17.
+Symptom as reported: generated Analyses stopped surviving a restart (only a
+June-17 one remained). Root cause was far broader — *every* `project_write` (prose,
+specs, dependencies, dialogue, analyses) **and** every git snapshot was failing,
+so the on-disk state was frozen at June 17 and all later work lived only in
+memory.
+
+The trigger was [`d8ae0c7`](../docs/migration-log.md) (2026-06-17, "Centralize
+prompts in a registry"), which changed `saveCurrentState` to persist the **sparse**
+per-project prompt override (`state.projectPromptsOverride`, often `{}` — see
+`diffPromptsConfig`) instead of the full config. Its commit note claimed *"No Rust
+change (promptsConfig stays an opaque passthrough blob)"* — but it was **not**
+opaque: `StoredProjectData.prompts_config` was a strict `Option<PromptsConfig>`
+with 9 required, non-defaulted fields. Tauri deserializes the whole command
+argument *before* the handler runs, so a sparse override failed with "missing
+field systemInstruction" and the **entire `project_write` bailed before writing
+anything**. The failure was swallowed (autosave only `console.error`'d; manual
+saves were fire-and-forget); the only visible hint was the per-analysis save toast.
+
+- **Rust (the fix).** `prompts_config` and the legacy `interpolation_config` on
+  `StoredProjectData`, plus `Snapshot.interpolation_config` (the same gun on the
+  `revisions` write path), are now `Option<serde_json::Value>` — opaque passthrough,
+  matching their siblings `models_config` / `reverse_outlines`. The drifted
+  `PromptsConfig` struct is **deleted** (the TS registry
+  `src/services/prompts/registry.ts` is the single source of truth for the shape;
+  a hand-kept Rust mirror is exactly the drift that caused this). `read_from`'s
+  local annotation loosened to `Value` too (also makes `project_read` tolerant of
+  a corrupt `prompts.json` rather than hard-erroring). `types.rs`,
+  `commands/document.rs:83` + import.
+- **Rust (the test that would have caught it).** `document.rs` gains
+  `sparse_prompts_config_round_trips_through_write_then_read` (deserializes a
+  `StoredProjectData` with `promptsConfig: {}` *and* a revision with a sparse
+  `interpolationConfig`, then asserts `write_to`+`read_from` succeed and the
+  markdown/spec actually land) and `partial_prompts_config_is_preserved_not_rejected`.
+- **Frontend (guardrail so silent total-loss can't recur).** New
+  `saveError`/`setSaveError` in `ui-state` (parallel to `syncError`). The 60s
+  autosave catch (`App.tsx`) now sets it (a persistent red top banner: "your
+  latest edits are not on disk") and toasts once per failure streak instead of
+  dying in the console. `saveCurrentState` clears it on the next successful write,
+  so every save path dismisses the banner.
+
+**How to verify.** `cd src-tauri && cargo test` (41 — +2; the new tests FAIL
+against the pre-fix strict struct). `npm run typecheck` clean; `npm test` passes.
+Manual (desktop, the real proof): open a folder project, run an Analysis + edit
+prose, wait 60s (or ⌘S), **fully relaunch** — the analysis and prose persist;
+`.twriter/prompts.json` and `git log` both advance. Negative path: force a save
+error → the red banner + toast appear instead of silence.
+
+**Rollback.** `git revert` — backward-compatible. The opaque `Value` reads any
+prior `prompts.json` losslessly; no on-disk migration. (Reverting reintroduces the
+bug, so don't.)
+
+**Deliberate limits.** Work that existed only in memory after 2026-06-17 is
+unrecoverable (writes *and* commits both failed); everything up to June 17 is
+intact in git. Manual-save call sites stay fire-and-forget — the 60s autosave is
+the always-on safety net that drives the banner. No on-disk format change.
