@@ -3,45 +3,16 @@ import { Toaster, toast } from "sonner";
 import { Sidebar } from "./features/sidebar/Sidebar";
 import { EditorPanel } from "./features/editor/EditorPanel";
 import { TestsPanel } from "./features/tests-panel/TestsPanel";
-import { TestRunnerModal } from "./features/modals/TestRunnerModal";
-import { PersonaSettingsModal } from "./features/modals/PersonaSettingsModal";
-import { GrimoireModal } from "./features/modals/GrimoireModal";
-import { SpecGeneratorModal } from "./features/modals/SpecGeneratorModal";
-import { SprintModal } from "./features/modals/sprint/SprintModal";
-import { ProjectManagerModal } from "./features/modals/ProjectManagerModal";
-import { VersionHistoryModal } from "./features/modals/VersionHistoryModal";
-import { CommandPaletteModal, type Command } from "./features/modals/CommandPaletteModal";
-import { DependencyGraphModal } from "./features/modals/DependencyGraphModal";
-import { PromptsGraphModal } from "./features/modals/PromptsGraphModal";
-import { SectionMapModal } from "./features/modals/SectionMapModal";
-import { CoachModal } from "./features/modals/CoachModal";
-import { ProjectFileModal } from "./features/modals/ProjectFileModal";
+import { ModalLayer } from "./features/modals/ModalLayer";
+import { type Command } from "./features/modals/CommandPaletteModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
-import { RevisionWorkspace } from "./features/revision/RevisionWorkspace";
-import { RevisionSettingsModal } from "./features/modals/RevisionSettingsModal";
-import { CompareWorkspace } from "./features/compare/CompareWorkspace";
-import { ClimateWorkspace } from "./features/climate/ClimateWorkspace";
-import { InterpolateWorkspace } from "./features/interpolate/InterpolateWorkspace";
-import { DashboardWorkspace } from "./features/dashboard/DashboardWorkspace";
-import { ParallelWorkspace } from "./features/parallel/ParallelWorkspace";
-import { ParallelSettingsModal } from "./features/modals/ParallelSettingsModal";
-import { GistWorkspace } from "./features/gist/GistWorkspace";
-import { GistSettingsModal } from "./features/modals/GistSettingsModal";
-import { SessionModal } from "./features/modals/SessionModal";
-import { MigrationModal } from "./features/migration/MigrationModal";
-import { SyncConfigModal } from "./features/modals/SyncConfigModal";
-import { ConflictResolutionModal } from "./features/modals/ConflictResolutionModal";
-import { ExternalChangeModal } from "./features/modals/ExternalChangeModal";
-import { RemoteProjectModal } from "./features/modals/RemoteProjectModal";
-import { AgentTraceModal } from "./features/modals/AgentTraceModal";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown, flattenSectionsForIndex } from "./lib/utils";
 import { repository } from "./services/repository-registry";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
 import { buildProjectExport } from "./lib/projectExport";
-import { normalizePromptsConfig } from "./lib/constants";
 import type { ModelChoice } from "./services/ai/model-types";
 import defaultProjectData from "./lib/defaultProject.json";
 import { Section, TestSuite, ProjectMeta, Snapshot,
@@ -53,6 +24,7 @@ import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
 import { guardContextFit } from './features/shared/context-guard';
+import { useAutosave } from './features/shared/useAutosave';
 import { notifyAiError } from './features/shared/ai-error';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
@@ -85,100 +57,51 @@ const findSectionByLine = (nodes: Section[], line: number): Section | null => {
 };
 
 export const App = () => {
+  // Only what the layout shell itself still touches. The modal/workspace data
+  // and most setters now live in ModalLayer, which subscribes to them directly,
+  // so App no longer over-subscribes (and no longer re-renders on their churn).
   const {
-    projectList, activeProjectId, hasOpenProject, markdown, projectName, testSuite, hiddenSectionIds,
-    localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
-    focusMode, selectedId, activeLineIndex, runTutorial, showProjectModal,
-    showRunModal, showPersonaModal, showSpecModal,
-    showPromptsGraphModal, showSectionMapModal, showProjectFileModal,
-    showHistoryModal, showGraphModal, showCoachModal, isProcessing,
-    activePersonaId, customPersonas, promptsConfig, cachedCoachAdvice,
-    
-    setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite, setHiddenSectionIds,
-    setSelectedId, setActiveLineIndex, setRunTutorial, setSidebarWidth,
-    setTestsPanelWidth, setFocusMode, setShowProjectModal, setShowRunModal, setShowPersonaModal,
-    setShowSpecModal, setShowPromptsGraphModal,
-    setShowSectionMapModal, setShowProjectFileModal,
-    setShowHistoryModal, setShowGraphModal, setShowCoachModal, setIsProcessing,
-    setActivePersonaId, setCustomPersonas, setPromptsConfig, setCachedCoachAdvice,
-    
-    loadInitialState, createDemoProject, createNewProject, openExistingProject, loadProject, switchProject, deleteProject,
-    saveCurrentState, createSnapshot, setRevisions, updateSectionGoals
+    activeProjectId, hasOpenProject, markdown, projectName, testSuite,
+    localContent, sections, selectedId, activeLineIndex, runTutorial,
+    activePersonaId, customPersonas, promptsConfig,
+
+    setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite,
+    setHiddenSectionIds, setSelectedId, setRunTutorial, setShowRunModal, setIsProcessing,
+
+    loadInitialState, createDemoProject, createNewProject, loadProject,
+    saveCurrentState, createSnapshot,
   } = useStore(useShallow(state => ({
-    projectList: state.projectList,
     activeProjectId: state.activeProjectId,
     hasOpenProject: state.hasOpenProject,
     markdown: state.markdown,
     projectName: state.projectName,
     testSuite: state.testSuite,
-    hiddenSectionIds: state.hiddenSectionIds,
     localContent: state.localContent,
-    lastAutoSave: state.lastAutoSave,
-    revisions: state.revisions,
     sections: state.sections,
-    sidebarWidth: state.sidebarWidth,
-    testsPanelWidth: state.testsPanelWidth,
-    focusMode: state.focusMode,
     selectedId: state.selectedId,
     activeLineIndex: state.activeLineIndex,
     runTutorial: state.runTutorial,
-    showProjectModal: state.showProjectModal,
-    showRunModal: state.showRunModal,
-    showPersonaModal: state.showPersonaModal,
-    showSpecModal: state.showSpecModal,
-    showPromptsGraphModal: state.showPromptsGraphModal,
-    showSectionMapModal: state.showSectionMapModal,
-    showProjectFileModal: state.showProjectFileModal,
-    showHistoryModal: state.showHistoryModal,
-    showGraphModal: state.showGraphModal,
-    showCoachModal: state.showCoachModal,
-    isProcessing: state.isProcessing,
     activePersonaId: state.activePersonaId,
     customPersonas: state.customPersonas,
     promptsConfig: state.promptsConfig,
-    cachedCoachAdvice: state.cachedCoachAdvice,
-    
+
     setLocalContent: state.setLocalContent,
     setSections: state.setSections,
     setMarkdown: state.setMarkdown,
     setProjectName: state.setProjectName,
     setTestSuite: state.setTestSuite,
     setHiddenSectionIds: state.setHiddenSectionIds,
-    setRevisions: state.setRevisions,
     setSelectedId: state.setSelectedId,
-    setActiveLineIndex: state.setActiveLineIndex,
     setRunTutorial: state.setRunTutorial,
-    setSidebarWidth: state.setSidebarWidth,
-    setTestsPanelWidth: state.setTestsPanelWidth,
-    setFocusMode: state.setFocusMode,
-    setShowProjectModal: state.setShowProjectModal,
     setShowRunModal: state.setShowRunModal,
-    setShowPersonaModal: state.setShowPersonaModal,
-    setShowSpecModal: state.setShowSpecModal,
-    setShowPromptsGraphModal: state.setShowPromptsGraphModal,
-    setShowSectionMapModal: state.setShowSectionMapModal,
-    setShowProjectFileModal: state.setShowProjectFileModal,
-    setShowHistoryModal: state.setShowHistoryModal,
-    setShowGraphModal: state.setShowGraphModal,
-    setShowCoachModal: state.setShowCoachModal,
     setIsProcessing: state.setIsProcessing,
-    setActivePersonaId: state.setActivePersonaId,
-    setCustomPersonas: state.setCustomPersonas,
-    setPromptsConfig: state.setPromptsConfig,
-    setCachedCoachAdvice: state.setCachedCoachAdvice,
-    
+
     loadInitialState: state.loadInitialState,
     createDemoProject: state.createDemoProject,
     createNewProject: state.createNewProject,
-    openExistingProject: state.openExistingProject,
     loadProject: state.loadProject,
-    switchProject: state.switchProject,
-    deleteProject: state.deleteProject,
     saveCurrentState: state.saveCurrentState,
     createSnapshot: state.createSnapshot,
-    // Domain mutator lives in document-state; modals/panels share this one
-    // codepath (snapshot-on-ai-write + history) rather than a component-local copy.
-    updateSectionGoals: state.updateSectionGoals
   })));
 
   const activeLineIndexRef = useRef<number | null>(activeLineIndex);
@@ -215,10 +138,10 @@ export const App = () => {
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
-  // Guards the 60s autosave against overlapping itself: a save that runs long
-  // (slow disk, git commit, network) must not let the next tick fire a second
-  // concurrent write to the same project file and clobber the first.
-  const isAutoSavingRef = useRef(false);
+
+  // The 60s autosave/snapshot loop (interval, overlap guard, error surfacing)
+  // lives in its own hook so the layout shell stays a layout shell.
+  useAutosave();
 
   // Auto-open the migration modal on first Tauri launch when there are
   // legacy projects to import. The hook does the detection; we just react
@@ -261,63 +184,6 @@ export const App = () => {
       .finally(() => {
         isFirstRender.current = false;
       });
-  }, []);
-
-  const autoSaveRefs = useRef({
-    saveCurrentState,
-    createSnapshot,
-    activeProjectId,
-    projectName,
-    localContent
-  });
-  
-  useEffect(() => {
-    autoSaveRefs.current = {
-      saveCurrentState,
-      createSnapshot,
-      activeProjectId,
-      projectName,
-      localContent
-    };
-  });
-
-  // Auto-Save Interval (Periodic saves and snapshots, ignoring keystrokes)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-       const refs = autoSaveRefs.current;
-       if (!refs.activeProjectId) return;
-       // Skip this tick if the previous save is still in flight — overlapping
-       // writes to the same project file can clobber each other.
-       if (isAutoSavingRef.current) return;
-       isAutoSavingRef.current = true;
-       void (async () => {
-         try {
-           await refs.saveCurrentState();
-           await refs.createSnapshot('autosave');
-         } catch (e) {
-           console.error('Autosave failed', e);
-           // A failed save means the latest edits exist ONLY in memory. Surface
-           // it loudly (toast once per failure streak) and persistently (the
-           // saveError banner), instead of dying silently in the console as it
-           // did during the 2026-06 desktop persistence outage. The banner is
-           // cleared by the next SUCCESSFUL save (see saveCurrentState).
-           const store = useStore.getState();
-           if (!store.saveError) {
-             toast.error(
-               'Save failed — your latest edits are NOT on disk. Export a backup (⌘K → Export project) and restart the app.',
-               { duration: 10000 },
-             );
-           }
-           store.setSaveError(
-             'Unsaved: your latest edits are not on disk. Export a backup (⌘K → Export project) to be safe.',
-           );
-         } finally {
-           isAutoSavingRef.current = false;
-         }
-       })();
-    }, 60 * 1000); // Save every 60 seconds
-
-    return () => clearInterval(intervalId);
   }, []);
 
   // Manual trigger wrapper for save button. createSnapshot -> saveCurrentState
@@ -857,176 +723,20 @@ export const App = () => {
 
         <TestsPanel />
 
-        {/* Modals */}
-        <TestRunnerModal
-          onRun={handleRunTests}
-          sectionTitle={currentSection?.title || 'Unknown'}
+        {/* All modals/workspaces — each self-mounts on its own store flag. */}
+        <ModalLayer
           currentSection={currentSection}
-          currentSpec={currentSection ? testSuite[currentSection.id]?.spec : undefined}
           documentStats={documentStats}
           activePersona={activePersona}
-          allSections={sections}
-          fullDocument={markdown}
-        />
-
-        <VersionHistoryModal
-          revisions={revisions}
-          currentContent={localContent}
-          onRestore={(snapshot) => {
-            setLocalContent(snapshot.markdown);
-            setMarkdown(snapshot.markdown);
-            setTestSuite(snapshot.testSuite || {});
-            if (snapshot.interpolationConfig) {
-              // Normalized: old snapshots predate newer prompt fields.
-              setPromptsConfig(normalizePromptsConfig(snapshot.interpolationConfig));
-            }
-            if (activeProjectId) {
-              saveCurrentState();
-            }
-          }}
-        />
-
-        <PersonaSettingsModal
-          activePersonaId={activePersonaId}
-          personas={allPersonas}
-          onSelectPersona={setActivePersonaId}
-          onAddPersona={(p) => setCustomPersonas(prev => [...prev, p])}
-          onDeletePersona={(id) => {
-            setCustomPersonas(prev => prev.filter(p => p.id !== id));
-            if (activePersonaId === id) setActivePersonaId('default');
-          }}
-          documentContext={markdown}
-          promptsConfig={promptsConfig}
-        />
-
-        <GrimoireModal />
-
-        <SpecGeneratorModal
-          sectionTitle={currentSection?.title || ""}
-          currentGoals={currentSection ? (testSuite[currentSection.id]?.goals || "") : ""}
-          fullSectionContent={currentSection?.fullContent || ""}
-          parentGoals={getParentGoals()}
-          onAccept={(newGoals, instruction) => {
-             if (currentSection) {
-               updateSectionGoals(currentSection.id, newGoals, 'ai-refine', instruction);
-             }
-             setShowSpecModal(false);
-          }}
-        />
-
-        <SprintModal
-          sections={sections}
-          testSuite={testSuite}
-          onSaveGoal={updateSectionGoals}
-          onSaveContent={handleSaveContent}
-          promptsConfig={promptsConfig}
-        />
-
-        <ProjectManagerModal
-          projects={projectList}
-          activeProjectId={activeProjectId || ''}
-          onLoadProject={async (id) => {
-            // switchProject flushes the current project before loading the next,
-            // so the last <60s of edits aren't lost on switch.
-            const success = await switchProject(id);
-            if (!success) {
-               toast.error("Could not load project data.");
-            }
-          }}
-          onCreateProject={() => createNewProject()}
-          onLoadDefaultProject={() => createDemoProject()}
-          onOpenProject={isTauri() ? () => openExistingProject() : undefined}
-          onDeleteProject={(id) => {
-            // Project delete is the one destructive action that confirms (per the
-            // "undo, not confirm — except delete" rule). Copy is runtime-specific:
-            // desktop only forgets the recent entry; browser delete is permanent.
-            const name = projectList.find((p) => p.id === id)?.name ?? 'this project';
-            const message = isTauri()
-              ? `Delete "${name}"? This removes it from your recent projects — the folder on disk is kept.`
-              : `Delete "${name}"? This permanently deletes the project and can't be undone.`;
-            requestConfirm(message, () => { void deleteProject(id); });
-          }}
-        />
-
-        <DependencyGraphModal
-          sections={sections}
-          testSuite={testSuite}
+          allPersonas={allPersonas}
+          handleRunTests={handleRunTests}
+          getParentGoals={getParentGoals}
+          handleSaveContent={handleSaveContent}
+          handleEstimateDependencies={handleEstimateDependencies}
           updateDependencies={updateDependencies}
-          onEstimateDependencies={handleEstimateDependencies}
+          requestConfirm={requestConfirm}
+          paletteCommands={paletteCommands}
         />
-
-        <ProjectFileModal
-          sections={sections}
-          testSuite={testSuite}
-          projectName={projectName}
-          markdown={markdown}
-          promptsConfig={promptsConfig}
-          customPersonas={customPersonas}
-          onSaveData={({ testSuite: newTestSuite, projectName: newProjectName, promptsConfig: newPrompts, customPersonas: newPersonas }) => {
-            if (newTestSuite) setTestSuite(newTestSuite);
-            if (newProjectName) setProjectName(newProjectName);
-            // Raw-JSON prompt edits land as a per-project override (same path as
-            // the Prompts map's project scope).
-            if (newPrompts) setPromptsConfig(newPrompts);
-            if (newPersonas) setCustomPersonas(newPersonas);
-            void saveCurrentState();
-          }}
-        />
-
-        <CoachModal
-          markdown={markdown}
-          sections={sections}
-          testSuite={testSuite}
-          cachedAdvice={cachedCoachAdvice}
-          onSaveCache={(inputHash, advice) => {
-            setCachedCoachAdvice({ inputHash, advice });
-          }}
-          promptsConfig={promptsConfig}
-        />
-
-        <PromptsGraphModal />
-
-        <SectionMapModal
-          sections={sections}
-          testSuite={testSuite}
-          onUpdateGoals={(id, goals) => updateSectionGoals(id, goals, 'manual')}
-        />
-
-        <MigrationModal />
-
-        <SyncConfigModal />
-
-        <RemoteProjectModal />
-
-        <ConflictResolutionModal />
-
-        <ExternalChangeModal />
-
-        <RevisionWorkspace />
-
-        <RevisionSettingsModal />
-
-        <AgentTraceModal />
-
-        <CompareWorkspace />
-
-        <ClimateWorkspace />
-
-        <InterpolateWorkspace />
-
-        <DashboardWorkspace />
-
-        <ParallelWorkspace />
-
-        <ParallelSettingsModal />
-
-        <GistWorkspace />
-
-        <GistSettingsModal />
-
-        <SessionModal />
-
-        <CommandPaletteModal commands={paletteCommands} />
 
         <Toaster position="bottom-right" richColors />
       </div>
