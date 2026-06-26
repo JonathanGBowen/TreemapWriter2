@@ -1,0 +1,70 @@
+{
+  "pkg": "treemap-writer",
+  "globalName": "TreemapWriter",
+  "shape": "package",
+  "srcDir": "src",
+  "tsconfig": ".design-sync/.cache/tsconfig.ds.json",
+  "entry": ".design-sync/.cache/ds-entry.tsx",
+  "componentSrcMap": {
+    "ParallelDiff": "src/features/compare/ParallelDiff.tsx",
+    "SteerInput": "src/features/interpolate/SteerInput.tsx",
+    "ConfirmModal": "src/features/modals/ConfirmModal.tsx",
+    "ConflictFileView": "src/features/modals/ConflictFileView.tsx",
+    "ModalShell": "src/features/modals/ModalShell.tsx",
+    "SegControl": "src/features/modals/SegControl.tsx",
+    "StructuredJsonEditor": "src/features/modals/StructuredJsonEditor.tsx",
+    "CoachGuided": "src/features/modals/sprint/CoachGuided.tsx",
+    "ReinstatePanel": "src/features/modals/sprint/ReinstatePanel.tsx",
+    "ShapeCard": "src/features/modals/sprint/ShapeCard.tsx",
+    "SprintSequenceRail": "src/features/modals/sprint/SprintSequenceRail.tsx",
+    "SprintSetup": "src/features/modals/sprint/SprintSetup.tsx",
+    "SprintStepRow": "src/features/modals/sprint/SprintStepRow.tsx",
+    "Inspector": "src/features/modals/topo/Inspector.tsx",
+    "LegendKey": "src/features/modals/topo/LegendKey.tsx",
+    "TopoLand": "src/features/modals/topo/TopoLand.tsx",
+    "TopoMap": "src/features/modals/topo/TopoMap.tsx",
+    "NetworkGlyph": "src/features/modals/topo/icons.tsx",
+    "WandGlyph": "src/features/modals/topo/icons.tsx",
+    "RefreshGlyph": "src/features/modals/topo/icons.tsx",
+    "AtlasGlyph": "src/features/modals/topo/icons.tsx",
+    "SpineGlyph": "src/features/modals/topo/icons.tsx",
+    "CloseGlyph": "src/features/modals/topo/icons.tsx",
+    "ArrowRightGlyph": "src/features/modals/topo/icons.tsx",
+    "BulletCell": "src/features/parallel/BulletCell.tsx",
+    "OriginalCell": "src/features/parallel/DraftCell.tsx",
+    "DraftBCell": "src/features/parallel/DraftCell.tsx",
+    "Confidence": "src/features/revision/Confidence.tsx",
+    "CopyButton": "src/features/shared/CopyButton.tsx",
+    "Disclosure": "src/features/shared/Disclosure.tsx",
+    "Pip": "src/features/shared/Pip.tsx",
+    "ResizeHandle": "src/features/shared/ResizeHandle.tsx",
+    "Zone": "src/features/shared/Zone.tsx",
+    "SectionRow": "src/features/sidebar/SectionRow.tsx",
+    "DependencyChips": "src/features/tests-panel/DependencyChips.tsx",
+    "EmptyState": "src/features/tests-panel/EmptyState.tsx",
+    "MoveList": "src/features/tests-panel/MoveList.tsx",
+    "PanelHeader": "src/features/tests-panel/PanelHeader.tsx",
+    "Tutorial": "src/features/tutorial/Tutorial.tsx",
+    "Treemap": "src/features/treemap/Treemap.tsx"
+  },
+  "cssEntry": ".design-sync/.cache/compiled.css",
+  "extraFonts": [
+    "node_modules/@fontsource/inter/300.css",
+    "node_modules/@fontsource/inter/400.css",
+    "node_modules/@fontsource/inter/600.css",
+    "node_modules/@fontsource/inter/700.css",
+    "node_modules/@fontsource/jetbrains-mono/400.css",
+    "node_modules/@fontsource/jetbrains-mono/500.css",
+    "node_modules/@fontsource/jetbrains-mono/700.css"
+  ],
+  "overrides": {
+    "ModalShell": {
+      "cardMode": "single",
+      "viewport": "560x600"
+    },
+    "ConfirmModal": {
+      "cardMode": "single",
+      "viewport": "480x380"
+    }
+  }
+}
