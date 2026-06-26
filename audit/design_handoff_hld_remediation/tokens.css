@@ -1,0 +1,51 @@
+/* ============================================================================
+   Socratic Co-Writer — RATIONALISED DESIGN TOKENS (plain CSS custom props)
+   ----------------------------------------------------------------------------
+   Framework-agnostic reference version of theme.tailwind.css. Use this if you
+   want :root variables (e.g. for non-Tailwind contexts, or as the source of
+   truth a build step reads). Names are the same minus the `--color-` prefix.
+   18 colours · 7 type steps · 9 spacing steps.
+   ============================================================================ */
+
+:root {
+  /* surfaces */
+  --bg:           #05090d;
+  --bg-deep:      #03060a;
+  --surface:      #0c1520;
+  --surface-2:    #111d2b;
+  --surface-3:    #080d13;
+
+  /* structure */
+  --border:        #172335;
+  --border-strong: #1f3050;
+
+  /* text */
+  --text:          #c5d8e8;  /* ~13.7:1 on canvas                            */
+  --text-bright:   #ffffff;
+  --text-muted:    #8aa6c4;  /* ~7.9:1 — safe for small text                */
+  --text-muted-2:  #6f8cab;  /* ~5.7:1 — large / secondary only             */
+  --decor:         #3d5570;  /* DECORATIVE ONLY — 2.6:1, never used as text  */
+
+  /* state accents (each = one meaning) */
+  --active:    #00e8f5;
+  --success:   #00e870;
+  --attention: #ffe600;
+  --danger:    #ff1060;
+  --running:   #aa00ff;
+
+  /* feature accents (namespaced) */
+  --feat-confidence: #ffcc00;
+  --feat-tone:       #7c8bff;
+
+  /* type */
+  --text-h-xl: 32px; --text-h-lg: 24px; --text-h-md: 19px;
+  --text-body: 14px; --text-body-sm: 12.5px;
+  --text-label: 10px; --text-meta: 9px;   /* 9px = floor */
+
+  /* spacing (2/4 grid) */
+  --s-1: 2px; --s-2: 4px; --s-3: 8px; --s-4: 12px; --s-5: 16px;
+  --s-6: 24px; --s-7: 32px; --s-8: 48px; --s-9: 64px;
+
+  /* radii — square by identity */
+  --radius: 0; --radius-chip: 4px; --radius-pill: 9999px;
+}

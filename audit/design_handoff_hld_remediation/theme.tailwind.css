@@ -1,0 +1,71 @@
+/* ============================================================================
+   Socratic Co-Writer — RATIONALISED DESIGN TOKENS (Tailwind v4)
+   ----------------------------------------------------------------------------
+   Drop-in replacement for the colour section of the @theme block in
+   src/index.css. Keeps the existing --color-hld-* names so utilities like
+   `text-hld-cyan` keep working — this only REMOVES strays, COLLAPSES the
+   near-duplicates, and NAMESPACES the two feature accents.
+
+   29 values → 18.  Migration find/replace is listed at the bottom.
+   ============================================================================ */
+
+@theme {
+  /* ---- Surfaces (5) — keep ------------------------------------------------ */
+  --color-hld-bg:           #05090d;  /* app canvas                           */
+  --color-hld-bgDeep:       #03060a;  /* deeper void (topo maps)              */
+  --color-hld-surface:      #0c1520;  /* panels, sidebars                     */
+  --color-hld-surface-2:    #111d2b;  /* raised: headers, hovered rows        */
+  --color-hld-surface-3:    #080d13;  /* inset: inputs, wells                 */
+
+  /* ---- Structure (2) — collapsed from 5 ---------------------------------- */
+  --color-hld-border:        #172335; /* the one hairline seam                */
+  --color-hld-border-strong: #1f3050; /* visible rule: replaces border-2,
+                                         grid, and the #22364e/#2a4258 strays  */
+
+  /* ---- Text (4 + 1 decorative) ------------------------------------------- */
+  --color-hld-text:          #c5d8e8; /* primary reading + UI (~13.7:1)       */
+  --color-hld-text-bright:   #ffffff; /* strong emphasis                      */
+  --color-hld-muted-text:    #8aa6c4; /* muted that PASSES small text (~7.9:1)*/
+  --color-hld-muted-text-2:  #6f8cab; /* secondary; ≥ large / non-body (~5.7:1)*/
+  --color-hld-decor:         #3d5570; /* DECORATIVE ONLY — 2.6:1, never text  */
+
+  /* ---- State accents (5) — each is ONE fixed meaning --------------------- */
+  --color-hld-cyan:     #00e8f5;  /* ACTIVE · selection · focus               */
+  --color-hld-green:    #00e870;  /* DONE · safe · saved                      */
+  --color-hld-yellow:   #ffe600;  /* ATTENTION · developing                   */
+  --color-hld-magenta:  #ff1060;  /* MISSING · failing · destructive          */
+  --color-hld-purple:   #aa00ff;  /* RUNNING · secondary                      */
+
+  /* ---- Feature accents (2) — NAMESPACED so they don't read as state ------ */
+  --color-hld-feat-confidence: #ffcc00;  /* Glass-Box confidence numerals     */
+  --color-hld-feat-tone:       #7c8bff;  /* tone-adjustment chip              */
+
+  /* ---- Type scale (7 semantic steps) — px, 8px floor --------------------- */
+  --text-h-xl:    32px;   /* prose H1 (replaces 2.1rem)                       */
+  --text-h-lg:    24px;   /* prose H2 (replaces 1.6rem)                       */
+  --text-h-md:    19px;   /* prose H3 (replaces 1.25rem)                      */
+  --text-body:    14px;   /* reading content                                 */
+  --text-body-sm: 12.5px; /* dense secondary                                 */
+  --text-label:   10px;   /* mono caps chrome                                */
+  --text-meta:    9px;    /* mono caps — the floor                           */
+
+  /* ---- Spacing (9 steps, 2/4 grid) --------------------------------------- */
+  --spacing-1: 2px;  --spacing-2: 4px;  --spacing-3: 8px;
+  --spacing-4: 12px; --spacing-5: 16px; --spacing-6: 24px;
+  --spacing-7: 32px; --spacing-8: 48px; --spacing-9: 64px;
+}
+
+/* ============================================================================
+   RETIRED TOKENS — find/replace every reference, then delete the definition.
+   ----------------------------------------------------------------------------
+   --color-hld-cyan-bright  #00f0ff  →  --color-hld-cyan       (near-dupe)
+   --color-hld-pink         #ff1060  →  --color-hld-magenta    (identical)
+   --color-hld-assembly     #e5ff00  →  --color-hld-yellow     (warm dupe)
+   --color-hld-amber        #ffb020  →  --color-hld-yellow     (warm dupe)
+   --color-hld-orange       #ff8800  →  keep ONLY as the H5 heading token;
+                                         do NOT use as a general accent
+   --color-hld-border-2     #1e293b  →  --color-hld-border-strong
+   --color-hld-grid         #1f3050  →  --color-hld-border-strong
+   hard-coded #22364e / #2a4258 (scrollbars in the foundation CSS)
+                                     →  --color-hld-border-strong
+   ============================================================================ */
