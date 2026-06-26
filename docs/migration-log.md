@@ -3954,3 +3954,35 @@ risk: a calm canvas at rest, one visible focus ring across every interactive, a
 rationalised palette, and a single status vocabulary. Tier 2 (hex→token migration ·
 unify loading/error/empty · a11y round 2 · type/spacing scale) and Tier 3 (motion ·
 shortcuts · first-run labels · lint guardrail) follow.
+
+### Tier 2.3 — accessibility, round two (keyboard operability · text equivalents · hit target)
+
+**What changed.**
+- **Keyboard-operable section rows.** `features/sidebar/SectionRow.tsx` was a bare
+  `<div onClick>`; it now carries `role="button"`, `tabIndex={0}`, an Enter/Space
+  `onKeyDown`, and `aria-current` for the selected row (the same pattern the
+  `ProjectManagerModal` ProjRow already used). Its colour-only status square gained a
+  `title` text equivalent (`STATUS_LABEL`).
+- **Treemap text alternative.** The Plotly treemap (canvas/SVG, not keyboard
+  navigable) now renders an `.sr-only` `<ul aria-label="Document structure">` listing
+  every section's level · title · word count · readiness (via the PR-4
+  `summarizeReadiness` helper) and which is selected — the structure the visual map
+  conveys, for assistive tech. Keyboard navigation rides the existing section tree +
+  ⌘K palette.
+- **Hit target (desktop AA).** Added `--hit-target: 24px` (WCAG 2.5.8 desktop
+  minimum — *not* the touch 44px, per the app's keyboard/mouse-desktop reality and
+  glyphic aesthetic) and enforced it on `.hld-tool` (`min-width/height`). Applied
+  `.hld-tool` to the tiny tests-panel settings gear.
+- **Sidebar name field.** The unlabeled rename `<input>` got
+  `aria-label="Project name (click to rename)"`, and its `outline-none` was removed so
+  the focus ring shows.
+
+**Verify.** Tab through the sidebar — each section row is focusable and
+Enter/Space-activatable; a screen reader announces the document structure list and
+the project-name field. typecheck + 465 vitest + build green.
+
+**Rollback.** `git revert` the commit — all additive ARIA/markup + one token.
+
+**Tests.** DOM/ARIA — not unit-testable here; no covered lines added. Broader
+hit-target application (every small icon button) and the first-run/⌥-hold tool
+labels are Tier-2.3/Tier-3 follow-ons.

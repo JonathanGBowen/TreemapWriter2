@@ -211,12 +211,16 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   editor + sidebar); PR 4 — one status encoder (circular saved-dot → square `Pip`;
   the 4-diamond meter routed through a pure, unit-tested `summarizeReadiness` helper
   + the canonical `Pip`, with an `aria-label` text equivalent; the topo Inspector
-  readiness bars denoised). **Tier 1 is complete** (PRs 1–4 + 2b). **Next:** Tier
-  2 (hex→token by feature folder · unify loading/error/empty · a11y round 2:
-  `--hit-target` 24px, SectionRow keyboard pattern, treemap `sr-only` alternative,
-  pip text equivalents · `--spacing-*` scale + snap off-grid + editorTheme rem→px)
-  and Tier 3 (one easing · shortcuts beside actions · first-run/⌥-hold tool labels ·
-  a lint guardrail against new hard-coded hexes / a second lit per surface). See
+  readiness bars denoised). **Tier 1 is complete** (PRs 1–4 + 2b). **Tier 2.3
+  (a11y round two) shipped:** SectionRow is keyboard-operable (`role=button` +
+  Enter/Space + `aria-current`); the Plotly treemap gained an `sr-only` document-
+  structure alternative; a `--hit-target: 24px` token (desktop AA) enforced on
+  `.hld-tool`; the sidebar name field labelled. **Remaining Tier 2/3:** the bulk
+  **hex→token migration** (~248 sites by feature folder; adopt `.hld-btn`/`.hld-tool`
+  there) · **unify loading/error/empty** to one component each · **type/spacing
+  scale** (`--spacing-*` + snap off-grid + editorTheme rem→px + delete sub-9px) ·
+  Tier 3 (one easing · shortcuts beside actions · first-run/⌥-hold tool labels · a
+  lint guardrail against new hard-coded hexes / a second lit per surface). See
   `docs/migration-log.md` (2026-06-26) for the per-PR record.
 
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The

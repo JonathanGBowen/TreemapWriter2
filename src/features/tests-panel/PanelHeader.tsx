@@ -40,7 +40,7 @@ export function PanelHeader({ section, diagnostic, meta, onOpenSettings, setting
             onClick={onOpenSettings}
             title={settingsLabel ?? 'Settings'}
             aria-label={settingsLabel ?? 'Settings'}
-            className="shrink-0 -mr-[2px] p-[2px] text-hld-muted-text-2 hover:text-hld-cyan transition-colors"
+            className="hld-tool shrink-0 -mr-[2px] text-hld-muted-text-2 hover:text-hld-cyan transition-colors"
           >
             <Settings size={14} />
           </button>

@@ -56,6 +56,11 @@
   --text-ui-body: 13px;     /* primary reading content */
   --text-ui-body-sm: 12px;  /* dense secondary content inside disclosures */
   --text-ui-eyebrow: 9px;   /* eyebrow floor (was effectively 8px in many places) */
+
+  /* Minimum interactive target — WCAG 2.5.8 (AA) desktop minimum. This is a
+     keyboard/mouse desktop app, so 24px (not the touch 44px) is the right floor;
+     the dense glyphic UI keeps its character. Applied by `.hld-tool`. */
+  --hit-target: 24px;
 }
 
 /* Dark theme is canonical and unconditional — light mode removed. */
@@ -150,6 +155,7 @@
   .hld-btn-ghost:hover:not(:disabled) { color: var(--color-hld-cyan); }
   .hld-tool {
     display: inline-flex; align-items: center; justify-content: center;
+    min-width: var(--hit-target); min-height: var(--hit-target);
     border: 1px solid transparent;
     color: var(--color-hld-muted-text);
     background: transparent;

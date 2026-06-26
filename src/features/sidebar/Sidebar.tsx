@@ -187,9 +187,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             if (!projectName.trim()) setProjectName('Untitled Project');
             if (activeProjectId) void saveCurrentState();
           }}
-          className="flex-1 min-w-0 font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-hld-text bg-transparent outline-none border-b border-transparent hover:border-hld-border focus:border-hld-cyan truncate transition-colors"
+          className="flex-1 min-w-0 font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-hld-text bg-transparent border-b border-transparent hover:border-hld-border focus:border-hld-cyan truncate transition-colors"
           placeholder="Project Name"
           title="Click to rename"
+          aria-label="Project name (click to rename)"
         />
         {isConflict ? (
           <button type="button" onClick={() => setShowConflictModal(true)} title={sync.text} aria-label={`Sync: ${sync.text}`}
