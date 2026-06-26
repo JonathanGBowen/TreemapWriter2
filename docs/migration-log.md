@@ -3986,3 +3986,25 @@ the project-name field. typecheck + 465 vitest + build green.
 **Tests.** DOM/ARIA — not unit-testable here; no covered lines added. Broader
 hit-target application (every small icon button) and the first-run/⌥-hold tool
 labels are Tier-2.3/Tier-3 follow-ons.
+
+### Tier 2.1 / 2.4 — tokenise the CodeMirror theme (hex→token · heading rem→px)
+
+**What changed.** `src/lib/editorTheme.ts` was the single biggest non-component hex
+concentration (the prose editor's theme + syntax highlighting). Every structural and
+accent hex now references a `--color-hld-*` token; cyan-bright (#00f0ff) retired into
+cyan; the H5 orange is now the `--color-hld-orange` token (completing PR 2's intent).
+The ad-hoc rem heading sizes (2.2/1.7/1.3/1.1/1rem) became a px prose-heading scale
+`--text-h-xl/lg/md/sm/xs` (32/24/19/16/14px), added to `@theme`. Only three things
+stay literal, documented inline: rgba alpha-tints, `#ffffff` (bold emphasis), and one
+code-syntax purple `#d080ff` (no token).
+
+**Verify.** `grep -E '#[0-9a-f]{6}' src/lib/editorTheme.ts` shows only the two
+documented literals; typecheck + 465 vitest + build green (the build compiles the
+CSS-in-JS and resolves the `var()`s). Open the editor: headings keep the per-depth
+rainbow at the new px sizes.
+
+**Rollback.** `git revert` the commit; the theme regains its literal hexes/rems.
+
+**Tests.** CSS-in-JS values — visual; no covered lines. (The remaining component
+hex→token migration — ~248 sites across feature folders — is the documented Tier-2.1
+backlog, now guarded against new drift by the Tier-3 lint rule below.)

@@ -57,6 +57,14 @@
   --text-ui-body-sm: 12px;  /* dense secondary content inside disclosures */
   --text-ui-eyebrow: 9px;   /* eyebrow floor (was effectively 8px in many places) */
 
+  /* Prose-heading scale (px, by depth) — the editor's markdown headings. Replaces
+     the ad-hoc rem sizes in editorTheme.ts. */
+  --text-h-xl: 32px;  /* H1 */
+  --text-h-lg: 24px;  /* H2 */
+  --text-h-md: 19px;  /* H3 */
+  --text-h-sm: 16px;  /* H4 */
+  --text-h-xs: 14px;  /* H5 / H6 */
+
   /* Minimum interactive target — WCAG 2.5.8 (AA) desktop minimum. This is a
      keyboard/mouse desktop app, so 24px (not the touch 44px) is the right floor;
      the dense glyphic UI keeps its character. Applied by `.hld-tool`. */
