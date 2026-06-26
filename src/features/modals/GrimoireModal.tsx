@@ -136,7 +136,7 @@ export const GrimoireModal: React.FC = () => {
       >
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${isActive ? "bg-hld-cyan/20 text-hld-cyan" : "bg-hld-surface2 text-hld-muted"}`}>
+            <div className={`p-2 rounded-full ${isActive ? "bg-hld-cyan/20 text-hld-cyan" : "bg-hld-surface-2 text-hld-muted"}`}>
               <Wand2 size={18} />
             </div>
             <div>
@@ -190,7 +190,7 @@ export const GrimoireModal: React.FC = () => {
       <div className="bg-hld-surface rounded-xl shadow-2xl w-full max-w-2xl border border-hld-border flex flex-col max-h-[85vh]">
 
         {/* Header */}
-        <div className="p-6 border-b border-hld-border flex justify-between items-center bg-hld-surface2 rounded-t-xl">
+        <div className="p-6 border-b border-hld-border flex justify-between items-center bg-hld-surface-2 rounded-t-xl">
           <div>
             <h3 className="text-xl font-bold text-hld-text flex items-center gap-2 font-sans">
               <BookOpen size={20} className="text-hld-cyan" />
@@ -265,7 +265,7 @@ export const GrimoireModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-hld-border bg-hld-surface2 rounded-b-xl flex justify-between">
+        <div className="p-4 border-t border-hld-border bg-hld-surface-2 rounded-b-xl flex justify-between">
           {view === "list" ? (
             <div className="flex items-center gap-4">
               <button

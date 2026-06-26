@@ -176,7 +176,7 @@ export const MigrationModal: React.FC = () => {
               )}
               <button
                 onClick={skip}
-                className="flex items-center gap-2 p-3 border border-hld-border hover:bg-hld-surface2 rounded text-[12px] text-hld-muted"
+                className="flex items-center gap-2 p-3 border border-hld-border hover:bg-hld-surface-2 rounded text-[12px] text-hld-muted"
               >
                 <span className="font-mono uppercase tracking-wider text-[10px]">
                   Skip — start fresh
@@ -197,7 +197,7 @@ export const MigrationModal: React.FC = () => {
             <p className="text-[12px] text-hld-muted mb-2">
               Importing projects&hellip; do not close this window.
             </p>
-            <div className="w-full h-1 bg-hld-surface2 rounded overflow-hidden">
+            <div className="w-full h-1 bg-hld-surface-2 rounded overflow-hidden">
               <div
                 className="h-1 bg-hld-cyan transition-all"
                 style={{
@@ -237,12 +237,12 @@ export const MigrationModal: React.FC = () => {
             <p className="text-[12px] text-hld-magenta mb-3 font-mono uppercase tracking-wider">
               Import failed
             </p>
-            <pre className="text-[10px] text-hld-muted whitespace-pre-wrap bg-hld-surface2 p-2 rounded mb-3 max-h-40 overflow-y-auto">
+            <pre className="text-[10px] text-hld-muted whitespace-pre-wrap bg-hld-surface-2 p-2 rounded mb-3 max-h-40 overflow-y-auto">
               {error}
             </pre>
             <button
               onClick={() => setPhase('choose')}
-              className="w-full p-2 border border-hld-border hover:bg-hld-surface2 rounded text-[12px] font-mono uppercase tracking-wider"
+              className="w-full p-2 border border-hld-border hover:bg-hld-surface-2 rounded text-[12px] font-mono uppercase tracking-wider"
             >
               Back
             </button>

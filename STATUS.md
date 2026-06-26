@@ -203,9 +203,9 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   PR 2 — token rationalisation (added `border-strong`/`surface-3`; namespaced the
   two feature accents `gold → feat-confidence`, `indigo → feat-tone`; deleted the
   duplicate `pink`/`assembly` by remapping their live revision-component call sites
-  to magenta/yellow; `orange` reserved for H5; scrollbar slates → `border-strong`).
-  **Next, in order:** PR 2b `surface2 → surface-2`
-  rename, PR 3 denoise the canvas (atmosphere opt-in `.hld-atmosphere`; glow = alive
+  to magenta/yellow; `orange` reserved for H5; scrollbar slates → `border-strong`);
+  PR 2b — the isolated `surface2 → surface-2` rename (33 files, naming consistency).
+  **Next, in order:** PR 3 denoise the canvas (atmosphere opt-in `.hld-atmosphere`; glow = alive
   only — strip always-on pip glow, add a `live` path on `Pip`), PR 4 one status
   encoder (circular saved-dot → square pip; `summarizeReadiness` helper). Then Tier
   2 (hex→token by feature folder · unify loading/error/empty · a11y round 2:

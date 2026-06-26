@@ -66,7 +66,7 @@ export const AiSettingsSection: React.FC = () => {
       />
 
       {/* Default model */}
-      <div className="bg-hld-surface2 border border-hld-border rounded-lg p-4">
+      <div className="bg-hld-surface-2 border border-hld-border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
           <Cpu size={14} className="text-hld-cyan" />
           <h4 className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-text">
@@ -85,7 +85,7 @@ export const AiSettingsSection: React.FC = () => {
       </div>
 
       {/* Advanced */}
-      <div className="bg-hld-surface2 border border-hld-border rounded-lg">
+      <div className="bg-hld-surface-2 border border-hld-border rounded-lg">
         <button
           onClick={() => setAdvanced((v) => !v)}
           className="w-full flex items-center gap-2 p-4 text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted hover:text-hld-text transition-colors"
@@ -195,7 +195,7 @@ const ProviderKeys: React.FC<{
   };
 
   return (
-    <div className="bg-hld-surface2 border border-hld-border rounded-lg p-4 space-y-4">
+    <div className="bg-hld-surface-2 border border-hld-border rounded-lg p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Key size={14} className="text-hld-yellow" />
         <h4 className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-text">

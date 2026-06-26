@@ -65,7 +65,7 @@ function MoveRow({
             <div className="text-[13px] leading-relaxed font-sans text-hld-muted-text-2">{diagResult.diagnosis}</div>
           )}
           {diagResult.suggestedAction && (
-            <div className="bg-hld-surface2/60 border-l-2 border-hld-border px-[10px] py-[8px]">
+            <div className="bg-hld-surface-2/60 border-l-2 border-hld-border px-[10px] py-[8px]">
               <span className="block font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text mb-[4px]">action</span>
               <div className="text-[13px] leading-relaxed font-sans text-hld-text">{diagResult.suggestedAction}</div>
             </div>

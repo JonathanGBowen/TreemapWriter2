@@ -10,7 +10,7 @@ const Bubble = ({ message }: { message: DialogueMessage }) => {
   return (
     <div
       className={`max-w-[90%] px-[12px] py-[11px] text-[12.5px] font-sans leading-relaxed whitespace-pre-wrap text-hld-text ${
-        me ? 'ml-auto border-l-2 border-hld-cyan/40 bg-hld-cyan/5' : 'mr-auto border border-hld-border bg-hld-surface2'
+        me ? 'ml-auto border-l-2 border-hld-cyan/40 bg-hld-cyan/5' : 'mr-auto border border-hld-border bg-hld-surface-2'
       }`}
     >
       <span className="block font-mono text-[9px] uppercase tracking-[0.12em] mb-[5px] text-hld-muted-text-2">
@@ -23,7 +23,7 @@ const Bubble = ({ message }: { message: DialogueMessage }) => {
 
 /** Pre-first-chunk indicator: three pulsing squares. */
 const TypingPulse = () => (
-  <div className="flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface2">
+  <div className="flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface-2">
     {[0, 1, 2].map((i) => (
       <div key={i} className="w-[4px] h-[4px] rotate-45 bg-hld-cyan animate-pulse" style={{ animationDelay: `${i * 150}ms` }} />
     ))}

@@ -91,12 +91,12 @@ export const ConflictFileView: React.FC<Props> = ({ file, onChange }) => {
 
   const sideBtn = (active: boolean, accent: string) =>
     `px-3 py-1.5 border text-[10px] font-mono uppercase tracking-[0.1em] transition-colors ${
-      active ? `${accent} text-hld-bg` : 'bg-transparent text-hld-text border-hld-border hover:bg-hld-surface2'
+      active ? `${accent} text-hld-bg` : 'bg-transparent text-hld-text border-hld-border hover:bg-hld-surface-2'
     }`;
 
   return (
     <div className="border border-hld-border bg-hld-surface">
-      <div className="flex items-center justify-between p-2 border-b border-hld-border bg-hld-surface2">
+      <div className="flex items-center justify-between p-2 border-b border-hld-border bg-hld-surface-2">
         <span className="font-mono text-[11px] text-hld-text break-all">{file.path}</span>
         <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-hld-muted-text">{file.kind}</span>
       </div>
@@ -196,14 +196,14 @@ const ConflictHunkRow: React.FC<{
   <div className="grid grid-cols-2 border-t border-hld-border">
     <button
       onClick={() => onPick(index, 'ours')}
-      className={`text-left border-r border-hld-border ${choice === 'ours' ? 'bg-hld-cyan/15' : 'hover:bg-hld-surface2'}`}
+      className={`text-left border-r border-hld-border ${choice === 'ours' ? 'bg-hld-cyan/15' : 'hover:bg-hld-surface-2'}`}
     >
       <div className="text-[9px] font-mono uppercase tracking-[0.1em] text-hld-cyan px-2 pt-1">LOCAL</div>
       <pre className={`${PANE} text-hld-text`}>{ours || '∅'}</pre>
     </button>
     <button
       onClick={() => onPick(index, 'theirs')}
-      className={`text-left ${choice === 'theirs' ? 'bg-hld-magenta/15' : 'hover:bg-hld-surface2'}`}
+      className={`text-left ${choice === 'theirs' ? 'bg-hld-magenta/15' : 'hover:bg-hld-surface-2'}`}
     >
       <div className="text-[9px] font-mono uppercase tracking-[0.1em] text-hld-magenta px-2 pt-1">REMOTE</div>
       <pre className={`${PANE} text-hld-text`}>{theirs || '∅'}</pre>

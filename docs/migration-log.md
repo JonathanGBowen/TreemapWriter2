@@ -3868,3 +3868,16 @@ build` green (the build confirms Tailwind emits the new `text-hld-feat-confidenc
 rename, and the `cyan-bright` (#00f0ff) hover hexes.
 
 **Tests.** Token-definition + utility-class swaps — visual; no covered lines added.
+
+### PR 2b — `surface2 → surface-2` rename (single-purpose)
+
+**What changed.** One token renamed for naming consistency with the rationalised kit
+(`surface` · `surface-2` · `surface-3`, all hyphenated). Mechanical find/replace of
+`hld-surface2 → hld-surface-2` across **33 files** + the `@theme` definition. Kept as
+its own commit so a regression bisects cleanly, away from the hue work in PR 2.
+
+**Verify.** `git grep hld-surface2` returns zero; typecheck + 462 vitest + build green.
+
+**Rollback.** `git revert` the commit (pure rename).
+
+**Tests.** Rename only — no behaviour change, no covered lines.

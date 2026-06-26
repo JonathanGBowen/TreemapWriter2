@@ -22,7 +22,7 @@ export function ConfirmModal({ isOpen, message, onConfirm, onCancel }: ConfirmMo
         <div className="flex w-full gap-3">
           <button 
             onClick={onCancel}
-            className="flex-1 py-2 px-4 border border-hld-surface2 text-hld-muted hover:bg-hld-surface2 rounded font-mono uppercase tracking-wider text-xs transition-colors"
+            className="flex-1 py-2 px-4 border border-hld-surface-2 text-hld-muted hover:bg-hld-surface-2 rounded font-mono uppercase tracking-wider text-xs transition-colors"
           >
             Cancel
           </button>

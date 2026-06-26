@@ -63,7 +63,7 @@ export const ExternalChangeModal: React.FC = () => {
           <button
             onClick={reload}
             disabled={busy}
-            className="flex-1 py-2 px-4 border border-hld-surface2 text-hld-muted hover:bg-hld-surface2 rounded font-mono uppercase tracking-wider text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2 px-4 border border-hld-surface-2 text-hld-muted hover:bg-hld-surface-2 rounded font-mono uppercase tracking-wider text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : null}
             Reload from disk

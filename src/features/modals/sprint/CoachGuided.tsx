@@ -98,7 +98,7 @@ export function CoachGuided({ goalModel, onReady, secondaryAction }: CoachGuided
         }}
         rows={3}
         placeholder={step.placeholder}
-        className="w-full bg-hld-surface2 border border-hld-border text-hld-text text-[12.5px] leading-relaxed p-[10px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
+        className="w-full bg-hld-surface-2 border border-hld-border text-hld-text text-[12.5px] leading-relaxed p-[10px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
       />
 
       <div className="flex items-center gap-[10px]">

@@ -100,13 +100,13 @@ export function ProjectMenu({
         className="project-manager-step flex items-center gap-1 px-[5px] py-[3px] border border-transparent hover:border-hld-cyan/40 transition-colors"
       >
         <span className="w-[12px] h-[12px] bg-hld-cyan rotate-45 shadow-[0_0_10px_rgba(0,232,245,0.3)] relative inline-block">
-          <span className="absolute inset-[2.5px] bg-hld-surface2" />
+          <span className="absolute inset-[2.5px] bg-hld-surface-2" />
         </span>
         <span className="text-[7px] text-hld-muted-text">▾</span>
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-[220px] bg-hld-surface2 border border-[rgba(0,232,245,0.25)] shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-[220px] bg-hld-surface-2 border border-[rgba(0,232,245,0.25)] shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
           <MenuRow label="New project" onClick={() => run(onResetProject)} />
           {isTauri() && (
             <MenuRow label="New from remote…" onClick={() => run(() => setShowRemoteProjectModal(true))} />

@@ -64,7 +64,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
       }}
       className={
         className ??
-        'bg-hld-surface2 border border-hld-border rounded px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-hld-text outline-none focus:border-hld-cyan'
+        'bg-hld-surface-2 border border-hld-border rounded px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-hld-text outline-none focus:border-hld-cyan'
       }
     >
       {inheritLabel && <option value="">{inheritLabel}</option>}

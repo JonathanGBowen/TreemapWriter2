@@ -104,7 +104,7 @@ export const Treemap: React.FC<TreemapProps> = ({
 
       if (isBlocked) {
         // Blocked: Gray/Slate with a distinct look
-        bgColor = '#111d2b'; // hld-surface2 / slate-200
+        bgColor = '#111d2b'; // hld-surface-2 / slate-200
         lineColor = '#1e293b'; // Neutral border
         lineWidth = 1;
       } else if (status === 'stale') {

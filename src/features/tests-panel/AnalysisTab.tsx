@@ -245,7 +245,7 @@ export function AnalysisTab() {
 
             <div>
               <Zone label="Thesis" />
-              <div className="mt-[8px] px-[13px] py-[12px] bg-hld-surface2/50 border-l-2 border-hld-border text-[13px] leading-relaxed font-sans text-hld-text">{active.result.centralThesis}</div>
+              <div className="mt-[8px] px-[13px] py-[12px] bg-hld-surface-2/50 border-l-2 border-hld-border text-[13px] leading-relaxed font-sans text-hld-text">{active.result.centralThesis}</div>
             </div>
 
             <div>

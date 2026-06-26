@@ -24,7 +24,7 @@ export function SectionRow({
   return (
     <div
       onClick={() => onSelect(section.id)}
-      className={`flex items-center gap-0 p-[4px_12px] cursor-pointer transition-all relative select-none hover:bg-hld-surface2 ${selected ? 'bg-[rgba(0,232,245,0.05)]' : ''}`}
+      className={`flex items-center gap-0 p-[4px_12px] cursor-pointer transition-all relative select-none hover:bg-hld-surface-2 ${selected ? 'bg-[rgba(0,232,245,0.05)]' : ''}`}
     >
       {selected && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-hld-cyan shadow-[0_0_6px_var(--tw-colors-hld-cyan)]" />}
       <div className="shrink-0" style={{ width: `${section.level * 16}px` }} />

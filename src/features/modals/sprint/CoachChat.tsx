@@ -117,7 +117,7 @@ export function CoachChat({ goalModel, sectionTitle, spec, modelChoice, config, 
             value={wishDraft}
             onChange={(e) => setWishDraft(e.target.value)}
             rows={2}
-            className="w-full bg-hld-surface2 border border-hld-border text-hld-text text-[12.5px] leading-relaxed p-[10px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
+            className="w-full bg-hld-surface-2 border border-hld-border text-hld-text text-[12.5px] leading-relaxed p-[10px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
           />
           <div className="flex items-center gap-[10px]">
             <button
@@ -147,7 +147,7 @@ export function CoachChat({ goalModel, sectionTitle, spec, modelChoice, config, 
                 if (e.key === 'Enter' && !e.nativeEvent.isComposing) void send();
               }}
               placeholder="Answer the coach…"
-              className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-hld-surface2 text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
+              className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-hld-surface-2 text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
             />
             <button
               type="button"
@@ -206,7 +206,7 @@ function UserBubble({ text }: { text: string }) {
 
 function TypingPulse() {
   return (
-    <div className="mr-auto flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface2">
+    <div className="mr-auto flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface-2">
       {[0, 1, 2].map((i) => (
         <div
           key={i}
