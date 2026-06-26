@@ -94,3 +94,74 @@ Repo-specific gotchas for future syncs. Append as you learn more.
 - CSS comes from a compiled Tailwind v4 stylesheet (see cssEntry once wired) — Tailwind
   generates utilities from scanned source, so the compiled CSS must be regenerated when
   component class usage changes.
+
+## Per-component preview notes (folded from wave learnings)
+Real props come from the SOURCE files — the bundle `.d.ts` are generic
+(`[key: string]: unknown`). Token gotcha throughout: the deep canvas token is
+**`hld-bgDeep`** (camelCase → `--color-hld-bgDeep`), there is NO `hld-bg-deep`.
+All in-flow previews use the dark `Frame` (margin:-24/padding:24 over
+`bg-hld-bg text-hld-text`); overlay components (ModalShell, ConfirmModal,
+SprintSetup, Tutorial) render their own fixed surface and take NO Frame.
+
+- **Glyphs** (`src/features/modals/topo/icons.tsx`): most take a literal hex `c`
+  prop (NOT currentColor); `CloseGlyph` is the exception (currentColor + `size`).
+  Small 13px glyphs (Wand/Refresh/Atlas/Spine) have no size prop — scale them up
+  (`transform: scale(2–2.6)`) or they grade blank.
+- **LegendKey / topo (Inspector, TopoMap, TopoLand)**: `position:absolute` — need
+  a sized `relative` stage (640×460 maps, 348×620 Inspector) on `bg-hld-bgDeep`.
+  `deriveTopo` is NOT exported from the bundle, so the previews build a `TopoModel`
+  by hand inline (esbuild erases types; cast `as never`). usePanZoom fits
+  synchronously on mount → renders fitted with no interaction; pass
+  `organizeNonce={0}`, `reduced` for a static shot.
+- **Treemap** (the namesake): plotly `branchvalues:"total"` means every parent
+  section's `wordCount` MUST equal the sum of its children's, or plotly silently
+  renders ZERO slices (hard blank, no error). The preview data satisfies this —
+  keep that invariant on any edit. Sizes to its container (a fixed-size div is fine).
+- **DependencyChips**: wraps its whole body in a `Disclosure` hardcoded closed and
+  forwards no `defaultOpen`. The preview opens it on mount via an `OpenOnMount`
+  wrapper (a ref `useEffect` that clicks `button[aria-expanded="false"]`) — no
+  source edit, no harness change.
+- **StructuredJsonEditor** uses hardcoded slate/emerald/cyan/purple colors (not HLD
+  tokens) — the dark Frame is mandatory or it renders invisibly.
+- **SprintSetup** wraps ModalShell and stacks all 5 argument shapes → very tall;
+  needs `overrides.SprintSetup = {cardMode:'single', viewport:'640x900'}`.
+- **Tutorial** (react-joyride): first step targets `body`/center, so `run={true}`
+  renders a complete centered welcome tooltip — renders fine, NOT skipped.
+
+## Known render warns (triaged legitimate — recorded so re-syncs don't flag as new)
+- `[RENDER_BLANK]` on small topo glyph icons at native size — they are ~13–16px
+  SVGs; previews scale them up, but the floor-card check may still note them.
+- **ResizeHandle is transparent at rest** (cyan only on `:hover`) — a static shot
+  shows no visible bar by design; graded on panel/placement context, not a bar.
+- **ConfirmModal** with a short message centers high and can clip its header at the
+  card's top edge — not a defect; prefer 2–3 line messages.
+
+## Benign validate warnings (confirmed via rendered previews — record so re-syncs don't chase)
+- `[RENDER_THIN] ConfirmModal` — its `fixed inset-0` overlay leaves `#root` with a
+  measured height of 0; the modal itself renders fine (portal/fixed false-positive).
+- `[TOKENS_MISSING] --tw-colors-hld-{green,magenta,yellow,cyan}` — referenced via
+  runtime inline styles by some components; renders verify clean (40/40). Expected absent.
+- `[FONT_MISSING] "Cambria"` — an incidental system serif referenced by the compiled
+  CSS (NOT an HLD brand font; HLD is Inter + JetBrains Mono). System substitute is fine.
+
+## Card layout
+- All non-overlay components use `cfg.overrides.<Name> = {cardMode:"column"}` (full card
+  width per story) — the dark full-bleed Frame otherwise trips `[GRID_OVERFLOW]` width
+  checks. Overlays (ModalShell, ConfirmModal, SprintSetup) use `{cardMode:"single", viewport}`.
+- ModalShell/SprintSetup (tall overlays, cardMode:single): the modal's top eyebrow/title can
+  crop above the card screenshot (the modal renders whole; it's a capture-framing quirk, not a
+  defect). Verified good by independent review.
+
+## Re-sync setup (fresh clone / re-run) — make the gitignored build aids first
+The committed config points `entry`/`tsconfig`/`cssEntry` at `.design-sync/.cache/`
+(gitignored). Regenerate them deterministically from config before building:
+```sh
+npm ci                                   # repo deps
+mkdir -p .ds-sync && cp -r <skill>/package-*.mjs <skill>/resync.mjs <skill>/lib <skill>/storybook .ds-sync/
+(cd .ds-sync && npm i esbuild ts-morph @types/react)
+(cd .ds-sync && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@1.56.1)   # chromium pre-installed
+node .design-sync/regen.mjs               # → .cache/{ds-entry.tsx,global-polyfill.js,plotly-treemap.mjs,tsconfig.ds.json,compiled.css}
+# then the normal driver/build (validate with DS_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome)
+```
+If the repo's components changed, first re-run `node .design-sync/analyze-clean-set.mjs`
+and update `componentSrcMap` from `.cache/clean-map.json` (review the HEAVY exclusions).

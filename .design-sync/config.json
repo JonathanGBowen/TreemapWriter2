@@ -60,11 +60,127 @@
   "overrides": {
     "ModalShell": {
       "cardMode": "single",
-      "viewport": "560x600"
+      "viewport": "600x760"
     },
     "ConfirmModal": {
       "cardMode": "single",
       "viewport": "480x380"
+    },
+    "SprintSetup": {
+      "cardMode": "single",
+      "viewport": "640x900"
+    },
+    "ArrowRightGlyph": {
+      "cardMode": "column"
+    },
+    "AtlasGlyph": {
+      "cardMode": "column"
+    },
+    "CloseGlyph": {
+      "cardMode": "column"
+    },
+    "Inspector": {
+      "cardMode": "column"
+    },
+    "LegendKey": {
+      "cardMode": "column"
+    },
+    "NetworkGlyph": {
+      "cardMode": "column"
+    },
+    "RefreshGlyph": {
+      "cardMode": "column"
+    },
+    "SpineGlyph": {
+      "cardMode": "column"
+    },
+    "TopoLand": {
+      "cardMode": "column"
+    },
+    "TopoMap": {
+      "cardMode": "column"
+    },
+    "WandGlyph": {
+      "cardMode": "column"
+    },
+    "MoveList": {
+      "cardMode": "column"
+    },
+    "PanelHeader": {
+      "cardMode": "column"
+    },
+    "ParallelDiff": {
+      "cardMode": "column"
+    },
+    "Treemap": {
+      "cardMode": "column"
+    },
+    "Tutorial": {
+      "cardMode": "column"
+    },
+    "SteerInput": {
+      "cardMode": "column"
+    },
+    "ConflictFileView": {
+      "cardMode": "column"
+    },
+    "SegControl": {
+      "cardMode": "column"
+    },
+    "StructuredJsonEditor": {
+      "cardMode": "column"
+    },
+    "BulletCell": {
+      "cardMode": "column"
+    },
+    "DraftBCell": {
+      "cardMode": "column"
+    },
+    "OriginalCell": {
+      "cardMode": "column"
+    },
+    "Confidence": {
+      "cardMode": "column"
+    },
+    "CopyButton": {
+      "cardMode": "column"
+    },
+    "Disclosure": {
+      "cardMode": "column"
+    },
+    "Pip": {
+      "cardMode": "column"
+    },
+    "ResizeHandle": {
+      "cardMode": "column"
+    },
+    "Zone": {
+      "cardMode": "column"
+    },
+    "SectionRow": {
+      "cardMode": "column"
+    },
+    "CoachGuided": {
+      "cardMode": "column"
+    },
+    "ReinstatePanel": {
+      "cardMode": "column"
+    },
+    "ShapeCard": {
+      "cardMode": "column"
+    },
+    "SprintSequenceRail": {
+      "cardMode": "column"
+    },
+    "SprintStepRow": {
+      "cardMode": "column"
+    },
+    "DependencyChips": {
+      "cardMode": "column"
+    },
+    "EmptyState": {
+      "cardMode": "column"
     }
-  }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
 }

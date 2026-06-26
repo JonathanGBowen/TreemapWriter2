@@ -41,12 +41,14 @@ const sec = (n: Node): Section =>
   }) as Section;
 
 // A real dissertation outline — three Parts, each with subsections sized by word
-// count. Area is the weight of the argument; hue is how finished it reads.
+// count. Area is the weight of the argument; hue is how finished it reads. Each
+// Part's wordCount is the sum of its subsections' (plotly treemap uses
+// branchvalues:"total", so a parent must total its children or the branch blanks).
 const sections: Section[] = [
   sec({
     id: 'intro',
     title: 'Introduction',
-    wordCount: 50,
+    wordCount: 1360,
     children: [
       { id: 'intro-problem', title: 'The Two-World Problem', wordCount: 820 },
       { id: 'intro-thesis', title: 'Thesis & Roadmap', wordCount: 540 },
@@ -55,7 +57,7 @@ const sections: Section[] = [
   sec({
     id: 'theory',
     title: 'The Framework',
-    wordCount: 60,
+    wordCount: 2790,
     children: [
       { id: 'theory-manifest', title: 'The Manifest Image', wordCount: 1180 },
       { id: 'theory-scientific', title: 'The Scientific Image', wordCount: 970 },
@@ -65,7 +67,7 @@ const sections: Section[] = [
   sec({
     id: 'application',
     title: 'Application',
-    wordCount: 40,
+    wordCount: 1470,
     children: [
       { id: 'app-case', title: 'A Worked Case', wordCount: 760 },
       { id: 'app-objections', title: 'Objections & Replies', wordCount: 430 },
