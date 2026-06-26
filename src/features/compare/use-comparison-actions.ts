@@ -5,6 +5,8 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { DEFAULT_COMPARE_LENSES } from '../../lib/defaultCompareLenses';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveOperand, sharedTitles } from '../../lib/compareHelpers';
+import { buildSpecByTitle } from '../../lib/specTestHelpers';
+import { runSpecTestForOperands } from '../../lib/specTestRun';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { checkContextFit } from '../../services/ai/context-budget';
 
@@ -33,6 +35,9 @@ export const useComparisonActions = () => {
       activeCompareLensId,
       compareMode,
       comparisonStatus,
+      compareSpecAnchored,
+      sections,
+      testSuite,
       promptsConfig,
       customSpells,
       modelConfig,
@@ -50,6 +55,36 @@ export const useComparisonActions = () => {
     }
     if (a.markdown === b.markdown) {
       toast.error('Pick two different versions to compare.');
+      return;
+    }
+
+    // Spec-anchored mode: run the held-rubric A/B WHOLE-test (the SAME engine as the
+    // Spec Test workspace) over these operands instead of the free comparison.
+    if (compareSpecAnchored) {
+      const specByTitle = buildSpecByTitle(sections, testSuite);
+      if (!specByTitle.size) {
+        toast.error('No section specs to test against — author or generate specs first.');
+        return;
+      }
+      const stChoice = resolveModelChoice('runSpecTestSection', modelConfig, globalModelDefault);
+      setComparisonStatus('running');
+      try {
+        const report = await runSpecTestForOperands(aiProvider, a, b, {
+          specByTitle,
+          rubricSections: sections,
+          rootSpec: testSuite['root']?.spec,
+          scope: 'changed',
+          mode: compareMode,
+          rubricSource: 'live',
+          config: promptsConfig,
+          shouldSkipForContext: (pa, pb) => checkContextFit(modelCatalog, stChoice, `${pa}\n\n${pb}`).overflow,
+        });
+        useStore.getState().setSpecAnchoredResult(report);
+        setComparisonStatus('idle');
+      } catch (e) {
+        setComparisonStatus('error');
+        toast.error(`Spec test failed: ${errMessage(e)}`);
+      }
       return;
     }
 

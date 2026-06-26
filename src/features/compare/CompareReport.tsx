@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useStore } from '../../state';
 import { Pip, type PipStatus } from '../shared/Pip';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
+import { WholeVerdictPanel } from '../spec-test/SpecTestWholeVerdict';
+import { SpecTestSectionCard } from '../spec-test/SpecTestSectionCard';
 import type {
   ComparisonChange,
   ComparisonDirection,
@@ -122,22 +124,67 @@ function OpenThreads({ threads }: { threads: OpenThread[] }) {
   );
 }
 
+/** The spec-anchored fold: the SAME whole verdict + per-section cards the Spec Test
+ *  workspace renders, scoped to the Compare operands. Same engine, compact view. */
+function SpecAnchoredBody() {
+  const status = useStore((s) => s.comparisonStatus);
+  const report = useStore((s) => s.specAnchoredResult);
+
+  if (status === 'running') {
+    return (
+      <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
+        <span className="w-3 h-3 rounded-full border-[1.5px] border-hld-cyan/25 border-t-hld-cyan animate-spin" />
+        <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-cyan">Testing parts, then the whole…</div>
+        <AgentTraceTicker
+          kinds={['runSpecTestSection', 'runSpecTestWhole']}
+          className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted max-w-[300px] min-w-0"
+        />
+      </div>
+    );
+  }
+  if (!report) {
+    return (
+      <div className="px-2 py-12 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-hld-muted-text leading-[1.8]">
+        Pick two versions and run — the report leads with whether B served the WHOLE against your held specs, then the parts beneath.
+      </div>
+    );
+  }
+  return (
+    <>
+      <WholeVerdictPanel
+        whole={report.whole}
+        tally={report.tally}
+        audit={`${report.mode} · rubric: ${report.rubricSource} · scope: ${report.scopeLabel}`}
+      />
+      <div className="font-mono uppercase tracking-[0.14em] text-[10px] font-bold text-hld-text mb-2">By section · {report.sections.length}</div>
+      <div className="space-y-1.5">
+        {report.sections.map((s, i) => (
+          <SpecTestSectionCard key={`${s.sectionTitle}-${i}`} section={s} />
+        ))}
+      </div>
+    </>
+  );
+}
+
 /** The right-hand evaluation panel: verdict, drift, gains, losses, by-section. */
 export function CompareReport() {
   const status = useStore((s) => s.comparisonStatus);
   const comparison = useStore((s) => s.comparison);
+  const specAnchored = useStore((s) => s.compareSpecAnchored);
 
   return (
     <>
       <div className="relative px-4 py-3 border-b border-hld-border shrink-0">
         <div className="absolute top-0 left-0 right-0 h-px bg-hld-cyan shadow-[0_0_12px_var(--color-hld-cyan)]" />
         <div className="font-mono uppercase tracking-[0.14em] text-[10px] font-bold text-hld-text">
-          Evaluation{comparison?.mode === 'draft' ? ' · Draft' : comparison?.mode === 'final' ? ' · Completed' : ''}{comparison?.lensName ? ` · ${comparison.lensName}` : ''}
+          {specAnchored ? 'Spec test' : 'Evaluation'}{comparison?.mode === 'draft' ? ' · Draft' : comparison?.mode === 'final' ? ' · Completed' : ''}{!specAnchored && comparison?.lensName ? ` · ${comparison.lensName}` : ''}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {status === 'running' ? (
+        {specAnchored ? (
+          <SpecAnchoredBody />
+        ) : status === 'running' ? (
           <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
             <span className="w-3 h-3 rounded-full border-[1.5px] border-hld-cyan/25 border-t-hld-cyan animate-spin" />
             <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-cyan">Comparing versions…</div>

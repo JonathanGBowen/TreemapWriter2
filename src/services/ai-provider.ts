@@ -22,6 +22,8 @@ import type {
   SprintGoalFraming,
   SprintGranularity,
   VersionComparison,
+  SectionSpecTest,
+  WholeVerdict,
   AtmosphericInstrument,
   ReadingMode,
   GistAnalysis,
@@ -117,6 +119,21 @@ export interface AIProvider {
    */
   decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]>;
   compareVersions(input: CompareVersionsInput): Promise<VersionComparison>;
+  /**
+   * Spec-anchored A/B whole-test — part level. Score ONE section's prose in
+   * version A vs B against the HELD rubric, move by move (with the productive/
+   * recapitulative axis), judged AS A PART via the mandatory structural surround.
+   * Null ⇒ no usable result (the orchestrator records the section as unparseable).
+   */
+  runSpecTestSection(input: SpecTestSectionInput): Promise<SectionSpecTest | null>;
+  /**
+   * Spec-anchored A/B whole-test — whole level. The WHOLE verdict: did B serve the
+   * whole better than A, or only the pieces (tF)? Reads the role-skeleton + the
+   * deterministic mesh delta, never a sum of section scores. Returns the verdict
+   * MINUS its `meshDelta` (the orchestrator attaches the deterministic delta). Null
+   * ⇒ the orchestrator synthesizes a fallback verdict from the mesh delta.
+   */
+  runSpecTestWhole(input: SpecTestWholeInput): Promise<Omit<WholeVerdict, 'meshDelta'> | null>;
   analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string>;
   /**
    * Generate ONE level of the spec hierarchy in a single shot — the non-agent
@@ -563,6 +580,47 @@ export interface CompareVersionsInput {
    * and scaffolding as intended; 'final' judges them as completed work. Selects
    * the mode overlay prepended to the base compare prompt.
    */
+  mode?: ReadingMode;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface SpecTestSectionInput {
+  /** Heading title (the alignment key) shown in the prompt and carried to the result. */
+  sectionTitle: string;
+  /** The HELD rubric for this section — fixed across versions A and B. */
+  spec: SectionSpec;
+  /**
+   * Pre-formatted part-in-whole context (formatStructuralSurround). MANDATORY here:
+   * "new relative to what?" — the productive/recapitulative judgment — is answerable
+   * only against the whole. Empty only when the section has no resolvable surround.
+   */
+  structuralSurround: string;
+  /** This section's prose in version A (earlier) and version B (later). */
+  proseA: string;
+  proseB: string;
+  /** Reading stance: 'draft' (default) treats still-missing moves as scaffolding. */
+  mode?: ReadingMode;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface SpecTestWholeInput {
+  /** The document's main claim (root spec) — the macro-vector the whole serves. */
+  documentClaim: string;
+  /** Role-skeleton of each version: every section's function/claim/commitments
+   *  (role-reconstructions, NOT prose) — the whole judged by its inner structure. */
+  skeletonA: string;
+  skeletonB: string;
+  /** The changed sections' prose (A vs B), already formatted for the prompt. */
+  changedProse: string;
+  /** The deterministic commitment-mesh delta, formatted as hard evidence. */
+  meshDeltaText: string;
+  /** Reading stance: 'draft' (default) steadies a mid-revision writer. */
   mode?: ReadingMode;
   config: PromptsConfig;
   modelId?: string;

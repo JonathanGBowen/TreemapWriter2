@@ -19,6 +19,9 @@ const HISTORICAL_KEYS = [
   'analysisPrompt',
   'coachPrompt',
   'compareVersionsPrompt',
+  // Spec-anchored A/B whole-test — part-level + whole-level editable prompts.
+  'specTestPrompt',
+  'specTestWholePrompt',
   'dependenciesPrompt',
   'diagnosticInstruction',
   'dialoguePrompt',

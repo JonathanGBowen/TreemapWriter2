@@ -37,6 +37,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowPromptsGraphModal = useStore((s) => s.setShowPromptsGraphModal);
   const setShowProjectFileModal = useStore((s) => s.setShowProjectFileModal);
   const openCompare = useStore((s) => s.openCompare);
+  const openSpecTest = useStore((s) => s.openSpecTest);
   const openClimate = useStore((s) => s.openClimate);
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
   const openDashboard = useStore((s) => s.openDashboard);
@@ -60,6 +61,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
     { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
+    { g: '▣', name: 'Spec test — A/B against the rubric, whole + parts', aria: 'Spec test', onClick: () => openSpecTest() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
     { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
   ];
@@ -92,7 +94,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-8 gap-[2px]">
+      <div className="grid grid-cols-9 gap-[2px]">
 
         {tools.map((t) => (
           <button

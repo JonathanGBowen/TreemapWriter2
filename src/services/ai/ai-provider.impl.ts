@@ -19,6 +19,8 @@ import type {
   SprintPlan,
   SprintMove,
   VersionComparison,
+  SectionSpecTest,
+  WholeVerdict,
   ReadingMode,
   GistAnalysis,
   GistComposition,
@@ -63,6 +65,8 @@ import type {
   CoachSprintTurnInput,
   DecomposeSprintStepInput,
   CompareVersionsInput,
+  SpecTestSectionInput,
+  SpecTestWholeInput,
   AnalyzeAtmosphereInput,
   GenerateSpecLevelInput,
   DevelopSpecLevelInput,
@@ -85,6 +89,7 @@ import { refitGist } from './ai-provider.gist-refit';
 import { suggestDirectives } from './ai-provider.suggest-directives';
 import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
+import { runSpecTestSection, runSpecTestWhole } from './ai-provider.spec-test';
 import { analyzeAtmosphere } from './ai-provider.atmosphere';
 
 const MAX_OUTPUT_TOKENS = 16000;
@@ -558,6 +563,26 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('compareVersions', input);
     return compareVersions(
       this.clientFor(choice.provider, 'compareVersions'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async runSpecTestSection(input: SpecTestSectionInput): Promise<SectionSpecTest | null> {
+    const choice = this.choose('runSpecTestSection', input);
+    return runSpecTestSection(
+      this.clientFor(choice.provider, 'runSpecTestSection'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async runSpecTestWhole(input: SpecTestWholeInput): Promise<Omit<WholeVerdict, 'meshDelta'> | null> {
+    const choice = this.choose('runSpecTestWhole', input);
+    return runSpecTestWhole(
+      this.clientFor(choice.provider, 'runSpecTestWhole'),
       choice.model,
       choice.thinkingBudget,
       input,

@@ -51,6 +51,12 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   decomposeSprintStep: g('gemini-3-flash-preview', 0),
   // Heavy reasoning over two whole drafts — mirror analyzeSection's pro-tier budget.
   compareVersions: g('gemini-3.1-pro-preview', 16000),
+  // Spec test — part: move-by-move A/B against the held rubric for one section.
+  // Reasoning over two prose versions + the surround; pro-tier, bounded.
+  runSpecTestSection: g('gemini-3.1-pro-preview', 8192),
+  // Spec test — whole: the tF/center-of-gravity verdict over the role-skeleton +
+  // changed prose. The load-bearing judgment; the strongest pro-tier budget.
+  runSpecTestWhole: g('gemini-3.1-pro-preview', 16000),
   // Atmospheric reading over a whole draft — same pro-tier budget as analyzeSection.
   analyzeAtmosphere: g('gemini-3.1-pro-preview', 16000),
   // Collaborative per-level spec development — a conversational reasoning turn,

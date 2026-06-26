@@ -28,6 +28,7 @@ import { RevisionWorkspace } from "../revision/RevisionWorkspace";
 import { RevisionSettingsModal } from "./RevisionSettingsModal";
 import { AgentTraceModal } from "./AgentTraceModal";
 import { CompareWorkspace } from "../compare/CompareWorkspace";
+import { SpecTestWorkspace } from "../spec-test/SpecTestWorkspace";
 import { ClimateWorkspace } from "../climate/ClimateWorkspace";
 import { InterpolateWorkspace } from "../interpolate/InterpolateWorkspace";
 import { DashboardWorkspace } from "../dashboard/DashboardWorkspace";
@@ -278,6 +279,8 @@ export const ModalLayer = ({
       <AgentTraceModal />
 
       <CompareWorkspace />
+
+      <SpecTestWorkspace />
 
       <ClimateWorkspace />
 

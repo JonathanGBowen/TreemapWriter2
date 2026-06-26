@@ -73,6 +73,8 @@ export function CompareTopBar() {
   const setCompareLens = useStore((s) => s.setCompareLens);
   const compareMode = useStore((s) => s.compareMode);
   const setCompareMode = useStore((s) => s.setCompareMode);
+  const compareSpecAnchored = useStore((s) => s.compareSpecAnchored);
+  const setCompareSpecAnchored = useStore((s) => s.setCompareSpecAnchored);
   const status = useStore((s) => s.comparisonStatus);
   const customSpells = useStore((s) => s.customSpells);
   const { runComparison } = useComparisonActions();
@@ -139,6 +141,16 @@ export function CompareTopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-3 shrink-0">
+        <button
+          type="button"
+          onClick={() => setCompareSpecAnchored(!compareSpecAnchored)}
+          title="Spec-anchored: test both versions against your held section specs (the rubric), as parts AND as a whole — instead of a free comparison."
+          className={`px-2 py-1 border font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
+            compareSpecAnchored ? 'border-hld-cyan/40 text-hld-cyan bg-hld-cyan/10' : 'border-hld-border text-hld-muted-text hover:text-hld-text'
+          }`}
+        >
+          ▣ spec-anchored
+        </button>
         <div title="Draft: treats stubs, placeholders and TODOs as intended scaffolding and weighs whether you're holding your throughline. Completed: judges both versions as finished work, where gaps count against them.">
           <SegControl
             ariaLabel="Comparison reading mode"
@@ -181,7 +193,7 @@ export function CompareTopBar() {
           disabled={running}
           className="hld-lit px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] disabled:opacity-50 disabled:cursor-wait"
         >
-          {running ? 'Comparing…' : 'Run evaluation'}
+          {running ? (compareSpecAnchored ? 'Testing…' : 'Comparing…') : compareSpecAnchored ? 'Run spec test' : 'Run evaluation'}
         </button>
       </div>
     </div>
