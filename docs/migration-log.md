@@ -4157,3 +4157,33 @@ numeric spacing and would silently change every `p-1`/`gap-2`) — Tailwind's bu
 4px grid already governs the bulk, and the residual arbitrary `[Npx]` values are
 imperceptibly off-grid; not worth the churn. The lint guardrail keeps colour drift from
 returning.
+
+### Dock follow-up — drop the redundant tooltip · re-surface palette-only launchers
+
+**What changed** (`src/features/sidebar/Dock.tsx`).
+- **Removed the native `title` tooltip** from the glyph tools (both the grid view and
+  the ⌥-hold list view). It duplicated the footer **caption line** (driven by `cap()`),
+  which already shows the action + description on hover/focus. `aria-label` (the
+  screen-reader name) stays.
+- **Re-surfaced the five palette-only launchers as dock glyphs** — Coach `◍`,
+  Generate specs `✦`, Revise `⟐`, Parallel `▥`, Gist `◊` — which previously were
+  reachable only from ⌘K (a prior "consolidation" had folded them into the palette).
+  Coach gets `◍` rather than the palette's `◉` (which the dock already uses for Assist).
+  The openers already existed on the store (the same ones `App.tsx`'s `paletteCommands`
+  call); the dock now subscribes to them. The 14 tools are grouped into two rows —
+  **compose/revise** (Assist · Coach · Generate specs · Revise · Parallel · Gist · Goal
+  map) and **evaluate/inspect** (Dependencies · Spec test · Compare · Climate · Progress
+  · Prompts · Raw data) — via `grid-cols-9 → grid-cols-7`. ⌘K stays the searchable door
+  and the home of the rarer actions (snapshot, exports, new/open project, run
+  diagnostic). The ⌥-hold list lists all 14.
+
+**Verify.** typecheck + 465 vitest + build + lint(0) green. Manually: hover a glyph →
+only the caption shows (no native tooltip bubble); the five new glyphs open Coach /
+Generate-specs / Revise / Parallel / Gist; 14 glyphs render in two rows, each focusable
+and ≥24px.
+
+**Rollback.** `git revert`; the dock returns to nine glyphs with tooltips.
+
+**Tests.** UI wiring — no covered lines. (The dock `tools` array and `App.tsx`
+`paletteCommands` now both list these launchers — by design; a shared launcher registry
+to dedupe them is a sensible future cleanup.)

@@ -207,7 +207,11 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   Tailwind v4's numeric spacing). Held back as the one genuine follow-on: `muted-text`
   token values were **kept** (the audit's inversion would have silently re-contrasted
   328 sites) — fixing only the failing pairs; a deliberate, audited muted-text
-  migration could revisit that later.
+  migration could revisit that later. **Dock follow-up (2026-06-26):** dropped the
+  redundant native tooltip from the glyph tools (the footer caption already names them)
+  and re-surfaced the five palette-only launchers — Coach `◍`, Generate specs `✦`, Revise
+  `⟐`, Parallel `▥`, Gist `◊` — as dock glyphs (14 tools in two grouped rows); ⌘K stays
+  the searchable door + home of the rarer actions.
 
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
   2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress
