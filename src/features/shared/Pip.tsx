@@ -22,15 +22,19 @@ interface PipProps {
   status: PipStatus;
   size?: 'sm' | 'md' | 'lg';
   pulse?: boolean;
+  /** Glow = alive. Set when the pip marks an active/in-flight state; a pip at
+   *  rest stays flat (no glow), per the system's "glow = alive" rule. `pulse`
+   *  already implies a glow. */
+  live?: boolean;
   className?: string;
   style?: CSSProperties;
   /** Accessible label; also surfaces as a native tooltip. */
   title?: string;
 }
 
-export function Pip({ status, size = 'md', pulse = false, className = '', style, title }: PipProps) {
+export function Pip({ status, size = 'md', pulse = false, live = false, className = '', style, title }: PipProps) {
   const sizeClass = size === 'sm' ? 'hld-pip-sm' : size === 'lg' ? 'hld-pip-lg' : '';
-  const classes = ['hld-pip', STATUS_CLASS[status], sizeClass, pulse ? 'hld-pip-pulse' : '', className]
+  const classes = ['hld-pip', STATUS_CLASS[status], sizeClass, pulse ? 'hld-pip-pulse' : '', live ? 'hld-pip-live' : '', className]
     .filter(Boolean)
     .join(' ');
   return <span className={classes} style={style} title={title} aria-hidden={title ? undefined : true} />;

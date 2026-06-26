@@ -204,9 +204,11 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   two feature accents `gold → feat-confidence`, `indigo → feat-tone`; deleted the
   duplicate `pink`/`assembly` by remapping their live revision-component call sites
   to magenta/yellow; `orange` reserved for H5; scrollbar slates → `border-strong`);
-  PR 2b — the isolated `surface2 → surface-2` rename (33 files, naming consistency).
-  **Next, in order:** PR 3 denoise the canvas (atmosphere opt-in `.hld-atmosphere`; glow = alive
-  only — strip always-on pip glow, add a `live` path on `Pip`), PR 4 one status
+  PR 2b — the isolated `surface2 → surface-2` rename (33 files, naming consistency);
+  PR 3 — denoise the canvas (body washes + dot-grid moved to an opt-in
+  `.hld-atmosphere`, off by default; glow = alive only — `.hld-pip-*` no longer glows
+  at rest, a `live` prop + `--pip-hue` drive the glow; scanline removed from the
+  editor + sidebar). **Next, in order:** PR 4 one status
   encoder (circular saved-dot → square pip; `summarizeReadiness` helper). Then Tier
   2 (hex→token by feature folder · unify loading/error/empty · a11y round 2:
   `--hit-target` 24px, SectionRow keyboard pattern, treemap `sr-only` alternative,

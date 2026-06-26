@@ -3881,3 +3881,38 @@ its own commit so a regression bisects cleanly, away from the hue work in PR 2.
 **Rollback.** `git revert` the commit (pure rename).
 
 **Tests.** Rename only — no behaviour change, no covered lines.
+
+### PR 3 — denoise the canvas (atmosphere opt-in · glow = alive)
+
+**What changed.** The audit's lead finding: at rest a screen stacked a dot-grid +
+two corner washes + scanlines on two columns + a glow on *every* pip — against the
+system's own "glow = alive" rule.
+- **Ambient atmosphere off by default.** The three `body` `radial-gradient()`s (the
+  two washes + the dot-grid) moved off `body` into an opt-in `.hld-atmosphere` class
+  (`src/index.css`). `body` keeps only its flat background colour. The class is there
+  to drop behind a genuinely-void surface (a topo-map well), never globally.
+- **Glow = alive.** Stripped the always-on `box-shadow` from the `.hld-pip-*` colour
+  classes; each class now exposes its hue via a `--pip-hue` custom property, and the
+  glow is applied **only** by `.hld-pip-live` / `.hld-pip-pulse` (in that hue). The
+  shared `Pip` component (`features/shared/Pip.tsx`) gained a `live?: boolean` prop
+  for active/in-flight pips; a pip at rest is now flat.
+- **Section-list pips calmed.** `features/sidebar/SectionRow.tsx` no longer glows on
+  the static success/fail/stale states (only `running` animates). Those glows
+  referenced the Tailwind-v3 `--tw-colors-*` vars, undefined under v4 — so they never
+  actually rendered; this just makes the code honest.
+- **Scanline off reading content.** Removed `.hld-scanline` from the editor column
+  (`App.tsx` — prose is reading content, the clearest violation) and the sidebar
+  (`features/sidebar/Sidebar.tsx`); the class is retained for a true chrome well.
+
+**Verify.** `npm run dev`, look at the main workspace at rest: a flat canvas (no
+grid, no washes), no scanline over the editor/sidebar, and pips glow only when
+live/pulsing (e.g. a syncing indicator) — not at rest. typecheck + 462 vitest +
+build green.
+
+**Rollback.** `git revert` the commit; `body` regains its gradients and the pip
+classes regain their static box-shadows. The `live` prop and `.hld-atmosphere`
+class are additive.
+
+**Tests.** CSS + a presentational prop — visual; no covered lines added. (The
+one-lit-per-surface audit found no side-by-side double-lit; formal enforcement is
+deferred to the Tier-3 lint rule.)

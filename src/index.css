@@ -64,18 +64,27 @@
     font-family: 'Inter', sans-serif;
     background-color: #05090d;
     color: #c5d8e8;
-    background-image:
-      radial-gradient(ellipse 60% 50% at 15% 50%, rgba(0,232,245,0.03) 0%, transparent 100%),
-      radial-gradient(ellipse 40% 60% at 85% 20%, rgba(255,16,96,0.025) 0%, transparent 100%),
-      radial-gradient(circle, #1f3050 1px, transparent 1px);
-    background-size: auto, auto, 22px 22px;
   }
 }
 
-/* Scanline overlay — opt-in per surface (was a global body::after that shimmered
-   over ALL text). Apply `.hld-scanline` to the canvas/chrome (editor, sidebar) to
-   keep the CRT effect; the right panel and modal bodies omit it so reading content
-   stays calm (P4). pointer-events:none keeps it non-blocking. */
+/* Ambient atmosphere — the dot-grid + the two corner washes. OFF by default: a
+   flat, calm canvas is the resting state (the audit's lead finding was six ambient
+   layers stacked at rest, against the system's own "glow = alive" restraint). Opt
+   in by adding `.hld-atmosphere` to a genuinely "void" surface (e.g. a topo-map
+   well), never globally. */
+.hld-atmosphere {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 50%, rgba(0,232,245,0.03) 0%, transparent 100%),
+    radial-gradient(ellipse 40% 60% at 85% 20%, rgba(255,16,96,0.025) 0%, transparent 100%),
+    radial-gradient(circle, var(--color-hld-border-strong) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
+}
+
+/* Scanline overlay — opt-in per surface, reserved for TRUE chrome wells only
+   (never on reading content, per the audit). It was previously applied to the
+   editor column (prose — a clear violation) and the sidebar; both were removed.
+   The class is kept for a genuine well (a modal header, a topo-map well).
+   pointer-events:none keeps it non-blocking. */
 .hld-scanline { position: relative; }
 .hld-scanline::after {
   content: '';
@@ -162,13 +171,19 @@
   }
   .hld-pip-sm { width: 4px; height: 4px; }
   .hld-pip-lg { width: 8px; height: 8px; }
-  .hld-pip-green   { background: var(--color-hld-green);   box-shadow: 0 0 6px var(--color-hld-green); }
-  .hld-pip-yellow  { background: var(--color-hld-yellow);  box-shadow: 0 0 6px var(--color-hld-yellow); }
-  .hld-pip-magenta { background: var(--color-hld-magenta); box-shadow: 0 0 6px var(--color-hld-magenta); }
-  .hld-pip-cyan    { background: var(--color-hld-cyan);    box-shadow: 0 0 6px var(--color-hld-cyan); }
-  .hld-pip-purple  { background: var(--color-hld-purple);  box-shadow: 0 0 6px var(--color-hld-purple); }
+  /* Each colour class carries its hue in --pip-hue; the glow (below) reads it so
+     only LIVE / PULSING pips glow — "glow = alive," exactly as the effects file
+     claims. A pip at rest is flat. */
+  .hld-pip-green   { background: var(--color-hld-green);   --pip-hue: var(--color-hld-green); }
+  .hld-pip-yellow  { background: var(--color-hld-yellow);  --pip-hue: var(--color-hld-yellow); }
+  .hld-pip-magenta { background: var(--color-hld-magenta); --pip-hue: var(--color-hld-magenta); }
+  .hld-pip-cyan    { background: var(--color-hld-cyan);    --pip-hue: var(--color-hld-cyan); }
+  .hld-pip-purple  { background: var(--color-hld-purple);  --pip-hue: var(--color-hld-purple); }
   .hld-pip-dim     { background: var(--color-hld-muted); }
   .hld-pip-idle    { background: transparent; border: 1px solid var(--color-hld-muted); }
+
+  /* glow = alive: only on a live (active/in-flight) or pulsing pip, in its own hue. */
+  .hld-pip-live, .hld-pip-pulse { box-shadow: 0 0 6px var(--pip-hue); }
 
   /* slow attention pulse for in-flight states (sync, running) */
   .hld-pip-pulse { animation: hld-pip-pulse 1.4s ease-in-out infinite; }
