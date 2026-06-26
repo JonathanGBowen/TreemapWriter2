@@ -53,6 +53,7 @@ import { hasSeenTutorial, markTutorialSeen } from './services/preferences';
 import { DEFAULT_PERSONAS } from './lib/defaultPersonas';
 import { aiProvider } from './services/ai-provider-registry';
 import { guardContextFit } from './features/shared/context-guard';
+import { useAutosave } from './features/shared/useAutosave';
 import { notifyAiError } from './features/shared/ai-error';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
@@ -87,7 +88,7 @@ const findSectionByLine = (nodes: Section[], line: number): Section | null => {
 export const App = () => {
   const {
     projectList, activeProjectId, hasOpenProject, markdown, projectName, testSuite, hiddenSectionIds,
-    localContent, lastAutoSave, revisions, sections, sidebarWidth, testsPanelWidth,
+    localContent, revisions, sections, sidebarWidth, testsPanelWidth,
     focusMode, selectedId, activeLineIndex, runTutorial, showProjectModal,
     showRunModal, showPersonaModal, showSpecModal,
     showPromptsGraphModal, showSectionMapModal, showProjectFileModal,
@@ -113,7 +114,6 @@ export const App = () => {
     testSuite: state.testSuite,
     hiddenSectionIds: state.hiddenSectionIds,
     localContent: state.localContent,
-    lastAutoSave: state.lastAutoSave,
     revisions: state.revisions,
     sections: state.sections,
     sidebarWidth: state.sidebarWidth,
@@ -215,10 +215,10 @@ export const App = () => {
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
-  // Guards the 60s autosave against overlapping itself: a save that runs long
-  // (slow disk, git commit, network) must not let the next tick fire a second
-  // concurrent write to the same project file and clobber the first.
-  const isAutoSavingRef = useRef(false);
+
+  // The 60s autosave/snapshot loop (interval, overlap guard, error surfacing)
+  // lives in its own hook so the layout shell stays a layout shell.
+  useAutosave();
 
   // Auto-open the migration modal on first Tauri launch when there are
   // legacy projects to import. The hook does the detection; we just react
@@ -261,63 +261,6 @@ export const App = () => {
       .finally(() => {
         isFirstRender.current = false;
       });
-  }, []);
-
-  const autoSaveRefs = useRef({
-    saveCurrentState,
-    createSnapshot,
-    activeProjectId,
-    projectName,
-    localContent
-  });
-  
-  useEffect(() => {
-    autoSaveRefs.current = {
-      saveCurrentState,
-      createSnapshot,
-      activeProjectId,
-      projectName,
-      localContent
-    };
-  });
-
-  // Auto-Save Interval (Periodic saves and snapshots, ignoring keystrokes)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-       const refs = autoSaveRefs.current;
-       if (!refs.activeProjectId) return;
-       // Skip this tick if the previous save is still in flight — overlapping
-       // writes to the same project file can clobber each other.
-       if (isAutoSavingRef.current) return;
-       isAutoSavingRef.current = true;
-       void (async () => {
-         try {
-           await refs.saveCurrentState();
-           await refs.createSnapshot('autosave');
-         } catch (e) {
-           console.error('Autosave failed', e);
-           // A failed save means the latest edits exist ONLY in memory. Surface
-           // it loudly (toast once per failure streak) and persistently (the
-           // saveError banner), instead of dying silently in the console as it
-           // did during the 2026-06 desktop persistence outage. The banner is
-           // cleared by the next SUCCESSFUL save (see saveCurrentState).
-           const store = useStore.getState();
-           if (!store.saveError) {
-             toast.error(
-               'Save failed — your latest edits are NOT on disk. Export a backup (⌘K → Export project) and restart the app.',
-               { duration: 10000 },
-             );
-           }
-           store.setSaveError(
-             'Unsaved: your latest edits are not on disk. Export a backup (⌘K → Export project) to be safe.',
-           );
-         } finally {
-           isAutoSavingRef.current = false;
-         }
-       })();
-    }, 60 * 1000); // Save every 60 seconds
-
-    return () => clearInterval(intervalId);
   }, []);
 
   // Manual trigger wrapper for save button. createSnapshot -> saveCurrentState
