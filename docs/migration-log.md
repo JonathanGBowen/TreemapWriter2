@@ -4097,8 +4097,34 @@ Project Map / Raw-data modals: same layout, now in the HLD palette.
 
 **Tests.** Visual + a token swap; no covered lines.
 
-**Still remaining (guarded backlog).** State-pattern unification (2.2 — unify
-loading/error/empty to one component each); off-grid spacing snap to Tailwind's 4px grid
+### Tier 2.2 — unify the loading vocabulary (one Spinner)
+
+**What changed.** The thin rotating cyan ring was hand-rolled
+(`rounded-full border-[1.5px] … border-t-… animate-spin`) in six places
+(`revision/GenLoader`, `spec-test/SpecTestReport`, `climate/ClimateReport`,
+`compare/CompareReport` ×2, `revision/DirectiveSuggestions` — the purple variant).
+Extracted **`features/shared/Spinner.tsx`** (size + hue props, **and** a `role="status"`
++ `aria-label="Loading"` the inline copies lacked) and routed all six through it. The
+loading vocabulary is now intentionally two-context: **`<Spinner>`** for standalone
+"working…" panels, the lucide **`Loader2`** icon for inline button-busy states, and the
+**pip pulse** for status pips — each one component.
+
+*Error / empty* were already at the audit's standard and left as-is: errors surface
+in-context and specific (the `saveError` banner, the `shared/ai-error` toast, per-modal
+inline messages that show the real error and fall back to a generic only when there is
+no message — the diagnostic panel's "locate → diagnose → suggest move" remains the gold
+standard); empty states are instructive (the `tests-panel/EmptyState` pattern). No
+generic "Something went wrong" surface exists.
+
+**Verify.** typecheck + 465 vitest + build green; lint exit 0. The report/loader panels
+show the same spinner, now screen-reader-announced.
+
+**Rollback.** `git revert`; the inline spans return.
+
+**Tests.** Presentational component — not unit-tested (the UI feature layer is
+out-of-scope for unit tests by design); no covered lines.
+
+**Still remaining (guarded backlog).** Off-grid spacing snap to Tailwind's 4px grid
 (a custom `--spacing-*` scale was **declined** — it shadows Tailwind v4's numeric
 spacing and would silently change every `p-1`/`gap-2`); Tier 3 remainder
 (shortcuts-beside-actions · first-run/⌥-hold tool labels).
