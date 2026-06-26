@@ -29,6 +29,8 @@ import type {
   GistSegmentAnalysis,
   GistSpan,
   GistBudgets,
+  WholeFromPartResult,
+  RecenteringsResult,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
@@ -131,6 +133,19 @@ export interface AIProvider {
    * ```json``` proposal block the caller parses on commit.
    */
   developSpecLevel(input: DevelopSpecLevelInput): AsyncIterable<string>;
+  /**
+   * Gestalt — the "Beethoven test" (L3a). Reconstruct the WHOLE document's claim
+   * from one section's prose ALONE, then compare to the actual claim. A drifted
+   * reconstruction means the part has come loose from the whole. Null ⇒ no usable
+   * reconstruction.
+   */
+  reconstructWhole(input: ReconstructWholeInput): Promise<WholeFromPartResult | null>;
+  /**
+   * Gestalt — the recentering / question-the-goal move (L4). Propose 2–3
+   * alternative structural centerings of the section + a "is this section's goal
+   * right for the whole?" beat. The unstick operation. Null ⇒ no usable proposal.
+   */
+  proposeRecenterings(input: RecenterInput): Promise<RecenteringsResult | null>;
 }
 
 /** Compact, in-memory backlog summary shown as context chips in the Brief. */
@@ -407,6 +422,33 @@ export interface RegenerateParagraphInput {
   /** Voice/style instruction (from settings; the built-in default ships in the registry). */
   voiceInstruction: string;
   sectionTitle: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ReconstructWholeInput {
+  sectionTitle: string;
+  /** The section's prose, read alone — no surround, no spec. */
+  sectionText: string;
+  /** The document's actual main claim (root spec), for the drift comparison. Optional. */
+  documentClaim?: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface RecenterInput {
+  sectionTitle: string;
+  sectionText: string;
+  /** The section's current spec, so the proposals can move OFF the current centering. */
+  currentClaim?: string;
+  currentFunction?: string;
+  requiredMoves?: string[];
+  /** Pre-formatted part-in-whole context (formatStructuralSurround), so a recentering serves the whole. */
+  structuralSurround?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

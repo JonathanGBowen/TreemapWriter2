@@ -27,6 +27,9 @@ const HISTORICAL_KEYS = [
   // Parallel Editor (reverse-outline revision) — two new editable flows.
   'generateReverseOutlinePrompt',
   'regenerateParagraphPrompt',
+  // Gestalt whole/part ops (Phase 2) — Beethoven test + recentering.
+  'reconstructWholePrompt',
+  'recenterPrompt',
   // Gist Editor — the two generation stages (analysis + composition).
   'gistAnalysisPrompt',
   'gistCompositionPrompt',

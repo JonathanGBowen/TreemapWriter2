@@ -137,7 +137,56 @@ export interface DiagnosticResult {
   /** Brief summary of the most important thing to work on next (fallback for nextAction) */
   nextPriority: string;
 }
- 
+
+// --- GESTALT WHOLE/PART OPERATIONS (Phase 2) ---
+
+/**
+ * The "Beethoven test" (Gestalt Theory, 1938: "from a part of the whole we could
+ * grasp the inner structure of the whole"). The document's main claim as
+ * reconstructed from ONE section's prose alone, and how that reconstruction lines
+ * up with the document's actual claim. A large divergence means the part has
+ * drifted from the whole. See docs/gestalt-design-II.md L3(a).
+ */
+export interface WholeFromPartResult {
+  /** The document thesis as best reconstructed from this section alone. */
+  reconstructedClaim: string;
+  /** How the reconstruction matches the actual document claim (or 'no-baseline'). */
+  alignment: 'aligned' | 'partial' | 'adrift' | 'no-baseline';
+  /** Where/how the part diverges from the whole (when not aligned). */
+  divergence?: string;
+  /** Optional short reading. */
+  note?: string;
+}
+
+/** Stored Beethoven-test result: the AI output plus staleness metadata. */
+export type WholeFromPart = WholeFromPartResult & { timestamp: number; inputHash: string };
+
+/**
+ * One alternative structural centering of a section (Umzentrierung) — a different
+ * point the section's parts could organize around. See docs/gestalt-design-II.md L4.
+ */
+export interface RecenteringOption {
+  /** The proposed new center of gravity. */
+  center: string;
+  /** Why this centering may serve the whole better. */
+  rationale: string;
+  /** What changes in the section's parts under this centering. */
+  whatChanges: string;
+}
+
+/**
+ * The recentering / "question-the-goal" move — the unstick operation for the
+ * narrowed-field stall ("to stick to set goals is often sheer thoughtlessness").
+ */
+export interface RecenteringsResult {
+  options: RecenteringOption[];
+  /** The deepest beat: is this section's goal itself right for the whole? */
+  questionTheGoal: string;
+}
+
+/** Stored recentering result: the AI output plus staleness metadata. */
+export type Recenterings = RecenteringsResult & { timestamp: number; inputHash: string };
+
 // --- SECTION ANALYSIS SYSTEM ---
 
 /**
@@ -625,6 +674,10 @@ export interface TestSuiteEntry {
   };
   /** Per-section structured analysis + Socratic dialogue (Analysis/Dialogue tabs). */
   analysis?: SectionAnalysisState;
+  /** Ephemeral: the Beethoven test (reconstruct the whole from this part). Not persisted. */
+  wholeFromPart?: WholeFromPart;
+  /** Ephemeral: recentering / question-the-goal proposals. Not persisted. */
+  recenterings?: Recenterings;
 }
  
 export interface TestSuite {

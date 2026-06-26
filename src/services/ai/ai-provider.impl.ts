@@ -66,6 +66,8 @@ import type {
   AnalyzeAtmosphereInput,
   GenerateSpecLevelInput,
   DevelopSpecLevelInput,
+  ReconstructWholeInput,
+  RecenterInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import { AI_CALL_KIND_LABELS } from './model-types';
@@ -75,6 +77,7 @@ import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provide
 import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
+import { reconstructWhole, proposeRecenterings } from './ai-provider.gestalt';
 import { analyzeGist } from './ai-provider.gist-analysis';
 import { composeGist } from './ai-provider.gist-composition';
 import { refreshGistSpan } from './ai-provider.gist-refresh';
@@ -475,6 +478,26 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('regenerateParagraph', input);
     return regenerateParagraph(
       this.clientFor(choice.provider, 'regenerateParagraph'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async reconstructWhole(input: ReconstructWholeInput) {
+    const choice = this.choose('reconstructWhole', input);
+    return reconstructWhole(
+      this.clientFor(choice.provider, 'reconstructWhole'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async proposeRecenterings(input: RecenterInput) {
+    const choice = this.choose('proposeRecenterings', input);
+    return proposeRecenterings(
+      this.clientFor(choice.provider, 'proposeRecenterings'),
       choice.model,
       choice.thinkingBudget,
       input,
