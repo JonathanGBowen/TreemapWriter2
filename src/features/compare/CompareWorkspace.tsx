@@ -47,7 +47,7 @@ export function CompareWorkspace() {
         </div>
         <div
           style={{ width: reportWidth }}
-          className="relative shrink-0 bg-[#080d13] flex flex-col"
+          className="relative shrink-0 bg-hld-surface-3 flex flex-col"
         >
           <ResizeHandle side="left" onMouseDown={onResizeReport} />
           <CompareReport />

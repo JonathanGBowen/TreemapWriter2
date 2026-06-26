@@ -186,6 +186,7 @@ export function CoachChat({ goalModel, sectionTitle, spec, modelChoice, config, 
 
 function CoachBubble({ text }: { text: string }) {
   return (
+    // eslint-disable-next-line no-restricted-syntax -- warm parchment coach-voice text; distinct hue, no near design token
     <div className="mr-auto max-w-[88%] text-[12.5px] leading-relaxed bg-hld-yellow/[0.05] border border-hld-yellow/20 text-[#e9e3c0] px-[12px] py-[9px] whitespace-pre-wrap">
       <div className="flex items-center gap-[6px] font-mono text-[8px] tracking-[0.16em] uppercase text-hld-yellow mb-[5px]">
         <Pip status="yellow" size="sm" /> Coach

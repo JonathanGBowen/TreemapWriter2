@@ -160,7 +160,8 @@ export const hldHighlightStyle = HighlightStyle.define([
   { tag: t.variableName, color: 'var(--color-hld-text)' },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--color-hld-cyan)' },
   { tag: [t.propertyName], color: 'var(--color-hld-yellow)' },
-  { tag: [t.typeName, t.className, t.namespace], color: '#d080ff' }, // code-syntax purple tint (no token)
+  // eslint-disable-next-line no-restricted-syntax -- code-syntax purple tint; no matching design token (intentional sub-palette for fenced code)
+  { tag: [t.typeName, t.className, t.namespace], color: '#d080ff' },
   { tag: t.tagName, color: 'var(--color-hld-magenta)' },
   { tag: t.attributeName, color: 'var(--color-hld-yellow)' },
   { tag: t.meta, color: 'var(--color-hld-muted)' },

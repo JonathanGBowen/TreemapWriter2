@@ -101,7 +101,7 @@ export function SpecChat({
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) send(); }}
             placeholder={status === 'streaming' ? 'Streaming…' : 'Refine — sharpen a claim, change a function, flag a tension…'}
             disabled={isStreaming}
-            className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-[#080d13] text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50 disabled:opacity-50"
+            className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-hld-surface-3 text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50 disabled:opacity-50"
           />
           <button
             type="button"

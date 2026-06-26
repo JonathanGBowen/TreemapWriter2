@@ -1,3 +1,6 @@
+/* eslint-disable no-restricted-syntax -- colours here feed the SVG/Plotly
+   topology map (trace + presentation-attribute strings), where CSS `var()` does
+   not resolve; they must be literal hex. Token-matching values are commented. */
 /* topo-derive.ts — the data layer for the Argument Topology modal.
 
    Turns the real document model (Section[] tree + TestSuite) into the flat

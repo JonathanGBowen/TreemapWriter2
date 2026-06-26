@@ -84,7 +84,7 @@ export function StagePanel() {
       </div>
 
       <div className="flex-1 min-h-0 flex">
-        <div className="w-[40%] min-w-[340px] max-w-[560px] border-r border-hld-border flex flex-col min-h-0 bg-[#080d13]">
+        <div className="w-[40%] min-w-[340px] max-w-[560px] border-r border-hld-border flex flex-col min-h-0 bg-hld-surface-3">
           {isCollaborative ? (
             <SpecChat
               messages={work.messages}

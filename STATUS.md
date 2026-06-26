@@ -220,14 +220,21 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   a `--text-h-*` px scale; H5 wired to the `orange` token) and a **Tier-3 lint
   guardrail** (`no-restricted-syntax` warns on any new hard-coded hex colour — both an
   anti-drift gate and the ~194-site migration worklist; documented in `AGENTS.md`).
-  **Remaining (guarded backlog):** the bulk **component hex→token migration** (~194
-  sites by feature folder; adopt `.hld-btn`/`.hld-tool` there — the lint warnings are
-  the worklist) · **unify loading/error/empty** to one component each (2.2) · **snap
-  off-grid spacing** to Tailwind's 4px grid (a custom `--spacing-*` scale was
+  **Bulk hex→token migration shipped:** drained the lint worklist from **194 → 27**
+  across ~45 files — palette hexes became tokens (Tailwind arbitraries + inline
+  `style`), near-duplicate neutrals snapped to canonical surface/border tokens.
+  Functional literals that can't use CSS `var()` (Treemap Plotly colours, the
+  `modals/topo/*` SVG-map kit, `sprintRoles` hexes parsed by `hexA`, the Tutorial
+  react-joyride theme) carry file-level `eslint-disable` + rationale. The **27 residual
+  warnings** are the two **legacy pre-HLD modals** (`ProjectFileModal`,
+  `SectionMapModal`), left flagged because a faithful fix is a full restyle (Tailwind
+  slate/cyan defaults + bespoke darks), not a hex swap. **Remaining (guarded backlog):**
+  those two modals' restyle · **unify loading/error/empty** to one component each (2.2) ·
+  **snap off-grid spacing** to Tailwind's 4px grid (a custom `--spacing-*` scale was
   **declined** — it shadows Tailwind v4's numeric spacing and would change every
   `p-1`/`gap-2`) · Tier 3 remainder (one easing · shortcuts beside actions ·
-  first-run/⌥-hold tool labels). See `docs/migration-log.md` (2026-06-26) for the
-  per-PR record.
+  first-run/⌥-hold tool labels). The lint rule guards all of it against new drift. See
+  `docs/migration-log.md` (2026-06-26) for the per-PR record.
 
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
   2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress

@@ -1,3 +1,6 @@
+/* eslint-disable no-restricted-syntax -- role hues are literal hex strings parsed
+   by hexA() (string math) and pinned by a unit test; they mirror the hld-* tokens
+   but must stay strings, not CSS `var()` references. */
 // Living Sprints — role → color. A move's role drives its accent and the
 // runner's ambient hue. Canonical map from the design handoff (ARGUMENT_SHAPES):
 // reinstate=green · frame=cyan · marshal=yellow · draft=cyan · stress=orange ·

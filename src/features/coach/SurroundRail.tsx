@@ -76,7 +76,7 @@ export const SurroundRail: React.FC = () => {
 
   return (
     <div className="w-full max-w-[800px] mx-auto px-[64px] pt-[10px] z-10 shrink-0">
-      <div className="border-l-2 border-hld-cyan/30 pl-[10px] bg-[#070d13]/60">
+      <div className="border-l-2 border-hld-cyan/30 pl-[10px] bg-hld-surface-3/60">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center gap-[5px] text-hld-cyan/70 hover:text-hld-cyan text-[9px] font-mono uppercase tracking-[0.16em] transition-colors py-[2px]"

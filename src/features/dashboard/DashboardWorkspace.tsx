@@ -43,7 +43,7 @@ export function DashboardWorkspace() {
           Accumulated evidence — not a score
         </span>
       </div>
-      <div className="flex-1 flex min-h-0 bg-[#080d13]">
+      <div className="flex-1 flex min-h-0 bg-hld-surface-3">
         <DashboardReport />
       </div>
     </div>

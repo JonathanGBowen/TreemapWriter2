@@ -103,13 +103,13 @@ export function GistPanel() {
   return (
     <aside
       className="relative shrink-0 flex flex-col min-h-0"
-      style={{ width: panelW, background: '#0a121b' }}
+      style={{ width: panelW, background: 'var(--color-hld-surface)' }}
       aria-label="Gist — a scale model of the document"
     >
       {/* title row + voice chip */}
-      <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid #14202f' }}>
+      <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--color-hld-border)' }}>
         <div className="flex items-center justify-between" style={{ marginBottom: 3 }}>
-          <span className="font-mono uppercase" style={{ fontSize: 8, letterSpacing: '0.26em', color: '#6f8cab' }}>The Gist</span>
+          <span className="font-mono uppercase" style={{ fontSize: 8, letterSpacing: '0.26em', color: 'var(--color-hld-muted-text)' }}>The Gist</span>
           <button
             type="button"
             onClick={() => setVoiceMode(describe ? 'perform' : 'describe')}
@@ -119,19 +119,20 @@ export function GistPanel() {
               fontSize: 8, letterSpacing: '0.1em', padding: '3px 7px', cursor: 'pointer',
               border: `1px solid ${describe ? 'rgba(255,16,96,0.5)' : 'rgba(0,232,245,0.4)'}`,
               background: describe ? 'rgba(255,16,96,0.08)' : 'rgba(0,232,245,0.06)',
-              color: describe ? '#ff5d86' : '#00e8f5',
+              // eslint-disable-next-line no-restricted-syntax
+              color: describe ? '#ff5d86' : 'var(--color-hld-cyan)',
             }}
           >
             {describe ? '✕ describes' : '✓ performs'}
           </button>
         </div>
-        <div className="font-sans italic" title={gist?.analysis.thesis ?? undefined} style={{ fontSize: 13, lineHeight: 1.3, color: '#7e9ab6' }}>
+        <div className="font-sans italic" title={gist?.analysis.thesis ?? undefined} style={{ fontSize: 13, lineHeight: 1.3, color: 'var(--color-hld-muted-text-2)' }}>
           a scale model of the whole — in your own voice
         </div>
       </div>
 
       {/* generate button zone */}
-      <div style={{ padding: '12px 18px', borderBottom: '1px solid #14202f' }}>
+      <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--color-hld-border)' }}>
         <GenerateButton onGenerate={handleGenerate} />
       </div>
 
@@ -144,9 +145,9 @@ export function GistPanel() {
         {gist ? (
           <GistProse ref={proseRef} gist={gist} grain={grain} onRefresh={refreshSpan} />
         ) : (
-          <div className="flex flex-col items-center text-center" style={{ gap: 18, color: '#3d5570' }}>
-            <span aria-hidden style={{ width: 30, height: 30, transform: 'rotate(45deg)', border: '1.5px solid #23344a', display: 'inline-block' }} />
-            <div className="font-sans italic" style={{ fontSize: 16, lineHeight: 1.5, color: '#5e789a', maxWidth: 230 }}>
+          <div className="flex flex-col items-center text-center" style={{ gap: 18, color: 'var(--color-hld-muted)' }}>
+            <span aria-hidden style={{ width: 30, height: 30, transform: 'rotate(45deg)', border: '1.5px solid var(--color-hld-border-strong)', display: 'inline-block' }} />
+            <div className="font-sans italic" style={{ fontSize: 16, lineHeight: 1.5, color: 'var(--color-hld-muted-text)', maxWidth: 230 }}>
               No gist yet. Generate to see the whole document at low resolution.
             </div>
           </div>

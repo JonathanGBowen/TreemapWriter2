@@ -107,7 +107,7 @@ export const MigrationModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#05090d]/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-hld-bg/80 backdrop-blur-sm">
       <div className="bg-hld-surface border border-hld-cyan/30 rounded-lg shadow-xl w-full max-w-md p-6 mx-4 font-sans">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

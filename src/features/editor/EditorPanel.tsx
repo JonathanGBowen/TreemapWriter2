@@ -270,10 +270,10 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const isHidden = currentSection ? (hiddenSectionIds || []).includes(currentSection.id) : false;
 
   return (
-    <div className="editor-panel-step flex-1 flex flex-col h-full bg-[#05090d] relative transition-colors duration-200 min-w-0">
+    <div className="editor-panel-step flex-1 flex flex-col h-full bg-hld-bg relative transition-colors duration-200 min-w-0">
       {/* Toolbar */}
-      <div className="h-14 border-b border-hld-border bg-[#0c1520] flex items-center justify-between px-4 z-20 relative shrink-0 min-w-0">
-         <div className="absolute top-0 left-0 right-0 h-[1px] bg-[#c5d8e8]/40" />
+      <div className="h-14 border-b border-hld-border bg-hld-surface flex items-center justify-between px-4 z-20 relative shrink-0 min-w-0">
+         <div className="absolute top-0 left-0 right-0 h-[1px] bg-hld-text/40" />
          
          <div className="flex items-center gap-[5px] text-ui-meta tracking-[0.1em] uppercase text-hld-muted-text font-mono flex-1 min-w-0 pr-4">
            {currentSection ? (
@@ -345,7 +345,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
            {!needsProject && (
              <button
                onClick={onOpenHistory}
-               className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-text hover:border-[#1e2f42] text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
+               className="p-[5px_10px] bg-transparent border border-hld-border text-hld-muted-text hover:text-hld-text hover:border-hld-border-strong text-ui-btn font-mono uppercase tracking-[0.1em] flex items-center gap-[5px] transition-all"
                title="Version History"
              >
                <History size={11} /> History
@@ -377,7 +377,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         <div className="h-full relative">
 
           {focusMode && currentSection && (
-            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-[#05090d] z-10 w-full max-w-[800px] mx-auto">
+            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-hld-bg z-10 w-full max-w-[800px] mx-auto">
               <div className="w-[7px] h-[7px] bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />
               <span className="text-ui-label tracking-[0.14em] uppercase text-hld-cyan font-mono">{currentSection.title} — Focus Mode Active</span>
             </div>
@@ -385,7 +385,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           
           {(isEmptyState || needsProject) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10 pointer-events-none opacity-100 animate-in fade-in duration-700">
-               <div className="text-center pointer-events-auto bg-[#0c1520]/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
+               <div className="text-center pointer-events-auto bg-hld-surface/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
                  {needsProject ? (
                    <>
                      <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Start a Project</h2>

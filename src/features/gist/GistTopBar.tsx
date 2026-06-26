@@ -18,7 +18,7 @@ export function GistTopBar() {
 
   return (
     <div className="relative h-[54px] shrink-0 flex items-center gap-4 px-[20px] bg-hld-surface border-b border-hld-border">
-      <div className="absolute top-0 left-0 right-0" style={{ height: 1, background: '#00e8f5', boxShadow: '0 0 14px #00e8f5' }} />
+      <div className="absolute top-0 left-0 right-0" style={{ height: 1, background: 'var(--color-hld-cyan)', boxShadow: '0 0 14px var(--color-hld-cyan)' }} />
       <button
         type="button"
         onClick={close}
@@ -26,12 +26,13 @@ export function GistTopBar() {
       >
         ‹ Done — back to writing
       </button>
-      <span aria-hidden style={{ width: 9, height: 9, transform: 'rotate(45deg)', background: '#00e8f5', boxShadow: '0 0 10px #00e8f5' }} />
+      <span aria-hidden style={{ width: 9, height: 9, transform: 'rotate(45deg)', background: 'var(--color-hld-cyan)', boxShadow: '0 0 10px var(--color-hld-cyan)' }} />
+      {/* eslint-disable-next-line no-restricted-syntax */}
       <span className="font-mono uppercase tracking-[0.26em] text-[11px] font-bold" style={{ color: '#eaf6ff' }}>Gist Editor</span>
-      <span style={{ width: 1, height: 14, background: '#1d2d42' }} />
+      <span style={{ width: 1, height: 14, background: 'var(--color-hld-border-strong)' }} />
       <div className="flex flex-col gap-0.5 min-w-0">
-        <span className="font-sans text-[15px] leading-none text-[#cfe0f0] truncate">{projectName?.trim() || 'Untitled'}</span>
-        <span className="font-mono uppercase text-[8px] tracking-[0.2em] text-[#3d5570]">
+        <span className="font-sans text-[15px] leading-none text-hld-text truncate">{projectName?.trim() || 'Untitled'}</span>
+        <span className="font-mono uppercase text-[8px] tracking-[0.2em] text-hld-muted">
           {count} section{count === 1 ? '' : 's'} · {words} words
         </span>
       </div>

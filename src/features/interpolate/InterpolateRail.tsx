@@ -23,7 +23,7 @@ export function InterpolateRail() {
   const stageWork = useStore((s) => s.stageWork);
 
   return (
-    <div className="w-[210px] shrink-0 border-r border-hld-border bg-[#080d13] overflow-y-auto py-[10px]">
+    <div className="w-[210px] shrink-0 border-r border-hld-border bg-hld-surface-3 overflow-y-auto py-[10px]">
       <div className="px-[14px] pb-[8px] font-mono text-[9px] uppercase tracking-[0.16em] text-hld-muted-text">
         Hierarchy
       </div>

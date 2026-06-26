@@ -54,7 +54,7 @@ const Transcript: React.FC<{
 );
 
 const DialogueEmptyState: React.FC<{ onOpenAnalysis: () => void }> = ({ onOpenAnalysis }) => (
-  <div className="flex-1 overflow-y-auto p-4 bg-[#080d13] flex flex-col items-center justify-center text-center text-hld-muted-text-2">
+  <div className="flex-1 overflow-y-auto p-4 bg-hld-surface-3 flex flex-col items-center justify-center text-center text-hld-muted-text-2">
     <MessagesSquare size={32} className="mb-2 opacity-50" />
     <p className="font-mono uppercase tracking-[0.12em] text-[9px] mb-1">No dialogue</p>
     <p className="text-[12px] font-sans text-hld-muted-text-2 mb-3">Interrogate part of an analysis to begin.</p>
@@ -93,7 +93,7 @@ const DialogueComposer: React.FC<{
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend(); }}
           placeholder="Critique or question..."
-          className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-[#080d13] text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
+          className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-hld-surface-3 text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
         />
         <button
           onClick={handleSend}
@@ -159,7 +159,7 @@ export const DialogueTab: React.FC = () => {
     messages.some(m => m.role === 'model');
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+    <div className="flex-1 min-h-0 flex flex-col bg-hld-surface-3">
       {/* Focus banner: what this dialogue is pinned to — a quiet left-hairline. */}
       {context && (
         <div className="mx-4 mt-4 mb-0 pl-[12px] py-[11px] border-l-2 border-hld-border bg-hld-surface-2/40 shrink-0">

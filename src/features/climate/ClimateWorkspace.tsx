@@ -29,7 +29,7 @@ export function ClimateWorkspace() {
     <div className="fixed inset-0 z-40 flex flex-col bg-hld-bg text-hld-text overflow-hidden font-sans">
       <ClimateTopBar />
       <div className="flex-1 flex min-h-0">
-        <div className="flex-1 min-w-0 flex flex-col bg-[#080d13]">
+        <div className="flex-1 min-w-0 flex flex-col bg-hld-surface-3">
           <ClimateReport />
         </div>
       </div>

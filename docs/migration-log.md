@@ -4028,14 +4028,51 @@ no-restricted-syntax` shows the hex worklist. No CI gate change (lint is advisor
 
 ---
 
-**Status of the program.** Tier 1 complete (calm canvas · focus ring · rationalised
-palette · one status encoder). Tier 2: 2.3 (a11y round two) and the editorTheme half
-of 2.1/2.4 shipped; the **bulk component hex→token migration (~194 sites)** and
-**state-pattern unification (2.2)** and **off-grid spacing snap (2.4)** remain as
-guarded backlog (the lint rule is the worklist + anti-drift gate). Tier 3: the lint
-guardrail shipped; first-run/⌥-hold tool labels, shortcuts-beside-actions, and the
-one-easing pass remain. The deliberate deviation from the audit on spacing: a custom
-`--spacing-*` scale would shadow Tailwind v4's built-in numeric spacing and silently
-change every `p-1`/`gap-2`, so it was **not** introduced; off-grid arbitrary literals
-should be snapped to Tailwind's existing 4px grid instead (low-value/high-churn —
-deferred).
+**Status of the program (before the bulk migration below).** Tier 1 complete; Tier
+2.3 + the editorTheme tokenisation + the Tier-3 lint guardrail shipped.
+
+### Tier 2.1 — bulk component hex→token migration (194 → 27 warnings)
+
+**What changed.** Drained the lint worklist across ~45 files: every hard-coded hex that
+matches the palette became a token — Tailwind arbitrary values (`bg-[#080d13]` →
+`bg-hld-surface-3`, `text-[#1f3050]` → `text-hld-border-strong`, `bg-[#05090d]/80` →
+`bg-hld-bg/80`) and inline `style` strings (`'#00e8f5'` → `'var(--color-hld-cyan)'`).
+Near-duplicate dark neutrals were **snapped** to the canonical surface/border tokens
+(the audit's intended consolidation — imperceptible: e.g. `#0a131d`/`#0a0f15`/`#0a1018`
+→ surface-3/surface; `#14202f`/`#1d2d42`/`#1e2f42` → border/border-strong), and
+near-duplicate slate-grays to the muted-text family. Done as a parallel fan-out (three
+agents over disjoint feature clusters: gist, tests-panel/revision, the long tail) plus
+hand-work on the functional-literal files; one agent left a malformed JSX
+`{/* eslint-disable */}` before a `return`'s root element (a syntax error) — fixed to a
+`//` line comment.
+
+**Functional literals (kept hex, file-level `eslint-disable` with rationale).** Colours
+that *can't* be CSS tokens because the runtime doesn't resolve `var()`:
+`features/treemap/Treemap.tsx` (Plotly trace colours), the `modals/topo/*` SVG-map kit
+(`tk.ts`/`topo-derive`/`icons`/`topo-sim-atlas` — SVG presentation attributes),
+`lib/sprintRoles.ts` (hexes parsed by `hexA()` + pinned by a test),
+`features/tutorial/Tutorial.tsx` (a self-contained react-joyride theme). A handful of
+genuinely off-palette accent tints (diff add/remove greens/pinks, the gist voice-chip
+pink, coach parchment text, a sprint magenta track, two Plotly chart colours) got
+line-level exemptions with reasons.
+
+**Deliberately left flagged (27 warnings — the residual worklist).**
+`modals/ProjectFileModal.tsx` (16) and `modals/SectionMapModal.tsx` (11) are **legacy
+pre-HLD modals** styled with Tailwind-default palette classes (slate/cyan/fuchsia) plus
+bespoke darks; a faithful fix is a full HLD restyle, not a hex swap, so they stay
+flagged as visible debt rather than getting a cosmetic half-migration or a disable.
+
+**Verify.** `npm run lint` → 27 `no-restricted-syntax` warnings (down from 194), all in
+those two modals; `npm run typecheck` · `npx vitest run` (465) · `npm run build` green.
+
+**Rollback.** `git revert` the commit. Token swaps are appearance-neutral except the
+imperceptible neutral snaps.
+
+**Tests.** Visual; no covered lines.
+
+**Still remaining (guarded backlog).** The two legacy modals' full restyle (2.1);
+state-pattern unification (2.2 — unify loading/error/empty to one component each);
+off-grid spacing snap to Tailwind's 4px grid (a custom `--spacing-*` scale was
+**declined** — it shadows Tailwind v4's numeric spacing and would silently change every
+`p-1`/`gap-2`); Tier 3 remainder (one easing · shortcuts-beside-actions ·
+first-run/⌥-hold tool labels). The lint rule guards all of it against new drift.

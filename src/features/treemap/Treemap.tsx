@@ -1,3 +1,6 @@
+/* eslint-disable no-restricted-syntax -- tile/line/font colours are passed to
+   Plotly as trace properties (rendered into SVG attributes), where CSS `var()`
+   does not resolve; they must be literal hex. They mirror the @theme tokens. */
 import React, { useEffect, useMemo } from "react";
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponentImport from 'react-plotly.js/factory';

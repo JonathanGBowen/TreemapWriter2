@@ -34,7 +34,7 @@ export function SteerInput({
           value={steer}
           onChange={(e) => onSteerChange(e.target.value)}
           placeholder="e.g. Frame these chapters around the methodology/findings split; keep the framework chapter subordinate to the thesis…"
-          className="w-full min-h-[7em] p-[11px] text-[13px] leading-relaxed border border-hld-border bg-[#080d13] text-hld-text outline-none focus:border-hld-cyan resize-none font-sans placeholder-hld-muted/50"
+          className="w-full min-h-[7em] p-[11px] text-[13px] leading-relaxed border border-hld-border bg-hld-surface-3 text-hld-text outline-none focus:border-hld-cyan resize-none font-sans placeholder-hld-muted/50"
         />
       </div>
       <button

@@ -53,7 +53,7 @@ function SearchBox() {
         onKeyDown={(e) => { if (e.key === "Escape") reset(); }}
         placeholder="Search sections…"
         aria-label="Search sections"
-        className="w-full pl-7 pr-12 py-1 bg-[#080d13] border border-hld-border text-[10px] font-mono text-hld-text placeholder:text-hld-muted-text outline-none focus:border-hld-cyan transition-colors"
+        className="w-full pl-7 pr-12 py-1 bg-hld-surface-3 border border-hld-border text-[10px] font-mono text-hld-text placeholder:text-hld-muted-text outline-none focus:border-hld-cyan transition-colors"
       />
       {searchQuery.trim() !== "" && (
         <button
@@ -83,7 +83,7 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
       <div className="h-px bg-hld-border" />
-      <div className="flex-1 w-full border border-hld-border bg-[#080d13] relative overflow-hidden min-h-0">
+      <div className="flex-1 w-full border border-hld-border bg-hld-surface-3 relative overflow-hidden min-h-0">
         <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelect} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} matchedIds={matchedIds} />
       </div>
       {isTauri() && <SearchBox />}

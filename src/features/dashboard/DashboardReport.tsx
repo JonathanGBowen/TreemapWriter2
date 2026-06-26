@@ -67,7 +67,7 @@ export function DashboardReport() {
       {/* Words over time. */}
       <section className="flex flex-col gap-2">
         <SectionLabel>Words over time</SectionLabel>
-        <div className="border border-hld-border bg-[#0a1018] p-2">
+        <div className="border border-hld-border bg-hld-surface-3 p-2">
           <WordsOverTimeChart points={series} />
         </div>
       </section>
@@ -113,7 +113,7 @@ export function DashboardReport() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-hld-border bg-[#0a1018] px-3 py-2.5">
+    <div className="border border-hld-border bg-hld-surface-3 px-3 py-2.5">
       <div className="font-mono text-[16px] text-hld-text leading-tight">{value}</div>
       <div className="font-mono text-[8px] tracking-[0.12em] uppercase text-hld-muted-text mt-1">{label}</div>
     </div>

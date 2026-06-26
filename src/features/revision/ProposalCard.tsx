@@ -193,9 +193,11 @@ export function ProposalCard({ proposal, large, onAccept, onReject }: CardProps)
             large ? 'text-[13px]' : 'text-[11.5px]'
           }`}
         >
+          {/* eslint-disable-next-line no-restricted-syntax */}
           <span className="line-through text-[#ff7aa6] bg-hld-magenta/10">
             {proposal.original_text}
           </span>{' '}
+          {/* eslint-disable-next-line no-restricted-syntax */}
           <span className="text-[#7dffb0] bg-hld-green/10">{delta}</span>
         </div>
       </div>

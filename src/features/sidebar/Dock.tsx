@@ -67,7 +67,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-[5px] px-2 pt-2 pb-1 border-t border-hld-border bg-[#080d13] shrink-0">
+    <div className="flex flex-col gap-[5px] px-2 pt-2 pb-1 border-t border-hld-border bg-hld-surface-3 shrink-0">
       <button
         type="button"
         onClick={onContinue}

@@ -28,7 +28,7 @@ export function RevisionTopBar() {
         <span className="font-mono uppercase tracking-[0.14em] text-[10px] font-bold text-hld-text">
           Revision Workspace
         </span>
-        <span className="text-[#1f3050]">›</span>
+        <span className="text-hld-border-strong">›</span>
         <span className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-cyan truncate">
           {current ? current.title : 'select a section'}
         </span>
