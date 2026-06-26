@@ -3,7 +3,13 @@
 // live in `services/ai/ai-provider.impl.ts`; what stayed here is the small
 // layer of derivation logic that runs locally and has no network dependency.
 
-import type { DiagnosticResult, Section, SectionSpec } from '../types';
+import type {
+  CommitmentFinding,
+  DiagnosticResult,
+  NextAction,
+  Section,
+  SectionSpec,
+} from '../types';
 
 /** Derive an overall status from a DiagnosticResult for the treemap coloring. */
 export function diagnosticToStatus(diag: DiagnosticResult): 'success' | 'fail' | 'stale' {
@@ -13,6 +19,54 @@ export function diagnosticToStatus(diag: DiagnosticResult): 'success' | 'fail' |
   if (counts.missing === 0 && counts.unclear === 0 && counts.partial === 0) return 'success';
   if (counts.present === 0 && diag.moveResults.length > 0) return 'fail';
   return 'stale';
+}
+
+const asTrimmed = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+const COMMITMENT_KINDS: readonly CommitmentFinding['kind'][] = [
+  'unmet-incoming',
+  'dangling-outgoing',
+  'center-of-gravity',
+];
+
+/**
+ * Tolerant parse of the optional commitment-mesh findings from a diagnostic JSON
+ * response. Drops malformed entries; returns undefined when none survive, so a terse
+ * or legacy response never produces an empty-but-present array. See gestalt-design-II L2.
+ */
+export function parseCommitmentFindings(raw: unknown): CommitmentFinding[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const findings: CommitmentFinding[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const kind = rec.kind;
+    const detail = asTrimmed(rec.detail);
+    if (!detail) continue;
+    if (typeof kind !== 'string' || !COMMITMENT_KINDS.includes(kind as CommitmentFinding['kind'])) continue;
+    const related = asTrimmed(rec.relatedSectionTitle);
+    findings.push({
+      kind: kind as CommitmentFinding['kind'],
+      detail,
+      relatedSectionTitle: related || undefined,
+    });
+  }
+  return findings.length ? findings : undefined;
+}
+
+/**
+ * Tolerant parse of the optional located gap → vector. Returns undefined unless BOTH
+ * the gap and the vector are present, so a partial object falls back to `nextPriority`
+ * rather than rendering a one-sided action. See gestalt-design-II L4.
+ */
+export function parseNextAction(raw: unknown): NextAction | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const rec = raw as Record<string, unknown>;
+  const gap = asTrimmed(rec.gap);
+  const vector = asTrimmed(rec.vector);
+  if (!gap || !vector) return undefined;
+  const location = asTrimmed(rec.location);
+  return { gap, vector, location: location || undefined };
 }
 
 /** Build a fallback spec from a legacy goals string, for backward compatibility. */

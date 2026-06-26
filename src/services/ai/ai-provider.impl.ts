@@ -25,7 +25,12 @@ import type {
   GistSpan,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
-import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
+import {
+  buildStructuralSurround,
+  formatStructuralSurround,
+  parseCommitmentFindings,
+  parseNextAction,
+} from '../../lib/diagnostic-helpers';
 import { safeJsonParse } from '../../lib/utils';
 import {
   buildAnalysisRequestText,
@@ -83,6 +88,7 @@ const MAX_OUTPUT_TOKENS = 16000;
 
 const VALID_MOVE_STATUSES = ['present', 'partial', 'missing', 'unclear'] as const;
 const VALID_READINESS = ['draft', 'developing', 'nearly-there', 'solid'];
+const VALID_MOVE_ADVANCE = ['productive', 'recapitulative'] as const;
 
 /**
  * Build the coach triage prompt from the document's structure overview. Shared
@@ -244,19 +250,26 @@ export class MultiProviderAIProvider implements AIProvider {
       moveId: mr.moveId || `move-${i}`,
       moveDescription: mr.moveDescription || input.spec.requiredMoves[i]?.description || '',
       status: VALID_MOVE_STATUSES.includes(mr.status) ? mr.status : 'unclear',
+      advance: VALID_MOVE_ADVANCE.includes(mr.advance) ? mr.advance : undefined,
       location: mr.location || undefined,
       diagnosis: mr.diagnosis || undefined,
       suggestedAction: mr.suggestedAction || undefined,
     }));
 
+    const nextAction = parseNextAction(json.nextAction);
+
     return {
       moveResults,
       coherenceNotes: json.coherenceNotes || [],
+      commitmentFindings: parseCommitmentFindings(json.commitmentFindings),
       overallReadiness: VALID_READINESS.includes(json.overallReadiness)
         ? json.overallReadiness
         : 'draft',
+      nextAction,
       nextPriority:
-        json.nextPriority || 'Review the diagnostic results and address the first missing move.',
+        json.nextPriority ||
+        nextAction?.vector ||
+        'Review the diagnostic results and address the first missing move.',
     };
   }
 

@@ -66,11 +66,22 @@ export interface SectionSpec {
 // --- DIAGNOSTIC SYSTEM ---
  
 export type MoveStatus = 'present' | 'partial' | 'missing' | 'unclear';
- 
+
+/**
+ * Whether a move *advances* the argument or merely *recapitulates* what the reader
+ * already has — Wertheimer's distinction (Syllogisms in Productive Thinking) between a
+ * step that "forges ahead" and one that is true yet "says nothing." Orthogonal to
+ * `status`: a move can be `present` and `recapitulative` at once (usually a cut
+ * opportunity). See docs/gestalt-design-II.md L1.
+ */
+export type MoveAdvance = 'productive' | 'recapitulative';
+
 export interface MoveResult {
   moveId: string;
   moveDescription: string;
   status: MoveStatus;
+  /** Does this move add something new, or only restate what is already secured? */
+  advance?: MoveAdvance;
   /** Where in the text it appears, or where it should appear */
   location?: string;
   /** What specifically is wrong or incomplete */
@@ -78,16 +89,52 @@ export interface MoveResult {
   /** A concrete next action — at the point of performance */
   suggestedAction?: string;
 }
- 
+
 export type ReadinessLevel = 'draft' | 'developing' | 'nearly-there' | 'solid';
- 
+
+/**
+ * A structural break between a section and its neighbours, judged against the part's
+ * live commitment-mesh (its incoming context vs. upstream outgoing commitments, and its
+ * outgoing commitments vs. downstream needs). See docs/gestalt-design-II.md L2.
+ * - `unmet-incoming`: this section relies on context the preceding section never laid.
+ * - `dangling-outgoing`: this section's commitment is undelivered, or unused downstream.
+ * - `center-of-gravity`: locally true, yet in its place pulls against what the whole needs.
+ */
+export type CommitmentFindingKind = 'unmet-incoming' | 'dangling-outgoing' | 'center-of-gravity';
+
+export interface CommitmentFinding {
+  kind: CommitmentFindingKind;
+  /** Concrete description of the break. */
+  detail: string;
+  /** The neighbouring section involved, when one applies. */
+  relatedSectionTitle?: string;
+}
+
+/**
+ * The next step framed as a located gap + the vector that fills it (Wertheimer's
+ * productive-thinking unit), in *demand* rhetoric — what the structure now requires,
+ * not a chore to summon will for. See docs/gestalt-design-II.md L4.
+ */
+export interface NextAction {
+  /** The specific structural trouble and where it sits. */
+  gap: string;
+  /** Optional pin into the text. */
+  location?: string;
+  /** The direction that makes the ends meet — the concrete move that resolves the gap. */
+  vector: string;
+}
+
 export interface DiagnosticResult {
   moveResults: MoveResult[];
   /** Cross-section coherence issues */
   coherenceNotes: string[];
+  /** Commitment-mesh / center-of-gravity breaks: this section judged as a PART. */
+  commitmentFindings?: CommitmentFinding[];
   /** Overall assessment — NOT a pass/fail */
   overallReadiness: ReadinessLevel;
-  /** Brief summary of the most important thing to work on next */
+  /** The next step as a located gap → vector (preferred when present). */
+  nextAction?: NextAction;
+  /** Brief summary of the most important thing to work on next (fallback for nextAction) */
   nextPriority: string;
 }
  
