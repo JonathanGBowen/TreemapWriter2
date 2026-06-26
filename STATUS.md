@@ -210,7 +210,11 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   char-slice). Several depend on stable section IDs (below) for clean part alignment.
   A prompt-by-prompt pass (`gestalt-design.md` §VI) records the recommended edits to
   the prompt *texts* themselves — the highest-value being to teach `diagnostic.md` and
-  `analysis.md` to consume the structural surround Tier 1 already injects. As of
+  `analysis.md` to consume the structural surround Tier 1 already injects. A later,
+  ADHD-focused **second reading** ([`docs/gestalt-design-II.md`](docs/gestalt-design-II.md))
+  adds new text-grounded levers (a present-but-empty-move check; a Beethoven
+  reconstruct-the-whole-from-a-part test; requiredness as the activation engine) and
+  re-sequences these items by leverage-per-effort, cheapest first. As of
   2026-06-18 the spec-derivation `contentPreview` slices (800 / 600) are now the *only*
   remaining input char-slices: every other arbitrary source/section cap was deleted in
   favour of the `checkContextFit` token-budget pre-flight (see
