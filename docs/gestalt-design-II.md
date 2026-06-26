@@ -18,9 +18,12 @@
 > (1938). *On Truth* (1934) is cross-referenced from the first essay (tF/fT,
 > *Umzentrierung*), not re-derived here.
 >
-> **A note on standing.** This is a *proposal* layer. It names exact code sites
-> for a later build, but nothing here is yet built. The cheapest items are
-> prompt-text edits; the rest carry schema changes flagged inline.
+> **A note on standing.** This was a *proposal* layer when written — it named exact
+> code sites for a later build. **Status (2026-06-26): most of it has since shipped**
+> (Phases 1–3 + essay III; see STATUS.md → "Gestalt roadmap" and the migration-log,
+> which are canonical). What remains deferred is the treemap *Tension Lens* / strain
+> whole-view (L3b) and boundary-correctness (first-essay item 7). Read the levers below
+> for the *why*; trust the code for the *what*.
 
 ---
 
@@ -263,16 +266,17 @@ and a push.
 
 The first essay's §VI is a prompt-by-prompt audit and stands. Two amendments.
 
-**Do the cheap thing first.** §VI's own highest-value note is that Tier 1
+**Do the cheap thing first.** ✓ *Shipped (Phase 1, 2026-06-26); the broader §VI
+prompt pass followed.* §VI's own highest-value note is that Tier 1
 *injects* a `STRUCTURAL SURROUND` block into `diagnostic.md` and `analysis.md`,
-but neither prompt's text ever **mentions** it — the data is present and unused.
+but at the time of writing neither prompt's text ever **mentioned** it — the data was present but unconsumed.
 Teaching those two prompts to *consume* the surround (judge the section against
 it; reconstruct the argument as a part of it) is a one-file edit each, no schema,
 and it activates machinery already built and already paying its token cost. This
 is the single best ratio of leverage to effort in the entire Gestalt program and
 should precede every schema-bearing item below.
 
-**Add the empty-move instruction (L1).** When `diagnostic.md` is edited, fold in
+**Add the empty-move instruction (L1).** ✓ *Shipped (Phase 1, 2026-06-26).* When `diagnostic.md` is edited, fold in
 the *Syllogisms* test as plain instruction: for each move, in addition to "is it
 present," ask "does it *advance* relative to the section's incoming context, or
 merely restate it in externally new form?" This delivers most of L1's value as
@@ -312,7 +316,11 @@ The first essay numbers its roadmap by topic (items 3–7). This is the
 recommended *build order*, ranked by leverage-per-effort for the user who has to
 both build and use the result:
 
-1. **§III prompt edits.** `diagnostic.md` + `analysis.md` consume the
+> **Status (2026-06-26):** items 1–4 below shipped (Phases 1–3 + essay III); item 5
+> (the treemap strain whole-view, L3b) is the one big remaining deferral. The sequence
+> is retained as the reasoning; STATUS.md → "Gestalt roadmap" is canonical for what shipped.
+
+1. **§III prompt edits.** ✓ *Shipped.* `diagnostic.md` + `analysis.md` consume the
    already-injected surround; `diagnostic.md` gains the L1 empty-move
    instruction. One file each, no schema, machinery already present. *Do first.*
 2. **L4 gap→vector rendering + "demand" rhetoric.** Mostly prompt text +
@@ -323,7 +331,8 @@ both build and use the result:
    section IDs** (`STATUS.md`) for clean part-alignment. (Item 3.)
 4. **L3(a) the Beethoven test.** A self-contained new AI flow; no UI dependency
    beyond a place to show the gap.
-5. **L3(b) the strain whole-view on the treemap.** Heaviest (a new visual
+5. **L3(b) the strain whole-view on the treemap.** ⌛ *Still deferred — the one big
+   remaining item (heatmap-accessibility verdict + stable IDs; see STATUS.md).* Heaviest (a new visual
    channel + derivation), highest ceiling; do last, once the L2 findings it
    visualizes exist. (Item 6.)
 

@@ -268,7 +268,13 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   dependency graph — structural rank, centrality, radix/telos, cycles, backward arcs — and
   drives a **recenter-on-node** field re-read across all three projections, a rank-encoded
   **RADIX** projection, a structural readout that demotes the cosmetic route-length/crossings
-  metric, and structural evidence fed into the recenter / Beethoven prompts. **Still
+  metric, and structural evidence fed into the recenter / Beethoven prompts. **§VI
+  prompt-by-prompt pass (2026-06-26):** the remaining first-essay §VI prompt edits landed —
+  the spec-generation cluster (`system-instruction`/`root-task`/`l1-task`/`sub-task`),
+  `refine-spec`, `coach`, `generate-personas`, `suggest-content`, `refactor-analysis`,
+  `dialogue`, plus light-touch `dependencies`/`compare-versions`/`generate-sprint-plan` —
+  each an additive, prompt-text-only part-in-whole framing (no schema/caller change);
+  `generate-revisions.md` (the Glass Box) is the one deliberate hold-out. **Still
   deferred:** the treemap *Tension Lens* + structural sizing (heatmap-accessibility + stable
   IDs); richer edge semantics (the structural "and / but / nevertheless" beyond
   prerequisite/reference — touches the domain types); and wiring the topology trouble-regions
