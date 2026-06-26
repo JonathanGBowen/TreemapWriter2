@@ -19,9 +19,9 @@ Bad moves (too vague to act on):
 - "Be rigorous"
 
 INCOMING CONTEXT: What concepts, claims, or distinctions from earlier in the document
-does this section depend on? (For the first section, this may be empty or refer to the reader's assumed background.)
+does this section depend on? Specify these so they INTERLOCK with the preceding section's outgoing commitments — name what this section needs an earlier one to have established, not a free-standing wish. (For the first section, this may be empty or refer to the reader's assumed background.)
 
-OUTGOING COMMITMENTS: What must this section establish that later sections will build on?
+OUTGOING COMMITMENTS: What must this section establish that later sections will build on? Make each one something a later section's incoming context can actually receive — the commitments a section makes and the needs the next one brings are two halves of ONE mesh, not independent lists.
 
 CRITICAL: You MUST include a key-value pair for EVERY single section ID passed to you. Do not drop or skip any sections, even if they are short.
 

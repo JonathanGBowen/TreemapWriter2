@@ -163,14 +163,22 @@ Each item: text-idea → change → code site.
 Tier 1 built the *machinery* of part-not-piece context. This section asks the next
 question: do the **prompt texts themselves** (`src/services/prompts/`, catalogued in
 `registry.ts`) ask the model to think in wholes and parts? Read against the functional
-work each does, several drift toward piecemeal / and-sum instructions. These are
-recommendations, not yet applied — prompts are content, so each is a one-file edit when
-its turn comes.
+work each does, several drift toward piecemeal / and-sum instructions.
 
-**The tightest gap.** Tier 1 now injects a `STRUCTURAL SURROUND` block into the
-diagnostic and analysis prompts — but `diagnostic.md` and `analysis.md` never mention
-it. The data is present and unused. Teaching those two prompts to *consume* the
-surround is the highest-value edit here; the rest range from medium to light touch.
+> **Status (2026-06-26): §VI is substantially shipped — read the rest for the *why*,
+> not as a to-do.** The two ⭐ edits (`diagnostic.md`, `analysis.md`) landed in Phase 1;
+> the remaining prompts below — the spec-generation cluster, `refine-spec`, `coach`,
+> `generate-personas`, `suggest-content`, `refactor-analysis`, `dialogue`, plus the
+> light-touch `dependencies` / `compare-versions` / `generate-sprint-plan` — landed in
+> the §VI prompt-by-prompt pass. Only `generate-revisions.md` (the Glass Box) is
+> deliberately deferred. For *what* shipped and *when*, STATUS.md → "Gestalt roadmap"
+> and the migration-log are canonical (trust the code, not this essay).
+
+**The tightest gap.** ✓ *Shipped (Phase 1, 2026-06-26).* Tier 1 now injects a
+`STRUCTURAL SURROUND` block into the diagnostic and analysis prompts — but at the time
+of writing `diagnostic.md` and `analysis.md` never mentioned it. The data was present
+but unconsumed. Teaching those two prompts to *consume* the surround was the
+highest-value edit here; the rest range from medium to light touch.
 
 Each entry: *functional work* → *Gestalt modification*.
 
@@ -191,7 +199,7 @@ Each entry: *functional work* → *Gestalt modification*.
   `parentGoals`) — not as a sharper isolated piece.
 
 ### Diagnostics & coaching
-- **`diagnostic.md`** ⭐ (core "is this section working?"). Three edits: (a) **consume the
+- **`diagnostic.md`** ⭐ (core "is this section working?"). ✓ *Shipped (Phase 1, 2026-06-26):* all three edits below landed (the schema parts too — `MoveResult.advance`, `commitmentFindings`, gap→vector `nextAction`). Three edits: (a) **consume the
   injected `STRUCTURAL SURROUND` block** — judge the section against it; (b) add a
   **tF/fT structural-truth + center-of-gravity check** (locally true yet false as a part /
   displaced emphasis) and an explicit **commitment-mesh check** (incoming met upstream?
@@ -217,7 +225,7 @@ Each entry: *functional work* → *Gestalt modification*.
   for the diagnostic, not an edge here.
 
 ### Analysis & dialogue
-- **`analysis.md`** ⭐ (argument reconstruction). **Consume the surround; reconstruct the
+- **`analysis.md`** ⭐ (argument reconstruction). ✓ *Shipped (Phase 1, 2026-06-26).* **Consume the surround; reconstruct the
   argument as a part** — how the thesis depends on incoming context and what it commits
   downstream. Keep the "definition from the provided text" guard against hallucination,
   but allow a concept's **functional role in the whole** to inform its definition (B as
@@ -230,7 +238,7 @@ Each entry: *functional work* → *Gestalt modification*.
   inner connections — the A- vs B-reaction idiom.
 
 ### Revision engine — editable-only restraint
-- **`generate-revisions.md`** ⭐ (editable; the Glass Box). Its "atomic, line-by-line,
+- **`generate-revisions.md`** ⭐ (editable; the Glass Box). ⌛ *Deferred — deliberately not in the 2026-06-26 §VI pass; auditability-critical, so it earns a separate careful pass.* Its "atomic, line-by-line,
   exhaustive" ethos *is* the and-sum piecemeal method Wertheimer names — yet atomicity is
   a real value here, the price of auditability (the glass box). The Gestalt fix is not to
   abandon it but to add a **whole-serving guard**: each proposal's rationale should note

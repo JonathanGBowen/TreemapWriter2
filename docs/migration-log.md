@@ -4297,6 +4297,68 @@ Settings shows the 7 models (no Pro) + the Fallback section; a forced `RESOURCE_
 per day` on the top model transparently completes on the next rung and shows a cooldown
 "until 3:00 AM ET"; a 503 / "high volume" instead retries and adds no cooldown.
 
+---
+
+## 2026-06-26 — Gestalt §VI prompt-by-prompt pass (the non-diagnostic/analysis prompts)
+
+**Why.** An evaluation — *are the structured analyses and gists produced piecemeal, or
+from the whole, untruncated source?* — audited the whole AI layer and answered **whole
+everywhere** except the known spec-derivation `contentPreview` slices (800/600, roadmap
+item 7). It also surfaced a documentation hazard: the first essay's §VI prompt-by-prompt
+pass had only ever been *applied* to `diagnostic.md` / `analysis.md` (Phase 1); the rest
+of §VI was written 2026-06-17 but never landed in the prompt text — yet both Gestalt
+essays still read those edits as live "do first" to-dos, which sent an agent to re-do
+shipped work. This pass applies the remaining §VI edits and reconciles the stale essays.
+
+**What changed.** All prompt edits are **additive, prompt-text only** — no schema, no
+caller change — and preserve each prompt's "return ONLY JSON" / output contract.
+- **Spec generation (`src/services/prompts/`).** `system-instruction.md` — a section's
+  identity comes from its **place in the whole**; `requiredMoves` are one **line of
+  development**, not an and-sum checklist (stated in the shared base, so it propagates to
+  root/l1/sub). `root-task.md` — the **gap / S1→S2 structural-trouble** lens. `l1-task.md`
+  + `sub-task.md` — **commitment-mesh interlock** (a part's incoming meshes with a
+  neighbour's outgoing; two halves of one mesh, not independent lists).
+- **Coaching / generation.** `refine-spec.md` — refine goals **as a part**, using the
+  `parentGoals` the caller already passes (the same "data present, prompt blind" pattern
+  Phase 1 fixed for diagnostic/analysis). `coach.md` — re-present the whole first; triage
+  by the biggest **structural trouble → its vector**; permit recentering / question-the-goal.
+  `generate-personas.md` — three personas as different **centerings** of the same whole,
+  grounded in the argument not surface tone. `suggest-content.md` — serve the section's
+  **function-in-whole** (via `parentGoals`); avoid B-reaction boilerplate.
+- **Analysis / dialogue.** `refactor-analysis.md` — **recenter** around what the dialogue
+  revealed, not patch piecemeal. `dialogue.md` — probe **structural grasp** (part-as-piece
+  / one-sided centering; the A- vs B-reaction idiom).
+- **Light touch (already strongly Gestalt).** `dependencies.md` — a true prerequisite =
+  the part cannot stand without the other. `compare-versions.md` — name the **center-of-
+  gravity shift** in `conceptualDrift`; distinguish part- vs piece-improvements (`tF`).
+  `generate-sprint-plan.md` — orient the `draft` move on the located **gap → vector**.
+- **Deliberate hold-outs.** `generate-revisions.md` (the editable Glass-Box system prompt)
+  — §VI wants an additive whole-serving guard, but it is auditability-critical and under a
+  "do not soften" ethos, so it earns a separate careful pass. The **locked** revision
+  internals (`revision-task.md`, `revision-assembly-*.md`, `suggest-directives.md`,
+  `citations-*.md`) are untouched by design. Honoring true `incomingContext` /
+  `outgoingCommitments` in `suggest-content.md` needs a caller change — out of this
+  prompt-only scope.
+- **Docs reconciled (stale essays).** `gestalt-design.md` §VI and `gestalt-design-II.md`
+  §III/§V carried roadmap *ordering* ("not yet applied", "do first") that had gone stale —
+  STATUS.md (the canonical "what shipped") was already correct. Added dated status pointers
+  marking the shipped items ✓ and the one deferral ⌛, redirecting to STATUS.md / this log;
+  the **reasoning is untouched**. `gestalt-design-III.md` already a "what shipped" doc — no
+  change. `STATUS.md` Gestalt bullet notes this pass.
+
+**Behavior note.** `promptsConfig` is stored **sparse**, so editing a default `.md`
+changes behavior for any prompt the user has **not** overridden and **preserves** a
+customized prompt. No data implications.
+
+**Verify.** `npm test` (504 pass / 69 files — no test pins prompt content),
+`npm run typecheck`, `npm run lint` (0 errors; pre-existing warnings only), `npm run build`
+all green. In-app: the Test Runner prompt preview (diagnostic on a mid-document subsection)
+and the Generate-Specs workspace preview render the new part-in-whole language; analysis +
+diagnostic + spec runs still parse (schemas unchanged).
+
+**Rollback.** `git revert` — every change is additive prompt text + doc annotations; no
+schema, state, or interface change. A user's overridden prompts are unaffected either way.
+
 **Rollback.** `git revert`. Persisted prefs keys (`treemap_writer_model_fallback`,
 `treemap_writer_model_cooldowns`) are ignored by the reverted code; the catalog reverts to
 its seed, and any saved project per-call overrides naming the old Pro id surface as

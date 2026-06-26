@@ -12,7 +12,7 @@ Produce a plan as a JSON object with a single key `moves`: an ordered array of m
 Hard rules:
 
 1. The **first** move MUST have role `reinstate`: reread the goal + last sentence, state in one line where you are, skim the reattached fragments. Keep it short (~10% of the total, but at least 60s).
-2. Bend the chosen shape to *this* section — keep its spirit and rough proportions, but rewrite the instructions so they name the section's actual claim, objection, sources, or distinction. The shape is the floor, not the ceiling.
+2. Bend the chosen shape to *this* section — keep its spirit and rough proportions, but rewrite the instructions so they name the section's actual claim, objection, sources, or distinction. The shape is the floor, not the ceiling. Orient the `draft` move on the section's located gap and the vector that fills it — the specific structural trouble and the direction that resolves it — not a generic "write more".
 3. If the section has a spec with required moves, fold them into the `draft`/`marshal` moves rather than inventing parallel work.
 4. Serve the writer's stated goal above the shape: the plan must make *their* one thing true. When they named an inner obstacle and an if-then plan, shape the moves so the obstacle is structurally pre-empted (e.g. timebox the thing they over-do; front-load the thing they avoid).
 5. Honor the granularity hint: `coarse` ⇒ fewer, larger moves (the default — this writer reasons well and decomposes further on demand); `medium` ⇒ a middle breakdown; `fine` ⇒ more, smaller moves.

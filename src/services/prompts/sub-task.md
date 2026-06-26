@@ -14,9 +14,9 @@ moves — these should be close to actionable writing tasks.
 For a subsection, "Reconstruct Koffka's argument from premises P1-P3 to conclusion C"
 is better than "Discuss Koffka's argument."
 
-INCOMING CONTEXT: What does this subsection receive from its parent or siblings?
+INCOMING CONTEXT: What does this subsection receive from its parent or its preceding siblings? Name it so it INTERLOCKS with what an earlier sibling actually commits to establish — the incoming needs and outgoing commitments across siblings are two halves of one mesh, not independent lists.
 
-OUTGOING COMMITMENTS: What must it establish for sibling subsections or the parent's argument?
+OUTGOING COMMITMENTS: What must it establish for the following sibling subsections or the parent's argument? Make each one something a later sibling's incoming context can receive.
 
 CRITICAL: You MUST include a key-value pair for EVERY single section ID passed to you. Do not drop or skip any sections.
 
