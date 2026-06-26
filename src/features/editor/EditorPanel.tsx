@@ -5,6 +5,7 @@ import { Section } from "../../types";
 import { useStore } from "../../store";
 import { isTauri } from "../../services/tauri-environment";
 import { useCurrentSection } from "../tests-panel/use-current-section";
+import { Pip } from "../shared/Pip";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -294,7 +295,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
            {/* Ambient save status — answers "is my work safe?" passively (autosave). */}
            {savedAgoLabel && (
               <div className="flex items-center gap-1.5 mr-1 text-ui-meta font-mono uppercase tracking-[0.12em] text-hld-muted-text" title="Autosaved continuously">
-                <span className="w-[5px] h-[5px] rounded-full bg-hld-green shadow-[0_0_6px_var(--tw-colors-hld-green)]" />
+                <Pip status="green" size="sm" />
                 saved · {savedAgoLabel}
               </div>
            )}

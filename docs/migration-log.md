@@ -3916,3 +3916,41 @@ class are additive.
 **Tests.** CSS + a presentational prop — visual; no covered lines added. (The
 one-lit-per-surface audit found no side-by-side double-lit; formal enforcement is
 deferred to the Tier-3 lint rule.)
+
+### PR 4 — one status encoder (saved-dot → pip · readiness helper)
+
+**What changed.** The audit found six competing status encoders; the real
+consolidation targets (the domain pip-maps are legitimately distinct) were a lone
+*circle* and a bespoke 4-diamond meter.
+- **Saved-dot** (`features/editor/EditorPanel.tsx`): the lone `rounded-full` circle
+  became a square `<Pip status="green" size="sm" />` — honouring the square identity,
+  and flat at rest (its old glow used the undefined v3 `--tw-colors-*` var anyway).
+- **Readiness meter** (`features/tests-panel/PanelHeader.tsx`): the hand-rolled
+  diamond row now renders through a new pure helper
+  `summarizeReadiness(level) → { filled, total, pip, label, diagnosed }`
+  (`tests-panel/diagnostic-config.ts`), with the filled steps drawn by the canonical
+  `Pip` (no rest glow) and a `role="img"` + `aria-label="Readiness: …"` so colour is
+  never the only channel.
+- **Topo Inspector** (`features/modals/topo/Inspector.tsx`): its readiness *bars*
+  (a topo-local variant, kept) lost their always-on `box-shadow` (glow = alive).
+- `StatusBadge` (the word labels in `EditorPanel.tsx`) left as-is — already
+  token-coloured and good for recognition.
+
+**Verify.** `npm run typecheck` · `npx vitest run` (465 — the 3 new
+`summarizeReadiness` tests) · `npm run build` green. Manually: no circular status
+dot and no glowing diamonds remain; the saved indicator is a square green pip.
+
+**Rollback.** `git revert` the commit. The helper + test drop cleanly; the inline
+meter/dot are restored.
+
+**Tests.** `summarizeReadiness` is pure and unit-tested
+(`tests-panel/__tests__/diagnostic-config.test.ts`, 3 tests) — **ratchets coverage
+up** (the one Tier-1 change with real test value).
+
+---
+
+**Tier 1 complete** (PRs 1–4 + 2b). Delivered the highest felt-improvement at lowest
+risk: a calm canvas at rest, one visible focus ring across every interactive, a
+rationalised palette, and a single status vocabulary. Tier 2 (hex→token migration ·
+unify loading/error/empty · a11y round 2 · type/spacing scale) and Tier 3 (motion ·
+shortcuts · first-run labels · lint guardrail) follow.

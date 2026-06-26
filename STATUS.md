@@ -208,8 +208,10 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   PR 3 — denoise the canvas (body washes + dot-grid moved to an opt-in
   `.hld-atmosphere`, off by default; glow = alive only — `.hld-pip-*` no longer glows
   at rest, a `live` prop + `--pip-hue` drive the glow; scanline removed from the
-  editor + sidebar). **Next, in order:** PR 4 one status
-  encoder (circular saved-dot → square pip; `summarizeReadiness` helper). Then Tier
+  editor + sidebar); PR 4 — one status encoder (circular saved-dot → square `Pip`;
+  the 4-diamond meter routed through a pure, unit-tested `summarizeReadiness` helper
+  + the canonical `Pip`, with an `aria-label` text equivalent; the topo Inspector
+  readiness bars denoised). **Tier 1 is complete** (PRs 1–4 + 2b). **Next:** Tier
   2 (hex→token by feature folder · unify loading/error/empty · a11y round 2:
   `--hit-target` 24px, SectionRow keyboard pattern, treemap `sr-only` alternative,
   pip text equivalents · `--spacing-*` scale + snap off-grid + editorTheme rem→px)
