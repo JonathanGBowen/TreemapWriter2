@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { Treemap } from "../treemap/Treemap";
+import { StrainRegister } from "../strain/StrainRegister";
 import { useStore } from "../../store";
 import { isTauri } from "../../services/tauri-environment";
 import { Pip } from "../shared/Pip";
@@ -101,6 +102,7 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
           <SectionRow key={sec.id} section={sec} selected={selectedId === sec.id} status={testSuite[sec.id]?.status || 'idle'} onSelect={onSelect} />
         ))}
       </div>
+      <StrainRegister onSelect={onSelect} />
     </div>
   );
 }

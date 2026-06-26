@@ -22,6 +22,8 @@ const config: PromptsConfig = {
   generateRevisionsPrompt: '',
   generateReverseOutlinePrompt: '',
   regenerateParagraphPrompt: '',
+  reconstructWholePrompt: '',
+  recenterPrompt: '',
   gistAnalysisPrompt: '',
   gistCompositionPrompt: '',
   generateSprintPlanPrompt: '',

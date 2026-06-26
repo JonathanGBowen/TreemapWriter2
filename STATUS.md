@@ -199,22 +199,25 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   move becomes active*, not as a skippable pre-gate). F2 is the highest-leverage
   and closes a genuine integrity hazard.
 
-- **Gestalt roadmap (items 3–7).** Tier 1 shipped 2026-06-17 — part-not-piece
-  context: prefix-truncation killed in spec generation, and a *structural surround*
-  (a section's live part-in-whole relations) now threads into the diagnostic and
-  analysis prompts. The design and the remaining levers live in
-  [`docs/gestalt-design.md`](docs/gestalt-design.md): structural-truth (tF/fT) +
-  commitment-mesh diagnostic; gap→vector next-actions; a recentering /
-  question-the-goal operation; an argument whole-view on the treemap; and boundary
-  correctness + B-reaction guardrails (which also retires the last `contentPreview`
-  char-slice). Several depend on stable section IDs (below) for clean part alignment.
-  A prompt-by-prompt pass (`gestalt-design.md` §VI) records the recommended edits to
-  the prompt *texts* themselves — the highest-value being to teach `diagnostic.md` and
-  `analysis.md` to consume the structural surround Tier 1 already injects. As of
-  2026-06-18 the spec-derivation `contentPreview` slices (800 / 600) are now the *only*
-  remaining input char-slices: every other arbitrary source/section cap was deleted in
-  favour of the `checkContextFit` token-budget pre-flight (see
-  [`docs/migration-log.md`](docs/migration-log.md)).
+- **Gestalt roadmap — substantially shipped 2026-06-26 (second reading + Phases 1–3).**
+  Tier 1 shipped 2026-06-17 (part-not-piece context: prefix-truncation killed in spec
+  generation; a *structural surround* threaded into the diagnostic/analysis prompts). The
+  ADHD-focused **second reading** ([`docs/gestalt-design-II.md`](docs/gestalt-design-II.md))
+  then drove three implementation waves (see [`docs/migration-log.md`](docs/migration-log.md)):
+  **Phase 1** — diagnostic deepening: `diagnostic.md` / `analysis.md` now *consume* the
+  injected surround, plus an L1 present-but-empty move axis (`MoveResult.advance`), an L2
+  `commitmentFindings` set, and an L4 gap→vector `nextAction`. **Phase 2** — two new AI
+  flows surfaced in the tests panel: the Beethoven test (`reconstructWhole`) and the
+  recentering / question-the-goal move (`proposeRecenterings`). **Phase 3** — the
+  deterministic `checkCommitmentMesh` + the keyboard/SR-accessible **Structural-Tension
+  Register** (register-only, after a 5-lens + adversarial design study killed the per-tile
+  treemap heatmap on accessibility grounds). **Deferred** (documented in
+  `gestalt-design-II.md`): the visual *Tension Lens* on the treemap and directional vector
+  connectors (gated on stable section IDs / a Plotly between-tile primitive), and
+  boundary-correctness + B-reaction guardrails (`gestalt-design.md` item 7). The register is
+  the accessible spine those visual layers build onto. The spec-derivation `contentPreview`
+  slices (800 / 600) remain the only input char-slices (every other arbitrary cap was
+  deleted for the `checkContextFit` token-budget pre-flight, 2026-06-18).
 - ~~**Streaming AI in a sidebar coach panel.**~~ Done 2026-06-20 (see
   [`docs/migration-log.md`](docs/migration-log.md)). `streamCoachAdvice` now
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and

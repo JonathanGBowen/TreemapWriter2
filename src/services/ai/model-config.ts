@@ -56,6 +56,9 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   // Collaborative per-level spec development — a conversational reasoning turn,
   // so it mirrors continueDialogue's pro-tier budget.
   developSpecLevel: g('gemini-3.1-pro-preview', 8192),
+  // Gestalt whole/part ops — focused reasoning over one section; pro-tier, bounded.
+  reconstructWhole: g('gemini-3.1-pro-preview', 4000),
+  proposeRecenterings: g('gemini-3.1-pro-preview', 4000),
 };
 
 /**

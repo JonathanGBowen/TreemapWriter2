@@ -29,6 +29,8 @@ import dialoguePrompt from './dialogue.md?raw';
 import generateRevisionsPrompt from './generate-revisions.md?raw';
 import generateReverseOutlinePrompt from './generate-reverse-outline.md?raw';
 import regenerateParagraphPrompt from './regenerate-paragraph.md?raw';
+import reconstructWholePrompt from './reconstruct-whole.md?raw';
+import recenterPrompt from './recenter.md?raw';
 import gistAnalysisPrompt from './gist-analysis.md?raw';
 import gistCompositionPrompt from './gist-composition.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
@@ -278,6 +280,28 @@ export const PROMPT_REGISTRY = [
       'Parallel Editor: analogical, minimal-edit rewrite of one paragraph to realize an edited reverse-outline bullet (voice/POV preserving; also composes an inserted paragraph in-voice).',
     category: 'revision-engine',
     flow: 'regenerateParagraph',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'reconstructWholePrompt',
+    defaultText: strip(reconstructWholePrompt),
+    label: 'Whole From Part',
+    description:
+      "Gestalt coherence probe (the \"Beethoven test\"): reconstruct the document's overarching claim from one section read alone, then judge how far the part has drifted from the whole.",
+    category: 'analysis-dialogue',
+    flow: 'reconstructWhole',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'recenterPrompt',
+    defaultText: strip(recenterPrompt),
+    label: 'Recenter',
+    description:
+      "The unstick move (Umzentrierung): proposes alternative structural centerings of a section and asks whether the section's goal itself is right for the whole.",
+    category: 'diagnostics-coaching',
+    flow: 'proposeRecenterings',
     editability: 'editable',
     variables: [],
   },

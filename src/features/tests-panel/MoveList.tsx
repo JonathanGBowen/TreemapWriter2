@@ -49,6 +49,12 @@ function MoveRow({
       </div>
       {expanded && diagResult && (
         <div className="pl-[21px] pb-[12px] flex flex-col gap-[8px]">
+          {diagResult.advance === 'recapitulative' && (
+            <div className="flex items-baseline gap-[6px] text-hld-yellow">
+              <span className="font-mono text-[9px] tracking-[0.12em] uppercase shrink-0">recap</span>
+              <span className="text-[12px] leading-relaxed font-sans text-hld-muted-text-2">present, but it restates what the reader already has — consider cutting or sharpening to add something new.</span>
+            </div>
+          )}
           {diagResult.location && (
             <div className="text-[13px] leading-relaxed font-sans text-hld-muted-text-2">
               <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text mr-[6px]">where</span>

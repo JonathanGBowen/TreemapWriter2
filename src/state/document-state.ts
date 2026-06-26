@@ -3,6 +3,7 @@ import type {
   AnalysisVersion,
   Dependency,
   DialogueMessage,
+  Recenterings,
   ReverseOutlineDoc,
   Section,
   SectionSpec,
@@ -10,6 +11,7 @@ import type {
   StoredGist,
   TestSuite,
   TestSuiteEntry,
+  WholeFromPart,
 } from '../types';
 import type { AppState } from '.';
 import {
@@ -134,6 +136,14 @@ export interface DocumentStateSlice {
   /** Re-aim the dialogue at a new context; existing messages are preserved. */
   startDialogue: (sectionId: string, context: string) => void;
   clearDialogue: (sectionId: string) => void;
+
+  /**
+   * Gestalt whole/part results (Phase 2). Ephemeral cache — like `lastDiagnostic`,
+   * NOT persisted to the YAML sidecar (the Rust `PersistedTestEntry` whitelist
+   * drops them). No-op if the section isn't present in the suite.
+   */
+  setWholeFromPart: (sectionId: string, result: WholeFromPart) => void;
+  setRecenterings: (sectionId: string, result: Recenterings) => void;
 }
 
 export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set, get) => ({
@@ -296,4 +306,26 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
 
   clearDialogue: (sectionId) =>
     set((state) => ({ testSuite: withClearedDialogue(state.testSuite, sectionId) })),
+
+  setWholeFromPart: (sectionId, result) =>
+    set((state) => {
+      if (!state.testSuite[sectionId]) return state;
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...state.testSuite[sectionId], wholeFromPart: result },
+        },
+      };
+    }),
+
+  setRecenterings: (sectionId, result) =>
+    set((state) => {
+      if (!state.testSuite[sectionId]) return state;
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...state.testSuite[sectionId], recenterings: result },
+        },
+      };
+    }),
 });

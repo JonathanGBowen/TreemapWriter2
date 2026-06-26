@@ -42,7 +42,9 @@ export type AICallKind =
   | 'decomposeSprintStep'
   | 'compareVersions'
   | 'analyzeAtmosphere'
-  | 'developSpecLevel';
+  | 'developSpecLevel'
+  | 'reconstructWhole'
+  | 'proposeRecenterings';
 
 /** Every call kind, in display order. The single source of truth for "what is configurable". */
 export const AI_CALL_KINDS: AICallKind[] = [
@@ -71,6 +73,8 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'compareVersions',
   'analyzeAtmosphere',
   'developSpecLevel',
+  'reconstructWhole',
+  'proposeRecenterings',
 ];
 
 /** Short, glyph-light labels for the per-call override UI. No sentences (HLD). */
@@ -100,6 +104,8 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   compareVersions: 'Compare versions',
   analyzeAtmosphere: 'Atmosphere',
   developSpecLevel: 'Develop spec (live)',
+  reconstructWhole: 'Whole from part',
+  proposeRecenterings: 'Recenter',
 };
 
 /**

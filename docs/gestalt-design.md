@@ -6,7 +6,9 @@
 > architecture (the *how*) lives in [`../AGENTS.md`](../AGENTS.md); the founding
 > principles in [`VISION.md`](VISION.md); the backlog in
 > [`../STATUS.md`](../STATUS.md). When this essay and the code disagree, trust the
-> code.
+> code. A later, ADHD-focused **second reading** — which adds the levers a fresh
+> direct encounter surfaces and re-sequences the roadmap below — lives in
+> [`gestalt-design-II.md`](gestalt-design-II.md).
 >
 > **Provenance.** Drawn directly from five Wertheimer sources — *On Truth* (1934),
 > *Some Problems in the Theory of Ethics* (1935), *On the Concept of Democracy*

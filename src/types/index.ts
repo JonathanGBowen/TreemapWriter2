@@ -66,11 +66,22 @@ export interface SectionSpec {
 // --- DIAGNOSTIC SYSTEM ---
  
 export type MoveStatus = 'present' | 'partial' | 'missing' | 'unclear';
- 
+
+/**
+ * Whether a move *advances* the argument or merely *recapitulates* what the reader
+ * already has — Wertheimer's distinction (Syllogisms in Productive Thinking) between a
+ * step that "forges ahead" and one that is true yet "says nothing." Orthogonal to
+ * `status`: a move can be `present` and `recapitulative` at once (usually a cut
+ * opportunity). See docs/gestalt-design-II.md L1.
+ */
+export type MoveAdvance = 'productive' | 'recapitulative';
+
 export interface MoveResult {
   moveId: string;
   moveDescription: string;
   status: MoveStatus;
+  /** Does this move add something new, or only restate what is already secured? */
+  advance?: MoveAdvance;
   /** Where in the text it appears, or where it should appear */
   location?: string;
   /** What specifically is wrong or incomplete */
@@ -78,19 +89,104 @@ export interface MoveResult {
   /** A concrete next action — at the point of performance */
   suggestedAction?: string;
 }
- 
+
 export type ReadinessLevel = 'draft' | 'developing' | 'nearly-there' | 'solid';
- 
+
+/**
+ * A structural break between a section and its neighbours, judged against the part's
+ * live commitment-mesh (its incoming context vs. upstream outgoing commitments, and its
+ * outgoing commitments vs. downstream needs). See docs/gestalt-design-II.md L2.
+ * - `unmet-incoming`: this section relies on context the preceding section never laid.
+ * - `dangling-outgoing`: this section's commitment is undelivered, or unused downstream.
+ * - `center-of-gravity`: locally true, yet in its place pulls against what the whole needs.
+ */
+export type CommitmentFindingKind = 'unmet-incoming' | 'dangling-outgoing' | 'center-of-gravity';
+
+export interface CommitmentFinding {
+  kind: CommitmentFindingKind;
+  /** Concrete description of the break. */
+  detail: string;
+  /** The neighbouring section involved, when one applies. */
+  relatedSectionTitle?: string;
+}
+
+/**
+ * The next step framed as a located gap + the vector that fills it (Wertheimer's
+ * productive-thinking unit), in *demand* rhetoric — what the structure now requires,
+ * not a chore to summon will for. See docs/gestalt-design-II.md L4.
+ */
+export interface NextAction {
+  /** The specific structural trouble and where it sits. */
+  gap: string;
+  /** Optional pin into the text. */
+  location?: string;
+  /** The direction that makes the ends meet — the concrete move that resolves the gap. */
+  vector: string;
+}
+
 export interface DiagnosticResult {
   moveResults: MoveResult[];
   /** Cross-section coherence issues */
   coherenceNotes: string[];
+  /** Commitment-mesh / center-of-gravity breaks: this section judged as a PART. */
+  commitmentFindings?: CommitmentFinding[];
   /** Overall assessment — NOT a pass/fail */
   overallReadiness: ReadinessLevel;
-  /** Brief summary of the most important thing to work on next */
+  /** The next step as a located gap → vector (preferred when present). */
+  nextAction?: NextAction;
+  /** Brief summary of the most important thing to work on next (fallback for nextAction) */
   nextPriority: string;
 }
- 
+
+// --- GESTALT WHOLE/PART OPERATIONS (Phase 2) ---
+
+/**
+ * The "Beethoven test" (Gestalt Theory, 1938: "from a part of the whole we could
+ * grasp the inner structure of the whole"). The document's main claim as
+ * reconstructed from ONE section's prose alone, and how that reconstruction lines
+ * up with the document's actual claim. A large divergence means the part has
+ * drifted from the whole. See docs/gestalt-design-II.md L3(a).
+ */
+export interface WholeFromPartResult {
+  /** The document thesis as best reconstructed from this section alone. */
+  reconstructedClaim: string;
+  /** How the reconstruction matches the actual document claim (or 'no-baseline'). */
+  alignment: 'aligned' | 'partial' | 'adrift' | 'no-baseline';
+  /** Where/how the part diverges from the whole (when not aligned). */
+  divergence?: string;
+  /** Optional short reading. */
+  note?: string;
+}
+
+/** Stored Beethoven-test result: the AI output plus staleness metadata. */
+export type WholeFromPart = WholeFromPartResult & { timestamp: number; inputHash: string };
+
+/**
+ * One alternative structural centering of a section (Umzentrierung) — a different
+ * point the section's parts could organize around. See docs/gestalt-design-II.md L4.
+ */
+export interface RecenteringOption {
+  /** The proposed new center of gravity. */
+  center: string;
+  /** Why this centering may serve the whole better. */
+  rationale: string;
+  /** What changes in the section's parts under this centering. */
+  whatChanges: string;
+}
+
+/**
+ * The recentering / "question-the-goal" move — the unstick operation for the
+ * narrowed-field stall ("to stick to set goals is often sheer thoughtlessness").
+ */
+export interface RecenteringsResult {
+  options: RecenteringOption[];
+  /** The deepest beat: is this section's goal itself right for the whole? */
+  questionTheGoal: string;
+}
+
+/** Stored recentering result: the AI output plus staleness metadata. */
+export type Recenterings = RecenteringsResult & { timestamp: number; inputHash: string };
+
 // --- SECTION ANALYSIS SYSTEM ---
 
 /**
@@ -578,6 +674,10 @@ export interface TestSuiteEntry {
   };
   /** Per-section structured analysis + Socratic dialogue (Analysis/Dialogue tabs). */
   analysis?: SectionAnalysisState;
+  /** Ephemeral: the Beethoven test (reconstruct the whole from this part). Not persisted. */
+  wholeFromPart?: WholeFromPart;
+  /** Ephemeral: recentering / question-the-goal proposals. Not persisted. */
+  recenterings?: Recenterings;
 }
  
 export interface TestSuite {

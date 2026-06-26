@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Section, SectionSpec, SectionFunction, TestSuiteEntry } from "../../types";
+import { Section, SectionSpec, SectionFunction, TestSuiteEntry, CommitmentFinding, NextAction } from "../../types";
 import { SECTION_FUNCTIONS } from "../../lib/constants";
 import { useStore } from "../../state";
 import { useCurrentSection } from "./use-current-section";
@@ -7,6 +7,7 @@ import { Pip } from "../shared/Pip";
 import { Disclosure } from "../shared/Disclosure";
 import { PanelHeader } from "./PanelHeader";
 import { MoveList } from "./MoveList";
+import { GestaltActions } from "./GestaltActions";
 import { DependencyChips } from "./DependencyChips";
 import { PanelFooter } from "./PanelFooter";
 import { EmptyState } from "./EmptyState";
@@ -52,14 +53,63 @@ function ClaimDisclosure({ spec, onClaim, onFunction }: { spec: SectionSpec; onC
 }
 
 /** The "do this next" hero — a calm cyan callout (tint + border only; no brackets
- *  or glow — those are reserved for the one lit action). Body text is monochrome. */
-function NextCard({ text }: { text: string }) {
+ *  or glow — those are reserved for the one lit action). Body text is monochrome.
+ *  When the diagnostic returns a located gap → vector, it shows the structural
+ *  trouble and the direction that fills it (the structure's demand, not a chore);
+ *  otherwise it falls back to the one-line nextPriority. */
+function NextCard({ nextAction, fallback }: { nextAction?: NextAction; fallback: string }) {
   return (
     <div className="px-[15px] py-[14px] bg-[rgba(0,232,245,0.05)] border border-hld-cyan/30">
       <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-hld-cyan mb-[7px] flex items-center gap-[7px]">
         <Pip status="cyan" /> Do this next
       </div>
-      <div className="text-[13px] leading-relaxed font-sans text-hld-text">{text}</div>
+      {nextAction ? (
+        <div className="flex flex-col gap-[7px]">
+          <div className="text-[13px] leading-relaxed font-sans text-hld-text">{nextAction.gap}</div>
+          <div className="flex items-baseline gap-[7px]">
+            <span className="font-mono text-hld-cyan text-[12px] shrink-0 mt-[1px]">→</span>
+            <span className="text-[13px] leading-relaxed font-sans text-hld-text">{nextAction.vector}</span>
+          </div>
+          {nextAction.location && (
+            <div className="text-[12px] leading-relaxed font-sans text-hld-muted-text-2">
+              <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text mr-[6px]">where</span>
+              {nextAction.location}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-[13px] leading-relaxed font-sans text-hld-text">{fallback}</div>
+      )}
+    </div>
+  );
+}
+
+const COMMITMENT_KIND_LABEL: Record<CommitmentFinding['kind'], string> = {
+  'unmet-incoming': 'unmet incoming',
+  'dangling-outgoing': 'dangling outgoing',
+  'center-of-gravity': 'center of gravity',
+};
+
+/** Commitment-mesh breaks — this section judged as a PART in its whole. Shown
+ *  (unfolded) only when the diagnostic found a real break; absent otherwise. */
+function CommitmentMeshCard({ findings }: { findings: CommitmentFinding[] }) {
+  if (findings.length === 0) return null;
+  return (
+    <div className="px-[15px] py-[13px] bg-[rgba(255,16,96,0.04)] border border-hld-magenta/25">
+      <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-hld-magenta mb-[9px] flex items-center gap-[7px]">
+        <Pip status="magenta" /> Part in whole
+      </div>
+      <div className="flex flex-col gap-[9px]">
+        {findings.map((f, i) => (
+          <div key={i} className="pl-[9px] border-l border-hld-magenta/30">
+            <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text mb-[3px]">
+              {COMMITMENT_KIND_LABEL[f.kind]}
+              {f.relatedSectionTitle && <span className="text-hld-muted-text-2 normal-case tracking-normal"> · {f.relatedSectionTitle}</span>}
+            </div>
+            <div className="text-[13px] leading-relaxed font-sans text-hld-text">{f.detail}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -127,8 +177,10 @@ function SpecBody({ id, spec, entry, flatSections }: { id: string; spec: Section
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-[16px] py-[16px] flex flex-col gap-[18px]">
-      {diagnostic && <NextCard text={diagnostic.nextPriority} />}
+      {diagnostic && <NextCard nextAction={diagnostic.nextAction} fallback={diagnostic.nextPriority} />}
+      {diagnostic?.commitmentFindings && <CommitmentMeshCard findings={diagnostic.commitmentFindings} />}
       <MoveList spec={spec} diagnostic={diagnostic} onEdit={editMove} onAdd={addMove} onRemove={removeMove} onRefine={() => setShowSpecModal(true)} />
+      <GestaltActions />
       <ClaimDisclosure spec={spec} onClaim={setClaim} onFunction={setFunction} />
       <DependencyChips sectionId={id} dependencies={entry.dependencies || []} flatSections={flatSections} testSuite={testSuite} onUpdate={(deps) => updateDependencies(id, deps)} />
       <ContextDisclosure spec={spec} coherenceNotes={diagnostic?.coherenceNotes || []} />
