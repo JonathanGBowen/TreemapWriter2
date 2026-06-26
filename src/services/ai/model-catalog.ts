@@ -13,6 +13,14 @@ import type { ProviderId } from './model-types';
 /** A coarse speed/depth bucket, used only for the picker glyph + ordering. */
 export type ModelTier = 'fast' | 'balanced' | 'deep';
 
+/**
+ * How a model expresses its reasoning allowance. Gemini 2.5 takes a numeric
+ * `thinkingBudget`; Gemini 3 takes a coarse `thinkingLevel` ('low' | 'high').
+ * The dispatch layer reads this to send the right field (see ai-provider.impl.ts).
+ * Absent ⇒ legacy numeric-budget behavior.
+ */
+export type ThinkingStyle = 'budget' | 'level';
+
 export interface CatalogModel {
   provider: ProviderId;
   id: string;
@@ -20,7 +28,7 @@ export interface CatalogModel {
   displayName: string;
   /** One short line; no full sentences where avoidable (HLD aesthetic). */
   desc: string;
-  /** Whether a numeric thinking-budget knob is meaningful for this model. */
+  /** Whether a thinking knob is meaningful for this model at all. */
   supportsThinking: boolean;
   /** Budget applied when thinking is enabled (Gemini-only; 0 elsewhere). */
   defaultThinkingBudget: number;
@@ -31,6 +39,23 @@ export interface CatalogModel {
    * (e.g. detected Ollama models) are left unset and treated as "proceed but warn".
    */
   contextWindow?: number;
+  /**
+   * Which API field carries the thinking allowance for this model. Only read when
+   * `supportsThinking`. Absent ⇒ treated as 'budget' (the legacy default).
+   */
+  thinking?: ThinkingStyle;
+  /**
+   * Whether the model honors a strict response JSON Schema. Default-assume true
+   * (absent ⇒ supported). Seeded false for Gemma, which the Gemini API serves
+   * without structured-output support — the client degrades to plain JSON mode.
+   */
+  supportsJsonSchema?: boolean;
+  /**
+   * Whether the model accepts an out-of-band system instruction. Default-assume
+   * true (absent ⇒ supported). Seeded false for Gemma — the client folds the
+   * system instruction into the prompt instead.
+   */
+  supportsSystemInstruction?: boolean;
 }
 
 /**
@@ -39,46 +64,91 @@ export interface CatalogModel {
  * the AI Settings modal; Ollama rows are injected at runtime.
  */
 export const DEFAULT_CATALOG: CatalogModel[] = [
-  // --- Gemini --- (long-context: ~1M-token input window across the 3.x family)
+  // --- Gemini + Gemma --- (Pro is omitted by design: its daily free quota is too
+  // small to rely on. The order here is also the default fallback ladder,
+  // biggest/strongest → smallest. Flash models are the de-facto "heavy" tier and
+  // run with maximum thinking; Gemma sits at the bottom as a last resort and is
+  // served without system-instruction / structured-output support.)
   {
     provider: 'gemini',
-    id: 'gemini-3.1-pro-preview',
-    displayName: 'Gemini 3.1 Pro',
-    desc: 'Deepest reasoning. Best for complex logic.',
+    id: 'gemini-flash-latest',
+    displayName: 'Gemini Flash (latest)',
+    desc: 'Strongest available. Heavy reasoning.',
     supportsThinking: true,
-    defaultThinkingBudget: 16000,
+    defaultThinkingBudget: -1,
+    // The de-facto "deep" tier now that Pro is gone — the DEPTH control's deepest
+    // stop resolves here, with maximum thinking.
     tier: 'deep',
     contextWindow: 1_000_000,
+    thinking: 'level',
   },
   {
     provider: 'gemini',
     id: 'gemini-3-flash-preview',
     displayName: 'Gemini 3 Flash',
     desc: 'Balanced reasoning & speed.',
-    supportsThinking: false,
-    defaultThinkingBudget: 0,
+    supportsThinking: true,
+    defaultThinkingBudget: -1,
     tier: 'balanced',
     contextWindow: 1_000_000,
+    thinking: 'level',
   },
   {
     provider: 'gemini',
-    id: 'gemini-3.1-flash-lite-preview',
-    displayName: 'Gemini Flash Lite',
-    desc: 'Fastest. Quick checks.',
-    supportsThinking: false,
-    defaultThinkingBudget: 0,
-    tier: 'fast',
+    id: 'gemini-2.5-flash',
+    displayName: 'Gemini 2.5 Flash',
+    desc: 'Proven flash. General use.',
+    supportsThinking: true,
+    defaultThinkingBudget: -1,
+    tier: 'balanced',
     contextWindow: 1_000_000,
+    thinking: 'budget',
   },
   {
     provider: 'gemini',
-    id: 'gemini-flash-latest',
-    displayName: 'Gemini Flash',
-    desc: 'Fast. Standard reasoning.',
-    supportsThinking: false,
+    id: 'gemini-3.1-flash-lite',
+    displayName: 'Gemini 3.1 Flash Lite',
+    desc: 'Fast. Quick checks.',
+    supportsThinking: true,
     defaultThinkingBudget: 0,
     tier: 'fast',
     contextWindow: 1_000_000,
+    thinking: 'level',
+  },
+  {
+    provider: 'gemini',
+    id: 'gemini-2.5-flash-lite',
+    displayName: 'Gemini 2.5 Flash Lite',
+    desc: 'Fastest. High-volume calls.',
+    supportsThinking: true,
+    defaultThinkingBudget: 0,
+    tier: 'fast',
+    contextWindow: 1_000_000,
+    thinking: 'budget',
+  },
+  {
+    provider: 'gemini',
+    id: 'gemma-4-31b-it',
+    displayName: 'Gemma 4 31B',
+    desc: 'Open model. Last-resort fallback.',
+    supportsThinking: false,
+    defaultThinkingBudget: 0,
+    tier: 'fast',
+    contextWindow: 131_072,
+    supportsJsonSchema: false,
+    supportsSystemInstruction: false,
+  },
+  {
+    provider: 'gemini',
+    id: 'gemma-4-26b-a4b-it',
+    displayName: 'Gemma 4 26B',
+    desc: 'Open model. Last-resort fallback.',
+    supportsThinking: false,
+    defaultThinkingBudget: 0,
+    tier: 'fast',
+    contextWindow: 131_072,
+    supportsJsonSchema: false,
+    supportsSystemInstruction: false,
   },
   // --- Anthropic --- (thinking is adaptive/native; no numeric budget exposed)
   {

@@ -41,7 +41,7 @@ export const guardContextFit = ({
     toast.error(
       `${what} (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceeds ${choice.model}'s ` +
         `context window. Switch the "${setting}" model to a larger-context one ` +
-        `(e.g. Gemini 3.1 Pro) to send the full text without truncation.`,
+        `to send the full text without truncation.`,
     );
     return false;
   }

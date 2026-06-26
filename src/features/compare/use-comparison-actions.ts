@@ -102,7 +102,7 @@ export const useComparisonActions = () => {
     const fit = checkContextFit(modelCatalog, choice, `${a.markdown}\n\n${b.markdown}`);
     if (fit.overflow) {
       toast.error(
-        `Both versions together (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceed ${choice.model}'s context window. Switch the "Compare versions" model to a larger-context one (e.g. Gemini 3.1 Pro) to compare without truncation.`,
+        `Both versions together (~${Math.round(fit.estimatedTokens / 1000)}k tokens) exceed ${choice.model}'s context window. Switch the "Compare versions" model to a larger-context one to compare without truncation.`,
       );
       return;
     }

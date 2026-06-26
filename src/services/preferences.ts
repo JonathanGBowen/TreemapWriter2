@@ -2,6 +2,8 @@ import { get, set } from 'idb-keyval';
 import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
+import type { CooldownSnapshot, FallbackSettings } from './ai/model-fallback';
+import { DEFAULT_FALLBACK_SETTINGS } from './ai/model-fallback';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from './ai/clients';
 import type { AnalysisSpell, PromptsConfig, RevisionInstruction } from '../types';
 import type { TraceRun } from '../state/trace-state';
@@ -33,6 +35,8 @@ const AGENT_SIDECAR_URL_KEY = 'treemap_writer_agent_sidecar_url';
 const AGENT_SDK_MODEL_KEY = 'treemap_writer_agent_sdk_model';
 const AGENT_TRACE_SAVING_KEY = 'treemap_writer_agent_trace_saving';
 const AGENT_TRACES_KEY = 'treemap_writer_agent_traces';
+const FALLBACK_SETTINGS_KEY = 'treemap_writer_model_fallback';
+const MODEL_COOLDOWNS_KEY = 'treemap_writer_model_cooldowns';
 
 /** Default agent-sdk model when Agent mode is on (the user is on a Max plan). */
 export const DEFAULT_AGENT_SDK_MODEL = 'claude-opus-4-8';
@@ -229,4 +233,39 @@ export async function getSavedAgentTraces(): Promise<TraceRun[]> {
 
 export async function setSavedAgentTraces(runs: TraceRun[]): Promise<void> {
   await set(AGENT_TRACES_KEY, runs);
+}
+
+/**
+ * Quota-fallback configuration: the master toggle + the ordered ladder of models
+ * to try as one gets rate-limited (strongest → weakest). Global; defaults to
+ * enabled with the built-in Gemini/Gemma ladder.
+ */
+export async function getFallbackSettings(): Promise<FallbackSettings> {
+  const stored = await get<Partial<FallbackSettings>>(FALLBACK_SETTINGS_KEY);
+  if (!stored || typeof stored !== 'object') return DEFAULT_FALLBACK_SETTINGS;
+  return {
+    enabled:
+      typeof stored.enabled === 'boolean' ? stored.enabled : DEFAULT_FALLBACK_SETTINGS.enabled,
+    ladder:
+      Array.isArray(stored.ladder) && stored.ladder.length > 0
+        ? stored.ladder
+        : DEFAULT_FALLBACK_SETTINGS.ladder,
+  };
+}
+
+export async function setFallbackSettings(settings: FallbackSettings): Promise<void> {
+  await set(FALLBACK_SETTINGS_KEY, settings);
+}
+
+/**
+ * Persisted model cooldowns — which models are daily-quota-exhausted and until
+ * when (absolute UTC timestamps, so they survive reload). Empty when none.
+ */
+export async function getModelCooldowns(): Promise<CooldownSnapshot> {
+  const stored = await get<CooldownSnapshot>(MODEL_COOLDOWNS_KEY);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export async function setModelCooldowns(snapshot: CooldownSnapshot): Promise<void> {
+  await set(MODEL_COOLDOWNS_KEY, snapshot);
 }

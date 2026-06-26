@@ -3,15 +3,18 @@ import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from 
 import type { AnalysisSpell, Persona, PromptsConfig, ReadingMode, RevisionInstruction } from '../types';
 import { DEFAULT_INSTRUCTION_ID } from '../lib/defaultInstructions';
 import type { AppState } from '.';
-import type { ModelConfig } from '../services/ai/model-types';
+import type { ModelChoice, ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
 import { DEFAULT_CATALOG, ollamaCatalogModel } from '../services/ai/model-catalog';
+import type { CooldownSnapshot } from '../services/ai/model-fallback';
+import { DEFAULT_FALLBACK_SETTINGS } from '../services/ai/model-fallback';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from '../services/ai/clients';
 import * as prefs from '../services/preferences';
 import {
   setOllamaBaseUrl as applyOllamaBaseUrl,
   setAgentSidecarUrl as applyAgentSidecarUrl,
   detectOllamaModels,
+  seedCooldowns,
 } from '../services/ai-provider-registry';
 
 /**
@@ -72,6 +75,16 @@ export interface AIStateSlice {
   ollamaBaseUrl: string;
 
   /**
+   * Quota fallback (global prefs). When `fallbackEnabled`, a call that hits a
+   * quota/transient error retries down `fallbackLadder` (strongest → weakest).
+   * `modelCooldowns` is a read-model of which models are daily-quota-exhausted and
+   * until when — mirrored from the registry's cooldown registry for the settings UI.
+   */
+  fallbackEnabled: boolean;
+  fallbackLadder: ModelChoice[];
+  modelCooldowns: CooldownSnapshot;
+
+  /**
    * Experimental Claude Agent SDK integration (global prefs). OFF by default;
    * when on, dialogue + coaching calls route through the local Agent SDK helper
    * against the user's Max subscription. The rest of the app is unaffected.
@@ -108,6 +121,12 @@ export interface AIStateSlice {
   setGlobalModelDefault: (config: ModelConfig) => void;
   setModelCatalog: (catalog: CatalogModel[]) => void;
   setOllamaBaseUrl: (url: string) => void;
+  /** Toggle quota fallback; writes through to preferences. */
+  setFallbackEnabled: (enabled: boolean) => void;
+  /** Replace the fallback ladder; writes through to preferences. */
+  setFallbackLadder: (ladder: ModelChoice[]) => void;
+  /** Mirror the registry's cooldown snapshot into the store; writes through to preferences. */
+  setModelCooldowns: (snapshot: CooldownSnapshot) => void;
   /** Toggle the experimental Agent SDK routing; writes through to preferences. */
   setAgentModeEnabled: (enabled: boolean) => void;
   /** Point the Agent SDK helper at a URL; applies to the registry + preferences. */
@@ -139,6 +158,9 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   globalModelDefault: {},
   modelCatalog: DEFAULT_CATALOG,
   ollamaBaseUrl: DEFAULT_OLLAMA_BASE_URL,
+  fallbackEnabled: DEFAULT_FALLBACK_SETTINGS.enabled,
+  fallbackLadder: DEFAULT_FALLBACK_SETTINGS.ladder,
+  modelCooldowns: [],
   agentModeEnabled: false,
   agentSidecarUrl: DEFAULT_AGENT_SIDECAR_URL,
   agentSdkModel: prefs.DEFAULT_AGENT_SDK_MODEL,
@@ -210,6 +232,21 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     void prefs.setOllamaBaseUrl(url);
   },
 
+  setFallbackEnabled: (enabled) => {
+    set({ fallbackEnabled: enabled });
+    void prefs.setFallbackSettings({ enabled, ladder: get().fallbackLadder });
+  },
+
+  setFallbackLadder: (ladder) => {
+    set({ fallbackLadder: ladder });
+    void prefs.setFallbackSettings({ enabled: get().fallbackEnabled, ladder });
+  },
+
+  setModelCooldowns: (snapshot) => {
+    set({ modelCooldowns: snapshot });
+    void prefs.setModelCooldowns(snapshot);
+  },
+
   setAgentModeEnabled: (enabled) => {
     set({ agentModeEnabled: enabled });
     void prefs.setAgentModeEnabled(enabled);
@@ -238,6 +275,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       agentModeEnabled,
       agentSidecarUrl,
       agentSdkModel,
+      fallbackSettings,
+      modelCooldowns,
     ] = await Promise.all([
       prefs.getGlobalModelDefault(),
       prefs.getModelCatalog(),
@@ -249,7 +288,11 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       prefs.getAgentModeEnabled(),
       prefs.getAgentSidecarUrl(),
       prefs.getAgentSdkModel(),
+      prefs.getFallbackSettings(),
+      prefs.getModelCooldowns(),
     ]);
+    // Seed the registry's cooldown registry so dispatch honors persisted cooldowns.
+    seedCooldowns(modelCooldowns);
     // Re-resolve the effective config against the just-loaded global tier — a
     // project may already be open by the time prefs hydrate.
     set((s) => ({
@@ -264,6 +307,9 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       agentModeEnabled,
       agentSidecarUrl,
       agentSdkModel,
+      fallbackEnabled: fallbackSettings.enabled,
+      fallbackLadder: fallbackSettings.ladder,
+      modelCooldowns,
     }));
     applyOllamaBaseUrl(ollamaBaseUrl);
     applyAgentSidecarUrl(agentSidecarUrl);

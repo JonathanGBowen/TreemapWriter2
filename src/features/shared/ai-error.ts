@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { useStore } from '../../store';
+import { AllModelsExhaustedError } from '../../services/ai/model-fallback';
 
 // Matches the "no/!invalid API key" family of messages thrown by the LLM
 // clients ("API Key missing", "Anthropic API Key missing") and by the provider
@@ -26,6 +27,20 @@ export function notifyAiError(e: unknown, fallback: string): void {
         onClick: () => useStore.getState().setShowPersonaModal(true),
       },
     });
+    return;
+  }
+  if (e instanceof AllModelsExhaustedError) {
+    toast.error(
+      e.reason === 'context'
+        ? 'No available model can hold this request. Try a larger-context model or shorter input.'
+        : 'All fallback models are rate-limited right now (daily quotas reset at 3:00 AM ET). Try again later or adjust the fallback ladder in AI Settings.',
+      {
+        action: {
+          label: 'AI Settings',
+          onClick: () => useStore.getState().setShowPersonaModal(true),
+        },
+      },
+    );
     return;
   }
   toast.error(fallback);

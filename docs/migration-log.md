@@ -4247,3 +4247,63 @@ the two-projection toggle.
 readout, and the radix layout are UI — no covered lines (consistent with the other
 topo surfaces). The gestalt characterization tests still pass: `structuralEvidence`
 is optional and absent from those fixtures, so the prompts are unchanged there.
+
+---
+
+## 2026-06-26 — Quota-aware model fallback + daily-quota cooldown
+
+**Why.** The default Gemini models were Pro-tier (`gemini-3.1-pro-preview`), whose
+daily free quota is too small to rely on, so the app was hard to use day-to-day. The
+goal: "use whatever is available" without re-picking a model by hand each time —
+expressed generally, not fitted to one provider/snapshot.
+
+**What changed.**
+- **Catalog (`model-catalog.ts`).** Dropped Pro; seeded the flash/lite/gemma family in
+  descending capability (`gemini-flash-latest` → `gemini-3-flash-preview` →
+  `gemini-2.5-flash` → `gemini-3.1-flash-lite` → `gemini-2.5-flash-lite` →
+  `gemma-4-31b-it` → `gemma-4-26b-a4b-it`). `gemini-flash-latest` is the new `deep`
+  tier. `CatalogModel` gained `thinking?: 'budget' | 'level'` (Gemini 2.5 takes a numeric
+  budget; Gemini 3 takes a level) plus `supportsJsonSchema?` / `supportsSystemInstruction?`
+  (seeded false for Gemma).
+- **Per-call defaults (`model-config.ts`).** Three buckets, no Pro: heavy reasoning →
+  `gemini-flash-latest` with thinking ON; interactive/numerous → `gemini-3-flash-preview`;
+  trivial → `gemini-3.1-flash-lite`. `thinkingBudget` is now an INTENT flag (`-1` = think,
+  `0` = don't); the dispatch layer maximizes it per the model's convention.
+- **Fallback core (`model-fallback.ts`, new, pure).** `classifyAIError` (daily-quota vs
+  rate-limit vs overloaded vs other; ambiguous 429 → rate-limit, never a long cooldown),
+  `nextResetUtc` (next 03:00 America/New_York, DST-safe), `ModelCooldowns` registry,
+  `buildCandidates`, `withTransientRetry`, `AllModelsExhaustedError`.
+- **Dispatch wrapper (`ai-provider.impl.ts`).** `clientFor`→`rawClientFor`; new
+  `dispatch(choice, kind)` runs the chosen model then walks the ladder on quota/transient
+  errors, skipping cooled-down or too-small-window candidates, resolving each model's
+  thinking convention, and cooling a model down on a daily-quota hit. Optional injected
+  deps → a transparent passthrough when absent (keeps the existing characterization tests
+  unchanged). Streaming falls back only before the first chunk.
+- **Gemini client (`gemini-client.ts`).** Sends `thinkingLevel` or `thinkingBudget`
+  (incl. `-1`) per request; degrades for Gemma (folds the system instruction into the
+  prompt, drops the schema, keeps JSON mode); retries once without the thinking field on a
+  thinking-related 400.
+- **DI + state + prefs.** Registry owns the `ModelCooldowns` singleton + `setFallbackSource`
+  / `setCooldownSink` (mirroring `setModelConfigSource` / `setAgentTraceSink`, wired in
+  `state/index.ts`). `ai-state` holds `fallbackEnabled` / `fallbackLadder` / `modelCooldowns`
+  (write-through to `preferences.ts`); both load at boot.
+- **UI (`FallbackSettingsSection.tsx`).** A collapsible "Model fallback" section in AI
+  Settings: on/off toggle (default on), reorderable ladder, and an active-cooldown readout
+  with a Clear button.
+
+**Verify.** `npm test` (497 incl. new `model-fallback` + dispatch-wrapper tests),
+`npm run typecheck`, `npm run build`, `npm run lint` (0 errors) all green. Manually: AI
+Settings shows the 7 models (no Pro) + the Fallback section; a forced `RESOURCE_EXHAUSTED …
+per day` on the top model transparently completes on the next rung and shows a cooldown
+"until 3:00 AM ET"; a 503 / "high volume" instead retries and adds no cooldown.
+
+**Rollback.** `git revert`. Persisted prefs keys (`treemap_writer_model_fallback`,
+`treemap_writer_model_cooldowns`) are ignored by the reverted code; the catalog reverts to
+its seed, and any saved project per-call overrides naming the old Pro id surface as
+"(unavailable)" in the picker until re-chosen.
+
+**Tests.** `model-fallback.test.ts` (classifier, DST reset, cooldown, ladder, retry);
+`ai-provider.impl.test.ts` (passthrough, daily-quota→cooldown+fallback, overloaded→in-place
+retry, context skip, exhaustion, streaming pre/post-first-chunk, thinking convention);
+`model-catalog.test.ts` / `model-config.test.ts` / `depth-choice.test.ts` updated for the
+new family.
