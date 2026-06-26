@@ -1,11 +1,24 @@
 // Per-call model configuration + its hydration boundary.
 //
-// `DEFAULT_MODEL_CONFIG` reproduces the EXACT model ids and thinking budgets
-// the app used before this change (the old module-level constants in
-// gemini-provider.ts and the modal defaults), so a project with no saved
-// config behaves identically to before.
+// `DEFAULT_MODEL_CONFIG` maps each call kind onto the most natural model class.
+// Gemini Pro is gone (its daily free quota is too small to rely on), so Flash is
+// now the de-facto "heavy" tier and runs with MAXIMUM thinking. The mapping has
+// three buckets:
+//   A — heavy reasoning  → gemini-flash-latest, thinking on  (THINK = -1)
+//   B — interactive/many → gemini-3-flash-preview, no thinking
+//   C — trivial/numerous → gemini-3.1-flash-lite, no thinking
+//
+// `thinkingBudget` here is an INTENT flag, not a literal allowance: the dispatch
+// layer (ai-provider.impl.ts) maximizes it per the chosen model's own convention
+// (Gemini 2.5 → numeric budget; Gemini 3 → thinkingLevel 'high'), and clears it
+// when a fallback lands on a model that can't think. So -1 means "think hard"
+// and 0 means "don't"; the exact number is no longer load-bearing.
 
 import type { AICallKind, ModelChoice, ModelConfig } from './model-types';
+
+/** "Think hard" intent — the dispatch layer maps this to each model's max. */
+const THINK = -1;
+const NO_THINK = 0;
 
 const g = (model: string, thinkingBudget: number): ModelChoice => ({
   provider: 'gemini',
@@ -13,58 +26,59 @@ const g = (model: string, thinkingBudget: number): ModelChoice => ({
   thinkingBudget,
 });
 
-/**
- * Built-in fallback for every call kind. Mirrors the pre-refactor behavior:
- *   - specs/diagnostic/coach/suggestions/personas: flash-tier, no thinking
- *   - dependencies/refine/analysis/refactor/dialogue: pro, with the old budgets
- */
+// The three buckets' starting models.
+const HEAVY = 'gemini-flash-latest';
+const INTERACTIVE = 'gemini-3-flash-preview';
+const TRIVIAL = 'gemini-3.1-flash-lite';
+
 export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
-  generateSpecs: g('gemini-3-flash-preview', 0),
-  runDiagnostic: g('gemini-3.1-flash-lite-preview', 0),
-  estimateDependencies: g('gemini-3.1-pro-preview', 1024),
-  getCoachAdvice: g('gemini-3-flash-preview', 0),
+  // --- C: trivial / very numerous (fastest, no thinking) ---
+  runDiagnostic: g(TRIVIAL, NO_THINK),
+  getContentSuggestions: g(TRIVIAL, NO_THINK),
+
+  // --- B: interactive / numerous (flash, no thinking; must feel instant) ---
+  generateSpecs: g(INTERACTIVE, NO_THINK),
+  getCoachAdvice: g(INTERACTIVE, NO_THINK),
   // Streaming coach mirrors the coach default — same model, just yielded live.
-  streamCoachAdvice: g('gemini-3-flash-preview', 0),
-  getContentSuggestions: g('gemini-3.1-flash-lite-preview', 0),
-  generatePersonas: g('gemini-3-flash-preview', 0),
-  refineSpec: g('gemini-3.1-pro-preview', 16000),
-  analyzeSection: g('gemini-3.1-pro-preview', 16000),
-  refactorAnalysis: g('gemini-3.1-pro-preview', 16000),
-  continueDialogue: g('gemini-3.1-pro-preview', 8192),
-  generateRevisions: g('gemini-3.1-pro-preview', 4000),
-  // Distillation is reasoning-heavy but bounded; mirror the revision engine's tier.
-  generateReverseOutline: g('gemini-3.1-pro-preview', 4000),
-  // A careful per-paragraph analogical rewrite — same pro-tier as the revision engine.
-  regenerateParagraph: g('gemini-3.1-pro-preview', 4000),
-  // Gist Editor: voice-fidelity is the central risk, so the strongest tier. Analysis
-  // is reasoning-heavy; composition writes the three grains; refresh/re-fit are bounded.
-  analyzeGist: g('gemini-3.1-pro-preview', 8192),
-  composeGist: g('gemini-3.1-pro-preview', 8192),
-  refreshGistSpan: g('gemini-3.1-pro-preview', 2048),
-  refitGist: g('gemini-3.1-pro-preview', 2048),
-  suggestDirectives: g('gemini-3.1-pro-preview', 2048),
-  // Light/fast: a sprint plan is short and the Brief must feel quick (>200ms rule).
-  generateSprintPlan: g('gemini-3-flash-preview', 0),
-  // Live coach turn — must feel instant; flash, streamed token-by-token.
-  coachSprintTurn: g('gemini-3-flash-preview', 0),
-  // A single-step breakdown is tiny and must feel instant — flash, no thinking.
-  decomposeSprintStep: g('gemini-3-flash-preview', 0),
-  // Heavy reasoning over two whole drafts — mirror analyzeSection's pro-tier budget.
-  compareVersions: g('gemini-3.1-pro-preview', 16000),
+  streamCoachAdvice: g(INTERACTIVE, NO_THINK),
+  generatePersonas: g(INTERACTIVE, NO_THINK),
+  // A sprint plan is short and the Brief must feel quick (>200ms rule).
+  generateSprintPlan: g(INTERACTIVE, NO_THINK),
+  // Live coach turn — must feel instant; streamed token-by-token.
+  coachSprintTurn: g(INTERACTIVE, NO_THINK),
+  // A single-step breakdown is tiny and must feel instant.
+  decomposeSprintStep: g(INTERACTIVE, NO_THINK),
+
+  // --- A: heavy reasoning (top flash, maximum thinking) ---
+  estimateDependencies: g(HEAVY, THINK),
+  refineSpec: g(HEAVY, THINK),
+  analyzeSection: g(HEAVY, THINK),
+  refactorAnalysis: g(HEAVY, THINK),
+  continueDialogue: g(HEAVY, THINK),
+  generateRevisions: g(HEAVY, THINK),
+  // Distillation is reasoning-heavy but bounded; same heavy tier.
+  generateReverseOutline: g(HEAVY, THINK),
+  // A careful per-paragraph analogical rewrite — heavy tier.
+  regenerateParagraph: g(HEAVY, THINK),
+  // Gist Editor: voice-fidelity is the central risk, so the strongest tier.
+  analyzeGist: g(HEAVY, THINK),
+  composeGist: g(HEAVY, THINK),
+  refreshGistSpan: g(HEAVY, THINK),
+  refitGist: g(HEAVY, THINK),
+  suggestDirectives: g(HEAVY, THINK),
+  // Heavy reasoning over two whole drafts.
+  compareVersions: g(HEAVY, THINK),
   // Spec test — part: move-by-move A/B against the held rubric for one section.
-  // Reasoning over two prose versions + the surround; pro-tier, bounded.
-  runSpecTestSection: g('gemini-3.1-pro-preview', 8192),
-  // Spec test — whole: the tF/center-of-gravity verdict over the role-skeleton +
-  // changed prose. The load-bearing judgment; the strongest pro-tier budget.
-  runSpecTestWhole: g('gemini-3.1-pro-preview', 16000),
-  // Atmospheric reading over a whole draft — same pro-tier budget as analyzeSection.
-  analyzeAtmosphere: g('gemini-3.1-pro-preview', 16000),
-  // Collaborative per-level spec development — a conversational reasoning turn,
-  // so it mirrors continueDialogue's pro-tier budget.
-  developSpecLevel: g('gemini-3.1-pro-preview', 8192),
-  // Gestalt whole/part ops — focused reasoning over one section; pro-tier, bounded.
-  reconstructWhole: g('gemini-3.1-pro-preview', 4000),
-  proposeRecenterings: g('gemini-3.1-pro-preview', 4000),
+  runSpecTestSection: g(HEAVY, THINK),
+  // Spec test — whole: the tF/center-of-gravity verdict. The load-bearing judgment.
+  runSpecTestWhole: g(HEAVY, THINK),
+  // Atmospheric reading over a whole draft.
+  analyzeAtmosphere: g(HEAVY, THINK),
+  // Collaborative per-level spec development — a conversational reasoning turn.
+  developSpecLevel: g(HEAVY, THINK),
+  // Gestalt whole/part ops — focused reasoning over one section.
+  reconstructWhole: g(HEAVY, THINK),
+  proposeRecenterings: g(HEAVY, THINK),
 };
 
 /**

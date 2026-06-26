@@ -13,7 +13,12 @@ import { createParallelSlice, type ParallelSlice } from './parallel-state';
 import { createGistSlice, type GistSlice } from './gist-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
 import { createSessionSlice, type SessionSlice } from './session-state';
-import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider-registry';
+import {
+  setModelConfigSource,
+  setAgentTraceSink,
+  setFallbackSource,
+  setCooldownSink,
+} from '../services/ai-provider-registry';
 
 /**
  * The combined state of the application, partitioned by lifecycle:
@@ -78,6 +83,19 @@ setModelConfigSource(() => {
     agentModel: s.agentSdkModel,
   };
 });
+
+// Wire the quota-fallback policy to live state (the ladder + toggle + catalog),
+// and mirror the registry's cooldown changes back into the store for the settings
+// UI (the store setter write-throughs to preferences). Mirrors the two wirings
+// above; keeps the registry free of a store import.
+setFallbackSource(() => {
+  const s = useStore.getState();
+  return {
+    settings: { enabled: s.fallbackEnabled, ladder: s.fallbackLadder },
+    catalog: s.modelCatalog,
+  };
+});
+setCooldownSink((snapshot) => useStore.getState().setModelCooldowns(snapshot));
 
 // Feed the Agent SDK activity trace into the store (the client never imports the
 // store — avoids a cycle, mirroring setModelConfigSource). Then load any
