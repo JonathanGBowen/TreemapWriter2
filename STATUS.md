@@ -286,10 +286,15 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   confirms** as designed (wired 2026-06-22, UX second pass). Still to do: audit the
   remaining usages to verify they're destructive-only, and replace any
   non-destructive confirm with an undo affordance.
-- **Opportunistic 300-line decomposition.** `App.tsx` (~988 lines, target a thin
-  layout shell) plus ~14 other files exceed the cognitive-load target. Not a
-  build gate (ESLint warns, doesn't error); decompose when you're already in the
-  file. No single decomposition unblocks anything else.
+- **Opportunistic 300-line decomposition.** `App.tsx` (~744 lines, target a thin
+  layout shell) plus other files exceed the cognitive-load target. The
+  2026-06-26 audit-4.2 pass took App.tsx from 1034 → 744 by extracting the
+  autosave loop (`features/shared/useAutosave.ts`) and the modal/workspace block
+  (`features/modals/ModalLayer.tsx`), and trimming the over-subscribed
+  `useShallow` selector. Keep going opportunistically (the remaining App-local
+  handlers — `handleRunTests`, the export/import handlers — are the next seams).
+  Not a build gate (ESLint warns, doesn't error); decompose when you're already
+  in the file. No single decomposition unblocks anything else.
 
 - **Version Compare follow-ups.** Shipped 2026-06-17 (see
   [`docs/migration-log.md`](docs/migration-log.md)); deep day-grained history +
