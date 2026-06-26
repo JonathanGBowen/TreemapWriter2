@@ -35,6 +35,13 @@ export interface UIStateSlice {
    * section change so a re-entered section cues again — undo, not a persisted off.
    */
   cueDismissedForId: string | null;
+  /**
+   * Section ids whose structural-tension finding the user soft-dismissed this session
+   * (the strain register). Ephemeral by design — never in the persisted uiState whitelist,
+   * so a false alarm costs one click and is gone, but returns on reload (undo, not a
+   * persisted off — mirrors cueDismissedForId).
+   */
+  dismissedStrainIds: string[];
   activeTab: 'editor' | 'preview';
   /** Which surface the right panel shows. Ephemeral, like activeTab. */
   testsPanelTab: 'spec' | 'analysis' | 'dialogue';
@@ -117,6 +124,7 @@ export interface UIStateSlice {
   setAmbientCueEnabled: (on: boolean) => void;
   setSurroundCollapsed: (collapsed: boolean) => void;
   setCueDismissedForId: (id: string | null) => void;
+  dismissStrain: (id: string) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
   setTestsPanelTab: (tab: 'spec' | 'analysis' | 'dialogue') => void;
   /** Set the search query text (store-driven so it survives a project switch). */
@@ -170,6 +178,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   ambientCueEnabled: true,
   surroundCollapsed: false,
   cueDismissedForId: null,
+  dismissedStrainIds: [],
   activeTab: 'editor',
   testsPanelTab: 'spec',
 
@@ -220,6 +229,8 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setAmbientCueEnabled: (on) => set({ ambientCueEnabled: on }),
   setSurroundCollapsed: (collapsed) => set({ surroundCollapsed: collapsed }),
   setCueDismissedForId: (id) => set({ cueDismissedForId: id }),
+  dismissStrain: (id) =>
+    set((s) => (s.dismissedStrainIds.includes(id) ? s : { dismissedStrainIds: [...s.dismissedStrainIds, id] })),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setTestsPanelTab: (tab) => set({ testsPanelTab: tab }),
   setSearchQuery: (q) => set({ searchQuery: q }),

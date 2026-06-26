@@ -166,6 +166,18 @@
 }
 
 @layer utilities {
+  /* Visually hidden but available to keyboard focus + screen readers — the text
+     alternative for canvas/SVG surfaces (e.g. the Plotly treemap) and SR-only summaries. */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   /* HLD Specific Brackets */
   .bracketed { position: relative; }
   .bracketed::before, .bracketed::after {
