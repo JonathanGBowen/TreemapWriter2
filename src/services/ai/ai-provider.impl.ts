@@ -75,7 +75,17 @@ import type {
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import { AI_CALL_KIND_LABELS } from './model-types';
-import type { LLMClient, LLMMessage } from './clients';
+import type { LLMClient, LLMMessage, LLMRequest } from './clients';
+import type { CatalogModel } from './model-catalog';
+import { findCatalogModel } from './model-catalog';
+import { checkContextFit } from './context-budget';
+import type { FallbackSettings, ModelCooldowns, TransientRetryOptions } from './model-fallback';
+import {
+  AllModelsExhaustedError,
+  buildCandidates,
+  classifyAIError,
+  withTransientRetry,
+} from './model-fallback';
 import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
@@ -131,16 +141,36 @@ export interface ProviderClients {
 /** Resolves the configured ModelChoice for a call kind (project → global → default). */
 export type ChoiceResolver = (kind: AICallKind) => ModelChoice;
 
+/**
+ * The quota-fallback context, injected by the registry (which owns the live
+ * settings/catalog source + the shared cooldown registry). Optional: when absent
+ * — e.g. a unit test constructing the provider directly — `dispatch` is a
+ * transparent passthrough to the raw client, so callers behave exactly as before.
+ */
+export interface FallbackDeps {
+  getContext: () => { settings: FallbackSettings; catalog: CatalogModel[] };
+  cooldowns: ModelCooldowns;
+  /** Backoff knobs for the in-place transient retry; defaults applied when omitted. */
+  retry?: TransientRetryOptions;
+}
+
 interface OverrideFields {
   modelChoice?: ModelChoice;
   modelId?: string;
   thinkingBudget?: number;
 }
 
+/** The text a request will send, used to size it against a candidate's window. */
+function requestText(req: LLMRequest): string {
+  const body = req.prompt ?? (req.messages?.map((m) => m.text).join('\n') ?? '');
+  return req.systemInstruction ? `${req.systemInstruction}\n${body}` : body;
+}
+
 export class MultiProviderAIProvider implements AIProvider {
   constructor(
     private readonly clients: ProviderClients,
     private readonly resolveChoice: ChoiceResolver,
+    private readonly fallback?: FallbackDeps,
   ) {}
 
   /** Per-call override → legacy Gemini modelId → configured model for this kind. */
@@ -152,7 +182,7 @@ export class MultiProviderAIProvider implements AIProvider {
     return this.resolveChoice(kind);
   }
 
-  private clientFor(provider: ProviderId, kind?: AICallKind): LLMClient {
+  private rawClientFor(provider: ProviderId, kind?: AICallKind): LLMClient {
     const base =
       provider === 'anthropic'
         ? this.clients.anthropic
@@ -173,6 +203,138 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   /**
+   * The dispatch seam. Returns an LLMClient that runs the call against the chosen
+   * model and, on a quota/transient error, walks down the configured fallback
+   * ladder (skipping models on cooldown or whose window can't hold the prompt). A
+   * daily-quota error puts that model on cooldown until the next reset; transient
+   * errors are retried in place with backoff and never cool a model down. When no
+   * fallback deps are wired, this is the raw client unchanged.
+   */
+  private dispatch(choice: ModelChoice, kind: AICallKind): LLMClient {
+    const fb = this.fallback;
+    if (!fb) return this.rawClientFor(choice.provider, kind);
+
+    const { settings, catalog } = fb.getContext();
+    // The ladder only extends past the chosen model when fallback is enabled; the
+    // wrapper still runs when disabled so thinking-convention resolution happens.
+    const candidates = buildCandidates(choice, settings.enabled ? settings.ladder : []);
+    const cooldowns = fb.cooldowns;
+
+    const viableFor = (req: LLMRequest): ModelChoice[] => {
+      const now = Date.now();
+      const text = requestText(req);
+      return candidates.filter(
+        (c) =>
+          !cooldowns.isActive(c.provider, c.model, now) && checkContextFit(catalog, c, text).ok,
+      );
+    };
+    const exhausted = (req: LLMRequest, cause: unknown): AllModelsExhaustedError => {
+      const now = Date.now();
+      const text = requestText(req);
+      const contextBlocked = candidates.some(
+        (c) =>
+          !cooldowns.isActive(c.provider, c.model, now) && checkContextFit(catalog, c, text).overflow,
+      );
+      return new AllModelsExhaustedError(
+        contextBlocked ? 'context' : 'quota',
+        contextBlocked
+          ? `No available model can hold this request (${AI_CALL_KIND_LABELS[kind]}).`
+          : `All fallback models are unavailable for ${AI_CALL_KIND_LABELS[kind]}.`,
+        cause,
+      );
+    };
+    // On a per-candidate failure: cool down on daily quota, advance on transient,
+    // rethrow a genuine error. Returns true to continue to the next candidate.
+    const advance = (cand: ModelChoice, err: unknown): boolean => {
+      const cls = classifyAIError(err);
+      if (cls === 'daily-quota') {
+        cooldowns.markDailyQuota(cand.provider, cand.model, Date.now());
+        return true;
+      }
+      if (cls === 'overloaded' || cls === 'rate-limit') return true;
+      throw err;
+    };
+
+    // Capture the two provider methods as arrows (lexical `this`) so the returned
+    // client's methods stay free of a `this` alias.
+    const makeReq = (req: LLMRequest, cand: ModelChoice): LLMRequest =>
+      this.buildReq(req, cand, catalog);
+    const clientFor = (cand: ModelChoice): LLMClient => this.rawClientFor(cand.provider, kind);
+
+    return {
+      async generateText(req: LLMRequest): Promise<string> {
+        const viable = viableFor(req);
+        if (viable.length === 0) throw exhausted(req, undefined);
+        let lastErr: unknown;
+        for (const cand of viable) {
+          const built = makeReq(req, cand);
+          const client = clientFor(cand);
+          try {
+            return await withTransientRetry(() => client.generateText(built), fb.retry);
+          } catch (err) {
+            lastErr = err;
+            advance(cand, err); // throws on a genuine error
+          }
+        }
+        throw exhausted(req, lastErr);
+      },
+      async *streamText(req: LLMRequest): AsyncIterable<string> {
+        const viable = viableFor(req);
+        if (viable.length === 0) throw exhausted(req, undefined);
+        let lastErr: unknown;
+        for (const cand of viable) {
+          const built = makeReq(req, cand);
+          const client = clientFor(cand);
+          let yielded = false;
+          try {
+            // Transient retry covers establishment + the first chunk (a fresh
+            // iterator per attempt); once a chunk has been yielded we can't restart.
+            const { iter, first } = await withTransientRetry(async () => {
+              const it = client.streamText(built)[Symbol.asyncIterator]();
+              return { iter: it, first: await it.next() };
+            }, fb.retry);
+            if (!first.done) {
+              yielded = true;
+              yield first.value;
+            }
+            for (let n = await iter.next(); !n.done; n = await iter.next()) {
+              yielded = true;
+              yield n.value;
+            }
+            return;
+          } catch (err) {
+            if (yielded) throw err;
+            lastErr = err;
+            advance(cand, err); // throws on a genuine error
+          }
+        }
+        throw exhausted(req, lastErr);
+      },
+    };
+  }
+
+  /**
+   * Rebuild a request for a fallback candidate: point it at the candidate's model
+   * and re-express the thinking intent in THAT model's convention. "Wants thinking"
+   * is carried by the original request (a non-zero budget or any level); we then
+   * maximize per the catalog (`level` → 'high', `budget` → -1 dynamic) or clear it
+   * entirely when the candidate can't think.
+   */
+  private buildReq(req: LLMRequest, cand: ModelChoice, catalog: CatalogModel[]): LLMRequest {
+    const wantsThinking =
+      (typeof req.thinkingBudget === 'number' && req.thinkingBudget !== 0) || !!req.thinkingLevel;
+    const meta = findCatalogModel(catalog, cand.provider, cand.model);
+    const next: LLMRequest = { ...req, model: cand.model };
+    delete next.thinkingBudget;
+    delete next.thinkingLevel;
+    if (wantsThinking && meta?.supportsThinking) {
+      if (meta.thinking === 'level') next.thinkingLevel = 'high';
+      else next.thinkingBudget = -1;
+    }
+    return next;
+  }
+
+  /**
    * Prepend the draft-mode reading overlay to a base instruction when the mode is
    * 'draft' (the default). 'final' prepends nothing — today's completed-work read.
    */
@@ -182,14 +344,14 @@ export class MultiProviderAIProvider implements AIProvider {
 
   async generateSpecs(input: GenerateSpecsInput): Promise<void> {
     const choice = this.choose('generateSpecs', input);
-    await generateSpecs(this.clientFor(choice.provider, 'generateSpecs'), choice.model, choice.thinkingBudget ?? 0, input);
+    await generateSpecs(this.dispatch(choice, 'generateSpecs'), choice.model, choice.thinkingBudget ?? 0, input);
   }
 
   async generateSpecLevel(input: GenerateSpecLevelInput): Promise<Record<string, SectionSpec>> {
     // The non-agent single-shot path runs on the configured `generateSpecs` model.
     const choice = this.choose('generateSpecs', input);
     return generateSpecLevel(
-      this.clientFor(choice.provider, 'generateSpecs'),
+      this.dispatch(choice, 'generateSpecs'),
       choice.model,
       choice.thinkingBudget ?? 0,
       {
@@ -243,7 +405,7 @@ export class MultiProviderAIProvider implements AIProvider {
     });
 
     const choice = this.choose('runDiagnostic', input);
-    const text = await this.clientFor(choice.provider, 'runDiagnostic').generateText({
+    const text = await this.dispatch(choice, 'runDiagnostic').generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -310,7 +472,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.dependenciesPrompt}\n\nSECTIONS DATA:\n${JSON.stringify(contextData, null, 2)}\n  `;
 
     const choice = this.choose('estimateDependencies', input);
-    const text = await this.clientFor(choice.provider, 'estimateDependencies').generateText({
+    const text = await this.dispatch(choice, 'estimateDependencies').generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -337,7 +499,7 @@ export class MultiProviderAIProvider implements AIProvider {
 
   async getCoachAdvice(input: CoachAdviceInput): Promise<string> {
     const choice = this.choose('getCoachAdvice', input);
-    return this.clientFor(choice.provider, 'getCoachAdvice').generateText({
+    return this.dispatch(choice, 'getCoachAdvice').generateText({
       model: choice.model,
       prompt: buildCoachPrompt(input),
       thinkingBudget: choice.thinkingBudget,
@@ -348,7 +510,7 @@ export class MultiProviderAIProvider implements AIProvider {
   /** Streaming sibling of getCoachAdvice — same prompt, yielded token-by-token. */
   async *streamCoachAdvice(input: CoachAdviceInput): AsyncIterable<string> {
     const choice = this.choose('streamCoachAdvice', input);
-    const stream = this.clientFor(choice.provider, 'streamCoachAdvice').streamText({
+    const stream = this.dispatch(choice, 'streamCoachAdvice').streamText({
       model: choice.model,
       prompt: buildCoachPrompt(input),
       thinkingBudget: choice.thinkingBudget,
@@ -363,7 +525,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.suggestContentPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nSection Goals: "${input.currentGoals}"\nCurrent Content:\n---\n${input.fullSectionContent}\n---\n      `;
 
     const choice = this.choose('getContentSuggestions', input);
-    return this.clientFor(choice.provider, 'getContentSuggestions').generateText({
+    return this.dispatch(choice, 'getContentSuggestions').generateText({
       model: choice.model,
       prompt,
       thinkingBudget: choice.thinkingBudget,
@@ -375,7 +537,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.generatePersonasPrompt}\n\nTEXT SAMPLE:\n---\n${input.documentContext}\n---\n`;
 
     const choice = this.choose('generatePersonas', input);
-    const text = await this.clientFor(choice.provider, 'generatePersonas').generateText({
+    const text = await this.dispatch(choice, 'generatePersonas').generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -400,7 +562,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const prompt = `\n${input.config.refineSpecPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nCurrent Goals: "${input.currentGoals}"\nSection Content: "${input.fullSectionContent}"\n\nUSER INSTRUCTION: "${input.instruction.trim() || 'Improve and refine the goals for clarity, conciseness, and completeness.'}"\n      `;
 
     const choice = this.choose('refineSpec', input);
-    const text = await this.clientFor(choice.provider, 'refineSpec').generateText({
+    const text = await this.dispatch(choice, 'refineSpec').generateText({
       model: choice.model,
       prompt,
       thinkingBudget: choice.thinkingBudget,
@@ -447,7 +609,7 @@ export class MultiProviderAIProvider implements AIProvider {
     parseError = 'Analysis response could not be parsed.',
   ): Promise<SectionAnalysis> {
     const choice = this.choose(kind, input);
-    const text = await this.clientFor(choice.provider, kind).generateText({
+    const text = await this.dispatch(choice, kind).generateText({
       model: choice.model,
       prompt,
       json: true,
@@ -462,7 +624,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]> {
     const choice = this.choose('generateRevisions', input);
     return generateRevisions(
-      this.clientFor(choice.provider, 'generateRevisions'),
+      this.dispatch(choice, 'generateRevisions'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -472,7 +634,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateReverseOutline(input: GenerateReverseOutlineInput): Promise<ReverseOutlineBullet[]> {
     const choice = this.choose('generateReverseOutline', input);
     return generateReverseOutline(
-      this.clientFor(choice.provider, 'generateReverseOutline'),
+      this.dispatch(choice, 'generateReverseOutline'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -482,7 +644,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async regenerateParagraph(input: RegenerateParagraphInput): Promise<ParagraphRewrite | null> {
     const choice = this.choose('regenerateParagraph', input);
     return regenerateParagraph(
-      this.clientFor(choice.provider, 'regenerateParagraph'),
+      this.dispatch(choice, 'regenerateParagraph'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -492,7 +654,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async reconstructWhole(input: ReconstructWholeInput) {
     const choice = this.choose('reconstructWhole', input);
     return reconstructWhole(
-      this.clientFor(choice.provider, 'reconstructWhole'),
+      this.dispatch(choice, 'reconstructWhole'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -502,7 +664,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async proposeRecenterings(input: RecenterInput) {
     const choice = this.choose('proposeRecenterings', input);
     return proposeRecenterings(
-      this.clientFor(choice.provider, 'proposeRecenterings'),
+      this.dispatch(choice, 'proposeRecenterings'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -511,28 +673,28 @@ export class MultiProviderAIProvider implements AIProvider {
 
   async analyzeGist(input: AnalyzeGistInput): Promise<GistAnalysis> {
     const choice = this.choose('analyzeGist', input);
-    return analyzeGist(this.clientFor(choice.provider, 'analyzeGist'), choice.model, choice.thinkingBudget, input);
+    return analyzeGist(this.dispatch(choice, 'analyzeGist'), choice.model, choice.thinkingBudget, input);
   }
 
   async composeGist(input: ComposeGistInput): Promise<GistComposition> {
     const choice = this.choose('composeGist', input);
-    return composeGist(this.clientFor(choice.provider, 'composeGist'), choice.model, choice.thinkingBudget, input);
+    return composeGist(this.dispatch(choice, 'composeGist'), choice.model, choice.thinkingBudget, input);
   }
 
   async refreshGistSpan(input: RefreshGistSpanInput): Promise<GistSpan | null> {
     const choice = this.choose('refreshGistSpan', input);
-    return refreshGistSpan(this.clientFor(choice.provider, 'refreshGistSpan'), choice.model, choice.thinkingBudget, input);
+    return refreshGistSpan(this.dispatch(choice, 'refreshGistSpan'), choice.model, choice.thinkingBudget, input);
   }
 
   async refitGist(input: RefitGistInput): Promise<GistSpan[] | null> {
     const choice = this.choose('refitGist', input);
-    return refitGist(this.clientFor(choice.provider, 'refitGist'), choice.model, choice.thinkingBudget, input);
+    return refitGist(this.dispatch(choice, 'refitGist'), choice.model, choice.thinkingBudget, input);
   }
 
   async suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]> {
     const choice = this.choose('suggestDirectives', input);
     return suggestDirectives(
-      this.clientFor(choice.provider, 'suggestDirectives'),
+      this.dispatch(choice, 'suggestDirectives'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -542,7 +704,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan> {
     const choice = this.choose('generateSprintPlan', input);
     return generateSprintPlan(
-      this.clientFor(choice.provider, 'generateSprintPlan'),
+      this.dispatch(choice, 'generateSprintPlan'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -552,7 +714,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]> {
     const choice = this.choose('decomposeSprintStep', input);
     return decomposeSprintStep(
-      this.clientFor(choice.provider, 'decomposeSprintStep'),
+      this.dispatch(choice, 'decomposeSprintStep'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -562,7 +724,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async compareVersions(input: CompareVersionsInput): Promise<VersionComparison> {
     const choice = this.choose('compareVersions', input);
     return compareVersions(
-      this.clientFor(choice.provider, 'compareVersions'),
+      this.dispatch(choice, 'compareVersions'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -572,7 +734,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async runSpecTestSection(input: SpecTestSectionInput): Promise<SectionSpecTest | null> {
     const choice = this.choose('runSpecTestSection', input);
     return runSpecTestSection(
-      this.clientFor(choice.provider, 'runSpecTestSection'),
+      this.dispatch(choice, 'runSpecTestSection'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -582,7 +744,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async runSpecTestWhole(input: SpecTestWholeInput): Promise<Omit<WholeVerdict, 'meshDelta'> | null> {
     const choice = this.choose('runSpecTestWhole', input);
     return runSpecTestWhole(
-      this.clientFor(choice.provider, 'runSpecTestWhole'),
+      this.dispatch(choice, 'runSpecTestWhole'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -592,7 +754,7 @@ export class MultiProviderAIProvider implements AIProvider {
   async analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string> {
     const choice = this.choose('analyzeAtmosphere', input);
     return analyzeAtmosphere(
-      this.clientFor(choice.provider, 'analyzeAtmosphere'),
+      this.dispatch(choice, 'analyzeAtmosphere'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -618,7 +780,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('continueDialogue', input);
-    const stream = this.clientFor(choice.provider, 'continueDialogue').streamText({
+    const stream = this.dispatch(choice, 'continueDialogue').streamText({
       model: choice.model,
       messages,
       systemInstruction,
@@ -650,7 +812,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('coachSprintTurn', input);
-    const stream = this.clientFor(choice.provider, 'coachSprintTurn').streamText({
+    const stream = this.dispatch(choice, 'coachSprintTurn').streamText({
       model: choice.model,
       messages,
       systemInstruction,
@@ -689,7 +851,7 @@ export class MultiProviderAIProvider implements AIProvider {
     const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
 
     const choice = this.choose('developSpecLevel', input);
-    const stream = this.clientFor(choice.provider, 'developSpecLevel').streamText({
+    const stream = this.dispatch(choice, 'developSpecLevel').streamText({
       model: choice.model,
       messages,
       systemInstruction,

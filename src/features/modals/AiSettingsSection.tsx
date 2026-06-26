@@ -14,6 +14,7 @@ import type { ModelChoice, ProviderId } from '../../services/ai/model-types';
 import type { CatalogModel } from '../../services/ai/model-catalog';
 import { ModelPicker } from './ModelPicker';
 import { AgentSdkSettingsSection } from './AgentSdkSettingsSection';
+import { FallbackSettingsSection } from './FallbackSettingsSection';
 
 /**
  * The AI configuration surface: provider keys/endpoint, the global default
@@ -83,6 +84,9 @@ export const AiSettingsSection: React.FC = () => {
           className="w-full bg-hld-bg border border-hld-border rounded px-2 py-2 text-[12px] font-mono text-hld-text outline-none focus:border-hld-cyan"
         />
       </div>
+
+      {/* Quota fallback */}
+      <FallbackSettingsSection />
 
       {/* Advanced */}
       <div className="bg-hld-surface-2 border border-hld-border rounded-lg">

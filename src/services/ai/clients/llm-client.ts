@@ -26,8 +26,18 @@ export interface LLMRequest {
    * Anthropic/Ollama ignore it and lean on the prompt. Requires `json`.
    */
   responseJsonSchema?: unknown;
-  /** Gemini numeric thinking budget. Anthropic maps coarsely; Ollama ignores. */
+  /**
+   * Gemini numeric thinking budget (the Gemini 2.5 convention). `-1` means
+   * dynamic/maximum. Anthropic maps coarsely; Ollama ignores. Mutually exclusive
+   * with `thinkingLevel`.
+   */
   thinkingBudget?: number;
+  /**
+   * Gemini 3 thinking convention: a coarse level instead of a numeric budget. The
+   * dispatch layer sets exactly one of `thinkingLevel` / `thinkingBudget` based on
+   * the chosen model's catalog `thinking` style. Honored by Gemini; ignored elsewhere.
+   */
+  thinkingLevel?: 'low' | 'high';
   /**
    * Sampling temperature (0–1). Set per-call where fidelity matters most (e.g. the
    * Gist flows pin 0.25). Omitted ⇒ the provider's own default. Honored by

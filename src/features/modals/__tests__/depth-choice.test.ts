@@ -10,7 +10,7 @@ describe('resolveDepthChoice', () => {
   it('maps each tier to the matching Gemini model, with thinking only on deep', () => {
     expect(resolveDepthChoice(DEFAULT_CATALOG, gemini, 'fast')).toEqual({
       provider: 'gemini',
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       thinkingBudget: 0,
     });
     expect(resolveDepthChoice(DEFAULT_CATALOG, gemini, 'balanced')).toEqual({
@@ -18,10 +18,11 @@ describe('resolveDepthChoice', () => {
       model: 'gemini-3-flash-preview',
       thinkingBudget: 0,
     });
+    // Pro is gone — flash-latest is the deepest stop, with maximum thinking (-1 = dynamic).
     expect(resolveDepthChoice(DEFAULT_CATALOG, gemini, 'deep')).toEqual({
       provider: 'gemini',
-      model: 'gemini-3.1-pro-preview',
-      thinkingBudget: 16000,
+      model: 'gemini-flash-latest',
+      thinkingBudget: -1,
     });
   });
 
@@ -55,12 +56,12 @@ describe('resolveDepthChoice', () => {
 describe('tierOf / depthModelLabel', () => {
   it('reads the tier of the current model, defaulting to balanced', () => {
     expect(tierOf(DEFAULT_CATALOG, gemini)).toBe('balanced');
-    expect(tierOf(DEFAULT_CATALOG, { provider: 'gemini', model: 'gemini-3.1-pro-preview' })).toBe('deep');
+    expect(tierOf(DEFAULT_CATALOG, { provider: 'gemini', model: 'gemini-flash-latest' })).toBe('deep');
     expect(tierOf(DEFAULT_CATALOG, { provider: 'ollama', model: 'unknown' })).toBe('balanced');
   });
 
   it('reports the resolved model display name for a tier', () => {
-    expect(depthModelLabel(DEFAULT_CATALOG, gemini, 'deep')).toBe('Gemini 3.1 Pro');
+    expect(depthModelLabel(DEFAULT_CATALOG, gemini, 'deep')).toBe('Gemini Flash (latest)');
     expect(depthModelLabel(DEFAULT_CATALOG, anthropic, 'fast')).toBe('Claude Haiku 4.5');
   });
 });

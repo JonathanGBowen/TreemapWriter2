@@ -31,10 +31,14 @@ export { setAgentTraceSink } from './ai/clients';
 export type { AgentTraceSinkEvent } from './ai/clients';
 import { MultiProviderAIProvider } from './ai/ai-provider.impl';
 import { resolveModelChoice } from './ai/resolve-model-choice';
+import { ModelCooldowns, DEFAULT_FALLBACK_SETTINGS } from './ai/model-fallback';
+import type { CooldownSnapshot, FallbackSettings } from './ai/model-fallback';
+import { DEFAULT_CATALOG } from './ai/model-catalog';
+import type { CatalogModel } from './ai/model-catalog';
 import { getSecret } from './credentials';
 import { isTauri } from './tauri-environment';
 import type { AIProvider } from './ai-provider';
-import type { AICallKind, ModelConfig } from './ai/model-types';
+import type { AICallKind, ModelConfig, ProviderId } from './ai/model-types';
 
 const geminiKey = process.env.API_KEY || '';
 const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
@@ -71,7 +75,50 @@ const resolveChoice = (kind: AICallKind) => {
   return resolveModelChoice(kind, projectConfig, globalDefault, agent);
 };
 
-const impl = new MultiProviderAIProvider({ gemini, anthropic, ollama, agentSdk }, resolveChoice);
+// --- Quota fallback ------------------------------------------------------
+// The shared cooldown registry + the live fallback settings/catalog source. The
+// dispatch wrapper in MultiProviderAIProvider reads these. Boot wires the store
+// in via setFallbackSource (mirrors setModelConfigSource) and forwards cooldown
+// changes to the UI via setCooldownSink (mirrors setAgentTraceSink). Cooldown
+// persistence is the store's write-through job (see ai-state.setModelCooldowns).
+
+const cooldowns = new ModelCooldowns();
+let cooldownSink: ((snapshot: CooldownSnapshot) => void) | null = null;
+cooldowns.setSink((snapshot) => cooldownSink?.(snapshot));
+
+/** Boot forwards cooldown changes into the store so the settings UI can show them. */
+export function setCooldownSink(sink: (snapshot: CooldownSnapshot) => void): void {
+  cooldownSink = sink;
+}
+
+/** Seed the cooldown registry from persisted state at boot. */
+export function seedCooldowns(snapshot: CooldownSnapshot): void {
+  cooldowns.load(snapshot);
+}
+
+/** Lift a cooldown manually (the settings UI's "Clear"). */
+export function clearModelCooldown(provider: ProviderId, model: string): void {
+  cooldowns.clear(provider, model);
+}
+
+interface FallbackContext {
+  settings: FallbackSettings;
+  catalog: CatalogModel[];
+}
+let fallbackSource: () => FallbackContext = () => ({
+  settings: DEFAULT_FALLBACK_SETTINGS,
+  catalog: DEFAULT_CATALOG,
+});
+
+/** Boot wires the store's fallback settings + catalog in here. */
+export function setFallbackSource(source: () => FallbackContext): void {
+  fallbackSource = source;
+}
+
+const impl = new MultiProviderAIProvider({ gemini, anthropic, ollama, agentSdk }, resolveChoice, {
+  getContext: () => fallbackSource(),
+  cooldowns,
+});
 
 export const aiProvider: AIProvider = impl;
 
