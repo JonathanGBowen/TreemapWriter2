@@ -14,7 +14,7 @@
 > *Some Problems in the Theory of Ethics* (1935), *On the Concept of Democracy*
 > (1937), *Gestalt Theory* (Wertheimer & Riezler, 1944), and the *Productive
 > Thinking* (1959) annotations. A happy accident makes the fit exact: the tool's own
-> sample manuscript (`DEFAULT_MARKDOWN` in `src/lib/constants.ts`) is a dissertation
+> sample manuscript (the demo project in `src/lib/defaultProject.json`) is a dissertation
 > *about* Gestalt productive thinking — S1→S2 gaps and vectors, type-A/B behaviour,
 > Wertheimer's part/piece notation. The tool should embody the philosophy it helps
 > write.

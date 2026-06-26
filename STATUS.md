@@ -289,10 +289,15 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   confirms** as designed (wired 2026-06-22, UX second pass). Still to do: audit the
   remaining usages to verify they're destructive-only, and replace any
   non-destructive confirm with an undo affordance.
-- **Opportunistic 300-line decomposition.** `App.tsx` (~988 lines, target a thin
-  layout shell) plus ~14 other files exceed the cognitive-load target. Not a
-  build gate (ESLint warns, doesn't error); decompose when you're already in the
-  file. No single decomposition unblocks anything else.
+- **Opportunistic 300-line decomposition.** `App.tsx` (~744 lines, target a thin
+  layout shell) plus other files exceed the cognitive-load target. The
+  2026-06-26 audit-4.2 pass took App.tsx from 1034 → 744 by extracting the
+  autosave loop (`features/shared/useAutosave.ts`) and the modal/workspace block
+  (`features/modals/ModalLayer.tsx`), and trimming the over-subscribed
+  `useShallow` selector. Keep going opportunistically (the remaining App-local
+  handlers — `handleRunTests`, the export/import handlers — are the next seams).
+  Not a build gate (ESLint warns, doesn't error); decompose when you're already
+  in the file. No single decomposition unblocks anything else.
 
 - **Version Compare follow-ups.** Shipped 2026-06-17 (see
   [`docs/migration-log.md`](docs/migration-log.md)); deep day-grained history +
@@ -379,9 +384,16 @@ can't merge. **Coverage is measured** (`npm run coverage`, v8) with floor
 thresholds that ratchet up. The first targeted suites (state slices, sync-policy,
 the AI-registry resolver, and the Rust fs_io/git/layout/serde backend) landed the
 same day — see [`docs/migration-log.md`](docs/migration-log.md). Raise the
-thresholds as coverage grows; the big remaining gaps are the AI-flow orchestrators
-(`ai-provider.impl` + per-flow modules) and the UI feature layer (out of scope by
-design for unit tests).
+thresholds as coverage grows. The **AI-flow orchestrators are now characterized**
+(2026-06-26, see [`docs/migration-log.md`](docs/migration-log.md)): every per-flow
+`ai-provider.*.ts` module plus the two `ai-provider.impl` methods `App.tsx` calls
+directly (`runDiagnostic`, `estimateDependencies`) have characterization tests, and
+`src/services/ai` coverage rose to ~75% lines (the floors ratcheted up to match).
+The remaining test gaps are the **streaming `impl` methods** (`continueDialogue`,
+`coachSprintTurn`, `developSpecLevel`, `streamCoachAdvice`) and the other inline
+non-streaming methods (`getCoachAdvice`, `getContentSuggestions`, `generatePersonas`,
+`refineSpec`, `analyzeSection`, `refactorAnalysis`) — a natural next increment — and
+the UI feature layer (out of scope by design for unit tests).
 
 The *doc-refresh* half of the ritual (see [`AGENTS.md`](AGENTS.md) → "Definition
 of done") is still a convention. **Lingering guardrail:** add a lightweight

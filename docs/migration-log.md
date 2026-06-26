@@ -3587,3 +3587,118 @@ strain mode, dual-coded by a cool luminance ramp + a label glyph, default off) a
 vector connectors (gated on stable section IDs + a Plotly between-tile primitive); and
 boundary-correctness + B-reaction guardrails (`gestalt-design.md` item 7). The register built
 here is their accessible data spine.
+
+---
+
+## 2026-06-26 — Characterization tests for the AI-flow orchestrators
+
+**What changed.** A test-only pass that closes the largest untested seam STATUS
+named: the AI-flow orchestrators. No product behavior changed — additive
+`*.test.ts` files plus a coverage-threshold ratchet only. Prompted by the
+forensic audit (`CODEBASE_FORENSIC_AUDIT.md`), which flagged these flows as the
+one place a wrong output is silent and expensive, and as the safety net the
+future `App.tsx` decomposition wants in place first (Feathers: characterize
+before you refactor).
+
+- **New per-flow suites** under `src/services/ai/__tests__/`, one per module,
+  built on the gold-standard `mockClient` pattern already in
+  `ai-provider.specs.test.ts` (a canned `LLMClient` that records each
+  `LLMRequest` and replays scripted JSON): `ai-provider.revisions`,
+  `.gist-analysis`, `.gist-composition`, `.gist-refit`, `.gist-refresh`,
+  `.reverse-outline`, `.regenerate`, `.sprint`, `.compare`, `.atmosphere`,
+  `.suggest-directives`. Each pins the **input→prompt→parse→output contract**:
+  which system/task prompt the mode selects, the marker blocks + schema
+  `required` set the request carries (e.g. the sourced-vs-sourceless revision
+  receipt), and the tolerant-normalizer output guarantees (re-alignment fills
+  missing segments; invalid items drop; unparseable throws; empty ≠ error). The
+  pure normalizers keep their own `lib/__tests__` coverage; these pin the
+  orchestration around them.
+- **New orchestrator suite** `ai-provider.impl.test.ts` constructs
+  `MultiProviderAIProvider` directly with fake clients (its constructor already
+  takes `clients` + a `ChoiceResolver`, so no registry/singleton change was
+  needed — the "make it injectable" step the audit floated proved unnecessary).
+  Covers the two methods `App.tsx` calls directly — `runDiagnostic` and
+  `estimateDependencies` — plus the shared `choose()`/`clientFor()` routing: a
+  per-call `modelChoice` override wins over the resolver and routes to that
+  provider; the malformed-result coercion and `< 2 specs → {}` short-circuit.
+- **Coverage ratchet.** `src/services/ai` rose from the prior baseline to **~75%
+  lines / ~74% statements**; the global floors in `vitest.config.ts` moved up
+  accordingly (lines 20→23, statements 19→22, functions 16→19, branches 16→20),
+  staying just under measured so the gate can only ratchet up.
+
+Suite counts after this pass: **418 TS tests / 60 files** (was 383 / 48 — 12 new
+test files, no source files touched).
+
+**How to verify.** `npm run coverage`, `npm run typecheck`, `npm run build` pass;
+the coverage gate fails if any floor regresses. Spot-checked that the tests pin
+real behavior: temporarily renaming the `### SOURCE_DOCUMENTS ###` marker in
+`ai-provider.revisions.ts` failed exactly the one sourced-mode assertion (and
+only it), then reverted.
+
+**Rollback.** Purely additive. `git revert` the commit, or delete the new
+`src/services/ai/__tests__/ai-provider.*.test.ts` files and restore the prior
+`vitest.config.ts` thresholds.
+
+**Deliberate limits (non-goals here).** The streaming `impl` methods
+(`continueDialogue`, `coachSprintTurn`, `developSpecLevel`, `streamCoachAdvice`)
+and the remaining inline non-streaming methods (`getCoachAdvice`,
+`getContentSuggestions`, `generatePersonas`, `refineSpec`, `analyzeSection`,
+`refactorAnalysis`) are not yet characterized — a natural next increment. The UI
+feature layer stays out of scope by design.
+
+---
+
+## 2026-06-26 — Audit stabilization 4.2 + 4.3 (App.tsx strangle · cohesion)
+
+**What changed.** Drained the next two items from the forensic audit's Section 4
+(`CODEBASE_FORENSIC_AUDIT.md`), after 4.1 (AI-orchestrator characterization)
+shipped earlier the same day. No behavior change — structure only.
+
+- **`useAutosave` hook (4.2).** The 60s autosave/snapshot loop — mount-once
+  interval, the late-binding ref that keeps the timer from tearing down each
+  render, the overlap guard, and the toast + `saveError` banner on failure —
+  moved out of `App.tsx` into `src/features/shared/useAutosave.ts` (beside
+  `useColumnResize`). `App.tsx` now just calls `useAutosave()`. Dropped the
+  now-unused `lastAutoSave` selector.
+- **`<ModalLayer>` component (4.2).** The ~170-line modal/workspace render block
+  moved to `src/features/modals/ModalLayer.tsx`. ModalLayer subscribes directly
+  to the store data/actions the modals need and takes the App-local derived memos
+  (`currentSection`, `activePersona`, `documentStats`, `allPersonas`) + the
+  AI-orchestration handlers (`handleRunTests`, `handleEstimateDependencies`, …) as
+  explicit props, so App stays their single owner. No modal gained
+  `isOpen`/`onClose` props — each still self-mounts on its own store flag. With
+  the block gone, App's `useShallow` selector was mostly dead (it had been
+  over-subscribing to modal-only state and flags); trimmed to just what the layout
+  shell touches. **`App.tsx`: 1034 → 744 lines**, and it no longer re-renders on
+  modal-state churn.
+- **CoachModal co-located (4.3).** `CoachModal.tsx` moved from `features/modals/`
+  into `features/coach/`, joining the coach feature's other members
+  (`use-ambient-cue`, `AmbientCue`, `SurroundRail`). Only its two
+  sibling-in-modals imports (`ModelPicker`, `use-model-choice`) and ModalLayer's
+  import path changed. Coach logic now has one cohesive home.
+- **Dead `DEFAULT_MARKDOWN` deleted (4.3).** The ~285-line sample-manuscript
+  constant in `src/lib/constants.ts` was imported nowhere (the live demo loads
+  from `src/lib/defaultProject.json`, which carries the same dissertation; this
+  log already flagged it "defined but not imported anywhere" back in Phase 1).
+  Deleted it — **`constants.ts`: 372 → 86 lines** — and repointed the one doc
+  reference (`docs/gestalt-design.md`) at the real demo source. The audit had
+  suggested relocating it to a `.md` file; deletion is strictly better for unused
+  content.
+
+**How to verify.** `npm run typecheck`, `npm test` (418 pass), and `npm run build`
+are green. Behaviorally: autosave still mounts one interval (overlap guard +
+`saveError` path unchanged); every modal still opens/closes from its trigger
+(self-mounted ones untouched, prop-fed ones get the same values via ModalLayer);
+open Coach from ⌘K to confirm the moved file resolves; `build` green proves
+nothing imported `DEFAULT_MARKDOWN`.
+
+**Rollback.** Four independent commits — `git revert` any one. The hook/component
+extractions are pure moves; the `DEFAULT_MARKDOWN` deletion is recoverable from
+history (or `defaultProject.json`).
+
+**Deliberate limits (non-goals here).** Audit 4.4 (retire the `.env` AI-key
+fallback; productionize `agent-sidecar/`) is deferred — the `.env` removal is
+gated on verifying the keyring path in real use, and the sidecar work needs Rust
+lifecycle changes. No new UI-render-layer tests (out of scope by design). A few
+pre-existing dead items in `App.tsx` (e.g. `handleLineFocus`, some stale type
+imports) were left untouched to keep these commits focused on the extraction.
