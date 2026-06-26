@@ -63,6 +63,14 @@ const buildReconstructPrompt = (input: ReconstructWholeInput): string => {
   } else {
     parts.push('No baseline claim is available; set "alignment": "no-baseline" and omit divergence.');
   }
+  if (input.structuralEvidence?.trim()) {
+    parts.push(
+      '',
+      '### STRUCTURAL WEIGHT (use ONLY to gauge how much a drift MATTERS — never to shape the',
+      'reconstruction above) ###',
+      input.structuralEvidence.trim(),
+    );
+  }
   parts.push('', 'Return ONLY the JSON object defined by the schema.');
   return parts.join('\n');
 };
@@ -139,6 +147,14 @@ const buildRecenterPrompt = (input: RecenterInput): string => {
   parts.push('');
   if (input.structuralSurround?.trim()) {
     parts.push(input.structuralSurround.trim(), '');
+  }
+  if (input.structuralEvidence?.trim()) {
+    parts.push(
+      '### STRUCTURAL EVIDENCE (the dependency topology, read off the direction of the arrows —',
+      "let it inform which recentering serves the whole) ###",
+      input.structuralEvidence.trim(),
+      '',
+    );
   }
   parts.push(
     '### SECTION TEXT ###',

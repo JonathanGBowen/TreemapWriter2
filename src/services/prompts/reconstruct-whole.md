@@ -24,6 +24,11 @@ not, or vice versa).
 
 If no actual claim is provided, set "alignment": "no-baseline" and omit "divergence".
 
+You may also be given STRUCTURAL WEIGHT — how much of the document depends on this part in the
+dependency topology. Use it ONLY to gauge how much a drift MATTERS (a drifted radix that many
+sections rest on is far graver than a drifted leaf nothing builds on); never let it shape the
+reconstruction itself, which must be read from the section's prose alone.
+
 Optionally add a one-sentence "note" — a brief reading for the writer.
 
 Be faithful and specific; ground every word in the section's own text. Return ONLY valid

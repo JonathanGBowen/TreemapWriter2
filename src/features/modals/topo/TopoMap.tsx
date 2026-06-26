@@ -12,11 +12,18 @@ import { layoutSpine, lineTrackPath, depGeom, depMidpoint, type XY } from './top
 import { usePanZoom } from './usePanZoom';
 import { clamp, type Transform } from './topo-sim-atlas';
 import { TK } from './tk';
+import { PoleGlyph } from './topo-marks';
+import { recenterField, type Centering, type FieldRole } from './topo-centering';
 
 const mono = 'JetBrains Mono, monospace';
 
+// upstream (rests-on) reads cyan like DEPENDS ON; downstream (rests-on-this) green like FEEDS.
+const fieldRing = (role: FieldRole | null | undefined): string | null =>
+  role === 'upstream' ? TK.accent : role === 'downstream' ? TK.green : null;
+
 export interface TopoMapProps {
   model: TopoModel;
+  centering: Centering;
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -62,8 +69,9 @@ const DepArc: React.FC<{
   health: 'solid' | 'weak' | 'broken';
   dim: boolean;
   selected: boolean;
+  backward?: boolean;
   onSelect: (id: string) => void;
-}> = ({ arc, pos, health, dim, selected, onSelect }) => {
+}> = ({ arc, pos, health, dim, selected, backward, onSelect }) => {
   const geom = depGeom(arc, pos);
   const mid = depMidpoint(arc, pos);
   if (!geom || !mid) return null;
@@ -103,6 +111,11 @@ const DepArc: React.FC<{
       <g transform={`translate(${geom.arrow.x},${geom.arrow.y}) rotate(${geom.arrow.angle})`}>
         <path d="M0,0 L-9,-5 L-9,5 Z" fill={base} />
       </g>
+      {backward && (
+        <g transform={`translate(${mid.x},${mid.y}) rotate(${geom.arrow.angle})`}>
+          <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+        </g>
+      )}
       {health === 'broken' && (
         <g transform={`translate(${mid.x},${mid.y})`}>
           <circle r="9" fill={TK.bg} stroke={TK.magenta} strokeWidth="1.6" />
@@ -128,13 +141,15 @@ const Station: React.FC<{
   hovered: boolean;
   dimmed: boolean;
   reduced: boolean;
+  fieldRole?: FieldRole | null;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onHover: (id: string | null) => void;
-}> = ({ s, p, color, interchange, selected, hovered, dimmed, reduced, onSelect, onOpen, onHover }) => {
+}> = ({ s, p, color, interchange, selected, hovered, dimmed, reduced, fieldRole, onSelect, onOpen, onHover }) => {
   const meta = statusMeta(s.status);
   const r = 13;
   const ring = selected ? TK.accent : color;
+  const fr = fieldRing(fieldRole);
   const lx = s.labelDir === 'left' ? -(r + 12) : r + 12;
   const anchor = s.labelDir === 'left' ? 'end' : 'start';
   return (
@@ -168,6 +183,7 @@ const Station: React.FC<{
           </circle>
         ))}
       {hovered && !selected && <circle r={r + 7} fill="none" stroke={TK.accent} strokeWidth="1" opacity="0.45" />}
+      {fr && !selected && <circle r={r + 6} fill="none" stroke={fr} strokeWidth="1.4" opacity="0.7" />}
       {interchange && <circle r={r + 4} fill={TK.bg} stroke={ring} strokeWidth="2" />}
       {s.fog ? (
         <circle r={r} fill={TK.bgDeep} stroke={ring} strokeWidth="2" strokeDasharray="4 3" opacity="0.9" />
@@ -298,6 +314,7 @@ const ZoomHud: React.FC<{ t: Transform; setT: React.Dispatch<React.SetStateActio
 
 export const TopoMap: React.FC<TopoMapProps> = ({
   model,
+  centering,
   selectedId,
   hoveredId,
   editorId,
@@ -337,9 +354,8 @@ export const TopoMap: React.FC<TopoMapProps> = ({
   }, [fitNonce]);
 
   const selPart = selectedId ? model.stationById[selectedId]?.partId ?? null : null;
-  const touching = selectedId
-    ? new Set([...model.inbound(selectedId), ...model.outbound(selectedId)].map((a) => a.id))
-    : null;
+  // recentre the whole field on the selected node (transitive, not 1-hop)
+  const field = recenterField(model, centering, selectedId);
 
   const lineDim = (id: string) => (filter ? id !== filter : selPart ? id !== selPart : false);
   const lineFocus = (id: string) => (filter ? id === filter : selPart ? id === selPart : false);
@@ -372,8 +388,8 @@ export const TopoMap: React.FC<TopoMapProps> = ({
           {model.arcs.map((a) => {
             const dim = filter
               ? !(model.stationById[a.source]?.partId === filter || model.stationById[a.target]?.partId === filter)
-              : selectedId
-                ? !touching!.has(a.id)
+              : field
+                ? !field.arcInField(a)
                 : false;
             return (
               <DepArc
@@ -383,6 +399,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
                 health={model.health(a)}
                 dim={dim}
                 selected={a.id === selectedDepId}
+                backward={centering.backwardArcs.has(a.id)}
                 onSelect={onSelectDep}
               />
             );
@@ -391,6 +408,8 @@ export const TopoMap: React.FC<TopoMapProps> = ({
           {model.stations.map((s) => {
             const p = pos[s.id];
             if (!p) return null;
+            const role = field ? field.role(s.id) : null;
+            const dimmed = filter ? s.partId !== filter : role === 'unrelated';
             return (
               <Station
                 key={s.id}
@@ -400,13 +419,20 @@ export const TopoMap: React.FC<TopoMapProps> = ({
                 interchange={model.interchange.has(s.id)}
                 selected={s.id === selectedId}
                 hovered={s.id === hoveredId}
-                dimmed={filter ? s.partId !== filter : false}
+                dimmed={dimmed}
                 reduced={reduced}
+                fieldRole={role}
                 onSelect={onSelect}
                 onOpen={onOpen}
                 onHover={onHover}
               />
             );
+          })}
+
+          {[...centering.radix, ...centering.telos].map((id) => {
+            const p = pos[id];
+            if (!p) return null;
+            return <PoleGlyph key={`pole-${id}`} x={p.x} y={p.y} r={13} kind={centering.byId[id].isRadix ? 'radix' : 'telos'} />;
           })}
 
           <YouMarker p={editorId ? pos[editorId] : undefined} reduced={reduced} />

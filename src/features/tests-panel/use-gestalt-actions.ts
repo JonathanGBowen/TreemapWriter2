@@ -3,6 +3,8 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { computeHash } from '../../lib/utils';
 import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
+import { deriveTopo } from '../modals/topo/topo-derive';
+import { computeCentering, formatStructuralEvidence } from '../modals/topo/topo-centering';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
@@ -35,11 +37,13 @@ export const useGestaltActions = () => {
     // The Beethoven test reconstructs the WHOLE from a part; the whole itself has
     // no "part" to read it from.
     if (sectionId === 'root') return;
-    const { testSuite, promptsConfig, isProcessing, modelConfig, globalModelDefault, modelCatalog } =
+    const { testSuite, sections, promptsConfig, isProcessing, modelConfig, globalModelDefault, modelCatalog } =
       useStore.getState();
     if (isProcessing || inFlight.has(sectionId)) return;
 
     const documentClaim = testSuite['root']?.spec?.mainClaim?.trim() || undefined;
+    const topo = deriveTopo(sections, testSuite);
+    const structuralEvidence = formatStructuralEvidence(topo, computeCentering(topo), sectionId) || undefined;
     const choice = resolveModelChoice('reconstructWhole', modelConfig, globalModelDefault);
     if (
       !guardContextFit({
@@ -60,6 +64,7 @@ export const useGestaltActions = () => {
         sectionTitle,
         sectionText,
         documentClaim,
+        structuralEvidence,
         config: promptsConfig,
       });
       if (!result) {
@@ -92,6 +97,8 @@ export const useGestaltActions = () => {
       sectionId === 'root'
         ? undefined
         : formatStructuralSurround(buildStructuralSurround(sectionId, sections, specs)) || undefined;
+    const topo = deriveTopo(sections, testSuite);
+    const structuralEvidence = formatStructuralEvidence(topo, computeCentering(topo), sectionId) || undefined;
 
     const choice = resolveModelChoice('proposeRecenterings', modelConfig, globalModelDefault);
     if (
@@ -116,6 +123,7 @@ export const useGestaltActions = () => {
         currentFunction: spec?.function,
         requiredMoves: spec?.requiredMoves.map((m) => m.description),
         structuralSurround,
+        structuralEvidence,
         config: promptsConfig,
       });
       if (!result) {

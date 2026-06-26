@@ -10,6 +10,14 @@ and — when available — its part-in-whole context (what the surrounding secti
 and expect). Use the whole: a good recentering serves the larger argument, not just local
 neatness.
 
+You may also be given STRUCTURAL EVIDENCE — this section's place in the document's dependency
+topology, read off the direction of the arrows (its rank from source to sink, how many
+sections transitively rest on it, whether any links run backward against reading order, or it
+sits in a dependency cycle). This is Wertheimer's true centre — "the source of the arrows, the
+heart of the matter" — not the most-connected node. Let it weigh your proposals: a section much
+of the work rests on earns a centering that holds the whole structure together; backward links
+and cycles are themselves structural trouble a recentering may be the move to resolve.
+
 Propose 2–3 alternative structural CENTERINGS of this section — genuinely different points
 its parts could organize around, not cosmetic re-orderings. For each:
 - "center": the new center of gravity, as one crisp phrase.

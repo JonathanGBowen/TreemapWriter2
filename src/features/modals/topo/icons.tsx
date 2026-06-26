@@ -69,6 +69,14 @@ export const SpineGlyph: React.FC<{ c: string }> = ({ c }) => (
   </svg>
 );
 
+export const RadixGlyph: React.FC<{ c: string }> = ({ c }) => (
+  <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true">
+    {/* a source burst over layered rank bands — position encodes structural rank */}
+    <path d="M7 1.3 L7 4.4 M5.2 2.85 L8.8 2.85 M5.6 1.9 L8.4 3.8 M8.4 1.9 L5.6 3.8" stroke={c} strokeWidth="0.9" strokeLinecap="round" />
+    <path d="M2.5 7.4 L11.5 7.4 M4.5 10.6 L9.5 10.6" stroke={c} strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
 export const CloseGlyph: React.FC<{ size?: number }> = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
     <path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
