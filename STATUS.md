@@ -259,9 +259,23 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   `gestalt-design-II.md`): the visual *Tension Lens* on the treemap and directional vector
   connectors (gated on stable section IDs / a Plotly between-tile primitive), and
   boundary-correctness + B-reaction guardrails (`gestalt-design.md` item 7). The register is
-  the accessible spine those visual layers build onto. The spec-derivation `contentPreview`
-  slices (800 / 600) remain the only input char-slices (every other arbitrary cap was
-  deleted for the `checkContextFit` token-budget pre-flight, 2026-06-18).
+  the accessible spine those visual layers build onto. **Centering made visible — essay III
+  (2026-06-26, see [`docs/migration-log.md`](docs/migration-log.md) +
+  [`docs/gestalt-design-III.md`](docs/gestalt-design-III.md)):** the deferred
+  directional-vector idea landed in the **Argument Topology modal**, not the treemap (which
+  stays gated on the heatmap-accessibility verdict + stable IDs). A pure `computeCentering`
+  (`src/features/modals/topo/topo-centering.ts`) reads the *source of the arrows* off the
+  dependency graph — structural rank, centrality, radix/telos, cycles, backward arcs — and
+  drives a **recenter-on-node** field re-read across all three projections, a rank-encoded
+  **RADIX** projection, a structural readout that demotes the cosmetic route-length/crossings
+  metric, and structural evidence fed into the recenter / Beethoven prompts. **Still
+  deferred:** the treemap *Tension Lens* + structural sizing (heatmap-accessibility + stable
+  IDs); richer edge semantics (the structural "and / but / nevertheless" beyond
+  prerequisite/reference — touches the domain types); and wiring the topology trouble-regions
+  (broken/weak/fog/backward/cycle) into the Structural-Tension Register as S₁→S₂ vectors. The
+  spec-derivation `contentPreview` slices (800 / 600) remain the only input char-slices (every
+  other arbitrary cap was deleted for the `checkContextFit` token-budget pre-flight,
+  2026-06-18).
 - ~~**Streaming AI in a sidebar coach panel.**~~ Done 2026-06-20 (see
   [`docs/migration-log.md`](docs/migration-log.md)). `streamCoachAdvice` now
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and

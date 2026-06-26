@@ -14,11 +14,13 @@ import {
 } from './topo-derive';
 import { TK } from './tk';
 import { ArrowRightGlyph } from './icons';
+import { upstreamClosure, type Centering } from './topo-centering';
 
 const mono = 'JetBrains Mono, monospace';
 
 export interface InspectorProps {
   model: TopoModel;
+  centering: Centering;
   station: Station | null;
   arc: Arc | null;
   editorId: string | null;
@@ -29,6 +31,13 @@ export interface InspectorProps {
   onToggleDep: (arcId: string) => void;
   onRemoveDep: (arcId: string) => void;
 }
+
+// the centering line in a station's header — its place in the source-of-arrows order
+const CenterBadge: React.FC<{ label: string; c: string }> = ({ label, c }) => (
+  <span style={{ fontFamily: mono, fontSize: 7, fontWeight: 800, letterSpacing: '0.1em', color: c, border: `1px solid ${c}`, padding: '1px 4px' }}>
+    {label}
+  </span>
+);
 
 function useLineColor(model: TopoModel) {
   return useMemo(() => {
@@ -188,6 +197,7 @@ const EmptyInspector: React.FC = () => (
 
 const StationInspector: React.FC<{
   model: TopoModel;
+  centering: Centering;
   station: Station;
   lineColor: Record<string, string>;
   editorId: string | null;
@@ -197,11 +207,13 @@ const StationInspector: React.FC<{
   onSelect: (id: string) => void;
   onToggleDep: (id: string) => void;
   onRemoveDep: (id: string) => void;
-}> = ({ model, station, lineColor, editorId, linkMode, setLinkMode, onOpen, onSelect, onToggleDep, onRemoveDep }) => {
+}> = ({ model, centering, station, lineColor, editorId, linkMode, setLinkMode, onOpen, onSelect, onToggleDep, onRemoveDep }) => {
   const meta = statusMeta(station.status);
   const b = model.board(station.id);
   const inbound = model.inbound(station.id);
   const outbound = model.outbound(station.id);
+  const c = centering.byId[station.id];
+  const restsOn = upstreamClosure(model, station.id).size;
   const isHere = editorId === station.id;
   const part = lineColor[station.partId] || TK.accent;
   const claim = b.claim || '— No controlling claim formulated yet.';
@@ -236,6 +248,16 @@ const StationInspector: React.FC<{
             <div style={{ fontFamily: mono, fontSize: 7.5, color: TK.muted, letterSpacing: '0.14em' }}>
               {station.fn ? FN_LABELS[station.fn] : 'UNSPECIFIED'} · {station.words}W · <span style={{ color: meta.c }}>{meta.label}</span>
             </div>
+            {c && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+                {c.isRadix && <CenterBadge label="◆ RADIX" c={TK.purple} />}
+                {c.isTelos && <CenterBadge label="◎ TELOS" c={TK.purple} />}
+                {c.inCycle && <CenterBadge label="⟲ CYCLE" c={TK.magenta} />}
+                <span style={{ fontFamily: mono, fontSize: 7, color: TK.muted, letterSpacing: '0.1em' }}>
+                  RANK {c.rank}/{centering.maxRank} · RESTS ON {restsOn} · {c.centrality} REST ON THIS
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <button
@@ -395,6 +417,7 @@ const DepInspector: React.FC<{
 
 export const Inspector: React.FC<InspectorProps> = ({
   model,
+  centering,
   station,
   arc,
   editorId,
@@ -425,6 +448,7 @@ export const Inspector: React.FC<InspectorProps> = ({
       ) : station ? (
         <StationInspector
           model={model}
+          centering={centering}
           station={station}
           lineColor={lineColor}
           editorId={editorId}

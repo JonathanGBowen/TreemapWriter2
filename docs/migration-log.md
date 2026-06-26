@@ -4187,3 +4187,63 @@ and ≥24px.
 **Tests.** UI wiring — no covered lines. (The dock `tools` array and `App.tsx`
 `paletteCommands` now both list these launchers — by design; a shared launcher registry
 to dedupe them is a sensible future cleanup.)
+
+---
+
+## 2026-06-26 — Centering, made visible (Gestalt essay III)
+
+**What changed.** Wertheimer's *centering / recentering* moved out of the AI text
+diagnostics and into the Argument Topology modal's visualizations. The design is
+recorded in [`docs/gestalt-design-III.md`](gestalt-design-III.md); the short of it:
+the topology graph already held a *directed* relational network (the office of
+"A Girl Describes Her Office"), but centered it on authored order and groomed it for
+fewest crossings — exactly the ego-centering and "seductive simplification"
+Wertheimer warns against. The true center — "the source of the arrows" — is now
+computed from arc direction and shown.
+
+- **New pure engine** `src/features/modals/topo/topo-centering.ts` (+
+  `__tests__/topo-centering.test.ts`, 7 tests): `computeCentering(model)` →
+  per-station structural **rank** (longest-path layering, cycle-safe via SCC
+  condensation), **centrality** (transitive-dependents = necessary-part-hood),
+  **radix / telos / inCycle**, document-wide **cycles**, **backwardArcs** (a
+  prerequisite placed after its dependent), and a **miscentering** scalar. Plus
+  `recenterField` (transitive upstream/downstream/unrelated, shared by all views),
+  `upstreamClosure`, and `formatStructuralEvidence` (for the AI prompts).
+- **Recenter on a node** — `TopoLand` / `TopoMap` / a new `TopoRadix` re-read the
+  *whole field* relative to the selected section (transitive, not 1-hop): upstream
+  tinted cyan, downstream green, unrelated dimmed. The spatial sibling of
+  `proposeRecenterings`.
+- **RADIX projection** — `topo-layout-radix.ts` + `TopoRadix.tsx`, a third toggle
+  (ATLAS / RADIX / SPINE; `RadixGlyph` in `icons.tsx`). Position encodes rank:
+  radix pole → telos pole. Static + deterministic; ORGANISE just refits (the
+  OPTIMISE/rAF animation stays ATLAS-only).
+- **Honest readout** — `StructuralReadout.tsx` leads the FilterBar with BACKWARD ·
+  RANK SPAN · MISCENTER and demotes ROUTE LEN / CROSS to dimmed, ATLAS-only. Marks
+  shared via a new `topo-marks.tsx` (Province + Route extracted out of `TopoLand`,
+  which dropped 503→326 lines) carry radix/telos **PoleGlyph**s (purple — a layer
+  disjoint from the cyan deps, Part hues, status pips) and a backward-arc chevron;
+  `LegendKey` gains a CENTERING key; the `Inspector` shows rank / centrality /
+  RADIX·TELOS·CYCLE badges + "rests on N · M rest on this".
+- **AI grounded** — `RecenterInput` / `ReconstructWholeInput` gained an optional
+  `structuralEvidence`; `recenter.md` consumes it (which recentering serves the
+  whole), `reconstruct-whole.md` uses it fenced as alignment-weight only (never to
+  shape the read-alone reconstruction). Built by `use-gestalt-actions.ts` from
+  `deriveTopo` + `computeCentering`.
+
+**Verify.** `npx vitest run src/features/modals/topo/__tests__/topo-centering.test.ts`
+(chain / diamond / cycle / backward / empty / upstream, 7 green); `npm test` (472),
+`npm run typecheck`, `npm run build` all green; hex guardrail at 0. Manually (open
+Argument Topology, dock `◈`): radix/telos glyphs mark sources/sinks; selecting a
+section dims unrelated nodes and tints upstream/downstream; backward deps show a
+magenta chevron; the readout leads with BACKWARD/RANK SPAN/MISCENTER; the RADIX
+projection lays sections out by rank, deterministically; OPTIMISE + its animation
+still run only in ATLAS.
+
+**Rollback.** `git revert`. The new files are additive; the edited views/modal/
+prompts revert to the prior 1-hop dimming, the ROUTE LENGTH/CROSSINGS readout, and
+the two-projection toggle.
+
+**Tests.** `topo-centering.test.ts` (7) covers the pure engine. The views, the
+readout, and the radix layout are UI — no covered lines (consistent with the other
+topo surfaces). The gestalt characterization tests still pass: `structuralEvidence`
+is optional and absent from those fixtures, so the prompts are unchanged there.

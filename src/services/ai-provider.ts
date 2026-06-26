@@ -451,6 +451,8 @@ export interface ReconstructWholeInput {
   sectionText: string;
   /** The document's actual main claim (root spec), for the drift comparison. Optional. */
   documentClaim?: string;
+  /** Computed dependency-topology facts about this part (rank, what rests on it, cycles). */
+  structuralEvidence?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
@@ -466,6 +468,8 @@ export interface RecenterInput {
   requiredMoves?: string[];
   /** Pre-formatted part-in-whole context (formatStructuralSurround), so a recentering serves the whole. */
   structuralSurround?: string;
+  /** Computed dependency-topology facts (rank, what rests on it, backward links, cycles). */
+  structuralEvidence?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

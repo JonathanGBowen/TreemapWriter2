@@ -19,13 +19,16 @@ import { useStore } from '../../store';
 
 import { deriveTopo } from './topo/topo-derive';
 import type { Metrics } from './topo/topo-sim-atlas';
+import { computeCentering, type Centering } from './topo/topo-centering';
 import { TopoLand } from './topo/TopoLand';
 import { TopoMap } from './topo/TopoMap';
+import { TopoRadix } from './topo/TopoRadix';
 import { Inspector } from './topo/Inspector';
 import { LegendKey } from './topo/LegendKey';
+import { StructuralReadout } from './topo/StructuralReadout';
 import { useReducedMotion } from './topo/useReducedMotion';
 import { TK } from './topo/tk';
-import { AtlasGlyph, CloseGlyph, NetworkGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
+import { AtlasGlyph, CloseGlyph, NetworkGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -35,7 +38,7 @@ interface DependencyGraphModalProps {
 }
 
 const mono = 'JetBrains Mono, monospace';
-type Projection = 'atlas' | 'spine';
+type Projection = 'atlas' | 'spine' | 'radix';
 
 // ── header ──────────────────────────────────────────────────────────
 const ProjectionToggle: React.FC<{ mode: Projection; setMode: (m: Projection) => void }> = ({ mode, setMode }) => {
@@ -68,6 +71,7 @@ const ProjectionToggle: React.FC<{ mode: Projection; setMode: (m: Projection) =>
   return (
     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${TK.border}`, marginRight: 2 }}>
       {opt('atlas', 'ATLAS', <AtlasGlyph c={mode === 'atlas' ? TK.accent : TK.muted} />, 'Sections as land, dependencies as routes', true)}
+      {opt('radix', 'RADIX', <RadixGlyph c={mode === 'radix' ? TK.accent : TK.muted} />, 'Sections by structural rank — radix (source) at top, telos (sink) at bottom', true)}
       {opt('spine', 'SPINE', <SpineGlyph c={mode === 'spine' ? TK.accent : TK.muted} />, 'Parts as lines, dependencies as arcs', false)}
     </div>
   );
@@ -149,9 +153,15 @@ const Header: React.FC<{
           opacity: optimizing ? 0.5 : 1,
           ...(mode === 'atlas' ? { background: `rgba(${TK.accentGlow},0.10)`, boxShadow: `0 0 ${10 * TK.glow.edge}px rgba(${TK.accentGlow},0.3)` } : {}),
         }}
-        title={mode === 'atlas' ? 'Optimise the landscape against the dependency graph' : 'Re-run auto layout'}
+        title={
+          mode === 'atlas'
+            ? 'Optimise the landscape against the dependency graph'
+            : mode === 'radix'
+              ? 'Fit the rank layout to view'
+              : 'Re-run auto layout'
+        }
       >
-        {mode === 'atlas' ? 'OPTIMISE' : 'ORGANISE'} <RefreshGlyph c={TK.accent} />
+        {mode === 'atlas' ? 'OPTIMISE' : mode === 'radix' ? 'FIT' : 'ORGANISE'} <RefreshGlyph c={TK.accent} />
       </button>
       <button
         onClick={onClose}
@@ -165,21 +175,6 @@ const Header: React.FC<{
 };
 
 // ── filter bar ──────────────────────────────────────────────────────
-const RouteReadout: React.FC<{ land: Metrics }> = ({ land }) => {
-  const cell = (label: string, val: string | number, c: string) => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.1 }}>
-      <span style={{ fontFamily: mono, fontSize: 6.5, color: TK.dim, letterSpacing: '0.14em', fontWeight: 700 }}>{label}</span>
-      <span style={{ fontFamily: mono, fontSize: 11, color: c, fontWeight: 800 }}>{val}</span>
-    </div>
-  );
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingRight: 2 }} title="Lower is better. OPTIMISE shortens routes and removes crossings.">
-      {cell('ROUTE LENGTH', land.len.toLocaleString() + 'u', TK.accent)}
-      {cell('CROSSINGS', land.cross, land.cross > 0 ? TK.yellow : TK.green)}
-    </div>
-  );
-};
-
 const MiniToggle: React.FC<{ on: boolean; setOn: (v: boolean) => void; label: string }> = ({ on, setOn, label }) => (
   <button
     onClick={() => setOn(!on)}
@@ -214,8 +209,11 @@ const FilterBar: React.FC<{
   land: Metrics;
   ghost: boolean;
   setGhost: (v: boolean) => void;
-}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost }) => {
+  centering: Centering;
+}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost, centering }) => {
   const atlas = mode === 'atlas';
+  const dotChip = mode !== 'spine'; // ATLAS + RADIX use round Part chips; SPINE uses a track
+  const heading = mode === 'atlas' ? 'CONTINENTS' : mode === 'radix' ? 'PARTS' : 'LINES';
   return (
     <div
       style={{
@@ -233,7 +231,7 @@ const FilterBar: React.FC<{
     >
       <div style={{ fontFamily: mono, fontSize: 8, color: TK.accent, letterSpacing: '0.18em', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         <div style={{ width: 5, height: 5, background: TK.accent, transform: 'rotate(45deg)', boxShadow: `0 0 4px ${TK.accent}` }} />
-        {atlas ? 'CONTINENTS' : 'LINES'}
+        {heading}
       </div>
       <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, overflowX: 'auto' }}>
         {lines.map((l) => {
@@ -256,7 +254,7 @@ const FilterBar: React.FC<{
                 opacity: off ? 0.4 : 1,
               }}
             >
-              {atlas ? (
+              {dotChip ? (
                 <span style={{ width: 11, height: 11, borderRadius: '50%', background: l.color, boxShadow: `0 0 5px ${l.color}`, flexShrink: 0 }} />
               ) : (
                 <svg width="20" height="8">
@@ -271,7 +269,8 @@ const FilterBar: React.FC<{
         })}
       </div>
       <div style={{ width: 1, height: 18, background: TK.border, flexShrink: 0 }} />
-      {atlas ? <RouteReadout land={land} /> : <MiniToggle on={ghost} setOn={setGhost} label="GHOST" />}
+      {mode === 'spine' && <MiniToggle on={ghost} setOn={setGhost} label="GHOST" />}
+      <StructuralReadout centering={centering} land={land} atlas={atlas} />
     </div>
   );
 };
@@ -331,6 +330,8 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const reduced = useReducedMotion();
 
   const model = useMemo(() => deriveTopo(sections, testSuite), [sections, testSuite]);
+  // the structural centre, read off the direction of the arcs (rides the same memo)
+  const centering = useMemo(() => computeCentering(model), [model]);
 
   const [mode, setMode] = useState<Projection>('atlas');
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
@@ -439,7 +440,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
     if (mode === 'atlas') setOrganizeNonce((n) => n + 1);
     else {
       setFitNonce((n) => n + 1);
-      toast.success('Graph Layout Optimized.');
+      toast.success(mode === 'radix' ? 'Refit to rank layout.' : 'Graph Layout Optimized.');
     }
   }, [mode]);
 
@@ -500,7 +501,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
           onClose={onClose}
         />
 
-        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} />
+        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} centering={centering} />
 
         <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
           <main style={{ flex: 1, position: 'relative', minWidth: 0 }}>
@@ -511,6 +512,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
             ) : mode === 'atlas' ? (
               <TopoLand
                 model={model}
+                centering={centering}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}
@@ -525,9 +527,26 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
                 onMetrics={setLand}
                 onOptRun={onOptRun}
               />
+            ) : mode === 'radix' ? (
+              <TopoRadix
+                model={model}
+                centering={centering}
+                selectedId={selectedStationId}
+                hoveredId={hoveredId}
+                editorId={editorSelectedId}
+                filter={filterPartId}
+                selectedDepId={selectedDepId}
+                fitNonce={fitNonce}
+                reduced={reduced}
+                onSelect={onSelect}
+                onSelectDep={onSelectDep}
+                onHover={setHoveredId}
+                onOpen={onOpenInEditor}
+              />
             ) : (
               <TopoMap
                 model={model}
+                centering={centering}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}
@@ -574,6 +593,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
 
           <Inspector
             model={model}
+            centering={centering}
             station={station}
             arc={arc}
             editorId={editorSelectedId}

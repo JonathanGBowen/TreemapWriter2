@@ -8,8 +8,7 @@
    Ported from the prototype topo-land.jsx. */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { TopoModel, Arc, Station as StationT } from './topo-derive';
-import { statusMeta } from './topo-derive';
+import type { TopoModel } from './topo-derive';
 import { usePanZoom } from './usePanZoom';
 import {
   buildInitial,
@@ -26,11 +25,14 @@ import {
   type Transform,
 } from './topo-sim-atlas';
 import { TK } from './tk';
+import { Province, Route, PoleGlyph } from './topo-marks';
+import { recenterField, type Centering } from './topo-centering';
 
 const mono = 'JetBrains Mono, monospace';
 
 export interface TopoLandProps {
   model: TopoModel;
+  centering: Centering;
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -44,10 +46,6 @@ export interface TopoLandProps {
   onOpen: (id: string) => void;
   onMetrics: (m: Metrics) => void;
   onOptRun: (running: boolean) => void;
-}
-
-function trim(s: string, n: number) {
-  return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 
 const LandDefs: React.FC = () => (
@@ -109,165 +107,6 @@ const Continent: React.FC<{ partId: string; color: string; nodes: SimNode[]; dim
           <circle key={n.id} cx={n.x} cy={n.y} r={n.r - 1} fill={coast} />
         ))}
       </g>
-    </g>
-  );
-};
-
-// ── route (dependency) ──────────────────────────────────────────────
-const Route: React.FC<{
-  arc: Arc;
-  m: Record<string, SimNode>;
-  health: 'solid' | 'weak' | 'broken';
-  dim: boolean;
-  selected: boolean;
-  onSelect: (id: string) => void;
-}> = ({ arc, m, health, dim, selected, onSelect }) => {
-  const a = m[arc.source];
-  const b = m[arc.target];
-  if (!a || !b) return null;
-  const ref = arc.type === 'reference';
-  const base = health === 'broken' ? TK.magenta : health === 'weak' ? TK.yellow : TK.accent;
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const d = Math.hypot(dx, dy) || 1;
-  const nx = dx / d;
-  const ny = dy / d;
-  const sx = a.x + nx * (a.r + 2);
-  const sy = a.y + ny * (a.r + 2);
-  const ex = b.x - nx * (b.r + 9);
-  const ey = b.y - ny * (b.r + 9);
-  const bow = Math.min(48, d * 0.14);
-  const mx = (sx + ex) / 2 - ny * bow;
-  const my = (sy + ey) / 2 + nx * bow;
-  const path = `M${sx},${sy} Q ${mx},${my} ${ex},${ey}`;
-  const dash = ref ? '9 7' : health === 'weak' ? '3 7' : undefined;
-  const ang = (Math.atan2(ey - my, ex - mx) * 180) / Math.PI;
-  return (
-    <g
-      opacity={dim ? 0.12 : 1}
-      style={{ transition: 'opacity 0.45s', cursor: 'pointer' }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(arc.id);
-      }}
-    >
-      <path d={path} fill="none" stroke="transparent" strokeWidth="18" />
-      {selected && <path d={path} fill="none" stroke={TK.accent} strokeWidth="7" opacity="0.28" style={{ filter: 'blur(3px)' }} />}
-      <circle cx={sx} cy={sy} r="3.2" fill={TK.bg} stroke={base} strokeWidth="1.6" />
-      <path
-        d={path}
-        fill="none"
-        stroke={base}
-        strokeWidth={selected ? 3 : 2.2}
-        strokeLinecap="round"
-        strokeDasharray={dash}
-        strokeOpacity={health === 'broken' ? 0.92 : 1}
-      />
-      <g transform={`translate(${ex},${ey}) rotate(${ang})`}>
-        <path d="M0,0 L-9,-5 L-9,5 Z" fill={base} />
-      </g>
-      {health === 'broken' && (
-        <g transform={`translate(${mx},${my})`}>
-          <circle r="8.5" fill={TK.bg} stroke={TK.magenta} strokeWidth="1.6" />
-          <path d="M-3.4,-3.4 L3.4,3.4 M3.4,-3.4 L-3.4,3.4" stroke={TK.magenta} strokeWidth="2" strokeLinecap="round" />
-        </g>
-      )}
-    </g>
-  );
-};
-
-// ── province marker (the section, a "city" on its land) ─────────────
-const Province: React.FC<{
-  s: StationT;
-  node: SimNode | undefined;
-  color: string;
-  selected: boolean;
-  hovered: boolean;
-  dimmed: boolean;
-  isHere: boolean;
-  reduced: boolean;
-  onSelect: (id: string) => void;
-  onOpen: (id: string) => void;
-  onHover: (id: string | null) => void;
-}> = ({ s, node, color, selected, hovered, dimmed, isHere, reduced, onSelect, onOpen, onHover }) => {
-  if (!node) return null;
-  const meta = statusMeta(s.status);
-  const active = selected || hovered;
-  return (
-    <g
-      transform={`translate(${node.x},${node.y})`}
-      style={{ cursor: 'pointer', opacity: dimmed ? 0.3 : 1, transition: 'opacity 0.45s' }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(s.id);
-      }}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onOpen(s.id);
-      }}
-      onPointerEnter={() => onHover(s.id)}
-      onPointerLeave={() => onHover(null)}
-    >
-      {selected &&
-        (reduced ? (
-          <circle r={node.r + 7} fill="none" stroke={TK.accent} strokeWidth="1.4" strokeDasharray="3 5" opacity="0.95" />
-        ) : (
-          <circle r={node.r + 7} fill="none" stroke={TK.accent} strokeWidth="1.4" strokeDasharray="3 5" opacity="0.95">
-            <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="20s" repeatCount="indefinite" />
-          </circle>
-        ))}
-      {hovered && !selected && <circle r={node.r + 5} fill="none" stroke={TK.accent} strokeWidth="1" opacity="0.4" />}
-      {isHere &&
-        (reduced ? (
-          <circle r={node.r + 11} fill="none" stroke={TK.accent} strokeWidth="1.2" strokeDasharray="2 6" opacity="0.8" />
-        ) : (
-          <circle r={node.r + 11} fill="none" stroke={TK.accent} strokeWidth="1.2" strokeDasharray="2 6" opacity="0.8">
-            <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="14s" repeatCount="indefinite" />
-          </circle>
-        ))}
-      {s.fog && <circle r={node.r} fill="none" stroke={color} strokeWidth="1.4" strokeDasharray="4 4" opacity="0.55" />}
-      <circle r="5.5" fill={meta.c} stroke={TK.bg} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 5px ${meta.c})` }} />
-      <text
-        x="0"
-        y={-10}
-        textAnchor="middle"
-        fontFamily={mono}
-        fontSize={11}
-        fontWeight="800"
-        letterSpacing="0.03em"
-        fill={selected ? TK.accent : TK.textHi}
-        style={{ pointerEvents: 'none', paintOrder: 'stroke', stroke: SEA, strokeWidth: 3 }}
-      >
-        {s.sym}
-      </text>
-      {active && (
-        <g style={{ pointerEvents: 'none' }}>
-          <text
-            x="0"
-            y={node.r + 15}
-            textAnchor="middle"
-            fontFamily="Inter, sans-serif"
-            fontSize={11}
-            fontWeight="700"
-            fill={TK.textHi}
-            style={{ paintOrder: 'stroke', stroke: SEA, strokeWidth: 3.5 }}
-          >
-            {trim(s.short, 24)}
-          </text>
-          <text
-            x="0"
-            y={node.r + 28}
-            textAnchor="middle"
-            fontFamily={mono}
-            fontSize="7.5"
-            letterSpacing="0.1em"
-            fill={meta.c}
-            style={{ paintOrder: 'stroke', stroke: SEA, strokeWidth: 3 }}
-          >
-            {s.words}W · {meta.label}
-          </text>
-        </g>
-      )}
     </g>
   );
 };
@@ -336,6 +175,7 @@ const ZoomHud: React.FC<{ t: Transform; setT: React.Dispatch<React.SetStateActio
 
 export const TopoLand: React.FC<TopoLandProps> = ({
   model,
+  centering,
   selectedId,
   hoveredId,
   editorId,
@@ -434,9 +274,8 @@ export const TopoLand: React.FC<TopoLandProps> = ({
   }, [nodes]);
 
   const selPart = selectedId ? model.stationById[selectedId]?.partId ?? null : null;
-  const touching = selectedId
-    ? new Set([...model.inbound(selectedId), ...model.outbound(selectedId)].map((a) => a.id))
-    : null;
+  // recentre the whole field on the selected node (transitive, not 1-hop)
+  const field = recenterField(model, centering, selectedId);
 
   return (
     <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: TK.bgDeep, cursor: dragging ? 'grabbing' : 'grab' }}>
@@ -470,28 +309,50 @@ export const TopoLand: React.FC<TopoLandProps> = ({
           {model.arcs.map((a) => {
             const dim = filter
               ? !(model.stationById[a.source]?.partId === filter || model.stationById[a.target]?.partId === filter)
-              : selectedId
-                ? !touching!.has(a.id)
+              : field
+                ? !field.arcInField(a)
                 : false;
-            return <Route key={a.id} arc={a} m={m} health={model.health(a)} dim={dim} selected={a.id === selectedDepId} onSelect={onSelectDep} />;
+            return (
+              <Route
+                key={a.id}
+                arc={a}
+                m={m}
+                health={model.health(a)}
+                dim={dim}
+                selected={a.id === selectedDepId}
+                backward={centering.backwardArcs.has(a.id)}
+                onSelect={onSelectDep}
+              />
+            );
           })}
 
-          {model.stations.map((s) => (
-            <Province
-              key={s.id}
-              s={s}
-              node={m[s.id]}
-              color={lineColor[s.partId] || TK.accent}
-              selected={s.id === selectedId}
-              hovered={s.id === hoveredId}
-              dimmed={filter ? s.partId !== filter : false}
-              isHere={s.id === editorId}
-              reduced={reduced}
-              onSelect={onSelect}
-              onOpen={onOpen}
-              onHover={onHover}
-            />
-          ))}
+          {model.stations.map((s) => {
+            const role = field ? field.role(s.id) : null;
+            const dimmed = filter ? s.partId !== filter : role === 'unrelated';
+            return (
+              <Province
+                key={s.id}
+                s={s}
+                node={m[s.id]}
+                color={lineColor[s.partId] || TK.accent}
+                selected={s.id === selectedId}
+                hovered={s.id === hoveredId}
+                dimmed={dimmed}
+                isHere={s.id === editorId}
+                reduced={reduced}
+                fieldRole={role}
+                onSelect={onSelect}
+                onOpen={onOpen}
+                onHover={onHover}
+              />
+            );
+          })}
+
+          {[...centering.radix, ...centering.telos].map((id) => {
+            const n = m[id];
+            if (!n) return null;
+            return <PoleGlyph key={`pole-${id}`} x={n.x} y={n.y} r={n.r} kind={centering.byId[id].isRadix ? 'radix' : 'telos'} />;
+          })}
 
           <ContinentLabels model={model} m={m} filter={filter} selectedId={selectedId} />
         </g>

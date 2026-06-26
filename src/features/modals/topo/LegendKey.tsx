@@ -16,8 +16,8 @@ const Row: React.FC<{ svg: React.ReactNode; label: string }> = ({ svg, label }) 
   </div>
 );
 
-export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' }> = ({ mode }) => {
-  const atlas = mode === 'atlas';
+export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' }> = ({ mode }) => {
+  const atlas = mode !== 'spine'; // ATLAS and RADIX share the land/route marks
   const head = { fontFamily: mono, fontSize: 6.5, color: TK.muted, letterSpacing: '0.18em', fontWeight: 700 } as React.CSSProperties;
   return (
     <div
@@ -104,6 +104,36 @@ export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' }> = ({ mode }) => {
           </span>
         }
         label="SOLID · WORK · STALE · BREAK · IDLE"
+      />
+      <div style={{ height: 1, background: TK.border, margin: '1px 0' }} />
+      <div style={head}>CENTERING</div>
+      <Row
+        svg={
+          <svg width="22" height="11">
+            <g stroke={TK.purple} strokeWidth="1.1" strokeLinecap="round">
+              <path d="M6 1.5 L6 9.5 M2 5.5 L10 5.5 M3.2 2.7 L8.8 8.3 M8.8 2.7 L3.2 8.3" />
+            </g>
+          </svg>
+        }
+        label="RADIX · source of arrows"
+      />
+      <Row
+        svg={
+          <svg width="22" height="11">
+            <circle cx="6" cy="5.5" r="4" fill="none" stroke={TK.purple} strokeWidth="1.1" />
+            <circle cx="6" cy="5.5" r="1.4" fill={TK.purple} />
+          </svg>
+        }
+        label="TELOS · what it serves"
+      />
+      <Row
+        svg={
+          <svg width="22" height="11">
+            <path d="M3 5.5 L19 5.5" stroke={TK.magenta} strokeWidth="1.4" />
+            <path d="M11 5.5 L5 2.5 L5 8.5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.3" />
+          </svg>
+        }
+        label="BACKWARD · prereq read late"
       />
     </div>
   );
