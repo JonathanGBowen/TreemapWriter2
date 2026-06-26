@@ -13,8 +13,9 @@ export const hldTheme = EditorView.theme({
     lineHeight: "1.8",
   },
   "&.cm-editor": {
-    backgroundColor: "#05090d",
-    outline: "none"
+    backgroundColor: "#05090d"
+    /* No `outline: none` here — keyboard focus shows a visible cyan ring on
+       `.cm-content:focus-visible` (see src/index.css). */
   },
   ".cm-scroller": {
     fontFamily: "inherit",

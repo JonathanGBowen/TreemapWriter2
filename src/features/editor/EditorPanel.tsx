@@ -278,7 +278,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
            {currentSection ? (
              <>
                <span className="truncate">{projectName || 'Project'}</span>
-               <span className="text-[#1f3050]">›</span>
+               <span className="text-hld-muted-text" aria-hidden="true">›</span>
                <span className="text-hld-text font-bold truncate">
                  {titleInput}
                </span>

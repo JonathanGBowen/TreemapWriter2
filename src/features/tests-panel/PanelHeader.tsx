@@ -32,7 +32,7 @@ export function PanelHeader({ section, diagnostic, meta, onOpenSettings, setting
       <div className="flex items-start gap-[10px]">
         <div className="flex-1 min-w-0">
           <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-hld-muted-text-2">Section</div>
-          <div className="text-[15px] font-semibold tracking-[-0.01em] text-hld-text mt-[3px] leading-tight truncate">{section.title}</div>
+          <div role="heading" aria-level={2} className="text-[15px] font-semibold tracking-[-0.01em] text-hld-text mt-[3px] leading-tight truncate">{section.title}</div>
         </div>
         {onOpenSettings && (
           <button

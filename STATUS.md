@@ -188,6 +188,31 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
 
 ## Next (felt priorities)
 
+- **Design-system remediation (HLD audit) — Tier 1 in progress.** A visual design
+  audit (Claude Design, bundle in `audit/design_handoff_hld_remediation/`) found a
+  real HLD design language that stopped enforcing its own rules as features accreted
+  (six ambient layers at rest, ~11 accents, six status encoders, ~248 hard-coded
+  hexes, off-grid type/spacing, no visible focus ring). Verdict: *polish, not
+  rebuild* — every fix is subtraction. Approved plan = all three tiers; key calls:
+  a small `.hld-btn` layer carries the focus ring (no 60-file rename), muted-text
+  token **values kept** (the audit's inversion would silently change 328 sites),
+  **24px** desktop targets (not touch 44px), glyphs kept (no permanent visible tool
+  labels). **Shipped:** PR 1 — accessibility foundation (a `:focus-visible` cyan
+  ring on the new button family + a narrow global fallback; editor `outline:none`
+  replaced with an inset ring; semantic panel heading; the failing contrast pairs).
+  **Next, in order:** PR 2 token rationalisation (remap live legacy hues
+  assembly/gold/orange/pink → retained/feature tokens, then delete the defs; add
+  `border-strong`/`surface-3`/`decor`/`feat-*`), PR 2b `surface2 → surface-2`
+  rename, PR 3 denoise the canvas (atmosphere opt-in `.hld-atmosphere`; glow = alive
+  only — strip always-on pip glow, add a `live` path on `Pip`), PR 4 one status
+  encoder (circular saved-dot → square pip; `summarizeReadiness` helper). Then Tier
+  2 (hex→token by feature folder · unify loading/error/empty · a11y round 2:
+  `--hit-target` 24px, SectionRow keyboard pattern, treemap `sr-only` alternative,
+  pip text equivalents · `--spacing-*` scale + snap off-grid + editorTheme rem→px)
+  and Tier 3 (one easing · shortcuts beside actions · first-run/⌥-hold tool labels ·
+  a lint guardrail against new hard-coded hexes / a second lit per surface). See
+  `docs/migration-log.md` (2026-06-26) for the per-PR record.
+
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
   2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress
   Dashboard (Set 3) with a deliberately *skeletal* check-in/check-out

@@ -185,7 +185,7 @@ export const Treemap: React.FC<TreemapProps> = ({
           } else {
             lineColor = 'rgba(255,255,255,0.16)';
           }
-          fontColor = 'rgba(255,255,255,0.55)';
+          fontColor = 'rgba(255,255,255,0.72)';
         }
       }
 

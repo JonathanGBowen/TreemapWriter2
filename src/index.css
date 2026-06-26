@@ -99,6 +99,45 @@
     box-shadow: 0 0 24px rgba(255, 16, 96, 0.25);
   }
 
+  /* Canonical button family. `lit` (above) = THE one next action per surface;
+     `btn` = a standard bordered action; `btn-ghost` = a quiet, borderless
+     secondary (demote a competing lit to this); `tool` = a glyph control.
+     These give the focus-ring and one-lit rules real selectors and are adopted
+     opportunistically during the token migration — they are not yet applied
+     everywhere. Colour comes from tokens, never raw hex. */
+  .hld-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono);
+    border: 1px solid var(--color-hld-border);
+    color: var(--color-hld-muted-text-2);
+    background: transparent;
+    cursor: pointer;
+  }
+  .hld-btn:hover:not(:disabled) {
+    color: var(--color-hld-cyan);
+    border-color: rgba(0, 232, 245, 0.4);
+  }
+  .hld-btn-ghost {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono);
+    border: 1px solid transparent;
+    color: var(--color-hld-muted-text);
+    background: transparent;
+    cursor: pointer;
+  }
+  .hld-btn-ghost:hover:not(:disabled) { color: var(--color-hld-cyan); }
+  .hld-tool {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent;
+    color: var(--color-hld-muted-text);
+    background: transparent;
+    cursor: pointer;
+  }
+  .hld-tool:hover:not(:disabled) {
+    color: var(--color-hld-cyan);
+    border-color: rgba(0, 232, 245, 0.35);
+  }
+
   /* diamond status pip — the ONE state vocabulary, everywhere.
      green done/safe · yellow attention · magenta missing/failing ·
      cyan active · hollow untouched. */
@@ -211,10 +250,6 @@
     text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
   }
 
-  .editor-focus:focus {
-    outline: none;
-  }
-
   /* Living Sprints — the runner's reactive ambient hue (Direction D). The hue
      itself is set inline per move; the slow cross-fade lives here so the
      reduced-motion gate below can disable it. The big countdown gets the design
@@ -247,6 +282,35 @@
 .cm-prose-applied {
   background: rgba(0, 232, 112, 0.12);
   border-bottom: 1px solid rgba(0, 232, 112, 0.6);
+}
+
+/* Visible keyboard focus — the one missing a11y affordance (was suppressed
+   everywhere). Canonical on the button/tool primitives; a narrow global fallback
+   covers every other interactive so nothing is keyboard-unreachable. Unlayered so
+   it beats any Tailwind `outline-none` utility. `:focus-visible` fires on keyboard
+   focus only, so mouse clicks stay quiet. Cyan on canvas is ~13:1 — clears the
+   3:1 non-text minimum. */
+.hld-btn:focus-visible,
+.hld-btn-ghost:focus-visible,
+.hld-tool:focus-visible,
+.hld-lit:focus-visible,
+.hld-lit-magenta:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+a[href]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--color-hld-cyan);
+  outline-offset: 2px;
+}
+/* The editor (CodeMirror contenteditable) gets the ring inset so it doesn't
+   clip against the panel edge; replaces the old hard `outline: none`. */
+.cm-editor .cm-content:focus-visible {
+  outline: 2px solid var(--color-hld-cyan);
+  outline-offset: -2px;
 }
 
 /* Global HLD scrollbars — square, glyphic, dark-only (fix 01) */

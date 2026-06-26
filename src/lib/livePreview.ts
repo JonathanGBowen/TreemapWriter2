@@ -51,7 +51,7 @@ class MermaidWidget extends WidgetType {
         view.requestMeasure();
       });
       
-    div.innerHTML = `<span class="text-hld-muted font-mono text-xs uppercase tracking-widest animate-pulse">Rendering diagram...</span>`;
+    div.innerHTML = `<span class="text-hld-muted-text font-mono text-xs uppercase tracking-widest animate-pulse">Rendering diagram...</span>`;
     
     return div;
   }

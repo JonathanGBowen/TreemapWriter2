@@ -3776,3 +3776,61 @@ Beethoven calls (the folded-in `wholeSignature` suffices); order-swap "rigorous"
 debiasing; id-based section alignment (waits on stable section IDs); the treemap
 strain/force-map whole-view (`gestalt-design-II.md` L3b). A chapter-subtree scope
 is folded into the simpler Changed/All control for now.
+
+---
+
+## 2026-06-26 — Design-system remediation (HLD audit), Tier 1
+
+A visual design audit (Claude Design; bundle in
+`audit/design_handoff_hld_remediation/`) reached the verdict *"needs polish, not
+rebuild"*: a real, deliberate HLD design language that stopped enforcing its own
+rules (*one lit action per surface · glow = "alive" · scanline never on reading
+content · don't invent colours*) as features accreted. Every fix is **subtraction
+or consolidation**. The plan reconciled the brief against the live code (several
+brief assumptions were false — there is no `hld-btn` CSS layer, no `--bg-wash`
+token, and the "dead" warm tokens are actually live); see the plan in
+`audit/` and the per-tier entries below. Implemented decisions: a small `.hld-btn`
+component layer carries the focus ring (not a rename of 60 files); muted-text token
+**values are kept** (the audit's inversion would have silently changed 328 call
+sites); accessibility meets the **desktop 24px** target, not the touch 44px; the
+glyph-driven aesthetic is preserved (no permanent visible tool labels).
+
+### PR 1 — accessibility foundation (focus ring · semantic chrome titles · contrast)
+
+**What changed.**
+- **Visible keyboard focus**, the one missing a11y affordance. `src/index.css` now
+  defines a `:focus-visible` cyan ring (`outline: 2px solid var(--color-hld-cyan);
+  outline-offset: 2px`) on a new canonical button family (`.hld-btn` /
+  `.hld-btn-ghost` / `.hld-tool`, added to `@layer components`) **plus** a narrow,
+  unlayered global fallback (`button, [role="button"], a[href], input, select,
+  textarea, summary, [tabindex]:not([tabindex="-1"])`) so nothing is
+  keyboard-unreachable. The rule is unlayered so it beats any Tailwind
+  `outline-none` utility.
+- **Editor focus** — removed `outline: "none"` from `&.cm-editor` in
+  `src/lib/editorTheme.ts`; the CodeMirror contenteditable now shows an inset cyan
+  ring on `.cm-content:focus-visible`. The dead `.editor-focus` class (defined,
+  never applied) was deleted.
+- **Semantic chrome heading** — the tests-panel section title
+  (`features/tests-panel/PanelHeader.tsx`) is now `role="heading" aria-level={2}`
+  so assistive tech gets a panel outline. (The CodeMirror editor stays source-mode;
+  rendering its `# Heading` source as a semantic `<h1>` outline is not meaningful —
+  that brief item was dropped, see the plan.)
+- **Contrast — the failing pairs.** Breadcrumb separator `text-[#1f3050]` on the
+  `#0c1520` toolbar (a raw hex, ~1.3:1) → token `text-hld-muted-text` +
+  `aria-hidden` (`features/editor/EditorPanel.tsx`); decorative `text-hld-muted`
+  used as the "Rendering diagram…" body text → `text-hld-muted-text`
+  (`lib/livePreview.ts`); dimmed sibling-tile label `rgba(255,255,255,0.55)` →
+  `0.72` (`features/treemap/Treemap.tsx`). The hairline-as-interactivity-edge case
+  is now structurally covered by the focus ring + existing hover states.
+
+**Verify.** `npm run typecheck` · `npx vitest run` (462 pass) · `npm run build` all
+green. Manually: keyboard-tab the app — every button/tool/row shows the cyan ring;
+the editor shows an inset ring on keyboard focus; the breadcrumb separator and the
+"Rendering diagram…" label are legible.
+
+**Rollback.** CSS/markup only, additive. `git revert` the commit; the new
+`.hld-btn`/`.hld-tool` classes are unused-but-harmless if other changes depend on
+them, otherwise they drop cleanly.
+
+**Tests.** CSS/visual + ARIA-attribute changes — not unit-testable; no covered
+lines added (neutral to the coverage ratchet).
