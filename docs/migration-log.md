@@ -3515,3 +3515,75 @@ WYSIWYG) is dropped for the CodeMirror source view; whole-doc analysis doesn't
 pre-flight `checkContextFit` (relies on the large-context default model); the
 house exemplar ships empty (the generic exemplar stands until the author signs off
 on a source/gist pair — the single highest-leverage refinement).
+
+---
+
+## 2026-06-26 — Gestalt second-reading wave (essay II + Phases 1–3)
+
+**What changed.** A new design essay plus three additive feature waves implementing the
+levers it identifies. No architectural transition; all additive, all behind existing seams.
+
+- **Design essay.** [`docs/gestalt-design-II.md`](gestalt-design-II.md) — a second, direct
+  reading of five Wertheimer sources that adds levers the first essay underweighted (a
+  present-but-empty-move check; a Beethoven reconstruct-the-whole-from-a-part test;
+  requiredness as the ADHD activation engine) and re-sequences the roadmap cheapest-first.
+  Cross-linked from `gestalt-design.md` and `STATUS.md`.
+
+- **Phase 1 — diagnostic deepening (prompt + schema + render).** `diagnostic.md` /
+  `analysis.md` now instruct the model to *consume* the `STRUCTURAL SURROUND` block Tier 1
+  already injected. `DiagnosticResult` / `MoveResult` gained optional, tolerant-parsed
+  fields: `MoveResult.advance` (`productive` | `recapitulative`, the L1 empty-move axis),
+  `DiagnosticResult.commitmentFindings` (L2 mesh breaks), and `nextAction` (L4 located
+  gap→vector, with `nextPriority` kept as fallback). Parsed in `runDiagnostic`
+  (`ai-provider.impl.ts`) via pure `parseCommitmentFindings` / `parseNextAction` in
+  `lib/diagnostic-helpers.ts`. Rendered in `SpecTab` (gap→vector `NextCard`, a Part-in-Whole
+  card) + `MoveList` (a "recap — consider cutting" tag). `last_diagnostic` is already an
+  opaque `serde_json::Value` on the Rust side, so no persistence mirror changed.
+
+- **Phase 2 — Beethoven test + recentering (two AI flows).** `reconstructWhole` (recover the
+  document claim from one section alone, then score drift: `aligned` | `partial` | `adrift` |
+  `no-baseline`) and `proposeRecenterings` (2–3 alternative centerings + a question-the-goal
+  beat). Standard non-streaming-JSON scaffold: `ai-provider.gestalt.ts` (schemas + tolerant
+  normalizers) + interface inputs + impl dispatch + two `AICallKind`s + `DEFAULT_MODEL_CONFIG`
+  entries + two editable prompts (`reconstruct-whole.md`, `recenter.md`) + `HISTORICAL_KEYS`.
+  Results live in ephemeral `TestSuiteEntry` fields (`wholeFromPart` / `recenterings`) — the
+  Rust `PersistedTestEntry` whitelist drops them, so zero persistence risk. Triggered by
+  `use-gestalt-actions`, shown by `GestaltActions` in `SpecTab`.
+
+- **Phase 3 — the Structural-Tension Register (register-only).** A read-only 5-lens design
+  study + adversarial verification (info-vis / accessibility-CVD / ADHD / Gestalt / HLD;
+  workflow `wf_c4b560cd-e09`) rejected a per-tile treemap "heat" overlay (saturated channels,
+  a magenta↔green CVD collision, a post-Plotly DOM overlay erased on every redraw, sub-3:1
+  rim contrast). Shipped instead: the deterministic `checkCommitmentMesh` (`diagnostic-helpers.ts`,
+  high-precision, errs toward silence), a pure `lib/strain-metrics.ts` (deterministic-first
+  bands; AI corroboration may escalate but AI-alone caps at `medium`; blocked/spec-less →
+  none), and `features/strain/StrainRegister.tsx` (a quiet, silent-at-rest, keyboard/SR
+  register beneath the treemap — band by cool-indigo diamond *and* word, directed neighbour
+  named, `ai`-tagged signals, ephemeral dismiss). Added the missing `.sr-only` utility
+  (`index.css`) and ephemeral `dismissedStrainIds` (`ui-state`, outside the persisted
+  whitelist). No treemap pixel changed.
+
+**How to verify.** `npm run typecheck`, `npm test` (389 → 407: +6 diagnostic parsers, +8
+gestalt normalizers, +10 strain-metrics / mesh; registry key-drift guard updated for the two
+new editable prompts), `npm run lint` (0 errors), `npm run build` all pass. `cargo test`
+unaffected (no Rust changed — the ephemeral fields never reach the persisted mirror). Manual
+(browser, needs an AI key): generate specs with a deliberate gap → the Structural-Tension
+Register lists it as a directed finding; run a diagnostic → a recapitulative move shows the
+cut tag, an unmet-incoming surfaces, the next action reads as gap→vector, and an `adrift` /
+`center-of-gravity` signal escalates a register row to "high" with the `ai` tag; "◬ Whole from
+here" and "⟳ Recenter" return cards in the tests panel; reload → the gestalt results clear
+(ephemeral), the register recomputes, no save-error banner.
+
+**Rollback.** `git revert` — fully additive across the three commits (`028157e`, `eb38a8a`,
+`cbd4655`) + the essay (`93dd2f0`). Removing them drops the new prompt instructions, the
+optional `DiagnosticResult`/`MoveResult` fields (old cached diagnostics stay valid — every
+read is guarded), the `ai-provider.gestalt.ts` flow + its prompts/kinds/model-config/registry
+entries, the ephemeral `TestSuiteEntry` fields, `use-gestalt-actions` + `GestaltActions`,
+`lib/strain-metrics.ts` + `checkCommitmentMesh` + `StrainRegister` + the `.sr-only` utility and
+`dismissedStrainIds`. No data migration (nothing new persisted).
+
+**Deferred (documented, not built).** The visual *Tension Lens* on the treemap (a Plotly-native
+strain mode, dual-coded by a cool luminance ramp + a label glyph, default off) and directional
+vector connectors (gated on stable section IDs + a Plotly between-tile primitive); and
+boundary-correctness + B-reaction guardrails (`gestalt-design.md` item 7). The register built
+here is their accessible data spine.
