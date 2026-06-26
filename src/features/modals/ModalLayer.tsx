@@ -16,7 +16,7 @@ import { SprintModal } from "./sprint/SprintModal";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { DependencyGraphModal } from "./DependencyGraphModal";
 import { ProjectFileModal } from "./ProjectFileModal";
-import { CoachModal } from "./CoachModal";
+import { CoachModal } from "../coach/CoachModal";
 import { PromptsGraphModal } from "./PromptsGraphModal";
 import { SectionMapModal } from "./SectionMapModal";
 import { MigrationModal } from "../migration/MigrationModal";

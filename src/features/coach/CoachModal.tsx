@@ -7,8 +7,8 @@ import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { useStore } from '../../store';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { guardContextFit } from '../shared/context-guard';
-import { ModelPicker } from './ModelPicker';
-import { useModelChoice } from './use-model-choice';
+import { ModelPicker } from '../modals/ModelPicker';
+import { useModelChoice } from '../modals/use-model-choice';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
 
 interface CoachModalProps {
