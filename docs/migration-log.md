@@ -4070,9 +4070,35 @@ imperceptible neutral snaps.
 
 **Tests.** Visual; no covered lines.
 
-**Still remaining (guarded backlog).** The two legacy modals' full restyle (2.1);
-state-pattern unification (2.2 — unify loading/error/empty to one component each);
-off-grid spacing snap to Tailwind's 4px grid (a custom `--spacing-*` scale was
-**declined** — it shadows Tailwind v4's numeric spacing and would silently change every
-`p-1`/`gap-2`); Tier 3 remainder (one easing · shortcuts-beside-actions ·
-first-run/⌥-hold tool labels). The lint rule guards all of it against new drift.
+### Tier 2.1 (cont.) — legacy modals restyle · Tier 3 — one easing (0 hex warnings)
+
+**What changed.**
+- **The two legacy pre-HLD modals are now fully on the token system**, clearing the
+  last 27 hex warnings → **0**. `modals/SectionMapModal.tsx` (the "Project Map" /
+  blueprint view) and `modals/ProjectFileModal.tsx` (the raw-data viewer) had their
+  Tailwind-default palette classes (`slate-*`/`cyan-*`/`emerald-*`/`amber-*`/
+  `fuchsia-*`/`white/N`) and bespoke hexes mapped to `hld-*` tokens — colours only,
+  all layout/geometry preserved. Notable in-system decisions: the map's tan "star"
+  nodes (`#eec39a`) became `hld-muted-text-2` (a neutral in-palette node; selected
+  stays cyan), the pink connector lines (`#ff007f`) became `hld-magenta`, and the
+  cyan-400 glow rgba was retuned to the `hld-cyan` rgb. The shared `bg-black/60`
+  modal scrim is kept (a structural overlay convention across all modals, not a
+  palette colour). Done as a two-agent fan-out (one modal each).
+- **One canonical easing (Tier 3 motion).** Added `--ease-out`
+  (`cubic-bezier(0.4,0,0.2,1)`) + `--dur` (150ms) tokens; the global transition rule
+  now references them. Keyframe animations keep their semantic curves (linear sweeps,
+  ease-in-out pulses).
+
+**Verify.** `npm run lint` → **0** `no-restricted-syntax` hex warnings (every colour is
+a token or a documented exemption); typecheck + 465 vitest + build green. Open the
+Project Map / Raw-data modals: same layout, now in the HLD palette.
+
+**Rollback.** `git revert` the commit.
+
+**Tests.** Visual + a token swap; no covered lines.
+
+**Still remaining (guarded backlog).** State-pattern unification (2.2 — unify
+loading/error/empty to one component each); off-grid spacing snap to Tailwind's 4px grid
+(a custom `--spacing-*` scale was **declined** — it shadows Tailwind v4's numeric
+spacing and would silently change every `p-1`/`gap-2`); Tier 3 remainder
+(shortcuts-beside-actions · first-run/⌥-hold tool labels).

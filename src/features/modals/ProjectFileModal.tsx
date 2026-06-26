@@ -118,33 +118,33 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-       <div className="bg-[#0b0c10] border border-cyan-800 shadow-[0_0_20px_rgba(34,211,238,0.2)] w-[95vw] h-[95vh] rounded-xl flex flex-col overflow-hidden relative">
-          
+       <div className="bg-hld-bg border border-hld-cyan shadow-[0_0_20px_rgba(0,232,245,0.2)] w-[95vw] h-[95vh] rounded-xl flex flex-col overflow-hidden relative">
+
           {/* Tech HUD Decals */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-500/40 pointer-events-none rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-500/40 pointer-events-none rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500/40 pointer-events-none rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500/40 pointer-events-none rounded-br-xl" />
+          <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-hld-cyan/40 pointer-events-none rounded-tl-xl" />
+          <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-hld-cyan/40 pointer-events-none rounded-tr-xl" />
+          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-hld-cyan/40 pointer-events-none rounded-bl-xl" />
+          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-hld-cyan/40 pointer-events-none rounded-br-xl" />
 
           {/* Header */}
-          <div className="p-4 border-b border-cyan-900/50 bg-[#12141c] flex justify-between items-center shrink-0 z-10">
+          <div className="p-4 border-b border-hld-cyan/50 bg-hld-surface-2 flex justify-between items-center shrink-0 z-10">
              <div>
-               <h2 className="text-xl font-bold text-cyan-50 flex items-center gap-2">
-                 <Code size={20} className="text-cyan-400" /> Project File Editor (JSON Root)
+               <h2 className="text-xl font-bold text-hld-text flex items-center gap-2">
+                 <Code size={20} className="text-hld-cyan" /> Project File Editor (JSON Root)
                </h2>
-               <p className="text-xs uppercase tracking-widest text-cyan-500/70 font-mono mt-1">Full State Representation</p>
+               <p className="text-xs uppercase tracking-widest text-hld-cyan/70 font-mono mt-1">Full State Representation</p>
              </div>
-             
-             <div className="flex bg-[#0b0c10] p-1 rounded-lg border border-cyan-900/30">
-                <button 
+
+             <div className="flex bg-hld-bg p-1 rounded-lg border border-hld-cyan/30">
+                <button
                   onClick={() => setActiveTab('overview')}
-                  className={`p-1.5 px-3 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${activeTab === 'overview' ? 'bg-cyan-900/50 text-cyan-300 font-bold border border-cyan-500/30' : 'text-slate-500 hover:text-cyan-400/80'}`}
+                  className={`p-1.5 px-3 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${activeTab === 'overview' ? 'bg-hld-cyan/10 text-hld-cyan font-bold border border-hld-cyan/30' : 'text-hld-muted-text hover:text-hld-cyan/80'}`}
                 >
                   <FileJson size={14} /> JSON Root
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('section')}
-                  className={`p-1.5 px-3 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${activeTab === 'section' ? 'bg-cyan-900/50 text-cyan-300 font-bold border border-cyan-500/30' : 'text-slate-500 hover:text-cyan-400/80'}`}
+                  className={`p-1.5 px-3 rounded flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors ${activeTab === 'section' ? 'bg-hld-cyan/10 text-hld-cyan font-bold border border-hld-cyan/30' : 'text-hld-muted-text hover:text-hld-cyan/80'}`}
                 >
                   <FileText size={14} /> Section Focus
                 </button>
@@ -152,24 +152,24 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
 
              <div className="flex items-center gap-3">
                 <div className="flex flex-col items-end mr-4">
-                  <span className="text-[10px] uppercase text-slate-500 font-mono tracking-widest">Global Tokens</span>
-                  <span className="text-sm text-cyan-400 font-mono font-bold flex items-center gap-1">
+                  <span className="text-[10px] uppercase text-hld-muted-text font-mono tracking-widest">Global Tokens</span>
+                  <span className="text-sm text-hld-cyan font-mono font-bold flex items-center gap-1">
                     <Hash size={12} /> {tokenCount.toLocaleString()}
                   </span>
                 </div>
-                <button 
+                <button
                   onClick={handleSave}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 px-4 rounded font-mono text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+                  className="bg-hld-green hover:bg-hld-green text-hld-text p-2 px-4 rounded font-mono text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)]"
                 >
                   <Save size={14} /> Save Globally
                 </button>
-                <button onClick={onClose} className="p-2 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-colors">
+                <button onClick={onClose} className="p-2 hover:bg-hld-border rounded text-hld-muted-text hover:text-hld-text transition-colors">
                   <X size={20} />
                 </button>
              </div>
           </div>
 
-          <div className="flex-1 flex overflow-hidden bg-[#0b0c10] relative z-0">
+          <div className="flex-1 flex overflow-hidden bg-hld-bg relative z-0">
              {/* Subtle Grid Background */}
              <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
@@ -177,13 +177,13 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
                <div className="flex-1 flex flex-col p-6 font-mono text-sm relative z-10">
                  <div className="w-full h-full flex-1 flex flex-col">
                    <div className="flex items-start justify-between mb-4">
-                     <div className="flex items-start gap-3 p-3 rounded bg-cyan-900/10 border border-cyan-500/20 text-cyan-400/80 text-xs w-full">
+                     <div className="flex items-start gap-3 p-3 rounded bg-hld-cyan/10 border border-hld-cyan/20 text-hld-cyan/80 text-xs w-full">
                        <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                        <p>Edit the underlying project state directly here. Ensure structural integrity of the JSON object. Click 'Apply Local JSON' to validate and preview changes locally before saving globally.</p>
                      </div>
                    </div>
-                   
-                   <div className="flex-1 flex flex-col bg-[#12141c] border border-slate-800 rounded-lg shadow-2xl overflow-y-auto overflow-x-hidden relative">
+
+                   <div className="flex-1 flex flex-col bg-hld-surface-2 border border-hld-border rounded-lg shadow-2xl overflow-y-auto overflow-x-hidden relative">
                      <div className="p-4 w-full">
                         <StructuredJsonEditor 
                            data={{
@@ -208,16 +208,16 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
              {activeTab === 'section' && (
                <div className="flex-1 flex w-full relative z-10">
                  {/* Sidebar */}
-                 <div className="w-1/3 border-r border-slate-800/80 flex flex-col bg-[#0f1118]">
-                    <div className="p-3 border-b border-slate-800/80 bg-[#161820]">
-                      <h3 className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold">Document Sections</h3>
+                 <div className="w-1/3 border-r border-hld-border/80 flex flex-col bg-hld-surface-3">
+                    <div className="p-3 border-b border-hld-border/80 bg-hld-surface-2">
+                      <h3 className="text-[10px] text-hld-muted-text uppercase tracking-[0.2em] font-bold">Document Sections</h3>
                     </div>
                     <div className="flex-1 overflow-auto p-2 space-y-1">
                       {allSections.map(sec => (
-                        <div 
+                        <div
                            key={sec.id}
                            onClick={() => setSelectedSectionId(sec.id)}
-                           className={`p-2 rounded cursor-pointer text-xs font-mono transition-all border ${selectedSectionId === sec.id ? 'bg-cyan-900/30 border-cyan-500/50 text-cyan-200' : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-300'}`}
+                           className={`p-2 rounded cursor-pointer text-xs font-mono transition-all border ${selectedSectionId === sec.id ? 'bg-hld-cyan/10 border-hld-cyan/50 text-hld-text' : 'bg-transparent border-transparent text-hld-muted-text hover:bg-hld-border hover:text-hld-text'}`}
                            style={{ paddingLeft: `${Math.max(0.5, sec.level * 1)}rem` }}
                         >
                            <span className="opacity-50 mr-2">H{sec.level}</span>
@@ -228,29 +228,29 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
                  </div>
 
                  {/* Main Column */}
-                 <div className="w-2/3 flex flex-col bg-[#0b0c10] overflow-auto">
+                 <div className="w-2/3 flex flex-col bg-hld-bg overflow-auto">
                     {activeSection ? (
                       <div className="p-6 w-full">
-                         <div className="mb-6 pb-4 border-b border-slate-800">
-                           <h3 className="font-sans text-xl font-bold text-white mb-2">{activeSection.title}</h3>
-                           <div className="flex gap-4 font-mono text-[10px] uppercase tracking-widest text-cyan-500/60">
+                         <div className="mb-6 pb-4 border-b border-hld-border">
+                           <h3 className="font-sans text-xl font-bold text-hld-text mb-2">{activeSection.title}</h3>
+                           <div className="flex gap-4 font-mono text-[10px] uppercase tracking-widest text-hld-cyan/60">
                              <span>Words: {activeSection.wordCount}</span>
                              <span>Lines: {activeSection.startLine}-{activeSection.endLine}</span>
                            </div>
                          </div>
 
                          <div className="mb-8">
-                           <label className="block text-[10px] text-cyan-400 uppercase tracking-widest font-bold mb-2">Section Content (Read-Only context)</label>
-                           <div className="bg-[#12141c] border border-slate-800 rounded p-4 text-sm text-slate-300 font-mono whitespace-pre-wrap leading-relaxed max-h-64 overflow-auto shadow-inner">
+                           <label className="block text-[10px] text-hld-cyan uppercase tracking-widest font-bold mb-2">Section Content (Read-Only context)</label>
+                           <div className="bg-hld-surface-2 border border-hld-border rounded p-4 text-sm text-hld-text font-mono whitespace-pre-wrap leading-relaxed max-h-64 overflow-auto shadow-inner">
                               {activeSection.fullContent || "(Empty)"}
                            </div>
                          </div>
 
                          <div className="space-y-6">
                             <div>
-                               <label className="block text-[10px] text-[#ff007f] uppercase tracking-widest font-bold mb-2">Section Goal / Spec (Editable)</label>
-                               <textarea 
-                                 className="w-full bg-[#161820] border border-slate-700/50 rounded p-4 text-sm text-slate-200 font-mono focus:border-[#ff007f] focus:outline-none focus:ring-1 focus:ring-[#ff007f] transition-all min-h-[120px]"
+                               <label className="block text-[10px] text-hld-magenta uppercase tracking-widest font-bold mb-2">Section Goal / Spec (Editable)</label>
+                               <textarea
+                                 className="w-full bg-hld-surface-2 border border-hld-border/50 rounded p-4 text-sm text-hld-text font-mono focus:border-hld-magenta focus:outline-none focus:ring-1 focus:ring-hld-magenta transition-all min-h-[120px]"
                                  value={localTestSuite[activeSection.id]?.goals || ''}
                                  onChange={(e) => handleUpdateSectionGoal(activeSection.id, e.target.value)}
                                  placeholder="Enter goals for this specific section..."
@@ -258,41 +258,41 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
                             </div>
                             
                             {localTestSuite[activeSection.id]?.spec ? (
-                              <div className="p-4 border border-fuchsia-900/40 bg-fuchsia-950/10 rounded">
-                                <h4 className="text-[10px] text-fuchsia-400 uppercase font-mono tracking-widest mb-3">Structured Spec Data</h4>
+                              <div className="p-4 border border-hld-magenta/40 bg-hld-magenta/10 rounded">
+                                <h4 className="text-[10px] text-hld-magenta uppercase font-mono tracking-widest mb-3">Structured Spec Data</h4>
                                 <div className="space-y-4">
                                   <div>
-                                    <label className="block text-xs font-mono text-slate-400 mb-1">Function</label>
-                                    <div className="text-sm font-mono text-slate-300 bg-[#0b0c10] p-2 rounded border border-slate-800">{localTestSuite[activeSection.id]?.spec?.function}</div>
+                                    <label className="block text-xs font-mono text-hld-muted-text mb-1">Function</label>
+                                    <div className="text-sm font-mono text-hld-text bg-hld-bg p-2 rounded border border-hld-border">{localTestSuite[activeSection.id]?.spec?.function}</div>
                                   </div>
                                   <div>
-                                    <label className="block text-xs font-mono text-slate-400 mb-1">Main Claim</label>
-                                    <div className="text-sm font-mono text-slate-300 bg-[#0b0c10] p-2 rounded border border-slate-800">{localTestSuite[activeSection.id]?.spec?.mainClaim}</div>
+                                    <label className="block text-xs font-mono text-hld-muted-text mb-1">Main Claim</label>
+                                    <div className="text-sm font-mono text-hld-text bg-hld-bg p-2 rounded border border-hld-border">{localTestSuite[activeSection.id]?.spec?.mainClaim}</div>
                                   </div>
                                   <div>
-                                    <label className="block text-xs font-mono text-slate-400 mb-1">Required Moves</label>
-                                    <div className="text-sm font-mono text-slate-300 bg-[#0b0c10] p-2 rounded border border-slate-800 space-y-2">
+                                    <label className="block text-xs font-mono text-hld-muted-text mb-1">Required Moves</label>
+                                    <div className="text-sm font-mono text-hld-text bg-hld-bg p-2 rounded border border-hld-border space-y-2">
                                       {localTestSuite[activeSection.id]?.spec?.requiredMoves?.map(move => (
-                                         <div key={move.id} className="p-1.5 bg-slate-900/50 rounded text-xs border border-slate-700/50">
-                                            <span className="text-fuchsia-400 mr-2">[{move.id}]</span> {move.description}
+                                         <div key={move.id} className="p-1.5 bg-hld-surface/50 rounded text-xs border border-hld-border/50">
+                                            <span className="text-hld-magenta mr-2">[{move.id}]</span> {move.description}
                                          </div>
                                       ))}
                                     </div>
                                   </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <label className="block text-xs font-mono text-slate-400 mb-1">Incoming Context</label>
-                                      <div className="text-xs font-mono text-slate-300 bg-[#0b0c10] p-2 rounded border border-slate-800 h-24 overflow-auto">
+                                      <label className="block text-xs font-mono text-hld-muted-text mb-1">Incoming Context</label>
+                                      <div className="text-xs font-mono text-hld-text bg-hld-bg p-2 rounded border border-hld-border h-24 overflow-auto">
                                         {localTestSuite[activeSection.id]?.spec?.incomingContext?.map((ctx, i) => (
-                                          <div key={i} className="mb-1 pb-1 border-b border-slate-800/50 last:border-0 opacity-80">• {ctx}</div>
+                                          <div key={i} className="mb-1 pb-1 border-b border-hld-border/50 last:border-0 opacity-80">• {ctx}</div>
                                         ))}
                                       </div>
                                     </div>
                                     <div>
-                                      <label className="block text-xs font-mono text-slate-400 mb-1">Outgoing Commitments</label>
-                                      <div className="text-xs font-mono text-slate-300 bg-[#0b0c10] p-2 rounded border border-slate-800 h-24 overflow-auto">
+                                      <label className="block text-xs font-mono text-hld-muted-text mb-1">Outgoing Commitments</label>
+                                      <div className="text-xs font-mono text-hld-text bg-hld-bg p-2 rounded border border-hld-border h-24 overflow-auto">
                                         {localTestSuite[activeSection.id]?.spec?.outgoingCommitments?.map((ctx, i) => (
-                                          <div key={i} className="mb-1 pb-1 border-b border-slate-800/50 last:border-0 opacity-80">• {ctx}</div>
+                                          <div key={i} className="mb-1 pb-1 border-b border-hld-border/50 last:border-0 opacity-80">• {ctx}</div>
                                         ))}
                                       </div>
                                     </div>
@@ -300,14 +300,14 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
                                 </div>
                               </div>
                             ) : (
-                              <div className="p-4 border border-slate-800 bg-slate-900/20 rounded text-slate-500 font-mono text-xs uppercase tracking-widest flex items-center justify-center">
+                              <div className="p-4 border border-hld-border bg-hld-surface/20 rounded text-hld-muted-text font-mono text-xs uppercase tracking-widest flex items-center justify-center">
                                 No Structured Spec Exists
                               </div>
                             )}
                          </div>
                       </div>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center text-slate-500 font-mono text-xs uppercase tracking-widest">
+                      <div className="flex-1 flex items-center justify-center text-hld-muted-text font-mono text-xs uppercase tracking-widest">
                         Select a section from the hierarchy
                       </div>
                     )}

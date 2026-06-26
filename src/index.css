@@ -69,6 +69,12 @@
      keyboard/mouse desktop app, so 24px (not the touch 44px) is the right floor;
      the dense glyphic UI keeps its character. Applied by `.hld-tool`. */
   --hit-target: 24px;
+
+  /* The one canonical transition easing + duration (the audit's motion item).
+     Keyframe animations keep their semantic curves (linear sweeps, ease-in-out
+     pulses); state transitions use these. */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 150ms;
 }
 
 /* Dark theme is canonical and unconditional — light mode removed. */
@@ -377,9 +383,9 @@ summary:focus-visible,
 }
 *::-webkit-scrollbar-corner { background: transparent; }
 
-/* Theme transitions etc */
+/* Theme transitions — the one canonical easing + duration, everywhere. */
 * {
   transition-property: background-color, border-color, color, fill, stroke, box-shadow;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  transition-duration: var(--dur);
 }
