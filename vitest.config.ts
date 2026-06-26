@@ -27,10 +27,10 @@ export default defineConfig({
       // Floor thresholds: set at/below the measured baseline so the gate can
       // only ratchet up. Raise these as coverage grows.
       thresholds: {
-        lines: 20,
-        functions: 16,
-        statements: 19,
-        branches: 16,
+        lines: 23,
+        functions: 19,
+        statements: 22,
+        branches: 20,
       },
     },
   },

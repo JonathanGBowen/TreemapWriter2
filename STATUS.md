@@ -376,9 +376,16 @@ can't merge. **Coverage is measured** (`npm run coverage`, v8) with floor
 thresholds that ratchet up. The first targeted suites (state slices, sync-policy,
 the AI-registry resolver, and the Rust fs_io/git/layout/serde backend) landed the
 same day — see [`docs/migration-log.md`](docs/migration-log.md). Raise the
-thresholds as coverage grows; the big remaining gaps are the AI-flow orchestrators
-(`ai-provider.impl` + per-flow modules) and the UI feature layer (out of scope by
-design for unit tests).
+thresholds as coverage grows. The **AI-flow orchestrators are now characterized**
+(2026-06-26, see [`docs/migration-log.md`](docs/migration-log.md)): every per-flow
+`ai-provider.*.ts` module plus the two `ai-provider.impl` methods `App.tsx` calls
+directly (`runDiagnostic`, `estimateDependencies`) have characterization tests, and
+`src/services/ai` coverage rose to ~75% lines (the floors ratcheted up to match).
+The remaining test gaps are the **streaming `impl` methods** (`continueDialogue`,
+`coachSprintTurn`, `developSpecLevel`, `streamCoachAdvice`) and the other inline
+non-streaming methods (`getCoachAdvice`, `getContentSuggestions`, `generatePersonas`,
+`refineSpec`, `analyzeSection`, `refactorAnalysis`) — a natural next increment — and
+the UI feature layer (out of scope by design for unit tests).
 
 The *doc-refresh* half of the ritual (see [`AGENTS.md`](AGENTS.md) → "Definition
 of done") is still a convention. **Lingering guardrail:** add a lightweight

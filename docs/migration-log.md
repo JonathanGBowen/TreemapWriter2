@@ -3515,3 +3515,61 @@ WYSIWYG) is dropped for the CodeMirror source view; whole-doc analysis doesn't
 pre-flight `checkContextFit` (relies on the large-context default model); the
 house exemplar ships empty (the generic exemplar stands until the author signs off
 on a source/gist pair — the single highest-leverage refinement).
+
+---
+
+## 2026-06-26 — Characterization tests for the AI-flow orchestrators
+
+**What changed.** A test-only pass that closes the largest untested seam STATUS
+named: the AI-flow orchestrators. No product behavior changed — additive
+`*.test.ts` files plus a coverage-threshold ratchet only. Prompted by the
+forensic audit (`CODEBASE_FORENSIC_AUDIT.md`), which flagged these flows as the
+one place a wrong output is silent and expensive, and as the safety net the
+future `App.tsx` decomposition wants in place first (Feathers: characterize
+before you refactor).
+
+- **New per-flow suites** under `src/services/ai/__tests__/`, one per module,
+  built on the gold-standard `mockClient` pattern already in
+  `ai-provider.specs.test.ts` (a canned `LLMClient` that records each
+  `LLMRequest` and replays scripted JSON): `ai-provider.revisions`,
+  `.gist-analysis`, `.gist-composition`, `.gist-refit`, `.gist-refresh`,
+  `.reverse-outline`, `.regenerate`, `.sprint`, `.compare`, `.atmosphere`,
+  `.suggest-directives`. Each pins the **input→prompt→parse→output contract**:
+  which system/task prompt the mode selects, the marker blocks + schema
+  `required` set the request carries (e.g. the sourced-vs-sourceless revision
+  receipt), and the tolerant-normalizer output guarantees (re-alignment fills
+  missing segments; invalid items drop; unparseable throws; empty ≠ error). The
+  pure normalizers keep their own `lib/__tests__` coverage; these pin the
+  orchestration around them.
+- **New orchestrator suite** `ai-provider.impl.test.ts` constructs
+  `MultiProviderAIProvider` directly with fake clients (its constructor already
+  takes `clients` + a `ChoiceResolver`, so no registry/singleton change was
+  needed — the "make it injectable" step the audit floated proved unnecessary).
+  Covers the two methods `App.tsx` calls directly — `runDiagnostic` and
+  `estimateDependencies` — plus the shared `choose()`/`clientFor()` routing: a
+  per-call `modelChoice` override wins over the resolver and routes to that
+  provider; the malformed-result coercion and `< 2 specs → {}` short-circuit.
+- **Coverage ratchet.** `src/services/ai` rose from the prior baseline to **~75%
+  lines / ~74% statements**; the global floors in `vitest.config.ts` moved up
+  accordingly (lines 20→23, statements 19→22, functions 16→19, branches 16→20),
+  staying just under measured so the gate can only ratchet up.
+
+Suite counts after this pass: **418 TS tests / 60 files** (was 383 / 48 — 12 new
+test files, no source files touched).
+
+**How to verify.** `npm run coverage`, `npm run typecheck`, `npm run build` pass;
+the coverage gate fails if any floor regresses. Spot-checked that the tests pin
+real behavior: temporarily renaming the `### SOURCE_DOCUMENTS ###` marker in
+`ai-provider.revisions.ts` failed exactly the one sourced-mode assertion (and
+only it), then reverted.
+
+**Rollback.** Purely additive. `git revert` the commit, or delete the new
+`src/services/ai/__tests__/ai-provider.*.test.ts` files and restore the prior
+`vitest.config.ts` thresholds.
+
+**Deliberate limits (non-goals here).** The streaming `impl` methods
+(`continueDialogue`, `coachSprintTurn`, `developSpecLevel`, `streamCoachAdvice`)
+and the remaining inline non-streaming methods (`getCoachAdvice`,
+`getContentSuggestions`, `generatePersonas`, `refineSpec`, `analyzeSection`,
+`refactorAnalysis`) are not yet characterized — a natural next increment. The UI
+feature layer stays out of scope by design.
