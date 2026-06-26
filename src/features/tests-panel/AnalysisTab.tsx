@@ -149,7 +149,7 @@ function ReanalyzeFooter({ busy, onRun }: { busy: boolean; onRun: () => void }) 
 
 function AnalysisEmpty({ busy, onRun, lensName, onOpenGrimoire }: { busy: boolean; onRun: () => void; lensName: string; onOpenGrimoire: () => void }) {
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+    <div className="flex-1 min-h-0 flex flex-col bg-hld-surface-3">
       <div className="px-[16px] pt-[16px] flex flex-col gap-[10px]">
         <LensBar name={lensName} onOpen={onOpenGrimoire} />
         <AnalysisModeToggle />
@@ -227,7 +227,7 @@ export function AnalysisTab() {
   const active = versions.find((v) => v.id === state?.activeVersionId) ?? versions[0];
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+    <div className="flex-1 min-h-0 flex flex-col bg-hld-surface-3">
       <PanelHeader
         section={currentSection}
         diagnostic={entry?.lastDiagnostic}
@@ -245,7 +245,7 @@ export function AnalysisTab() {
 
             <div>
               <Zone label="Thesis" />
-              <div className="mt-[8px] px-[13px] py-[12px] bg-hld-surface2/50 border-l-2 border-hld-border text-[13px] leading-relaxed font-sans text-hld-text">{active.result.centralThesis}</div>
+              <div className="mt-[8px] px-[13px] py-[12px] bg-hld-surface-2/50 border-l-2 border-hld-border text-[13px] leading-relaxed font-sans text-hld-text">{active.result.centralThesis}</div>
             </div>
 
             <div>

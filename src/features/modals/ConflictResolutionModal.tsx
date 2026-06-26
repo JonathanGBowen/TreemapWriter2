@@ -131,7 +131,7 @@ const ConflictBody: React.FC<{ merge: PendingMerge }> = ({ merge }) => {
             <button
               onClick={onClose}
               disabled={busy}
-              className="px-4 py-2 bg-transparent border border-hld-border text-hld-text text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-surface2 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-transparent border border-hld-border text-hld-text text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-surface-2 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

@@ -1,3 +1,6 @@
+/* eslint-disable no-restricted-syntax -- this IS the SVG map's token kit: literal
+   hex is required because SVG fill/stroke and Plotly trace colours don't resolve
+   CSS `var()`. Values mirror the @theme hexes (src/index.css). */
 /* tk.ts — the token vocabulary the SVG map surfaces draw with.
 
    SVG fill/stroke/drop-shadow need literal hex (Tailwind classes don't reach

@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import { useStore } from '../../state';
 import { CopyButton } from '../shared/CopyButton';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
+import { Spinner } from '../shared/Spinner';
 import type { AtmosphericInstrument } from '../../types';
 
 const TITLE: Record<AtmosphericInstrument, string> = {
@@ -43,7 +44,7 @@ export function ClimateReport() {
         <div className="mx-auto max-w-[760px] px-6 py-6">
           {status === 'running' ? (
             <div className="flex flex-col items-center gap-3 px-5 py-16 text-center">
-              <span className="w-3 h-3 rounded-full border-[1.5px] border-hld-cyan/25 border-t-hld-cyan animate-spin" />
+              <Spinner />
               <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-cyan">Reading the weather…</div>
               <div className="font-mono text-[9px] text-hld-muted-text max-w-[260px] leading-[1.6]">
                 Tracing pressure, accumulation, and discharge across the text.

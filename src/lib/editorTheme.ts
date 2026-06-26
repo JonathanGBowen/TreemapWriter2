@@ -2,36 +2,40 @@ import { EditorView } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 
-// A "Hyper Light Drifter" infused dark/cool aesthetic
-// We use a specific theme object to ensure our styles are the "source of truth"
+// A "Hyper Light Drifter" infused dark/cool aesthetic.
+// Colours reference the `--color-hld-*` design tokens (src/index.css); heading
+// sizes reference the `--text-h-*` prose scale. Only rgba alpha-tints, pure
+// white (bold emphasis), and one code-syntax purple (#d080ff, no token) stay
+// literal. cyan-bright (#00f0ff) was retired into cyan.
 export const hldTheme = EditorView.theme({
   "&": {
-    color: "#c5d8e8",
-    backgroundColor: "#05090d",
+    color: "var(--color-hld-text)",
+    backgroundColor: "var(--color-hld-bg)",
     fontFamily: "'Inter', sans-serif",
     fontSize: "14px",
     lineHeight: "1.8",
   },
   "&.cm-editor": {
-    backgroundColor: "#05090d",
-    outline: "none"
+    backgroundColor: "var(--color-hld-bg)"
+    /* No `outline: none` here — keyboard focus shows a visible cyan ring on
+       `.cm-content:focus-visible` (see src/index.css). */
   },
   ".cm-scroller": {
     fontFamily: "inherit",
-    backgroundColor: "#05090d",
+    backgroundColor: "var(--color-hld-bg)",
     overflow: "auto",
     scrollbarWidth: "thin",
-    scrollbarColor: "#22364e transparent"
+    scrollbarColor: "var(--color-hld-border-strong) transparent"
   },
   /* HLD scrollbars inside CodeMirror — match the global treatment (fix 01) */
   ".cm-scroller::-webkit-scrollbar": { width: "8px", height: "8px" },
   ".cm-scroller::-webkit-scrollbar-track": {
     background: "transparent",
-    borderLeft: "1px solid #172335"
+    borderLeft: "1px solid var(--color-hld-border)"
   },
   ".cm-scroller::-webkit-scrollbar-thumb": {
-    background: "#22364e",
-    border: "1px solid #2a4258",
+    background: "var(--color-hld-border-strong)",
+    border: "1px solid var(--color-hld-border-strong)",
     borderRadius: "0"
   },
   ".cm-scroller::-webkit-scrollbar-thumb:hover": {
@@ -40,7 +44,7 @@ export const hldTheme = EditorView.theme({
     boxShadow: "0 0 8px rgba(0, 232, 245, 0.5)"
   },
   ".cm-content": {
-    caretColor: "#00f0ff",
+    caretColor: "var(--color-hld-cyan)",
     fontFamily: "'Inter', sans-serif",
     paddingBottom: "120px",
     paddingTop: "36px",
@@ -74,8 +78,8 @@ export const hldTheme = EditorView.theme({
     marginBottom: "8px",
   },
   ".cm-gutters": {
-    backgroundColor: "#05090d",
-    color: "#3d5570",
+    backgroundColor: "var(--color-hld-bg)",
+    color: "var(--color-hld-muted)",
     border: "none",
   },
   ".cm-activeLine": {
@@ -83,82 +87,84 @@ export const hldTheme = EditorView.theme({
   },
   ".cm-activeLineGutter": {
     backgroundColor: "transparent !important",
-    color: "#00e8f5",
+    color: "var(--color-hld-cyan)",
   },
   "&.cm-focused .cm-cursor": {
-    borderLeftColor: "#00f0ff",
+    borderLeftColor: "var(--color-hld-cyan)",
     borderLeftWidth: "2px",
   },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-    backgroundColor: "rgba(0, 240, 255, 0.15) !important",
+    backgroundColor: "rgba(0, 232, 245, 0.15) !important",
   },
-  ".cm-panels": { backgroundColor: "#0c1520", color: "#c5d8e8" },
-  ".cm-panels.cm-panels-top": { borderBottom: "1px solid #172335" },
-  ".cm-panels.cm-panels-bottom": { borderTop: "1px solid #172335" },
+  ".cm-panels": { backgroundColor: "var(--color-hld-surface)", color: "var(--color-hld-text)" },
+  ".cm-panels.cm-panels-top": { borderBottom: "1px solid var(--color-hld-border)" },
+  ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--color-hld-border)" },
   ".cm-searchMatch": {
     backgroundColor: "rgba(255, 16, 96, 0.4)",
-    outline: "1px solid #ff1060"
+    outline: "1px solid var(--color-hld-magenta)"
   },
   ".cm-searchMatch.cm-searchMatch-selected": {
     backgroundColor: "rgba(255, 16, 96, 0.8)",
   },
   ".cm-tooltip": {
-    backgroundColor: "#0c1520",
-    border: "1px solid #1f3050",
+    backgroundColor: "var(--color-hld-surface)",
+    border: "1px solid var(--color-hld-border-strong)",
     borderRadius: "4px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-    color: "#c5d8e8",
+    color: "var(--color-hld-text)",
   },
   ".cm-tooltip.cm-tooltip-autocomplete": {
     "& > ul > li[aria-selected]": {
       backgroundColor: "rgba(0, 232, 245, 0.15)",
-      color: "#00e8f5",
+      color: "var(--color-hld-cyan)",
     }
   },
   ".cm-matchingBracket": {
     backgroundColor: "rgba(0, 232, 245, 0.2)",
-    color: "#00e8f5",
+    color: "var(--color-hld-cyan)",
     outline: "1px solid rgba(0, 232, 245, 0.5)"
   },
   ".cm-nonmatchingBracket": {
     backgroundColor: "rgba(255, 16, 96, 0.2)",
-    color: "#ff1060"
+    color: "var(--color-hld-magenta)"
   }
 }, { dark: true });
 
-// Custom Markdown & Code Highlight Style
+// Custom Markdown & Code Highlight Style. Heading colours are the deliberate
+// per-depth "rainbow" (H1 magenta … H5 orange … H6 muted); sizes ride --text-h-*.
 export const hldHighlightStyle = HighlightStyle.define([
   // Markdown Headings
-  { tag: t.heading1, fontSize: '2.2rem', fontWeight: '800', color: '#ff1060', letterSpacing: '-0.02em' },
-  { tag: t.heading2, fontSize: '1.7rem', fontWeight: '700', color: '#00e8f5', letterSpacing: '-0.01em' },
-  { tag: t.heading3, fontSize: '1.3rem', fontWeight: '600', color: '#ffe600' },
-  { tag: t.heading4, fontSize: '1.1rem', fontWeight: '600', color: '#00e870', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  { tag: t.heading5, fontSize: '1rem', fontWeight: '600', color: '#ff8800' },
-  { tag: t.heading6, fontSize: '1rem', fontWeight: '600', color: '#c5d8e8', opacity: '0.7' },
-  
+  { tag: t.heading1, fontSize: 'var(--text-h-xl)', fontWeight: '800', color: 'var(--color-hld-magenta)', letterSpacing: '-0.02em' },
+  { tag: t.heading2, fontSize: 'var(--text-h-lg)', fontWeight: '700', color: 'var(--color-hld-cyan)', letterSpacing: '-0.01em' },
+  { tag: t.heading3, fontSize: 'var(--text-h-md)', fontWeight: '600', color: 'var(--color-hld-yellow)' },
+  { tag: t.heading4, fontSize: 'var(--text-h-sm)', fontWeight: '600', color: 'var(--color-hld-green)', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  { tag: t.heading5, fontSize: 'var(--text-h-xs)', fontWeight: '600', color: 'var(--color-hld-orange)' },
+  { tag: t.heading6, fontSize: 'var(--text-h-xs)', fontWeight: '600', color: 'var(--color-hld-text)', opacity: '0.7' },
+
   // Markdown Formatting
-  { tag: t.quote, fontStyle: 'italic', color: '#8a9cad', borderLeft: '3px solid #ff1060' },
-  { tag: t.monospace, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem', backgroundColor: 'rgba(17, 29, 43, 0.8)', padding: '3px 6px', borderRadius: '4px', color: '#00e8f5' },
+  { tag: t.quote, fontStyle: 'italic', color: 'var(--color-hld-muted-text-2)', borderLeft: '3px solid var(--color-hld-magenta)' },
+  { tag: t.monospace, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem', backgroundColor: 'rgba(17, 29, 43, 0.8)', padding: '3px 6px', borderRadius: '4px', color: 'var(--color-hld-cyan)' },
   { tag: t.strong, fontWeight: 'bold', color: '#ffffff' },
-  { tag: t.emphasis, fontStyle: 'italic', color: '#c5d8e8' },
+  { tag: t.emphasis, fontStyle: 'italic', color: 'var(--color-hld-text)' },
   { tag: t.strikethrough, textDecoration: 'line-through', opacity: '0.5' },
-  { tag: t.link, color: '#00e8f5', textDecoration: 'underline' },
-  { tag: t.url, color: '#3d5570', opacity: '0.6' },
-  { tag: t.list, color: '#ff1060', fontWeight: 'bold' },
-  
+  { tag: t.link, color: 'var(--color-hld-cyan)', textDecoration: 'underline' },
+  { tag: t.url, color: 'var(--color-hld-muted)', opacity: '0.6' },
+  { tag: t.list, color: 'var(--color-hld-magenta)', fontWeight: 'bold' },
+
   // General Syntax Highlighting (for fenced code blocks)
-  { tag: t.comment, color: '#3d5570', fontStyle: 'italic' },
-  { tag: t.punctuation, color: '#688cae', fontWeight: '400' }, 
-  { tag: [t.keyword, t.operator, t.modifier], color: '#ff1060' }, 
-  { tag: [t.string, t.regexp, t.special(t.string)], color: '#00e870' },
-  { tag: [t.number, t.bool, t.null], color: '#ff8800' },
-  { tag: t.variableName, color: '#c5d8e8' },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#00e8f5' },
-  { tag: [t.propertyName], color: '#ffe600' },
+  { tag: t.comment, color: 'var(--color-hld-muted)', fontStyle: 'italic' },
+  { tag: t.punctuation, color: 'var(--color-hld-muted-text)', fontWeight: '400' },
+  { tag: [t.keyword, t.operator, t.modifier], color: 'var(--color-hld-magenta)' },
+  { tag: [t.string, t.regexp, t.special(t.string)], color: 'var(--color-hld-green)' },
+  { tag: [t.number, t.bool, t.null], color: 'var(--color-hld-orange)' },
+  { tag: t.variableName, color: 'var(--color-hld-text)' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--color-hld-cyan)' },
+  { tag: [t.propertyName], color: 'var(--color-hld-yellow)' },
+  // eslint-disable-next-line no-restricted-syntax -- code-syntax purple tint; no matching design token (intentional sub-palette for fenced code)
   { tag: [t.typeName, t.className, t.namespace], color: '#d080ff' },
-  { tag: t.tagName, color: '#ff1060' },
-  { tag: t.attributeName, color: '#ffe600' },
-  { tag: t.meta, color: '#3d5570' },
+  { tag: t.tagName, color: 'var(--color-hld-magenta)' },
+  { tag: t.attributeName, color: 'var(--color-hld-yellow)' },
+  { tag: t.meta, color: 'var(--color-hld-muted)' },
 ]);
 
 export const hldExtensions = [

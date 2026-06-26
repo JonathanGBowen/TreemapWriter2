@@ -1,3 +1,6 @@
+/* eslint-disable no-restricted-syntax -- these are a self-contained react-joyride
+   theme (its own neutral scheme, off the app palette) passed to the library's
+   `styles` API; kept literal rather than mapped onto the chrome tokens. */
 import React, { useState, useEffect } from 'react';
 import { Joyride, Step, STATUS } from 'react-joyride';
 

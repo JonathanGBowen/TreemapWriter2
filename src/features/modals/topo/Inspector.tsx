@@ -134,7 +134,7 @@ const Readiness: React.FC<{ level: ReadinessLevel }> = ({ level }) => {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ display: 'flex', gap: 3, flex: 1 }}>
         {READINESS_ORDER.map((_, i) => (
-          <div key={i} style={{ flex: 1, height: 5, background: i <= idx ? c : TK.border, boxShadow: i <= idx ? `0 0 5px ${c}` : 'none' }} />
+          <div key={i} style={{ flex: 1, height: 5, background: i <= idx ? c : TK.border }} />
         ))}
       </div>
       <span style={{ fontFamily: mono, fontSize: 8, fontWeight: 800, letterSpacing: '0.12em', color: c }}>

@@ -188,6 +188,31 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
 
 ## Next (felt priorities)
 
+- ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all
+  three audit tiers shipped (see [`docs/migration-log.md`](docs/migration-log.md)). A
+  visual design audit found a real HLD design language that had stopped enforcing its
+  own rules (six ambient layers at rest, ~11 accents, six status encoders, ~248
+  hard-coded hexes, no visible focus ring); the verdict was *polish, not rebuild* and
+  every fix was subtraction. Delivered: a **calm canvas at rest** (atmosphere opt-in,
+  glow = alive), a **visible focus ring** on every interactive (a small `.hld-btn`
+  layer + narrow global fallback), a **rationalised 18-colour token kit fully enforced**
+  (hex guardrail at **0** warnings — the editor, both legacy modals, and ~45 component
+  files migrated; functional literals exempted with rationale), **one status
+  vocabulary** (`summarizeReadiness` + `Pip`), keyboard-operable rows + a treemap
+  `sr-only` alternative, **one `Spinner` / one easing**, and **⌥-hold dock labels**. A
+  `no-restricted-syntax` lint rule guards colour drift from returning. **Two deliberate
+  deviations from the audit** (both documented): accessibility meets the **desktop 24px**
+  AA floor (not the touch 44px) with glyph tools kept glyphic; and the off-grid
+  **spacing snap** via a custom `--spacing-*` scale was **declined** (it shadows
+  Tailwind v4's numeric spacing). Held back as the one genuine follow-on: `muted-text`
+  token values were **kept** (the audit's inversion would have silently re-contrasted
+  328 sites) — fixing only the failing pairs; a deliberate, audited muted-text
+  migration could revisit that later. **Dock follow-up (2026-06-26):** dropped the
+  redundant native tooltip from the glyph tools (the footer caption already names them)
+  and re-surfaced the five palette-only launchers — Coach `◍`, Generate specs `✦`, Revise
+  `⟐`, Parallel `▥`, Gist `◊` — as dock glyphs (14 tools in two grouped rows); ⌘K stays
+  the searchable door + home of the rarer actions.
+
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
   2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress
   Dashboard (Set 3) with a deliberately *skeletal* check-in/check-out

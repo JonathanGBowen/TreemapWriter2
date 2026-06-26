@@ -98,7 +98,7 @@ export function BulletCell({
             type="button"
             title="Insert a new point after this one"
             onClick={onInsert}
-            className="w-[18px] h-[18px] flex items-center justify-center border border-hld-border bg-hld-surface2 text-hld-muted-text hover:text-hld-green hover:border-hld-green/40 transition-colors"
+            className="w-[18px] h-[18px] flex items-center justify-center border border-hld-border bg-hld-surface-2 text-hld-muted-text hover:text-hld-green hover:border-hld-green/40 transition-colors"
           >
             <Plus size={11} />
           </button>
@@ -106,7 +106,7 @@ export function BulletCell({
             type="button"
             title="Delete this point (and its paragraph)"
             onClick={onDelete}
-            className="w-[18px] h-[18px] flex items-center justify-center border border-hld-border bg-hld-surface2 text-hld-muted-text hover:text-hld-magenta hover:border-hld-magenta/40 transition-colors"
+            className="w-[18px] h-[18px] flex items-center justify-center border border-hld-border bg-hld-surface-2 text-hld-muted-text hover:text-hld-magenta hover:border-hld-magenta/40 transition-colors"
           >
             <X size={11} />
           </button>

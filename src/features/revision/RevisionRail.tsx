@@ -45,7 +45,7 @@ export function RevisionRail() {
       style={{ width }}
       className="shrink-0 relative border-r border-hld-border bg-hld-surface flex flex-col"
     >
-      <div className="h-10 shrink-0 border-b border-hld-border flex items-center gap-2 px-3 bg-hld-surface2">
+      <div className="h-10 shrink-0 border-b border-hld-border flex items-center gap-2 px-3 bg-hld-surface-2">
         <span className="text-hld-cyan text-[12px]">◇</span>
         <span className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text">sections</span>
       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../../state';
 import { Pip, type PipStatus } from '../shared/Pip';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
+import { Spinner } from '../shared/Spinner';
 import { WholeVerdictPanel } from '../spec-test/SpecTestWholeVerdict';
 import { SpecTestSectionCard } from '../spec-test/SpecTestSectionCard';
 import type {
@@ -133,7 +134,7 @@ function SpecAnchoredBody() {
   if (status === 'running') {
     return (
       <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
-        <span className="w-3 h-3 rounded-full border-[1.5px] border-hld-cyan/25 border-t-hld-cyan animate-spin" />
+        <Spinner />
         <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-cyan">Testing parts, then the whole…</div>
         <AgentTraceTicker
           kinds={['runSpecTestSection', 'runSpecTestWhole']}
@@ -186,7 +187,7 @@ export function CompareReport() {
           <SpecAnchoredBody />
         ) : status === 'running' ? (
           <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
-            <span className="w-3 h-3 rounded-full border-[1.5px] border-hld-cyan/25 border-t-hld-cyan animate-spin" />
+            <Spinner />
             <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-cyan">Comparing versions…</div>
             <div className="font-mono text-[9px] text-hld-muted-text max-w-[240px] leading-[1.6]">
               Reconstructing how the argument changed — drift, gains, losses. No claim without a receipt.

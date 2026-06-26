@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { DirectiveSuggestion } from '../../types';
 import { useSuggestDirectives } from './use-suggest-directives';
+import { Spinner } from '../shared/Spinner';
 
 /**
  * AI-suggested directives (ported from the engine's SUGGESTION flow). Proposes
@@ -27,7 +28,7 @@ export function DirectiveSuggestions({ onPick }: { onPick: (directive: string) =
         className="self-start flex items-center gap-1.5 px-2 py-1 border border-hld-purple/40 text-hld-purple hover:bg-hld-purple/10 disabled:opacity-40 disabled:cursor-not-allowed font-mono text-[9px] uppercase tracking-[0.1em] transition-all"
       >
         {loading && (
-          <span className="w-2.5 h-2.5 rounded-full border-[1.5px] border-hld-purple/30 border-t-hld-purple animate-spin" />
+          <Spinner hue="purple" size={10} />
         )}
         {loading ? 'Thinking…' : '✦ Suggest directives'}
       </button>

@@ -1,8 +1,12 @@
+/* eslint-disable no-restricted-syntax -- tile/line/font colours are passed to
+   Plotly as trace properties (rendered into SVG attributes), where CSS `var()`
+   does not resolve; they must be literal hex. They mirror the @theme tokens. */
 import React, { useEffect, useMemo } from "react";
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponentImport from 'react-plotly.js/factory';
 import { Section, TestSuite } from "../../types";
 import { flattenTree } from "../../lib/utils";
+import { summarizeReadiness } from "../tests-panel/diagnostic-config";
 
 // `react-plotly.js/factory` is a CommonJS module (module.exports.default = factory).
 // Under Vite 8's Rolldown bundler a default import can resolve to the module
@@ -104,7 +108,7 @@ export const Treemap: React.FC<TreemapProps> = ({
 
       if (isBlocked) {
         // Blocked: Gray/Slate with a distinct look
-        bgColor = '#111d2b'; // hld-surface2 / slate-200
+        bgColor = '#111d2b'; // hld-surface-2 / slate-200
         lineColor = '#1e293b'; // Neutral border
         lineWidth = 1;
       } else if (status === 'stale') {
@@ -185,7 +189,7 @@ export const Treemap: React.FC<TreemapProps> = ({
           } else {
             lineColor = 'rgba(255,255,255,0.16)';
           }
-          fontColor = 'rgba(255,255,255,0.55)';
+          fontColor = 'rgba(255,255,255,0.72)';
         }
       }
 
@@ -262,6 +266,20 @@ export const Treemap: React.FC<TreemapProps> = ({
 
   return (
     <div className="w-full h-full min-h-[300px]">
+      {/* Text alternative for the canvas/SVG treemap (Plotly tiles aren't
+          keyboard-navigable). Mirrors the visible structure for assistive tech;
+          the section tree + ⌘K command palette carry the keyboard navigation. */}
+      <ul className="sr-only" aria-label="Document structure">
+        {flattenTree(filteredSections).map((d) => {
+          const readiness = summarizeReadiness(testSuite[d.id]?.lastDiagnostic?.overallReadiness);
+          return (
+            <li key={d.id}>
+              {`Level ${d.level}: ${d.title} — ${d.wordCount} words, ${readiness.label}`}
+              {d.id === selectedId ? ', selected' : ''}
+            </li>
+          );
+        })}
+      </ul>
       <Plot
         data={plotData as any}
         layout={layout}

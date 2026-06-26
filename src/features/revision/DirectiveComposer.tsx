@@ -12,8 +12,8 @@ const PRESETS = [
 // Literal class strings (no template construction) so Tailwind's JIT sees them.
 const MODE_ON: Record<RevisionMode, string> = {
   revision: 'border-hld-cyan bg-hld-cyan/10 text-hld-cyan',
-  assembly: 'border-hld-assembly bg-hld-assembly/10 text-hld-assembly',
-  citations: 'border-hld-gold bg-hld-gold/10 text-hld-gold',
+  assembly: 'border-hld-yellow bg-hld-yellow/10 text-hld-yellow',
+  citations: 'border-hld-feat-confidence bg-hld-feat-confidence/10 text-hld-feat-confidence',
 };
 
 /** Revision/Assembly/Citations mode, the Verbatim/Woven sub-mode, the directive, and presets. */
@@ -62,7 +62,7 @@ export function DirectiveComposer() {
               onClick={() => setSubMode(k)}
               className={`flex-1 px-2 py-1 font-mono text-[8.5px] font-semibold uppercase tracking-[0.1em] border transition-all ${
                 subMode === k
-                  ? 'border-hld-assembly/50 bg-hld-assembly/10 text-hld-assembly'
+                  ? 'border-hld-yellow/50 bg-hld-yellow/10 text-hld-yellow'
                   : 'border-hld-border text-hld-muted-text'
               }`}
             >

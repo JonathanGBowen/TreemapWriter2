@@ -40,7 +40,7 @@ export function EmptyState({
           onChange={(e) => onGoalsChange(e.target.value)}
           autoFocus
           placeholder="Define what this section should accomplish…"
-          className="w-full mt-[4px] p-[10px] text-[13px] border border-hld-border bg-[#080d13] text-hld-text min-h-[6rem] focus:border-hld-cyan outline-none resize-none font-sans leading-relaxed text-left"
+          className="w-full mt-[4px] p-[10px] text-[13px] border border-hld-border bg-hld-surface-3 text-hld-text min-h-[6rem] focus:border-hld-cyan outline-none resize-none font-sans leading-relaxed text-left"
         />
       )}
     </div>

@@ -34,17 +34,17 @@ export function StatusRow() {
   const over = words > budget;
 
   return (
-    <div className="flex items-center gap-2.5" style={{ padding: '9px 18px', borderTop: '1px solid #14202f', background: '#0a131d' }}>
-      <span className="font-mono uppercase" style={{ fontSize: 8, letterSpacing: '0.1em', color: '#5e789a' }}>
+    <div className="flex items-center gap-2.5" style={{ padding: '9px 18px', borderTop: '1px solid var(--color-hld-border)', background: 'var(--color-hld-surface)' }}>
+      <span className="font-mono uppercase" style={{ fontSize: 8, letterSpacing: '0.1em', color: 'var(--color-hld-muted-text)' }}>
         {generating ? 'generating…' : gist ? `generated ${relTime(gist.generatedAt)}` : '— not generated'}
       </span>
       <div className="flex-1" />
       {gist && (
         <>
-          <span className="font-mono" style={{ fontSize: 9, letterSpacing: '0.06em', color: over ? '#ffe600' : '#6f8cab' }}>
+          <span className="font-mono" style={{ fontSize: 9, letterSpacing: '0.06em', color: over ? 'var(--color-hld-yellow)' : 'var(--color-hld-muted-text)' }}>
             {words} / {budget} w
           </span>
-          <span style={{ width: 1, height: 11, background: '#1d2d42' }} />
+          <span style={{ width: 1, height: 11, background: 'var(--color-hld-border-strong)' }} />
           <div className="flex items-center gap-1.5" title="Finest grain that fits the window">
             {TICKS.map(({ g, label }) => {
               const on = g === grain;
@@ -54,7 +54,7 @@ export function StatusRow() {
                   className="font-mono"
                   style={{
                     fontSize: 8, letterSpacing: '0.12em', padding: '1px 4px',
-                    color: on ? '#00e8f5' : '#3d5570',
+                    color: on ? 'var(--color-hld-cyan)' : 'var(--color-hld-muted)',
                     border: on ? '1px solid rgba(0,232,245,0.4)' : '1px solid transparent',
                     background: on ? 'rgba(0,232,245,0.07)' : 'transparent',
                   }}
@@ -66,7 +66,7 @@ export function StatusRow() {
             <span
               aria-label={over ? 'Over budget' : 'Fits'}
               title={over ? 'Over budget' : 'Fits'}
-              style={{ width: 7, height: 7, transform: 'rotate(45deg)', background: over ? '#ffe600' : '#00e870', boxShadow: `0 0 7px ${over ? '#ffe600' : '#00e870'}`, display: 'inline-block', marginLeft: 3 }}
+              style={{ width: 7, height: 7, transform: 'rotate(45deg)', background: over ? 'var(--color-hld-yellow)' : 'var(--color-hld-green)', boxShadow: `0 0 7px ${over ? 'var(--color-hld-yellow)' : 'var(--color-hld-green)'}`, display: 'inline-block', marginLeft: 3 }}
             />
           </div>
         </>

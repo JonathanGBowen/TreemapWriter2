@@ -79,6 +79,7 @@ export function CoachGuided({ goalModel, onReady, secondaryAction }: CoachGuided
   return (
     <div className="flex flex-col gap-[14px]">
       {/* Coach turn (yellow voice) */}
+      {/* eslint-disable-next-line no-restricted-syntax -- warm parchment coach-voice text; distinct hue, no near design token */}
       <div className="self-start max-w-[92%] text-[12.5px] leading-relaxed bg-hld-yellow/[0.05] border border-hld-yellow/20 text-[#e9e3c0] px-[12px] py-[9px]">
         <div className="flex items-center gap-[6px] font-mono text-[8px] tracking-[0.16em] uppercase text-hld-yellow mb-[5px]">
           <Pip status="yellow" size="sm" /> Coach {goalModel === 'woop' ? `· ${i + 1}/${steps.length}` : ''}
@@ -98,7 +99,7 @@ export function CoachGuided({ goalModel, onReady, secondaryAction }: CoachGuided
         }}
         rows={3}
         placeholder={step.placeholder}
-        className="w-full bg-hld-surface2 border border-hld-border text-hld-text text-[12.5px] leading-relaxed p-[10px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
+        className="w-full bg-hld-surface-2 border border-hld-border text-hld-text text-[12.5px] leading-relaxed p-[10px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
       />
 
       <div className="flex items-center gap-[10px]">

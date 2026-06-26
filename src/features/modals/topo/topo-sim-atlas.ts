@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-syntax -- the SEA colour is drawn into the SVG/
+   canvas topology map, where CSS `var()` does not resolve; it must be literal. */
 /* topo-sim-atlas.ts — ATLAS (continental) position derivation.
 
    A small force-directed simulation (no d3) ported from the design prototype

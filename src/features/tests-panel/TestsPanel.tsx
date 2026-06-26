@@ -36,12 +36,12 @@ export const TestsPanel: React.FC = () => {
   return (
     <div
       style={{ width }}
-      className="tests-panel-step h-full flex-none relative border-l border-hld-border bg-[#080d13] flex flex-col shadow-sm z-10"
+      className="tests-panel-step h-full flex-none relative border-l border-hld-border bg-hld-surface-3 flex flex-col shadow-sm z-10"
     >
       <ResizeHandle side="left" onMouseDown={handleResize} />
 
       {/* Chrome — tab strip. The border-b is the only seam (no accent line). */}
-      <div className="flex items-stretch border-b border-hld-border bg-[#080d13]">
+      <div className="flex items-stretch border-b border-hld-border bg-hld-surface-3">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -65,7 +65,7 @@ export const TestsPanel: React.FC = () => {
           {tab === 'dialogue' && <DialogueTab />}
         </>
       ) : (
-        <div className="flex-1 overflow-y-auto p-3 bg-[#080d13] space-y-[10px]">
+        <div className="flex-1 overflow-y-auto p-3 bg-hld-surface-3 space-y-[10px]">
           {tab === 'spec' && <PersonaBanner />}
           <div className="text-center text-hld-muted-text mt-10">
             <Layout size={32} className="mx-auto mb-2 opacity-50" />

@@ -46,7 +46,7 @@ export const AgentSdkSettingsSection: React.FC = () => {
   };
 
   return (
-    <div className="bg-hld-surface2 border border-hld-border rounded-lg">
+    <div className="bg-hld-surface-2 border border-hld-border rounded-lg">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 p-4 text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted hover:text-hld-text transition-colors"

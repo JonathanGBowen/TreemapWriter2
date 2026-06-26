@@ -187,15 +187,17 @@ export function ProposalCard({ proposal, large, onAccept, onReject }: CardProps)
       </div>
 
       <div className="mb-3">
-        <div className={`${EYEBROW} text-hld-gold mb-1.5`}>proposed change</div>
+        <div className={`${EYEBROW} text-hld-feat-confidence mb-1.5`}>proposed change</div>
         <div
           className={`font-mono leading-[1.6] border border-hld-border bg-hld-bg p-2.5 ${
             large ? 'text-[13px]' : 'text-[11.5px]'
           }`}
         >
+          {/* eslint-disable-next-line no-restricted-syntax */}
           <span className="line-through text-[#ff7aa6] bg-hld-magenta/10">
             {proposal.original_text}
           </span>{' '}
+          {/* eslint-disable-next-line no-restricted-syntax */}
           <span className="text-[#7dffb0] bg-hld-green/10">{delta}</span>
         </div>
       </div>

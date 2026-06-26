@@ -33,7 +33,7 @@ export function ParallelGrid({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="shrink-0 flex border-b border-hld-border font-mono uppercase tracking-[0.14em] text-[9px] bg-hld-surface2">
+      <div className="shrink-0 flex border-b border-hld-border font-mono uppercase tracking-[0.14em] text-[9px] bg-hld-surface-2">
         {HEADERS.map((h, i) => (
           <div
             key={h.label}

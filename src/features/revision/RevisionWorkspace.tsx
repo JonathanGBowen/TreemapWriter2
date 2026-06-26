@@ -33,7 +33,7 @@ export function RevisionWorkspace() {
         <MasterDocument />
         <div
           style={{ width: proposalsWidth }}
-          className="relative shrink-0 border-l border-hld-border bg-[#080d13] flex flex-col"
+          className="relative shrink-0 border-l border-hld-border bg-hld-surface-3 flex flex-col"
         >
           <ResizeHandle side="left" onMouseDown={onResizeProposals} />
           <div className="relative px-4 py-3 border-b border-hld-border">

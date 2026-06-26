@@ -30,8 +30,8 @@ function BandMark({ band }: { band: 'medium' | 'high' }) {
         aria-hidden
         className="w-[7px] h-[7px] rotate-45"
         style={filled
-          ? { background: 'var(--color-hld-indigo)' }
-          : { border: '1px solid var(--color-hld-indigo)' }}
+          ? { background: 'var(--color-hld-feat-tone)' }
+          : { border: '1px solid var(--color-hld-feat-tone)' }}
       />
       <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text">{band}</span>
     </span>
@@ -61,7 +61,7 @@ function StrainRow({ s, selected, onSelect, onDismiss }: {
               <li key={i} className="text-[11px] leading-snug font-sans text-hld-muted-text-2 pl-[12px] border-l border-hld-border">
                 <span className="font-mono text-[9px] tracking-[0.08em] uppercase text-hld-muted-text mr-[5px]">{KIND_LABEL[sig.kind]}</span>
                 {sig.source === 'ai' && (
-                  <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-hld-indigo/80 mr-[5px]" title="from an AI diagnostic, not the deterministic mesh check">ai</span>
+                  <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-hld-feat-tone/80 mr-[5px]" title="from an AI diagnostic, not the deterministic mesh check">ai</span>
                 )}
                 {sig.detail}
                 {relation(sig) && <span className="text-hld-muted-text">{relation(sig)}</span>}
@@ -114,9 +114,9 @@ export function StrainRegister({ onSelect }: { onSelect: (id: string) => void })
         type="button"
         onClick={() => setOpen((x) => !x)}
         aria-expanded={open}
-        className="w-full flex items-center gap-[7px] py-[7px] px-[2px] font-mono text-[10px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-indigo transition-colors"
+        className="w-full flex items-center gap-[7px] py-[7px] px-[2px] font-mono text-[10px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-feat-tone transition-colors"
       >
-        <span aria-hidden className="w-[6px] h-[6px] rotate-45 bg-hld-indigo/80 shrink-0" />
+        <span aria-hidden className="w-[6px] h-[6px] rotate-45 bg-hld-feat-tone/80 shrink-0" />
         <span>Structural tension · {count}</span>
         <span aria-hidden className={`ml-auto text-[10px] transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
       </button>

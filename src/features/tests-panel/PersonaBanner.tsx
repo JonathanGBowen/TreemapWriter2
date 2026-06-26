@@ -22,7 +22,7 @@ export const PersonaBanner: React.FC = () => {
   return (
     <div
       onClick={() => setShowPersonaModal(true)}
-      className="px-[11px] py-[9px] bg-[#080d13] border border-hld-border flex items-center gap-[10px] cursor-pointer hover:border-hld-cyan/40 transition-colors group"
+      className="px-[11px] py-[9px] bg-hld-surface-3 border border-hld-border flex items-center gap-[10px] cursor-pointer hover:border-hld-cyan/40 transition-colors group"
     >
       <div className="w-[26px] h-[26px] flex items-center justify-center border border-hld-border text-hld-muted-text-2 shrink-0 text-[12px] font-mono group-hover:text-hld-cyan group-hover:border-hld-cyan/40 transition-colors">
         ⧉

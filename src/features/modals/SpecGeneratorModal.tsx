@@ -132,7 +132,7 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
       <div className="bg-hld-surface rounded-xl shadow-2xl w-full max-w-3xl border border-hld-border flex flex-col max-h-[90vh]">
         
-        <div className="p-5 border-b border-hld-border flex justify-between items-center bg-hld-surface2 rounded-t-xl">
+        <div className="p-5 border-b border-hld-border flex justify-between items-center bg-hld-surface-2 rounded-t-xl">
           <h3 className="text-lg font-bold text-hld-text flex items-center gap-2 font-sans">
             <Sparkles className="text-hld-cyan" size={18} />
             Refine Specs: <span className="text-hld-cyan font-mono">{sectionTitle}</span>
@@ -155,7 +155,7 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
                   />
                </div>
                
-               <div className="bg-hld-surface2 p-4 rounded-lg border border-hld-border">
+               <div className="bg-hld-surface-2 p-4 rounded-lg border border-hld-border">
                  <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-cyan mb-2 block flex items-center gap-2">
                     <Sparkles size={12} /> AI Refinement
                  </label>
@@ -181,7 +181,7 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
                  />
                </div>
 
-               <div className="bg-hld-surface2 p-4 rounded-lg border border-hld-border">
+               <div className="bg-hld-surface-2 p-4 rounded-lg border border-hld-border">
                  <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-hld-yellow mb-1 block flex items-center gap-2">
                     <Lightbulb size={12} /> Content ideas
                  </label>
@@ -240,7 +240,7 @@ export const SpecGeneratorModal: React.FC<SpecGeneratorModalProps> = ({
         <div className="p-4 border-t border-hld-border bg-hld-surface rounded-b-xl flex justify-end gap-3">
            <button 
              onClick={onClose}
-             className="px-4 py-2 bg-hld-surface2 border border-hld-border rounded-md text-[10px] font-mono uppercase tracking-widest font-semibold hover:bg-hld-border text-hld-text transition-colors"
+             className="px-4 py-2 bg-hld-surface-2 border border-hld-border rounded-md text-[10px] font-mono uppercase tracking-widest font-semibold hover:bg-hld-border text-hld-text transition-colors"
            >
              Cancel
            </button>

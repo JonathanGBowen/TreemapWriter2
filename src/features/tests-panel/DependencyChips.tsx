@@ -49,7 +49,7 @@ export function DependencyChips({
       </div>
 
       {adding && (
-        <div className="mt-[8px] border border-hld-cyan/25 bg-hld-surface2 p-[8px] flex flex-col gap-[8px]">
+        <div className="mt-[8px] border border-hld-cyan/25 bg-hld-surface-2 p-[8px] flex flex-col gap-[8px]">
           <div className="flex gap-[6px]">
             {(['prerequisite', 'reference'] as const).map((t) => (
               <button key={t} type="button" onClick={() => setDepType(t)} className={`flex-1 py-[5px] font-mono text-[8px] tracking-[0.12em] uppercase border transition-colors ${depType === t ? 'border-hld-cyan text-hld-cyan bg-hld-cyan/5' : 'border-hld-border text-hld-muted-text'}`}>

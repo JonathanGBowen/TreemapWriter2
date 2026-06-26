@@ -173,13 +173,13 @@ export const PromptsGraphModal: React.FC = () => {
     <div className="fixed inset-0 z-[100] flex bg-black/90 backdrop-blur-sm shadow-2xl p-6 font-sans">
       <div className="flex w-full h-full border-2 border-hld-border bg-hld-bg relative overflow-hidden">
         {/* Graph Area */}
-        <div className="flex-1 relative flex flex-col p-8 overflow-y-auto bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0f14] to-black">
+        <div className="flex-1 relative flex flex-col p-8 overflow-y-auto bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-hld-surface-3 to-black">
           {/* Background grid */}
           <div
             className="absolute inset-0 z-0 opacity-10 pointer-events-none"
             style={{
               backgroundImage:
-                'linear-gradient(#00e8f5 1px, transparent 1px), linear-gradient(90deg, #00e8f5 1px, transparent 1px)',
+                'linear-gradient(var(--color-hld-cyan) 1px, transparent 1px), linear-gradient(90deg, var(--color-hld-cyan) 1px, transparent 1px)',
               backgroundSize: '40px 40px',
             }}
           />
@@ -236,7 +236,7 @@ export const PromptsGraphModal: React.FC = () => {
           {/* Scope toggle — which tier the edits + Save target */}
           <div className="p-4 border-b border-hld-border bg-slate-800/50">
             <div className="text-[9px] font-mono uppercase tracking-widest text-hld-muted mb-2">Editing scope</div>
-            <div className="flex bg-[#0b0c10] p-1 rounded border border-hld-border">
+            <div className="flex bg-hld-surface-3 p-1 rounded border border-hld-border">
               {(['project', 'global'] as Scope[]).map((s) => (
                 <button
                   key={s}
@@ -301,7 +301,7 @@ export const PromptsGraphModal: React.FC = () => {
                     <textarea
                       value={selectedEntry.defaultText}
                       readOnly
-                      className="flex-1 w-full bg-[#05080f] text-slate-400 font-mono text-[13px] p-4 border border-hld-border resize-none rounded-sm leading-relaxed shadow-inner cursor-not-allowed"
+                      className="flex-1 w-full bg-hld-bg text-slate-400 font-mono text-[13px] p-4 border border-hld-border resize-none rounded-sm leading-relaxed shadow-inner cursor-not-allowed"
                       spellCheck={false}
                     />
                   </>
@@ -311,7 +311,7 @@ export const PromptsGraphModal: React.FC = () => {
                     onChange={(e) =>
                       setLocalValues((prev) => ({ ...prev, [selectedEntry.key]: e.target.value }))
                     }
-                    className="flex-1 w-full bg-[#05080f] text-[#00e8f5] font-mono text-[13px] p-4 border border-hld-border focus:border-[#00e8f5] focus:outline-none focus:ring-1 focus:ring-[#00e8f5] focus:shadow-[0_0_15px_rgba(0,232,245,0.2)] resize-none rounded-sm selection:bg-[#00e8f5] selection:text-black leading-relaxed shadow-inner"
+                    className="flex-1 w-full bg-hld-bg text-hld-cyan font-mono text-[13px] p-4 border border-hld-border focus:border-hld-cyan focus:outline-none focus:ring-1 focus:ring-hld-cyan focus:shadow-[0_0_15px_rgba(0,232,245,0.2)] resize-none rounded-sm selection:bg-hld-cyan selection:text-black leading-relaxed shadow-inner"
                     spellCheck={false}
                   />
                 )}

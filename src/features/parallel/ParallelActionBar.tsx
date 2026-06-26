@@ -32,7 +32,7 @@ export function ParallelActionBar({
   const proseCount = rows.filter((r) => r.kind === 'prose').length;
 
   return (
-    <div className="shrink-0 h-[52px] border-t border-hld-border bg-hld-surface2 flex items-center gap-2 px-4">
+    <div className="shrink-0 h-[52px] border-t border-hld-border bg-hld-surface-2 flex items-center gap-2 px-4">
       <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-hld-muted-text">
         {proseCount} paragraph{proseCount === 1 ? '' : 's'}
       </span>

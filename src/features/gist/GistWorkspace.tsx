@@ -48,17 +48,17 @@ export function GistWorkspace() {
       <GistTopBar />
       <div className="flex-1 flex min-h-0">
         <GistPanel />
-        <main className="flex-1 min-w-0 flex flex-col" style={{ background: '#070d14' }}>
-          <div className="shrink-0 flex items-center gap-2.5 font-mono" style={{ padding: '11px 28px', borderBottom: '1px solid #172335', background: '#091019' }}>
-            <span className="uppercase" style={{ fontSize: 9, letterSpacing: '0.14em', color: '#6f8cab' }}>Whole document</span>
+        <main className="flex-1 min-w-0 flex flex-col" style={{ background: 'var(--color-hld-surface-3)' }}>
+          <div className="shrink-0 flex items-center gap-2.5 font-mono" style={{ padding: '11px 28px', borderBottom: '1px solid var(--color-hld-border)', background: 'var(--color-hld-surface-3)' }}>
+            <span className="uppercase" style={{ fontSize: 9, letterSpacing: '0.14em', color: 'var(--color-hld-muted-text)' }}>Whole document</span>
             {activeTitle && (
               <>
-                <span style={{ color: '#3d5570' }}>›</span>
-                <span className="truncate" style={{ fontSize: 9, letterSpacing: '0.14em', color: '#00e8f5' }}>{activeTitle}</span>
+                <span style={{ color: 'var(--color-hld-muted)' }}>›</span>
+                <span className="truncate" style={{ fontSize: 9, letterSpacing: '0.14em', color: 'var(--color-hld-cyan)' }}>{activeTitle}</span>
               </>
             )}
             <div className="flex-1" />
-            <span className="uppercase" style={{ fontSize: 8, letterSpacing: '0.16em', color: '#5e789a' }}>WYSIWYG · markdown</span>
+            <span className="uppercase" style={{ fontSize: 8, letterSpacing: '0.16em', color: 'var(--color-hld-muted-text)' }}>WYSIWYG · markdown</span>
           </div>
           <div className="flex-1 min-h-0">
             <GistEditorSurface />

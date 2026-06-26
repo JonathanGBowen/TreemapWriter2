@@ -33,6 +33,29 @@ export default tseslint.config(
     },
   },
   {
+    // Design-system guardrail (the audit's "keep it honest" item): flag NEW
+    // hard-coded hex colours so they can't re-drift past the token system —
+    // use a `--color-hld-*` token (see src/index.css `@theme`) instead. Warn
+    // (not error), matching the `max-lines` convention; the existing warnings
+    // double as the remaining hex→token migration worklist. Pure white/black are
+    // allowed (not palette inflation).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'Literal[value=/#(?!ffffff|000000)[0-9a-fA-F]{6}/]',
+          message: 'Hard-coded hex colour — use a --color-hld-* design token (src/index.css @theme).',
+        },
+        {
+          selector: 'TemplateElement[value.cooked=/#(?!ffffff|000000)[0-9a-fA-F]{6}/]',
+          message: 'Hard-coded hex colour — use a --color-hld-* design token (src/index.css @theme).',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**'],
     rules: {
       'max-lines-per-function': 'off',

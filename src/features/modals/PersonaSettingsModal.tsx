@@ -173,7 +173,7 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
     }
   };
 
-  const inputClass = "w-full p-[9px] bg-[#080d13] border border-hld-border text-hld-text text-[13px] focus:border-hld-cyan outline-none font-sans";
+  const inputClass = "w-full p-[9px] bg-hld-surface-3 border border-hld-border text-hld-text text-[13px] focus:border-hld-cyan outline-none font-sans";
 
   return (
     <ModalShell

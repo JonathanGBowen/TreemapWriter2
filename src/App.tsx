@@ -713,7 +713,7 @@ export const App = () => {
           onStartTutorial={() => setRunTutorial(true)}
         />
 
-        <div className="flex-1 min-w-0 flex flex-col h-full bg-hld-bg relative hld-scanline">
+        <div className="flex-1 min-w-0 flex flex-col h-full bg-hld-bg relative">
           <EditorPanel
             handleSave={handleManualSave}
             editorRef={editorRef}

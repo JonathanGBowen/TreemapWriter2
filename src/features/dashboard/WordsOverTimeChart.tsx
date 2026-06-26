@@ -24,6 +24,7 @@ export function WordsOverTimeChart({ points }: { points: DayPoint[] }) {
         type: 'scatter' as const,
         mode: 'lines' as const,
         fill: 'tozeroy' as const,
+        // eslint-disable-next-line no-restricted-syntax -- Plotly trace color; CSS var() does not resolve in chart config
         line: { color: '#3bd6c6', width: 2 },
         fillcolor: 'rgba(59,214,198,0.10)',
         hovertemplate: '%{x}<br>%{y:,} words<extra></extra>',
@@ -38,6 +39,7 @@ export function WordsOverTimeChart({ points }: { points: DayPoint[] }) {
       margin: { l: 44, r: 16, t: 8, b: 32 },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
+      // eslint-disable-next-line no-restricted-syntax -- Plotly layout font color; CSS var() does not resolve in chart config
       font: { color: '#6b7d8c', family: 'monospace', size: 10 },
       xaxis: { gridcolor: 'rgba(255,255,255,0.04)', zeroline: false },
       yaxis: { gridcolor: 'rgba(255,255,255,0.04)', zeroline: false, rangemode: 'tozero' as const },

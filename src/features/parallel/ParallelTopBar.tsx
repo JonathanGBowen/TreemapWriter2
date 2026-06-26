@@ -24,7 +24,7 @@ export function ParallelTopBar() {
         <span className="font-mono uppercase tracking-[0.14em] text-[10px] font-bold text-hld-text">
           Parallel
         </span>
-        <span className="text-[#1f3050]">›</span>
+        <span className="text-hld-border-strong">›</span>
         <span className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-green truncate">
           {scope ? scope.title : 'select a section'}
         </span>

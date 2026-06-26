@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-syntax -- SVG <circle> fill/stroke presentation
+   attributes need literal hex (CSS `var()` does not resolve in SVG attributes). */
 /* icons.tsx — inline SVG glyphs for the Argument Topology modal.
    Ported from the design prototype (topo-modal.jsx). No external assets. */
 

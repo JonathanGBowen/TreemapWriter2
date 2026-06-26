@@ -101,7 +101,7 @@ export function SprintStepRow({
               onChange={(e) => onEditInstructions(e.target.value.split('\n'))}
               rows={Math.min(5, Math.max(2, move.instructions.length + 1))}
               placeholder="One instruction per line…"
-              className="w-full bg-hld-surface2 border border-hld-border text-hld-text text-[11.5px] leading-relaxed p-[8px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
+              className="w-full bg-hld-surface-2 border border-hld-border text-hld-text text-[11.5px] leading-relaxed p-[8px] outline-none focus:border-hld-cyan/40 resize-none font-sans"
             />
           )}
         </div>

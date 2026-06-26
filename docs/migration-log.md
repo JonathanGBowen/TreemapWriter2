@@ -3776,3 +3776,414 @@ Beethoven calls (the folded-in `wholeSignature` suffices); order-swap "rigorous"
 debiasing; id-based section alignment (waits on stable section IDs); the treemap
 strain/force-map whole-view (`gestalt-design-II.md` L3b). A chapter-subtree scope
 is folded into the simpler Changed/All control for now.
+
+---
+
+## 2026-06-26 — Design-system remediation (HLD audit), Tier 1
+
+A visual design audit (Claude Design; bundle in
+`audit/design_handoff_hld_remediation/`) reached the verdict *"needs polish, not
+rebuild"*: a real, deliberate HLD design language that stopped enforcing its own
+rules (*one lit action per surface · glow = "alive" · scanline never on reading
+content · don't invent colours*) as features accreted. Every fix is **subtraction
+or consolidation**. The plan reconciled the brief against the live code (several
+brief assumptions were false — there is no `hld-btn` CSS layer, no `--bg-wash`
+token, and the "dead" warm tokens are actually live); see the plan in
+`audit/` and the per-tier entries below. Implemented decisions: a small `.hld-btn`
+component layer carries the focus ring (not a rename of 60 files); muted-text token
+**values are kept** (the audit's inversion would have silently changed 328 call
+sites); accessibility meets the **desktop 24px** target, not the touch 44px; the
+glyph-driven aesthetic is preserved (no permanent visible tool labels).
+
+### PR 1 — accessibility foundation (focus ring · semantic chrome titles · contrast)
+
+**What changed.**
+- **Visible keyboard focus**, the one missing a11y affordance. `src/index.css` now
+  defines a `:focus-visible` cyan ring (`outline: 2px solid var(--color-hld-cyan);
+  outline-offset: 2px`) on a new canonical button family (`.hld-btn` /
+  `.hld-btn-ghost` / `.hld-tool`, added to `@layer components`) **plus** a narrow,
+  unlayered global fallback (`button, [role="button"], a[href], input, select,
+  textarea, summary, [tabindex]:not([tabindex="-1"])`) so nothing is
+  keyboard-unreachable. The rule is unlayered so it beats any Tailwind
+  `outline-none` utility.
+- **Editor focus** — removed `outline: "none"` from `&.cm-editor` in
+  `src/lib/editorTheme.ts`; the CodeMirror contenteditable now shows an inset cyan
+  ring on `.cm-content:focus-visible`. The dead `.editor-focus` class (defined,
+  never applied) was deleted.
+- **Semantic chrome heading** — the tests-panel section title
+  (`features/tests-panel/PanelHeader.tsx`) is now `role="heading" aria-level={2}`
+  so assistive tech gets a panel outline. (The CodeMirror editor stays source-mode;
+  rendering its `# Heading` source as a semantic `<h1>` outline is not meaningful —
+  that brief item was dropped, see the plan.)
+- **Contrast — the failing pairs.** Breadcrumb separator `text-[#1f3050]` on the
+  `#0c1520` toolbar (a raw hex, ~1.3:1) → token `text-hld-muted-text` +
+  `aria-hidden` (`features/editor/EditorPanel.tsx`); decorative `text-hld-muted`
+  used as the "Rendering diagram…" body text → `text-hld-muted-text`
+  (`lib/livePreview.ts`); dimmed sibling-tile label `rgba(255,255,255,0.55)` →
+  `0.72` (`features/treemap/Treemap.tsx`). The hairline-as-interactivity-edge case
+  is now structurally covered by the focus ring + existing hover states.
+
+**Verify.** `npm run typecheck` · `npx vitest run` (462 pass) · `npm run build` all
+green. Manually: keyboard-tab the app — every button/tool/row shows the cyan ring;
+the editor shows an inset ring on keyboard focus; the breadcrumb separator and the
+"Rendering diagram…" label are legible.
+
+**Rollback.** CSS/markup only, additive. `git revert` the commit; the new
+`.hld-btn`/`.hld-tool` classes are unused-but-harmless if other changes depend on
+them, otherwise they drop cleanly.
+
+**Tests.** CSS/visual + ARIA-attribute changes — not unit-testable; no covered
+lines added (neutral to the coverage ratchet).
+
+### PR 2 — token rationalisation (remap live legacy hues, then delete)
+
+**What changed.** The audit's headline was accent inflation (29 colour values, ~11
+saturated accents). The "retired" warm tokens were **not dead** — they were live in
+the revision components — so each was *remapped*, then its definition deleted.
+- `@theme` (`src/index.css`): added `--color-hld-border-strong` (#1f3050) and
+  `--color-hld-surface-3` (#080d13); renamed the two feature accents to a
+  namespace — `gold → feat-confidence` (#ffcc00), `indigo → feat-tone` (#7c8bff) —
+  so they never read as core state; deleted the duplicate `pink` (≡ magenta) and the
+  warm-dup `assembly` (→ yellow). `orange` is **retained but reserved for the H5
+  heading only**. `muted` (decorative #3d5570) is kept under its legacy name with a
+  note that the audit calls it `decor` (the rename waits for the Tier-2 decorative
+  call-site migration).
+- **Strong-border consolidation:** the hard-coded scrollbar slates (#22364e/#2a4258
+  in `index.css` and `editorTheme.ts`) and the `.hld-border` rule's #1e293b now all
+  point at `--color-hld-border-strong`.
+- **Call-site remaps:** `revision/revisionTypeColors.ts` (Citation→feat-confidence,
+  Tone Adjustment→feat-tone, Flow Improvement→magenta, Assembly→yellow),
+  `revision/DirectiveComposer.tsx`, `revision/ProposalCard.tsx`,
+  `revision/Confidence.tsx`, `strain/StrainRegister.tsx` (indigo→feat-tone). No
+  visual regression: `pink`≡`magenta` already rendered identically, so collapsing
+  Flow-Improvement/Deletion onto magenta only removes a phantom token.
+
+**Verify.** `git grep` for `hld-gold|hld-assembly|hld-pink|hld-indigo` returns zero
+outside the audit bundle. `npm run typecheck` · `npx vitest run` (462) · `npm run
+build` green (the build confirms Tailwind emits the new `text-hld-feat-confidence` /
+`-feat-tone` utilities).
+
+**Rollback.** `git revert` the commit. Deferred to Tier 2: tokenising the remaining
+`editorTheme.ts` hexes (incl. wiring H5 to `--color-hld-orange`), the `muted → decor`
+rename, and the `cyan-bright` (#00f0ff) hover hexes.
+
+**Tests.** Token-definition + utility-class swaps — visual; no covered lines added.
+
+### PR 2b — `surface2 → surface-2` rename (single-purpose)
+
+**What changed.** One token renamed for naming consistency with the rationalised kit
+(`surface` · `surface-2` · `surface-3`, all hyphenated). Mechanical find/replace of
+`hld-surface2 → hld-surface-2` across **33 files** + the `@theme` definition. Kept as
+its own commit so a regression bisects cleanly, away from the hue work in PR 2.
+
+**Verify.** `git grep hld-surface2` returns zero; typecheck + 462 vitest + build green.
+
+**Rollback.** `git revert` the commit (pure rename).
+
+**Tests.** Rename only — no behaviour change, no covered lines.
+
+### PR 3 — denoise the canvas (atmosphere opt-in · glow = alive)
+
+**What changed.** The audit's lead finding: at rest a screen stacked a dot-grid +
+two corner washes + scanlines on two columns + a glow on *every* pip — against the
+system's own "glow = alive" rule.
+- **Ambient atmosphere off by default.** The three `body` `radial-gradient()`s (the
+  two washes + the dot-grid) moved off `body` into an opt-in `.hld-atmosphere` class
+  (`src/index.css`). `body` keeps only its flat background colour. The class is there
+  to drop behind a genuinely-void surface (a topo-map well), never globally.
+- **Glow = alive.** Stripped the always-on `box-shadow` from the `.hld-pip-*` colour
+  classes; each class now exposes its hue via a `--pip-hue` custom property, and the
+  glow is applied **only** by `.hld-pip-live` / `.hld-pip-pulse` (in that hue). The
+  shared `Pip` component (`features/shared/Pip.tsx`) gained a `live?: boolean` prop
+  for active/in-flight pips; a pip at rest is now flat.
+- **Section-list pips calmed.** `features/sidebar/SectionRow.tsx` no longer glows on
+  the static success/fail/stale states (only `running` animates). Those glows
+  referenced the Tailwind-v3 `--tw-colors-*` vars, undefined under v4 — so they never
+  actually rendered; this just makes the code honest.
+- **Scanline off reading content.** Removed `.hld-scanline` from the editor column
+  (`App.tsx` — prose is reading content, the clearest violation) and the sidebar
+  (`features/sidebar/Sidebar.tsx`); the class is retained for a true chrome well.
+
+**Verify.** `npm run dev`, look at the main workspace at rest: a flat canvas (no
+grid, no washes), no scanline over the editor/sidebar, and pips glow only when
+live/pulsing (e.g. a syncing indicator) — not at rest. typecheck + 462 vitest +
+build green.
+
+**Rollback.** `git revert` the commit; `body` regains its gradients and the pip
+classes regain their static box-shadows. The `live` prop and `.hld-atmosphere`
+class are additive.
+
+**Tests.** CSS + a presentational prop — visual; no covered lines added. (The
+one-lit-per-surface audit found no side-by-side double-lit; formal enforcement is
+deferred to the Tier-3 lint rule.)
+
+### PR 4 — one status encoder (saved-dot → pip · readiness helper)
+
+**What changed.** The audit found six competing status encoders; the real
+consolidation targets (the domain pip-maps are legitimately distinct) were a lone
+*circle* and a bespoke 4-diamond meter.
+- **Saved-dot** (`features/editor/EditorPanel.tsx`): the lone `rounded-full` circle
+  became a square `<Pip status="green" size="sm" />` — honouring the square identity,
+  and flat at rest (its old glow used the undefined v3 `--tw-colors-*` var anyway).
+- **Readiness meter** (`features/tests-panel/PanelHeader.tsx`): the hand-rolled
+  diamond row now renders through a new pure helper
+  `summarizeReadiness(level) → { filled, total, pip, label, diagnosed }`
+  (`tests-panel/diagnostic-config.ts`), with the filled steps drawn by the canonical
+  `Pip` (no rest glow) and a `role="img"` + `aria-label="Readiness: …"` so colour is
+  never the only channel.
+- **Topo Inspector** (`features/modals/topo/Inspector.tsx`): its readiness *bars*
+  (a topo-local variant, kept) lost their always-on `box-shadow` (glow = alive).
+- `StatusBadge` (the word labels in `EditorPanel.tsx`) left as-is — already
+  token-coloured and good for recognition.
+
+**Verify.** `npm run typecheck` · `npx vitest run` (465 — the 3 new
+`summarizeReadiness` tests) · `npm run build` green. Manually: no circular status
+dot and no glowing diamonds remain; the saved indicator is a square green pip.
+
+**Rollback.** `git revert` the commit. The helper + test drop cleanly; the inline
+meter/dot are restored.
+
+**Tests.** `summarizeReadiness` is pure and unit-tested
+(`tests-panel/__tests__/diagnostic-config.test.ts`, 3 tests) — **ratchets coverage
+up** (the one Tier-1 change with real test value).
+
+---
+
+**Tier 1 complete** (PRs 1–4 + 2b). Delivered the highest felt-improvement at lowest
+risk: a calm canvas at rest, one visible focus ring across every interactive, a
+rationalised palette, and a single status vocabulary. Tier 2 (hex→token migration ·
+unify loading/error/empty · a11y round 2 · type/spacing scale) and Tier 3 (motion ·
+shortcuts · first-run labels · lint guardrail) follow.
+
+### Tier 2.3 — accessibility, round two (keyboard operability · text equivalents · hit target)
+
+**What changed.**
+- **Keyboard-operable section rows.** `features/sidebar/SectionRow.tsx` was a bare
+  `<div onClick>`; it now carries `role="button"`, `tabIndex={0}`, an Enter/Space
+  `onKeyDown`, and `aria-current` for the selected row (the same pattern the
+  `ProjectManagerModal` ProjRow already used). Its colour-only status square gained a
+  `title` text equivalent (`STATUS_LABEL`).
+- **Treemap text alternative.** The Plotly treemap (canvas/SVG, not keyboard
+  navigable) now renders an `.sr-only` `<ul aria-label="Document structure">` listing
+  every section's level · title · word count · readiness (via the PR-4
+  `summarizeReadiness` helper) and which is selected — the structure the visual map
+  conveys, for assistive tech. Keyboard navigation rides the existing section tree +
+  ⌘K palette.
+- **Hit target (desktop AA).** Added `--hit-target: 24px` (WCAG 2.5.8 desktop
+  minimum — *not* the touch 44px, per the app's keyboard/mouse-desktop reality and
+  glyphic aesthetic) and enforced it on `.hld-tool` (`min-width/height`). Applied
+  `.hld-tool` to the tiny tests-panel settings gear.
+- **Sidebar name field.** The unlabeled rename `<input>` got
+  `aria-label="Project name (click to rename)"`, and its `outline-none` was removed so
+  the focus ring shows.
+
+**Verify.** Tab through the sidebar — each section row is focusable and
+Enter/Space-activatable; a screen reader announces the document structure list and
+the project-name field. typecheck + 465 vitest + build green.
+
+**Rollback.** `git revert` the commit — all additive ARIA/markup + one token.
+
+**Tests.** DOM/ARIA — not unit-testable here; no covered lines added. Broader
+hit-target application (every small icon button) and the first-run/⌥-hold tool
+labels are Tier-2.3/Tier-3 follow-ons.
+
+### Tier 2.1 / 2.4 — tokenise the CodeMirror theme (hex→token · heading rem→px)
+
+**What changed.** `src/lib/editorTheme.ts` was the single biggest non-component hex
+concentration (the prose editor's theme + syntax highlighting). Every structural and
+accent hex now references a `--color-hld-*` token; cyan-bright (#00f0ff) retired into
+cyan; the H5 orange is now the `--color-hld-orange` token (completing PR 2's intent).
+The ad-hoc rem heading sizes (2.2/1.7/1.3/1.1/1rem) became a px prose-heading scale
+`--text-h-xl/lg/md/sm/xs` (32/24/19/16/14px), added to `@theme`. Only three things
+stay literal, documented inline: rgba alpha-tints, `#ffffff` (bold emphasis), and one
+code-syntax purple `#d080ff` (no token).
+
+**Verify.** `grep -E '#[0-9a-f]{6}' src/lib/editorTheme.ts` shows only the two
+documented literals; typecheck + 465 vitest + build green (the build compiles the
+CSS-in-JS and resolves the `var()`s). Open the editor: headings keep the per-depth
+rainbow at the new px sizes.
+
+**Rollback.** `git revert` the commit; the theme regains its literal hexes/rems.
+
+**Tests.** CSS-in-JS values — visual; no covered lines. (The remaining component
+hex→token migration — ~248 sites across feature folders — is the documented Tier-2.1
+backlog, now guarded against new drift by the Tier-3 lint rule below.)
+
+### Tier 3 — lint guardrail against hard-coded hex colours (keep it honest)
+
+**What changed.** `eslint.config.js` gained a `no-restricted-syntax` rule (scoped to
+`src/**/*.{ts,tsx}`, excluding tests) that **warns** on any hard-coded 6-digit hex
+colour in a string literal or template literal, pointing the author at the
+`--color-hld-*` tokens. Pure white/black are allowed. `warn` (not `error`) matches the
+repo's `max-lines` convention — it doesn't break the build, and the ~194 existing
+warnings double as the remaining hex→token migration worklist. New hexes can no longer
+re-drift past the token system unnoticed. Documented as an anti-pattern in `AGENTS.md`.
+
+**Verify.** `npm run lint` runs clean (exit 0, all warnings); `grep -c
+no-restricted-syntax` shows the hex worklist. No CI gate change (lint is advisory).
+
+**Rollback.** `git revert` the commit; the rule drops.
+
+**Tests.** Config only.
+
+---
+
+**Status of the program (before the bulk migration below).** Tier 1 complete; Tier
+2.3 + the editorTheme tokenisation + the Tier-3 lint guardrail shipped.
+
+### Tier 2.1 — bulk component hex→token migration (194 → 27 warnings)
+
+**What changed.** Drained the lint worklist across ~45 files: every hard-coded hex that
+matches the palette became a token — Tailwind arbitrary values (`bg-[#080d13]` →
+`bg-hld-surface-3`, `text-[#1f3050]` → `text-hld-border-strong`, `bg-[#05090d]/80` →
+`bg-hld-bg/80`) and inline `style` strings (`'#00e8f5'` → `'var(--color-hld-cyan)'`).
+Near-duplicate dark neutrals were **snapped** to the canonical surface/border tokens
+(the audit's intended consolidation — imperceptible: e.g. `#0a131d`/`#0a0f15`/`#0a1018`
+→ surface-3/surface; `#14202f`/`#1d2d42`/`#1e2f42` → border/border-strong), and
+near-duplicate slate-grays to the muted-text family. Done as a parallel fan-out (three
+agents over disjoint feature clusters: gist, tests-panel/revision, the long tail) plus
+hand-work on the functional-literal files; one agent left a malformed JSX
+`{/* eslint-disable */}` before a `return`'s root element (a syntax error) — fixed to a
+`//` line comment.
+
+**Functional literals (kept hex, file-level `eslint-disable` with rationale).** Colours
+that *can't* be CSS tokens because the runtime doesn't resolve `var()`:
+`features/treemap/Treemap.tsx` (Plotly trace colours), the `modals/topo/*` SVG-map kit
+(`tk.ts`/`topo-derive`/`icons`/`topo-sim-atlas` — SVG presentation attributes),
+`lib/sprintRoles.ts` (hexes parsed by `hexA()` + pinned by a test),
+`features/tutorial/Tutorial.tsx` (a self-contained react-joyride theme). A handful of
+genuinely off-palette accent tints (diff add/remove greens/pinks, the gist voice-chip
+pink, coach parchment text, a sprint magenta track, two Plotly chart colours) got
+line-level exemptions with reasons.
+
+**Deliberately left flagged (27 warnings — the residual worklist).**
+`modals/ProjectFileModal.tsx` (16) and `modals/SectionMapModal.tsx` (11) are **legacy
+pre-HLD modals** styled with Tailwind-default palette classes (slate/cyan/fuchsia) plus
+bespoke darks; a faithful fix is a full HLD restyle, not a hex swap, so they stay
+flagged as visible debt rather than getting a cosmetic half-migration or a disable.
+
+**Verify.** `npm run lint` → 27 `no-restricted-syntax` warnings (down from 194), all in
+those two modals; `npm run typecheck` · `npx vitest run` (465) · `npm run build` green.
+
+**Rollback.** `git revert` the commit. Token swaps are appearance-neutral except the
+imperceptible neutral snaps.
+
+**Tests.** Visual; no covered lines.
+
+### Tier 2.1 (cont.) — legacy modals restyle · Tier 3 — one easing (0 hex warnings)
+
+**What changed.**
+- **The two legacy pre-HLD modals are now fully on the token system**, clearing the
+  last 27 hex warnings → **0**. `modals/SectionMapModal.tsx` (the "Project Map" /
+  blueprint view) and `modals/ProjectFileModal.tsx` (the raw-data viewer) had their
+  Tailwind-default palette classes (`slate-*`/`cyan-*`/`emerald-*`/`amber-*`/
+  `fuchsia-*`/`white/N`) and bespoke hexes mapped to `hld-*` tokens — colours only,
+  all layout/geometry preserved. Notable in-system decisions: the map's tan "star"
+  nodes (`#eec39a`) became `hld-muted-text-2` (a neutral in-palette node; selected
+  stays cyan), the pink connector lines (`#ff007f`) became `hld-magenta`, and the
+  cyan-400 glow rgba was retuned to the `hld-cyan` rgb. The shared `bg-black/60`
+  modal scrim is kept (a structural overlay convention across all modals, not a
+  palette colour). Done as a two-agent fan-out (one modal each).
+- **One canonical easing (Tier 3 motion).** Added `--ease-out`
+  (`cubic-bezier(0.4,0,0.2,1)`) + `--dur` (150ms) tokens; the global transition rule
+  now references them. Keyframe animations keep their semantic curves (linear sweeps,
+  ease-in-out pulses).
+
+**Verify.** `npm run lint` → **0** `no-restricted-syntax` hex warnings (every colour is
+a token or a documented exemption); typecheck + 465 vitest + build green. Open the
+Project Map / Raw-data modals: same layout, now in the HLD palette.
+
+**Rollback.** `git revert` the commit.
+
+**Tests.** Visual + a token swap; no covered lines.
+
+### Tier 2.2 — unify the loading vocabulary (one Spinner)
+
+**What changed.** The thin rotating cyan ring was hand-rolled
+(`rounded-full border-[1.5px] … border-t-… animate-spin`) in six places
+(`revision/GenLoader`, `spec-test/SpecTestReport`, `climate/ClimateReport`,
+`compare/CompareReport` ×2, `revision/DirectiveSuggestions` — the purple variant).
+Extracted **`features/shared/Spinner.tsx`** (size + hue props, **and** a `role="status"`
++ `aria-label="Loading"` the inline copies lacked) and routed all six through it. The
+loading vocabulary is now intentionally two-context: **`<Spinner>`** for standalone
+"working…" panels, the lucide **`Loader2`** icon for inline button-busy states, and the
+**pip pulse** for status pips — each one component.
+
+*Error / empty* were already at the audit's standard and left as-is: errors surface
+in-context and specific (the `saveError` banner, the `shared/ai-error` toast, per-modal
+inline messages that show the real error and fall back to a generic only when there is
+no message — the diagnostic panel's "locate → diagnose → suggest move" remains the gold
+standard); empty states are instructive (the `tests-panel/EmptyState` pattern). No
+generic "Something went wrong" surface exists.
+
+**Verify.** typecheck + 465 vitest + build green; lint exit 0. The report/loader panels
+show the same spinner, now screen-reader-announced.
+
+**Rollback.** `git revert`; the inline spans return.
+
+**Tests.** Presentational component — not unit-tested (the UI feature layer is
+out-of-scope for unit tests by design); no covered lines.
+
+### Tier 3 — ⌥-hold tool labels (recognition aid)
+
+**What changed.** The sidebar dock's nine glyph tools are intentionally word-free at
+rest (HLD density). They already carried accessible names (`aria-label` + `title` + a
+hover/focus caption); this adds a **hold-⌥ reveal** (`features/sidebar/Dock.tsx`): while
+Alt is held, the 9-glyph grid becomes a labeled vertical list (glyph + name), and the
+caption shows "tool names · release ⌥". Release → back to glyphs. Instant, no animation
+(reduced-motion-safe), listeners cleaned up on unmount + window blur. Recognition over
+recall, without permanently spending the word budget the VISION protects.
+
+**Verify.** Hold Alt over the app → the dock tools show their names; release → glyphs.
+typecheck + 465 vitest + build green; lint exit 0.
+
+**Rollback.** `git revert`; the dock returns to the static glyph grid.
+
+**Tests.** UI feature — not unit-tested; no covered lines.
+
+---
+
+**Design-system remediation — program complete.** All three audit tiers are shipped
+(Tier 1 foundation · Tier 2 consistency · Tier 3 polish): a calm canvas at rest, a
+visible focus ring on every interactive, a rationalised 18-colour token kit fully
+enforced (the hex guardrail is at **0** warnings), one status vocabulary, keyboard
+operability + a treemap text alternative, the editor + both legacy modals on tokens,
+one Spinner / one easing, and the ⌥-hold labels. **Two deliberate deviations from the
+audit, both documented above:** (1) accessibility targets meet the **desktop 24px** AA
+floor, not the touch 44px, and the glyph tools keep their glyphs (labels on ⌥-hold /
+hover, not permanently) — preserving the HLD aesthetic; (2) the off-grid **spacing
+snap** via a custom `--spacing-*` scale was **declined** (it shadows Tailwind v4's
+numeric spacing and would silently change every `p-1`/`gap-2`) — Tailwind's built-in
+4px grid already governs the bulk, and the residual arbitrary `[Npx]` values are
+imperceptibly off-grid; not worth the churn. The lint guardrail keeps colour drift from
+returning.
+
+### Dock follow-up — drop the redundant tooltip · re-surface palette-only launchers
+
+**What changed** (`src/features/sidebar/Dock.tsx`).
+- **Removed the native `title` tooltip** from the glyph tools (both the grid view and
+  the ⌥-hold list view). It duplicated the footer **caption line** (driven by `cap()`),
+  which already shows the action + description on hover/focus. `aria-label` (the
+  screen-reader name) stays.
+- **Re-surfaced the five palette-only launchers as dock glyphs** — Coach `◍`,
+  Generate specs `✦`, Revise `⟐`, Parallel `▥`, Gist `◊` — which previously were
+  reachable only from ⌘K (a prior "consolidation" had folded them into the palette).
+  Coach gets `◍` rather than the palette's `◉` (which the dock already uses for Assist).
+  The openers already existed on the store (the same ones `App.tsx`'s `paletteCommands`
+  call); the dock now subscribes to them. The 14 tools are grouped into two rows —
+  **compose/revise** (Assist · Coach · Generate specs · Revise · Parallel · Gist · Goal
+  map) and **evaluate/inspect** (Dependencies · Spec test · Compare · Climate · Progress
+  · Prompts · Raw data) — via `grid-cols-9 → grid-cols-7`. ⌘K stays the searchable door
+  and the home of the rarer actions (snapshot, exports, new/open project, run
+  diagnostic). The ⌥-hold list lists all 14.
+
+**Verify.** typecheck + 465 vitest + build + lint(0) green. Manually: hover a glyph →
+only the caption shows (no native tooltip bubble); the five new glyphs open Coach /
+Generate-specs / Revise / Parallel / Gist; 14 glyphs render in two rows, each focusable
+and ≥24px.
+
+**Rollback.** `git revert`; the dock returns to nine glyphs with tooltips.
+
+**Tests.** UI wiring — no covered lines. (The dock `tools` array and `App.tsx`
+`paletteCommands` now both list these launchers — by design; a shared launcher registry
+to dedupe them is a sensible future cleanup.)

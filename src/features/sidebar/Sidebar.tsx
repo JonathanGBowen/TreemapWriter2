@@ -53,7 +53,7 @@ function SearchBox() {
         onKeyDown={(e) => { if (e.key === "Escape") reset(); }}
         placeholder="Search sections…"
         aria-label="Search sections"
-        className="w-full pl-7 pr-12 py-1 bg-[#080d13] border border-hld-border text-[10px] font-mono text-hld-text placeholder:text-hld-muted-text outline-none focus:border-hld-cyan transition-colors"
+        className="w-full pl-7 pr-12 py-1 bg-hld-surface-3 border border-hld-border text-[10px] font-mono text-hld-text placeholder:text-hld-muted-text outline-none focus:border-hld-cyan transition-colors"
       />
       {searchQuery.trim() !== "" && (
         <button
@@ -83,7 +83,7 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
       <div className="h-px bg-hld-border" />
-      <div className="flex-1 w-full border border-hld-border bg-[#080d13] relative overflow-hidden min-h-0">
+      <div className="flex-1 w-full border border-hld-border bg-hld-surface-3 relative overflow-hidden min-h-0">
         <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelect} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} matchedIds={matchedIds} />
       </div>
       {isTauri() && <SearchBox />}
@@ -164,9 +164,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div style={{ width }} className="h-full flex-none relative border-r border-hld-border bg-hld-surface flex flex-col shadow-sm z-10 hld-scanline">
+    <div style={{ width }} className="h-full flex-none relative border-r border-hld-border bg-hld-surface flex flex-col shadow-sm z-10">
       {/* Header — ◇ menu · name · composite status pip */}
-      <div className="px-[10px] py-[9px] border-b border-hld-border bg-hld-surface2 relative flex items-center gap-[9px]">
+      <div className="px-[10px] py-[9px] border-b border-hld-border bg-hld-surface-2 relative flex items-center gap-[9px]">
         <div className="absolute top-0 left-0 right-0 h-px bg-hld-cyan shadow-[0_0_12px_var(--color-hld-cyan)]" />
         <ProjectMenu
           onResetProject={onResetProject}
@@ -187,9 +187,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             if (!projectName.trim()) setProjectName('Untitled Project');
             if (activeProjectId) void saveCurrentState();
           }}
-          className="flex-1 min-w-0 font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-hld-text bg-transparent outline-none border-b border-transparent hover:border-hld-border focus:border-hld-cyan truncate transition-colors"
+          className="flex-1 min-w-0 font-bold text-[10px] uppercase font-mono tracking-[0.12em] text-hld-text bg-transparent border-b border-transparent hover:border-hld-border focus:border-hld-cyan truncate transition-colors"
           placeholder="Project Name"
           title="Click to rename"
+          aria-label="Project name (click to rename)"
         />
         {isConflict ? (
           <button type="button" onClick={() => setShowConflictModal(true)} title={sync.text} aria-label={`Sync: ${sync.text}`}

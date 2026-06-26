@@ -9,7 +9,16 @@ import { useStore } from '../../state';
 import { flattenGistSegments, spansForGrain, synthesizeDescribeSpans, describeG0 } from '../../lib/gist-helpers';
 import type { GistGrain, GistSpan, StoredGist } from '../../types';
 
-const CYAN = '#00e8f5';
+const CYAN = 'var(--color-hld-cyan)';
+// Off-palette light pink for the "describes" anti-pattern register — no near token.
+// eslint-disable-next-line no-restricted-syntax
+const DESCRIBE_PINK = '#ff5d86';
+// Off-palette desaturated mauve for orphaned spans — no near token.
+// eslint-disable-next-line no-restricted-syntax
+const ORPHAN_MAUVE = '#cf9fb0';
+// Off-palette brighter near-white for the active/emphasis span — brighter than text.
+// eslint-disable-next-line no-restricted-syntax
+const ACTIVE_WHITE = '#eaf6ff';
 
 interface GistProseProps {
   gist: StoredGist;
@@ -66,14 +75,14 @@ export const GistProse = forwardRef<HTMLParagraphElement, GistProseProps>(functi
     <>
       <div
         className="font-mono uppercase mb-3 flex items-center gap-2"
-        style={{ fontSize: 8, letterSpacing: '0.16em', color: describe ? '#ff5d86' : '#5e789a' }}
+        style={{ fontSize: 8, letterSpacing: '0.16em', color: describe ? DESCRIBE_PINK : 'var(--color-hld-muted-text)' }}
       >
         {describe ? "describes the document — the register he can't hold" : 'performs the argument — in your own voice'}
       </div>
       <p
         ref={proseRef}
         className="font-sans"
-        style={{ fontSize: 15, lineHeight: 1.5, color: '#cfe0f0', margin: 0, textWrap: 'pretty', opacity: describe ? 0.92 : 1 }}
+        style={{ fontSize: 15, lineHeight: 1.5, color: 'var(--color-hld-text)', margin: 0, textWrap: 'pretty', opacity: describe ? 0.92 : 1 }}
       >
         {spans.map((sp, i) => {
           const navigable = !describe && sp.id !== 'thesis';
@@ -89,7 +98,7 @@ export const GistProse = forwardRef<HTMLParagraphElement, GistProseProps>(functi
             borderRadius: 2,
             padding: '1px 2px',
             cursor: navigable ? 'pointer' : 'default',
-            color: active ? '#eaf6ff' : '#cfe0f0',
+            color: active ? ACTIVE_WHITE : 'var(--color-hld-text)',
             outline: 'none',
           };
           if (active) {
@@ -104,7 +113,7 @@ export const GistProse = forwardRef<HTMLParagraphElement, GistProseProps>(functi
           if (stale || orphan) {
             style.textDecoration = `underline dotted ${orphan ? 'rgba(255,93,134,0.8)' : 'rgba(127,154,182,0.8)'}`;
             style.textUnderlineOffset = '3px';
-            style.color = orphan ? '#cf9fb0' : '#9fb4cb';
+            style.color = orphan ? ORPHAN_MAUVE : 'var(--color-hld-muted-text-2)';
           }
           if (refreshing) {
             style.background = 'linear-gradient(90deg,rgba(0,232,245,0.04),rgba(0,232,245,0.22),rgba(0,232,245,0.04))';

@@ -5,21 +5,31 @@
   /* Deeper-than-bg canvas for the Argument Topology map (ATLAS/SPINE). */
   --color-hld-bgDeep: #03060a;
   --color-hld-surface: #0c1520;
-  --color-hld-surface2: #111d2b;
+  --color-hld-surface-2: #111d2b;
+  /* Inset wells — inputs, search box, deeper panels. */
+  --color-hld-surface-3: #080d13;
+
+  /* State accents — each is ONE fixed meaning: cyan=active/selection/focus ·
+     green=done/safe · yellow=attention/developing · magenta=missing/failing ·
+     purple=running/secondary. (The audit retired the warm-accent inflation.) */
   --color-hld-cyan: #00e8f5;
   --color-hld-magenta: #ff1060;
   --color-hld-green: #00e870;
   --color-hld-yellow: #ffe600;
-  --color-hld-pink: #ff1060;
   --color-hld-purple: #aa00ff;
+  /* Orange is retained for ONE use only — the H5 prose heading. Never a general accent. */
   --color-hld-orange: #ff8800;
-  /* Glass Box revision engine: confidence numerals (gold), assembly-mode accents,
-     and the Tone-Adjustment chip (indigo). */
-  --color-hld-gold: #ffcc00;
-  --color-hld-assembly: #e5ff00;
-  --color-hld-indigo: #7c8bff;
+
+  /* Feature accents — NAMESPACED (feat-*) so they never read as core state.
+     confidence = Glass-Box confidence numerals + citation chips (was `gold`);
+     tone = the Tone-Adjustment chip + AI strain marker (was `indigo`). */
+  --color-hld-feat-confidence: #ffcc00;
+  --color-hld-feat-tone: #7c8bff;
+
   --color-hld-text: #c5d8e8;
-  /* Decorative only — dividers, idle status squares, rules (see --color-hld-muted-text for text). */
+  /* Decorative only — dividers, idle status squares, rules. ~2.6:1: NEVER as text
+     (use --color-hld-muted-text). The audit names this `decor`; the legacy name
+     `muted` is kept until the decorative call sites migrate (Tier 2). */
   --color-hld-muted: #3d5570;
   /* Readable muted TEXT — ~5.3:1 on hld-surface. Use for word-counts, eyebrows, captions. */
   --color-hld-muted-text: #6f8cab;
@@ -27,6 +37,9 @@
      muted-text reads as low-contrast body; keep --color-hld-muted-text for true captions. */
   --color-hld-muted-text-2: #8aa6c4;
   --color-hld-border: #172335;
+  /* Visible rule — collapses the retired border-2 (#1e293b), grid, and the
+     scrollbar slates (#22364e/#2a4258) into one strong-border token. */
+  --color-hld-border-strong: #1f3050;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -43,6 +56,25 @@
   --text-ui-body: 13px;     /* primary reading content */
   --text-ui-body-sm: 12px;  /* dense secondary content inside disclosures */
   --text-ui-eyebrow: 9px;   /* eyebrow floor (was effectively 8px in many places) */
+
+  /* Prose-heading scale (px, by depth) — the editor's markdown headings. Replaces
+     the ad-hoc rem sizes in editorTheme.ts. */
+  --text-h-xl: 32px;  /* H1 */
+  --text-h-lg: 24px;  /* H2 */
+  --text-h-md: 19px;  /* H3 */
+  --text-h-sm: 16px;  /* H4 */
+  --text-h-xs: 14px;  /* H5 / H6 */
+
+  /* Minimum interactive target — WCAG 2.5.8 (AA) desktop minimum. This is a
+     keyboard/mouse desktop app, so 24px (not the touch 44px) is the right floor;
+     the dense glyphic UI keeps its character. Applied by `.hld-tool`. */
+  --hit-target: 24px;
+
+  /* The one canonical transition easing + duration (the audit's motion item).
+     Keyframe animations keep their semantic curves (linear sweeps, ease-in-out
+     pulses); state transitions use these. */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 150ms;
 }
 
 /* Dark theme is canonical and unconditional — light mode removed. */
@@ -51,18 +83,27 @@
     font-family: 'Inter', sans-serif;
     background-color: #05090d;
     color: #c5d8e8;
-    background-image:
-      radial-gradient(ellipse 60% 50% at 15% 50%, rgba(0,232,245,0.03) 0%, transparent 100%),
-      radial-gradient(ellipse 40% 60% at 85% 20%, rgba(255,16,96,0.025) 0%, transparent 100%),
-      radial-gradient(circle, #1f3050 1px, transparent 1px);
-    background-size: auto, auto, 22px 22px;
   }
 }
 
-/* Scanline overlay — opt-in per surface (was a global body::after that shimmered
-   over ALL text). Apply `.hld-scanline` to the canvas/chrome (editor, sidebar) to
-   keep the CRT effect; the right panel and modal bodies omit it so reading content
-   stays calm (P4). pointer-events:none keeps it non-blocking. */
+/* Ambient atmosphere — the dot-grid + the two corner washes. OFF by default: a
+   flat, calm canvas is the resting state (the audit's lead finding was six ambient
+   layers stacked at rest, against the system's own "glow = alive" restraint). Opt
+   in by adding `.hld-atmosphere` to a genuinely "void" surface (e.g. a topo-map
+   well), never globally. */
+.hld-atmosphere {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 50%, rgba(0,232,245,0.03) 0%, transparent 100%),
+    radial-gradient(ellipse 40% 60% at 85% 20%, rgba(255,16,96,0.025) 0%, transparent 100%),
+    radial-gradient(circle, var(--color-hld-border-strong) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
+}
+
+/* Scanline overlay — opt-in per surface, reserved for TRUE chrome wells only
+   (never on reading content, per the audit). It was previously applied to the
+   editor column (prose — a clear violation) and the sidebar; both were removed.
+   The class is kept for a genuine well (a modal header, a topo-map well).
+   pointer-events:none keeps it non-blocking. */
 .hld-scanline { position: relative; }
 .hld-scanline::after {
   content: '';
@@ -99,6 +140,46 @@
     box-shadow: 0 0 24px rgba(255, 16, 96, 0.25);
   }
 
+  /* Canonical button family. `lit` (above) = THE one next action per surface;
+     `btn` = a standard bordered action; `btn-ghost` = a quiet, borderless
+     secondary (demote a competing lit to this); `tool` = a glyph control.
+     These give the focus-ring and one-lit rules real selectors and are adopted
+     opportunistically during the token migration — they are not yet applied
+     everywhere. Colour comes from tokens, never raw hex. */
+  .hld-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono);
+    border: 1px solid var(--color-hld-border);
+    color: var(--color-hld-muted-text-2);
+    background: transparent;
+    cursor: pointer;
+  }
+  .hld-btn:hover:not(:disabled) {
+    color: var(--color-hld-cyan);
+    border-color: rgba(0, 232, 245, 0.4);
+  }
+  .hld-btn-ghost {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono);
+    border: 1px solid transparent;
+    color: var(--color-hld-muted-text);
+    background: transparent;
+    cursor: pointer;
+  }
+  .hld-btn-ghost:hover:not(:disabled) { color: var(--color-hld-cyan); }
+  .hld-tool {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: var(--hit-target); min-height: var(--hit-target);
+    border: 1px solid transparent;
+    color: var(--color-hld-muted-text);
+    background: transparent;
+    cursor: pointer;
+  }
+  .hld-tool:hover:not(:disabled) {
+    color: var(--color-hld-cyan);
+    border-color: rgba(0, 232, 245, 0.35);
+  }
+
   /* diamond status pip — the ONE state vocabulary, everywhere.
      green done/safe · yellow attention · magenta missing/failing ·
      cyan active · hollow untouched. */
@@ -110,13 +191,19 @@
   }
   .hld-pip-sm { width: 4px; height: 4px; }
   .hld-pip-lg { width: 8px; height: 8px; }
-  .hld-pip-green   { background: var(--color-hld-green);   box-shadow: 0 0 6px var(--color-hld-green); }
-  .hld-pip-yellow  { background: var(--color-hld-yellow);  box-shadow: 0 0 6px var(--color-hld-yellow); }
-  .hld-pip-magenta { background: var(--color-hld-magenta); box-shadow: 0 0 6px var(--color-hld-magenta); }
-  .hld-pip-cyan    { background: var(--color-hld-cyan);    box-shadow: 0 0 6px var(--color-hld-cyan); }
-  .hld-pip-purple  { background: var(--color-hld-purple);  box-shadow: 0 0 6px var(--color-hld-purple); }
+  /* Each colour class carries its hue in --pip-hue; the glow (below) reads it so
+     only LIVE / PULSING pips glow — "glow = alive," exactly as the effects file
+     claims. A pip at rest is flat. */
+  .hld-pip-green   { background: var(--color-hld-green);   --pip-hue: var(--color-hld-green); }
+  .hld-pip-yellow  { background: var(--color-hld-yellow);  --pip-hue: var(--color-hld-yellow); }
+  .hld-pip-magenta { background: var(--color-hld-magenta); --pip-hue: var(--color-hld-magenta); }
+  .hld-pip-cyan    { background: var(--color-hld-cyan);    --pip-hue: var(--color-hld-cyan); }
+  .hld-pip-purple  { background: var(--color-hld-purple);  --pip-hue: var(--color-hld-purple); }
   .hld-pip-dim     { background: var(--color-hld-muted); }
   .hld-pip-idle    { background: transparent; border: 1px solid var(--color-hld-muted); }
+
+  /* glow = alive: only on a live (active/in-flight) or pulsing pip, in its own hue. */
+  .hld-pip-live, .hld-pip-pulse { box-shadow: 0 0 6px var(--pip-hue); }
 
   /* slow attention pulse for in-flight states (sync, running) */
   .hld-pip-pulse { animation: hld-pip-pulse 1.4s ease-in-out infinite; }
@@ -189,7 +276,7 @@
 
   /* HLD Specific Styles */
   .hld-border {
-    border-color: #1e293b;
+    border-color: var(--color-hld-border-strong);
   }
   .hld-border:hover {
     border-color: #00f0ff;
@@ -209,10 +296,6 @@
   }
   .hld-text-glow {
     text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
-  }
-
-  .editor-focus:focus {
-    outline: none;
   }
 
   /* Living Sprints — the runner's reactive ambient hue (Direction D). The hue
@@ -249,10 +332,39 @@
   border-bottom: 1px solid rgba(0, 232, 112, 0.6);
 }
 
+/* Visible keyboard focus — the one missing a11y affordance (was suppressed
+   everywhere). Canonical on the button/tool primitives; a narrow global fallback
+   covers every other interactive so nothing is keyboard-unreachable. Unlayered so
+   it beats any Tailwind `outline-none` utility. `:focus-visible` fires on keyboard
+   focus only, so mouse clicks stay quiet. Cyan on canvas is ~13:1 — clears the
+   3:1 non-text minimum. */
+.hld-btn:focus-visible,
+.hld-btn-ghost:focus-visible,
+.hld-tool:focus-visible,
+.hld-lit:focus-visible,
+.hld-lit-magenta:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+a[href]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--color-hld-cyan);
+  outline-offset: 2px;
+}
+/* The editor (CodeMirror contenteditable) gets the ring inset so it doesn't
+   clip against the panel edge; replaces the old hard `outline: none`. */
+.cm-editor .cm-content:focus-visible {
+  outline: 2px solid var(--color-hld-cyan);
+  outline-offset: -2px;
+}
+
 /* Global HLD scrollbars — square, glyphic, dark-only (fix 01) */
 * {
   scrollbar-width: thin;                 /* Firefox */
-  scrollbar-color: #22364e transparent;  /* thumb track */
+  scrollbar-color: var(--color-hld-border-strong) transparent;  /* thumb track */
 }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track {
@@ -260,8 +372,8 @@
   border-left: 1px solid var(--color-hld-border); /* #172335 seam */
 }
 *::-webkit-scrollbar-thumb {
-  background: #22364e;
-  border: 1px solid #2a4258;
+  background: var(--color-hld-border-strong);
+  border: 1px solid var(--color-hld-border-strong);
   border-radius: 0;                      /* square — glyphic, no pill */
 }
 *::-webkit-scrollbar-thumb:hover {
@@ -271,9 +383,9 @@
 }
 *::-webkit-scrollbar-corner { background: transparent; }
 
-/* Theme transitions etc */
+/* Theme transitions — the one canonical easing + duration, everywhere. */
 * {
   transition-property: background-color, border-color, color, fill, stroke, box-shadow;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  transition-duration: var(--dur);
 }

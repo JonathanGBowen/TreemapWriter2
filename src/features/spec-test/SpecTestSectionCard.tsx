@@ -77,7 +77,7 @@ export function SpecTestSectionCard({ section }: { section: SectionSpecTest }) {
   const [open, setOpen] = useState(false);
   const deep = section.moveDeltas.length > 0 || !!section.commitmentDelta;
   return (
-    <div className="border border-hld-border rounded-sm bg-[#0a0f15]">
+    <div className="border border-hld-border rounded-sm bg-hld-surface-3">
       <button
         type="button"
         onClick={() => deep && setOpen((o) => !o)}

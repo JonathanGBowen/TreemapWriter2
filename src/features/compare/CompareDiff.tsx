@@ -70,7 +70,7 @@ export function CompareDiff() {
 
   return (
     <>
-      <div className="shrink-0 px-4 py-3 border-b border-hld-border bg-hld-surface2 flex items-center gap-3">
+      <div className="shrink-0 px-4 py-3 border-b border-hld-border bg-hld-surface-2 flex items-center gap-3">
         <div className="font-mono uppercase tracking-[0.14em] text-[10px] text-hld-muted-text flex items-center gap-2 min-w-0">
           <span className="text-hld-magenta truncate">{aLabel}</span>
           <span>→</span>

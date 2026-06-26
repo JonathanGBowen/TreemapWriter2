@@ -216,7 +216,7 @@ export function SpecTab() {
   const goals = entry?.goals || '';
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+    <div className="flex-1 min-h-0 flex flex-col bg-hld-surface-3">
       <PanelHeader
         section={currentSection}
         diagnostic={entry?.lastDiagnostic}

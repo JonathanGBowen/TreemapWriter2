@@ -24,7 +24,7 @@ export const AmbientCue: React.FC = () => {
         cue.reducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-500'
       }`}
     >
-      <div className={`flex items-start gap-[10px] bg-[#0a121b]/95 backdrop-blur-sm border ${tone.border} shadow-[0_0_22px_rgba(0,0,0,0.5)] px-[14px] py-[10px]`}>
+      <div className={`flex items-start gap-[10px] bg-hld-surface/95 backdrop-blur-sm border ${tone.border} shadow-[0_0_22px_rgba(0,0,0,0.5)] px-[14px] py-[10px]`}>
         <div className={`mt-[2px] w-[6px] h-[6px] rotate-45 ${tone.dot} shadow-[0_0_8px_currentColor] shrink-0`} />
         <div className="flex-1 min-w-0">
           <div className={`text-[9px] font-mono uppercase tracking-[0.16em] ${tone.text} mb-[3px]`}>

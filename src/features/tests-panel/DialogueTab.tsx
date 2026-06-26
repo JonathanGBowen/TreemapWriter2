@@ -13,7 +13,7 @@ const Bubble: React.FC<{ message: DialogueMessage }> = ({ message }) => {
   return (
     <div
       className={`max-w-[86%] px-[12px] py-[11px] text-[12.5px] font-sans leading-relaxed whitespace-pre-wrap text-hld-text ${
-        me ? 'ml-auto border-l-2 border-hld-cyan/40 bg-hld-cyan/5' : 'mr-auto border border-hld-border bg-hld-surface2'
+        me ? 'ml-auto border-l-2 border-hld-cyan/40 bg-hld-cyan/5' : 'mr-auto border border-hld-border bg-hld-surface-2'
       }`}
     >
       <span className="block font-mono text-[9px] uppercase tracking-[0.12em] mb-[5px] text-hld-muted-text-2">{me ? 'You' : 'Partner'}</span>
@@ -24,7 +24,7 @@ const Bubble: React.FC<{ message: DialogueMessage }> = ({ message }) => {
 
 /** Pre-first-chunk indicator: three pulsing status squares. */
 const TypingPulse: React.FC = () => (
-  <div className="flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface2">
+  <div className="flex gap-[5px] p-[8px] w-fit border border-hld-border bg-hld-surface-2">
     {[0, 1, 2].map(i => (
       <div
         key={i}
@@ -54,7 +54,7 @@ const Transcript: React.FC<{
 );
 
 const DialogueEmptyState: React.FC<{ onOpenAnalysis: () => void }> = ({ onOpenAnalysis }) => (
-  <div className="flex-1 overflow-y-auto p-4 bg-[#080d13] flex flex-col items-center justify-center text-center text-hld-muted-text-2">
+  <div className="flex-1 overflow-y-auto p-4 bg-hld-surface-3 flex flex-col items-center justify-center text-center text-hld-muted-text-2">
     <MessagesSquare size={32} className="mb-2 opacity-50" />
     <p className="font-mono uppercase tracking-[0.12em] text-[9px] mb-1">No dialogue</p>
     <p className="text-[12px] font-sans text-hld-muted-text-2 mb-3">Interrogate part of an analysis to begin.</p>
@@ -93,7 +93,7 @@ const DialogueComposer: React.FC<{
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend(); }}
           placeholder="Critique or question..."
-          className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-[#080d13] text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
+          className="flex-1 min-w-0 p-[11px] text-[13px] border border-hld-border bg-hld-surface-3 text-hld-text outline-none focus:border-hld-cyan font-sans placeholder-hld-muted/50"
         />
         <button
           onClick={handleSend}
@@ -159,10 +159,10 @@ export const DialogueTab: React.FC = () => {
     messages.some(m => m.role === 'model');
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[#080d13]">
+    <div className="flex-1 min-h-0 flex flex-col bg-hld-surface-3">
       {/* Focus banner: what this dialogue is pinned to — a quiet left-hairline. */}
       {context && (
-        <div className="mx-4 mt-4 mb-0 pl-[12px] py-[11px] border-l-2 border-hld-border bg-hld-surface2/40 shrink-0">
+        <div className="mx-4 mt-4 mb-0 pl-[12px] py-[11px] border-l-2 border-hld-border bg-hld-surface-2/40 shrink-0">
           <div className="text-[9px] font-mono uppercase tracking-[0.12em] text-hld-muted-text-2 mb-[5px]">Focus</div>
           <div className="text-[12px] text-hld-text font-sans leading-snug whitespace-pre-wrap line-clamp-3">
             {context}

@@ -63,6 +63,9 @@ export function SprintRunner({
   const total = plan.moves.length;
   const isReinstate = move.role === 'reinstate';
   const isLast = engine.moveIndex >= total - 1;
+  // Ambient accent fed into inline style background/color + boxShadow template strings;
+  // the content-mode amber (#f59e0b) has no near design token, so keep both branches literal.
+  // eslint-disable-next-line no-restricted-syntax
   const accentHex = mode === 'content' ? '#f59e0b' : '#00e8f5';
   const moveHue = roleHue(move.role);
 
@@ -114,6 +117,7 @@ export function SprintRunner({
             style={{ width: `${overall}%`, background: accentHex, boxShadow: `0 0 10px ${accentHex}` }}
           />
         </div>
+        {/* eslint-disable-next-line no-restricted-syntax -- deliberate magenta-tinted track (pairs with the magenta bar); no near neutral token */}
         <div className="relative z-[2] h-[2px] bg-[#1a0a13]">
           <div
             className="absolute top-0 left-0 h-full bg-hld-magenta transition-[width] duration-100"

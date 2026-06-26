@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import type { Section } from "../../types";
 
@@ -41,7 +41,28 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const openClimate = useStore((s) => s.openClimate);
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
   const openDashboard = useStore((s) => s.openDashboard);
+  const setShowCoachModal = useStore((s) => s.setShowCoachModal);
+  const openInterpolate = useStore((s) => s.openInterpolate);
+  const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
+  const openParallel = useStore((s) => s.openParallel);
+  const openGist = useStore((s) => s.openGist);
   const sessionActive = useStore((s) => s.activeSession !== null);
+
+  // Hold ⌥ to reveal the tool labels (recognition over recall — the dock is
+  // glyph-only at rest to keep the HLD density). Instant; reduced-motion-safe.
+  const [altHeld, setAltHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(true); };
+    const clear = () => setAltHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', clear);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', clear);
+      window.removeEventListener('blur', clear);
+    };
+  }, []);
 
   const continueLabel = (selectedId ? findTitleById(sections, selectedId) : null) ?? sections[0]?.title ?? 'Begin';
   const wordCount = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
@@ -54,20 +75,30 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     onBlur: () => setCaption(null),
   });
 
+  // Two workflow groups, seven each (the grid wraps to two rows). Compose/revise
+  // first, then evaluate/inspect. Every major modal/workspace is one glyph away —
+  // ⌘K (Assist) stays the searchable door + the home of the rarer actions.
   const tools: { g: string; name: string; aria: string; onClick: () => void }[] = [
-    { g: '◉', name: 'Assist — Coach · Generate specs · Revise · every action (⌘K)', aria: 'Assist', onClick: () => setShowCommandPalette(true) },
+    // compose / revise
+    { g: '◉', name: 'Assist — every action, searchable (⌘K)', aria: 'Assist', onClick: () => setShowCommandPalette(true) },
+    { g: '◍', name: 'Coach — find the bottleneck', aria: 'Coach', onClick: () => setShowCoachModal(true) },
+    { g: '✦', name: 'Generate specs — structural analysis, top-down', aria: 'Generate specs', onClick: () => openInterpolate() },
+    { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
+    { g: '▥', name: 'Parallel — reverse-outline revision', aria: 'Parallel', onClick: () => openParallel(false) },
+    { g: '◊', name: 'Gist — whole-at-once re-entry', aria: 'Gist', onClick: () => openGist() },
     { g: '▦', name: 'Goal map — section goal editor', aria: 'Goal map', onClick: () => setShowSectionMapModal(true) },
+    // evaluate / inspect
     { g: '◈', name: 'Dependencies — section graph', aria: 'Dependencies', onClick: () => setShowGraphModal(true) },
-    { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
-    { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
-    { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '▣', name: 'Spec test — A/B against the rubric, whole + parts', aria: 'Spec test', onClick: () => openSpecTest() },
+    { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
     { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
+    { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
+    { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
   ];
 
   return (
-    <div className="flex flex-col gap-[5px] px-2 pt-2 pb-1 border-t border-hld-border bg-[#080d13] shrink-0">
+    <div className="flex flex-col gap-[5px] px-2 pt-2 pb-1 border-t border-hld-border bg-hld-surface-3 shrink-0">
       <button
         type="button"
         onClick={onContinue}
@@ -94,28 +125,43 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-9 gap-[2px]">
-
-        {tools.map((t) => (
-          <button
-            key={t.aria}
-            type="button"
-            onClick={t.onClick}
-            aria-label={t.aria}
-            title={t.name}
-            {...cap(t.name)}
-            className="flex items-center justify-center py-[7px] text-[13px] text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/5 border border-transparent hover:border-hld-cyan/35 transition-colors"
-          >
-            {t.g}
-          </button>
-        ))}
-      </div>
+      {altHeld ? (
+        <div className="flex flex-col gap-[1px]">
+          {tools.map((t) => (
+            <button
+              key={t.aria}
+              type="button"
+              onClick={t.onClick}
+              aria-label={t.aria}
+              className="flex items-center gap-[8px] px-[6px] py-[4px] text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/5 border border-transparent hover:border-hld-cyan/35 transition-colors"
+            >
+              <span className="text-[13px] w-[16px] text-center shrink-0">{t.g}</span>
+              <span className="font-mono text-[9px] tracking-[0.12em] uppercase truncate">{t.aria}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-7 gap-[2px]">
+          {tools.map((t) => (
+            <button
+              key={t.aria}
+              type="button"
+              onClick={t.onClick}
+              aria-label={t.aria}
+              {...cap(t.name)}
+              className="flex items-center justify-center py-[7px] text-[13px] text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/5 border border-transparent hover:border-hld-cyan/35 transition-colors"
+            >
+              {t.g}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div
         className="h-[16px] flex items-center justify-center font-mono text-[9px] tracking-[0.14em] uppercase transition-colors truncate px-1"
-        style={{ color: caption ? 'var(--color-hld-cyan)' : 'var(--color-hld-muted)' }}
+        style={{ color: caption || altHeld ? 'var(--color-hld-cyan)' : 'var(--color-hld-muted)' }}
       >
-        {caption ?? idleStats}
+        {altHeld ? 'tool names · release ⌥' : (caption ?? idleStats)}
       </div>
     </div>
   );

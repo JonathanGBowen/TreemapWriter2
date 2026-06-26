@@ -45,7 +45,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
       <div className="bg-hld-surface rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] border border-hld-border flex flex-col overflow-hidden">
         
         {/* Header */}
-        <div className="p-4 border-b border-hld-border flex justify-between items-center bg-hld-surface2">
+        <div className="p-4 border-b border-hld-border flex justify-between items-center bg-hld-surface-2">
           <div>
             <h3 className="text-lg font-bold text-hld-text flex items-center gap-2 font-sans">
               <Clock size={18} className="text-hld-cyan" /> Version History
@@ -103,7 +103,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
           <div className="flex-1 flex flex-col bg-hld-bg overflow-hidden">
             {selectedRev ? (
               <>
-                <div className="p-3 border-b border-hld-border flex justify-between items-center bg-hld-surface2">
+                <div className="p-3 border-b border-hld-border flex justify-between items-center bg-hld-surface-2">
                   <div className="text-[10px] font-mono uppercase tracking-widest font-medium text-hld-muted flex items-center gap-2">
                     Comparing: 
                     <span className="text-hld-magenta font-semibold bg-hld-magenta/10 px-2 py-0.5 rounded border border-hld-magenta/30">

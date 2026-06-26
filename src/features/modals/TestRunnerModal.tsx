@@ -171,7 +171,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
         <div>
           <div className="font-mono text-[10px] font-semibold tracking-[0.14em] uppercase text-hld-muted-text-2 mb-[8px]">Scope</div>
           {isRoot ? (
-            <div className="px-[10px] py-[8px] border border-hld-border bg-hld-surface2 font-mono text-[10px] tracking-[0.06em] text-hld-text">
+            <div className="px-[10px] py-[8px] border border-hld-border bg-hld-surface-2 font-mono text-[10px] tracking-[0.06em] text-hld-text">
               Whole document — evaluates the entire draft
             </div>
           ) : (
@@ -200,7 +200,7 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
             <textarea
               value={customInstruction}
               onChange={(e) => setCustomInstruction(e.target.value)}
-              className="w-full h-20 p-[9px] text-[11px] leading-relaxed border border-hld-border bg-hld-surface2 text-hld-text focus:border-hld-cyan outline-none resize-none font-mono placeholder-hld-muted/50"
+              className="w-full h-20 p-[9px] text-[11px] leading-relaxed border border-hld-border bg-hld-surface-2 text-hld-text focus:border-hld-cyan outline-none resize-none font-mono placeholder-hld-muted/50"
               placeholder="e.g. 'be harsh about logical fallacies', 'focus on citation formatting'"
             />
             <div className="flex justify-end">
