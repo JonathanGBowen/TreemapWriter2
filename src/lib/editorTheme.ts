@@ -22,7 +22,7 @@ export const hldTheme = EditorView.theme({
     backgroundColor: "#05090d",
     overflow: "auto",
     scrollbarWidth: "thin",
-    scrollbarColor: "#22364e transparent"
+    scrollbarColor: "var(--color-hld-border-strong) transparent"
   },
   /* HLD scrollbars inside CodeMirror — match the global treatment (fix 01) */
   ".cm-scroller::-webkit-scrollbar": { width: "8px", height: "8px" },
@@ -31,8 +31,8 @@ export const hldTheme = EditorView.theme({
     borderLeft: "1px solid #172335"
   },
   ".cm-scroller::-webkit-scrollbar-thumb": {
-    background: "#22364e",
-    border: "1px solid #2a4258",
+    background: "var(--color-hld-border-strong)",
+    border: "1px solid var(--color-hld-border-strong)",
     borderRadius: "0"
   },
   ".cm-scroller::-webkit-scrollbar-thumb:hover": {

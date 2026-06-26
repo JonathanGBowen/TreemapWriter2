@@ -199,10 +199,12 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   **24px** desktop targets (not touch 44px), glyphs kept (no permanent visible tool
   labels). **Shipped:** PR 1 — accessibility foundation (a `:focus-visible` cyan
   ring on the new button family + a narrow global fallback; editor `outline:none`
-  replaced with an inset ring; semantic panel heading; the failing contrast pairs).
-  **Next, in order:** PR 2 token rationalisation (remap live legacy hues
-  assembly/gold/orange/pink → retained/feature tokens, then delete the defs; add
-  `border-strong`/`surface-3`/`decor`/`feat-*`), PR 2b `surface2 → surface-2`
+  replaced with an inset ring; semantic panel heading; the failing contrast pairs);
+  PR 2 — token rationalisation (added `border-strong`/`surface-3`; namespaced the
+  two feature accents `gold → feat-confidence`, `indigo → feat-tone`; deleted the
+  duplicate `pink`/`assembly` by remapping their live revision-component call sites
+  to magenta/yellow; `orange` reserved for H5; scrollbar slates → `border-strong`).
+  **Next, in order:** PR 2b `surface2 → surface-2`
   rename, PR 3 denoise the canvas (atmosphere opt-in `.hld-atmosphere`; glow = alive
   only — strip always-on pip glow, add a `live` path on `Pip`), PR 4 one status
   encoder (circular saved-dot → square pip; `summarizeReadiness` helper). Then Tier

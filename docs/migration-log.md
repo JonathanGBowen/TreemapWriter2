@@ -3834,3 +3834,37 @@ them, otherwise they drop cleanly.
 
 **Tests.** CSS/visual + ARIA-attribute changes — not unit-testable; no covered
 lines added (neutral to the coverage ratchet).
+
+### PR 2 — token rationalisation (remap live legacy hues, then delete)
+
+**What changed.** The audit's headline was accent inflation (29 colour values, ~11
+saturated accents). The "retired" warm tokens were **not dead** — they were live in
+the revision components — so each was *remapped*, then its definition deleted.
+- `@theme` (`src/index.css`): added `--color-hld-border-strong` (#1f3050) and
+  `--color-hld-surface-3` (#080d13); renamed the two feature accents to a
+  namespace — `gold → feat-confidence` (#ffcc00), `indigo → feat-tone` (#7c8bff) —
+  so they never read as core state; deleted the duplicate `pink` (≡ magenta) and the
+  warm-dup `assembly` (→ yellow). `orange` is **retained but reserved for the H5
+  heading only**. `muted` (decorative #3d5570) is kept under its legacy name with a
+  note that the audit calls it `decor` (the rename waits for the Tier-2 decorative
+  call-site migration).
+- **Strong-border consolidation:** the hard-coded scrollbar slates (#22364e/#2a4258
+  in `index.css` and `editorTheme.ts`) and the `.hld-border` rule's #1e293b now all
+  point at `--color-hld-border-strong`.
+- **Call-site remaps:** `revision/revisionTypeColors.ts` (Citation→feat-confidence,
+  Tone Adjustment→feat-tone, Flow Improvement→magenta, Assembly→yellow),
+  `revision/DirectiveComposer.tsx`, `revision/ProposalCard.tsx`,
+  `revision/Confidence.tsx`, `strain/StrainRegister.tsx` (indigo→feat-tone). No
+  visual regression: `pink`≡`magenta` already rendered identically, so collapsing
+  Flow-Improvement/Deletion onto magenta only removes a phantom token.
+
+**Verify.** `git grep` for `hld-gold|hld-assembly|hld-pink|hld-indigo` returns zero
+outside the audit bundle. `npm run typecheck` · `npx vitest run` (462) · `npm run
+build` green (the build confirms Tailwind emits the new `text-hld-feat-confidence` /
+`-feat-tone` utilities).
+
+**Rollback.** `git revert` the commit. Deferred to Tier 2: tokenising the remaining
+`editorTheme.ts` hexes (incl. wiring H5 to `--color-hld-orange`), the `muted → decor`
+rename, and the `cyan-bright` (#00f0ff) hover hexes.
+
+**Tests.** Token-definition + utility-class swaps — visual; no covered lines added.

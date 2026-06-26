@@ -6,20 +6,30 @@
   --color-hld-bgDeep: #03060a;
   --color-hld-surface: #0c1520;
   --color-hld-surface2: #111d2b;
+  /* Inset wells — inputs, search box, deeper panels. */
+  --color-hld-surface-3: #080d13;
+
+  /* State accents — each is ONE fixed meaning: cyan=active/selection/focus ·
+     green=done/safe · yellow=attention/developing · magenta=missing/failing ·
+     purple=running/secondary. (The audit retired the warm-accent inflation.) */
   --color-hld-cyan: #00e8f5;
   --color-hld-magenta: #ff1060;
   --color-hld-green: #00e870;
   --color-hld-yellow: #ffe600;
-  --color-hld-pink: #ff1060;
   --color-hld-purple: #aa00ff;
+  /* Orange is retained for ONE use only — the H5 prose heading. Never a general accent. */
   --color-hld-orange: #ff8800;
-  /* Glass Box revision engine: confidence numerals (gold), assembly-mode accents,
-     and the Tone-Adjustment chip (indigo). */
-  --color-hld-gold: #ffcc00;
-  --color-hld-assembly: #e5ff00;
-  --color-hld-indigo: #7c8bff;
+
+  /* Feature accents — NAMESPACED (feat-*) so they never read as core state.
+     confidence = Glass-Box confidence numerals + citation chips (was `gold`);
+     tone = the Tone-Adjustment chip + AI strain marker (was `indigo`). */
+  --color-hld-feat-confidence: #ffcc00;
+  --color-hld-feat-tone: #7c8bff;
+
   --color-hld-text: #c5d8e8;
-  /* Decorative only — dividers, idle status squares, rules (see --color-hld-muted-text for text). */
+  /* Decorative only — dividers, idle status squares, rules. ~2.6:1: NEVER as text
+     (use --color-hld-muted-text). The audit names this `decor`; the legacy name
+     `muted` is kept until the decorative call sites migrate (Tier 2). */
   --color-hld-muted: #3d5570;
   /* Readable muted TEXT — ~5.3:1 on hld-surface. Use for word-counts, eyebrows, captions. */
   --color-hld-muted-text: #6f8cab;
@@ -27,6 +37,9 @@
      muted-text reads as low-contrast body; keep --color-hld-muted-text for true captions. */
   --color-hld-muted-text-2: #8aa6c4;
   --color-hld-border: #172335;
+  /* Visible rule — collapses the retired border-2 (#1e293b), grid, and the
+     scrollbar slates (#22364e/#2a4258) into one strong-border token. */
+  --color-hld-border-strong: #1f3050;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -228,7 +241,7 @@
 
   /* HLD Specific Styles */
   .hld-border {
-    border-color: #1e293b;
+    border-color: var(--color-hld-border-strong);
   }
   .hld-border:hover {
     border-color: #00f0ff;
@@ -316,7 +329,7 @@ summary:focus-visible,
 /* Global HLD scrollbars — square, glyphic, dark-only (fix 01) */
 * {
   scrollbar-width: thin;                 /* Firefox */
-  scrollbar-color: #22364e transparent;  /* thumb track */
+  scrollbar-color: var(--color-hld-border-strong) transparent;  /* thumb track */
 }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track {
@@ -324,8 +337,8 @@ summary:focus-visible,
   border-left: 1px solid var(--color-hld-border); /* #172335 seam */
 }
 *::-webkit-scrollbar-thumb {
-  background: #22364e;
-  border: 1px solid #2a4258;
+  background: var(--color-hld-border-strong);
+  border: 1px solid var(--color-hld-border-strong);
   border-radius: 0;                      /* square — glyphic, no pill */
 }
 *::-webkit-scrollbar-thumb:hover {
