@@ -4008,3 +4008,34 @@ rainbow at the new px sizes.
 **Tests.** CSS-in-JS values — visual; no covered lines. (The remaining component
 hex→token migration — ~248 sites across feature folders — is the documented Tier-2.1
 backlog, now guarded against new drift by the Tier-3 lint rule below.)
+
+### Tier 3 — lint guardrail against hard-coded hex colours (keep it honest)
+
+**What changed.** `eslint.config.js` gained a `no-restricted-syntax` rule (scoped to
+`src/**/*.{ts,tsx}`, excluding tests) that **warns** on any hard-coded 6-digit hex
+colour in a string literal or template literal, pointing the author at the
+`--color-hld-*` tokens. Pure white/black are allowed. `warn` (not `error`) matches the
+repo's `max-lines` convention — it doesn't break the build, and the ~194 existing
+warnings double as the remaining hex→token migration worklist. New hexes can no longer
+re-drift past the token system unnoticed. Documented as an anti-pattern in `AGENTS.md`.
+
+**Verify.** `npm run lint` runs clean (exit 0, all warnings); `grep -c
+no-restricted-syntax` shows the hex worklist. No CI gate change (lint is advisory).
+
+**Rollback.** `git revert` the commit; the rule drops.
+
+**Tests.** Config only.
+
+---
+
+**Status of the program.** Tier 1 complete (calm canvas · focus ring · rationalised
+palette · one status encoder). Tier 2: 2.3 (a11y round two) and the editorTheme half
+of 2.1/2.4 shipped; the **bulk component hex→token migration (~194 sites)** and
+**state-pattern unification (2.2)** and **off-grid spacing snap (2.4)** remain as
+guarded backlog (the lint rule is the worklist + anti-drift gate). Tier 3: the lint
+guardrail shipped; first-run/⌥-hold tool labels, shortcuts-beside-actions, and the
+one-easing pass remain. The deliberate deviation from the audit on spacing: a custom
+`--spacing-*` scale would shadow Tailwind v4's built-in numeric spacing and silently
+change every `p-1`/`gap-2`, so it was **not** introduced; off-grid arbitrary literals
+should be snapped to Tailwind's existing 4px grid instead (low-value/high-churn —
+deferred).

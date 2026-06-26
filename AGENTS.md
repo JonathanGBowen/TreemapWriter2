@@ -266,6 +266,8 @@ compounds.
 - Calling `idb-keyval`, `fs`, `git2`, `invoke()`, `@google/genai`,
   `@anthropic-ai/sdk`, or an Ollama call directly from a React component.
 - Inlining a prompt string in TypeScript.
+- Inlining a hard-coded hex colour instead of a `--color-hld-*` token (ESLint
+  warns; see `src/index.css` `@theme` for the palette).
 - "Simplifying" or collapsing the domain types in `src/types/index.ts`. They are
   the most carefully considered part of this codebase. Extend, do not collapse.
 - Adding a confirmation modal for a non-destructive action (an executive-function

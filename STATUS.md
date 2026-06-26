@@ -215,13 +215,19 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   (a11y round two) shipped:** SectionRow is keyboard-operable (`role=button` +
   Enter/Space + `aria-current`); the Plotly treemap gained an `sr-only` document-
   structure alternative; a `--hit-target: 24px` token (desktop AA) enforced on
-  `.hld-tool`; the sidebar name field labelled. **Remaining Tier 2/3:** the bulk
-  **hex→token migration** (~248 sites by feature folder; adopt `.hld-btn`/`.hld-tool`
-  there) · **unify loading/error/empty** to one component each · **type/spacing
-  scale** (`--spacing-*` + snap off-grid + editorTheme rem→px + delete sub-9px) ·
-  Tier 3 (one easing · shortcuts beside actions · first-run/⌥-hold tool labels · a
-  lint guardrail against new hard-coded hexes / a second lit per surface). See
-  `docs/migration-log.md` (2026-06-26) for the per-PR record.
+  `.hld-tool`; the sidebar name field labelled. **Also shipped:** the **editorTheme
+  tokenisation** (the biggest non-component hex file → `--color-hld-*`; heading rems →
+  a `--text-h-*` px scale; H5 wired to the `orange` token) and a **Tier-3 lint
+  guardrail** (`no-restricted-syntax` warns on any new hard-coded hex colour — both an
+  anti-drift gate and the ~194-site migration worklist; documented in `AGENTS.md`).
+  **Remaining (guarded backlog):** the bulk **component hex→token migration** (~194
+  sites by feature folder; adopt `.hld-btn`/`.hld-tool` there — the lint warnings are
+  the worklist) · **unify loading/error/empty** to one component each (2.2) · **snap
+  off-grid spacing** to Tailwind's 4px grid (a custom `--spacing-*` scale was
+  **declined** — it shadows Tailwind v4's numeric spacing and would change every
+  `p-1`/`gap-2`) · Tier 3 remainder (one easing · shortcuts beside actions ·
+  first-run/⌥-hold tool labels). See `docs/migration-log.md` (2026-06-26) for the
+  per-PR record.
 
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
   2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress
