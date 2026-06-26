@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import type { Section } from "../../types";
 
@@ -42,6 +42,22 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
   const openDashboard = useStore((s) => s.openDashboard);
   const sessionActive = useStore((s) => s.activeSession !== null);
+
+  // Hold ⌥ to reveal the tool labels (recognition over recall — the dock is
+  // glyph-only at rest to keep the HLD density). Instant; reduced-motion-safe.
+  const [altHeld, setAltHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(true); };
+    const clear = () => setAltHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', clear);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', clear);
+      window.removeEventListener('blur', clear);
+    };
+  }, []);
 
   const continueLabel = (selectedId ? findTitleById(sections, selectedId) : null) ?? sections[0]?.title ?? 'Begin';
   const wordCount = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
@@ -94,28 +110,45 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-9 gap-[2px]">
-
-        {tools.map((t) => (
-          <button
-            key={t.aria}
-            type="button"
-            onClick={t.onClick}
-            aria-label={t.aria}
-            title={t.name}
-            {...cap(t.name)}
-            className="flex items-center justify-center py-[7px] text-[13px] text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/5 border border-transparent hover:border-hld-cyan/35 transition-colors"
-          >
-            {t.g}
-          </button>
-        ))}
-      </div>
+      {altHeld ? (
+        <div className="flex flex-col gap-[1px]">
+          {tools.map((t) => (
+            <button
+              key={t.aria}
+              type="button"
+              onClick={t.onClick}
+              aria-label={t.aria}
+              title={t.name}
+              className="flex items-center gap-[8px] px-[6px] py-[4px] text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/5 border border-transparent hover:border-hld-cyan/35 transition-colors"
+            >
+              <span className="text-[13px] w-[16px] text-center shrink-0">{t.g}</span>
+              <span className="font-mono text-[9px] tracking-[0.12em] uppercase truncate">{t.aria}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-9 gap-[2px]">
+          {tools.map((t) => (
+            <button
+              key={t.aria}
+              type="button"
+              onClick={t.onClick}
+              aria-label={t.aria}
+              title={t.name}
+              {...cap(t.name)}
+              className="flex items-center justify-center py-[7px] text-[13px] text-hld-muted-text hover:text-hld-cyan hover:bg-hld-cyan/5 border border-transparent hover:border-hld-cyan/35 transition-colors"
+            >
+              {t.g}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div
         className="h-[16px] flex items-center justify-center font-mono text-[9px] tracking-[0.14em] uppercase transition-colors truncate px-1"
-        style={{ color: caption ? 'var(--color-hld-cyan)' : 'var(--color-hld-muted)' }}
+        style={{ color: caption || altHeld ? 'var(--color-hld-cyan)' : 'var(--color-hld-muted)' }}
       >
-        {caption ?? idleStats}
+        {altHeld ? 'tool names · release ⌥' : (caption ?? idleStats)}
       </div>
     </div>
   );

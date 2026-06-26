@@ -188,53 +188,26 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
 
 ## Next (felt priorities)
 
-- **Design-system remediation (HLD audit) — Tier 1 in progress.** A visual design
-  audit (Claude Design, bundle in `audit/design_handoff_hld_remediation/`) found a
-  real HLD design language that stopped enforcing its own rules as features accreted
-  (six ambient layers at rest, ~11 accents, six status encoders, ~248 hard-coded
-  hexes, off-grid type/spacing, no visible focus ring). Verdict: *polish, not
-  rebuild* — every fix is subtraction. Approved plan = all three tiers; key calls:
-  a small `.hld-btn` layer carries the focus ring (no 60-file rename), muted-text
-  token **values kept** (the audit's inversion would silently change 328 sites),
-  **24px** desktop targets (not touch 44px), glyphs kept (no permanent visible tool
-  labels). **Shipped:** PR 1 — accessibility foundation (a `:focus-visible` cyan
-  ring on the new button family + a narrow global fallback; editor `outline:none`
-  replaced with an inset ring; semantic panel heading; the failing contrast pairs);
-  PR 2 — token rationalisation (added `border-strong`/`surface-3`; namespaced the
-  two feature accents `gold → feat-confidence`, `indigo → feat-tone`; deleted the
-  duplicate `pink`/`assembly` by remapping their live revision-component call sites
-  to magenta/yellow; `orange` reserved for H5; scrollbar slates → `border-strong`);
-  PR 2b — the isolated `surface2 → surface-2` rename (33 files, naming consistency);
-  PR 3 — denoise the canvas (body washes + dot-grid moved to an opt-in
-  `.hld-atmosphere`, off by default; glow = alive only — `.hld-pip-*` no longer glows
-  at rest, a `live` prop + `--pip-hue` drive the glow; scanline removed from the
-  editor + sidebar); PR 4 — one status encoder (circular saved-dot → square `Pip`;
-  the 4-diamond meter routed through a pure, unit-tested `summarizeReadiness` helper
-  + the canonical `Pip`, with an `aria-label` text equivalent; the topo Inspector
-  readiness bars denoised). **Tier 1 is complete** (PRs 1–4 + 2b). **Tier 2.3
-  (a11y round two) shipped:** SectionRow is keyboard-operable (`role=button` +
-  Enter/Space + `aria-current`); the Plotly treemap gained an `sr-only` document-
-  structure alternative; a `--hit-target: 24px` token (desktop AA) enforced on
-  `.hld-tool`; the sidebar name field labelled. **Also shipped:** the **editorTheme
-  tokenisation** (the biggest non-component hex file → `--color-hld-*`; heading rems →
-  a `--text-h-*` px scale; H5 wired to the `orange` token) and a **Tier-3 lint
-  guardrail** (`no-restricted-syntax` warns on any new hard-coded hex colour — both an
-  anti-drift gate and the ~194-site migration worklist; documented in `AGENTS.md`).
-  **Bulk hex→token migration shipped:** drained the lint worklist from **194 → 27**
-  across ~45 files — palette hexes became tokens (Tailwind arbitraries + inline
-  `style`), near-duplicate neutrals snapped to canonical surface/border tokens.
-  Functional literals that can't use CSS `var()` (Treemap Plotly colours, the
-  `modals/topo/*` SVG-map kit, `sprintRoles` hexes parsed by `hexA`, the Tutorial
-  react-joyride theme) carry file-level `eslint-disable` + rationale. The **27 residual
-  warnings** are the two **legacy pre-HLD modals** (`ProjectFileModal`,
-  `SectionMapModal`), left flagged because a faithful fix is a full restyle (Tailwind
-  slate/cyan defaults + bespoke darks), not a hex swap. **Remaining (guarded backlog):**
-  those two modals' restyle · **unify loading/error/empty** to one component each (2.2) ·
-  **snap off-grid spacing** to Tailwind's 4px grid (a custom `--spacing-*` scale was
-  **declined** — it shadows Tailwind v4's numeric spacing and would change every
-  `p-1`/`gap-2`) · Tier 3 remainder (one easing · shortcuts beside actions ·
-  first-run/⌥-hold tool labels). The lint rule guards all of it against new drift. See
-  `docs/migration-log.md` (2026-06-26) for the per-PR record.
+- ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all
+  three audit tiers shipped (see [`docs/migration-log.md`](docs/migration-log.md)). A
+  visual design audit found a real HLD design language that had stopped enforcing its
+  own rules (six ambient layers at rest, ~11 accents, six status encoders, ~248
+  hard-coded hexes, no visible focus ring); the verdict was *polish, not rebuild* and
+  every fix was subtraction. Delivered: a **calm canvas at rest** (atmosphere opt-in,
+  glow = alive), a **visible focus ring** on every interactive (a small `.hld-btn`
+  layer + narrow global fallback), a **rationalised 18-colour token kit fully enforced**
+  (hex guardrail at **0** warnings — the editor, both legacy modals, and ~45 component
+  files migrated; functional literals exempted with rationale), **one status
+  vocabulary** (`summarizeReadiness` + `Pip`), keyboard-operable rows + a treemap
+  `sr-only` alternative, **one `Spinner` / one easing**, and **⌥-hold dock labels**. A
+  `no-restricted-syntax` lint rule guards colour drift from returning. **Two deliberate
+  deviations from the audit** (both documented): accessibility meets the **desktop 24px**
+  AA floor (not the touch 44px) with glyph tools kept glyphic; and the off-grid
+  **spacing snap** via a custom `--spacing-*` scale was **declined** (it shadows
+  Tailwind v4's numeric spacing). Held back as the one genuine follow-on: `muted-text`
+  token values were **kept** (the audit's inversion would have silently re-contrasted
+  328 sites) — fixing only the failing pairs; a deliberate, audited muted-text
+  migration could revisit that later.
 
 - **Session ceremony — Feature Set 1 (the full coaching ceremony).** The
   2026-06-22 wave shipped the git infrastructure (Set 2) and the Progress

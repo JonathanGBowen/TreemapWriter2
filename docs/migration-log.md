@@ -4124,7 +4124,36 @@ show the same spinner, now screen-reader-announced.
 **Tests.** Presentational component — not unit-tested (the UI feature layer is
 out-of-scope for unit tests by design); no covered lines.
 
-**Still remaining (guarded backlog).** Off-grid spacing snap to Tailwind's 4px grid
-(a custom `--spacing-*` scale was **declined** — it shadows Tailwind v4's numeric
-spacing and would silently change every `p-1`/`gap-2`); Tier 3 remainder
-(shortcuts-beside-actions · first-run/⌥-hold tool labels).
+### Tier 3 — ⌥-hold tool labels (recognition aid)
+
+**What changed.** The sidebar dock's nine glyph tools are intentionally word-free at
+rest (HLD density). They already carried accessible names (`aria-label` + `title` + a
+hover/focus caption); this adds a **hold-⌥ reveal** (`features/sidebar/Dock.tsx`): while
+Alt is held, the 9-glyph grid becomes a labeled vertical list (glyph + name), and the
+caption shows "tool names · release ⌥". Release → back to glyphs. Instant, no animation
+(reduced-motion-safe), listeners cleaned up on unmount + window blur. Recognition over
+recall, without permanently spending the word budget the VISION protects.
+
+**Verify.** Hold Alt over the app → the dock tools show their names; release → glyphs.
+typecheck + 465 vitest + build green; lint exit 0.
+
+**Rollback.** `git revert`; the dock returns to the static glyph grid.
+
+**Tests.** UI feature — not unit-tested; no covered lines.
+
+---
+
+**Design-system remediation — program complete.** All three audit tiers are shipped
+(Tier 1 foundation · Tier 2 consistency · Tier 3 polish): a calm canvas at rest, a
+visible focus ring on every interactive, a rationalised 18-colour token kit fully
+enforced (the hex guardrail is at **0** warnings), one status vocabulary, keyboard
+operability + a treemap text alternative, the editor + both legacy modals on tokens,
+one Spinner / one easing, and the ⌥-hold labels. **Two deliberate deviations from the
+audit, both documented above:** (1) accessibility targets meet the **desktop 24px** AA
+floor, not the touch 44px, and the glyph tools keep their glyphs (labels on ⌥-hold /
+hover, not permanently) — preserving the HLD aesthetic; (2) the off-grid **spacing
+snap** via a custom `--spacing-*` scale was **declined** (it shadows Tailwind v4's
+numeric spacing and would silently change every `p-1`/`gap-2`) — Tailwind's built-in
+4px grid already governs the bulk, and the residual arbitrary `[Npx]` values are
+imperceptibly off-grid; not worth the churn. The lint guardrail keeps colour drift from
+returning.
