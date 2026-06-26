@@ -363,6 +363,140 @@ export interface VersionComparison {
   lensName?: string;
 }
 
+// --- SPEC-ANCHORED A/B WHOLE-TEST ("CI for prose") ---
+// Tests whether revision B serves the WHOLE better than A — NOT a sum of
+// per-section piece-tests. A test suite that only sums per-section verdicts
+// commits the error Wertheimer names: a section can satisfy its own rubric while
+// inverting in the whole (tF — "true as a piece, false as a part", On Truth /
+// Democracy), or read rougher in detail yet truer to the whole (fT — "a caricature
+// is false in every detail yet truer than a photograph"). So the report leads with
+// a WHOLE verdict grounded in the commitment-mesh and center of gravity, and the
+// per-section deltas hang beneath it. Ephemeral/regenerable, never persisted (cf.
+// VersionComparison). Produced on demand by AIProvider.runSpecTestSection (per
+// changed part) + runSpecTestWhole (the whole), assembled by lib/specTestRun.ts.
+// See docs/gestalt-design.md §III/§VI and docs/gestalt-design-II.md L1–L4.
+
+/**
+ * The structural-truth verdict on a change — the heart of the feature, the
+ * dimension a sum of piece-verdicts cannot see (Wertheimer, On Truth / Democracy).
+ */
+export type StructuralTruth =
+  | 'whole-true'   // part-true AND serves the whole — a real improvement
+  | 'tF'           // piece-improvement: locally better, the whole worse / a join severed
+  | 'fT'           // rougher in detail yet truer to the whole (a brave simplification)
+  | 'whole-false'  // worse as a part of the whole
+  | 'lateral';     // changed without a clear whole-direction
+
+/**
+ * One required move scored on BOTH versions against the held rubric. Carries the
+ * L1 advance axis (productive vs recapitulative): a move that becomes
+ * present-but-recapitulative is NOT a gain (the petitio paragraph) — it reads as
+ * `deflated`, a cut opportunity. "New relative to what?" is judged against the
+ * section's mandatory structural surround. `delta` is derived deterministically
+ * from the status pair + advance by the normalizer, not taken from the model.
+ */
+export interface MoveDelta {
+  moveId: string;
+  moveDescription: string;
+  statusA: MoveStatus;
+  statusB: MoveStatus;
+  advanceA?: MoveAdvance;
+  advanceB?: MoveAdvance;
+  /** 'deflated' = present on both sides but B went recapitulative (true yet inert). */
+  delta: 'gained' | 'regressed' | 'held' | 'added' | 'removed' | 'deflated';
+  diagnosis?: string;
+  receipts: ComparisonReceipt[];
+}
+
+/**
+ * The A/B result for ONE part, judged AS A PART (the surround is mandatory). When
+ * `scopeReason` is not 'evaluate'/'mesh-neighbour' there is no AI call: `moveDeltas`
+ * is empty and `direction`/`truth` are derived structurally.
+ */
+export interface SectionSpecTest {
+  /** Alignment key — the heading title, NOT a slug id (see the stable-ID caveat). */
+  sectionTitle: string;
+  presentInA: boolean;
+  presentInB: boolean;
+  /** Why this part was (or was not) deep-read — the diff-scoping audit. */
+  scopeReason: 'changed' | 'mesh-neighbour' | 'unchanged' | 'a-only' | 'b-only' | 'no-rubric';
+  /** Part-improvement vs piece-improvement (tF) for this section. */
+  truth: StructuralTruth;
+  direction: ComparisonDirection;
+  /** The Beethoven test, folded in: can the document's claim be read out of each
+   *  side's prose? A part from which the whole cannot be recovered has drifted. */
+  wholeSignature: { a: WholeSignatureAlignment; b: WholeSignatureAlignment };
+  summary: string;
+  moveDeltas: MoveDelta[];
+  /** Prose-level commitment breaks the revision introduced / healed for this part
+   *  (the AI's reading of the surround — distinct from the deterministic MeshDelta). */
+  commitmentDelta?: { introduced: CommitmentFinding[]; healed: CommitmentFinding[] };
+}
+
+/** The Beethoven-signature ladder (the `WholeFromPartResult` ladder, minus
+ *  'no-baseline' — a held rubric always supplies the baseline). */
+export type WholeSignatureAlignment = 'aligned' | 'partial' | 'adrift';
+
+/**
+ * The commitment-mesh delta across the A→B revision — the structural joins healed
+ * or severed, INCLUDING joins with parts that did not change (a change in one part
+ * can sever its nexus with an unchanged part — the failure an ADHD writer is least
+ * equipped to catch unaided). The `introduced` set is the tF signal. Computed by
+ * the deterministic `checkCommitmentMesh` spine, so it never false-alarms.
+ */
+export interface MeshDelta {
+  introduced: CommitmentFinding[];      // breaks absent in A, present in B
+  healed: CommitmentFinding[];          // breaks present in A, gone in B
+  persisting: CommitmentFinding[];      // breaks present in both
+}
+
+/**
+ * The WHOLE verdict — grounded in the mesh delta + center of gravity + the part
+ * drifts, NOT in a tally of section verdicts (the whole is not the sum of its
+ * parts). The report leads with this; the `tally` on SpecTestReport is for
+ * transparency only and is never the verdict.
+ */
+export interface WholeVerdict {
+  truth: StructuralTruth;
+  direction: ComparisonDirection;
+  /** Did B displace the document's center of gravity? (Umzentrierung.) */
+  centerOfGravity: string;
+  /** One paragraph: the whole-grounded read of B relative to A. */
+  verdict: string;
+  /** The deterministic structural-join delta (the trustworthy spine). */
+  meshDelta: MeshDelta;
+  /** When the whole regressed (esp. tF), the recentering the structure now demands
+   *  — the vector, not a chore (L4 demand-rhetoric). */
+  recenteringVector?: string;
+}
+
+/**
+ * The whole-document spec-test report: the whole verdict first, the parts beneath.
+ * Ephemeral/regenerable, never persisted. The `tally` is transparency only — it is
+ * NEVER the verdict (a sum of green parts is not a whole-truth).
+ */
+export interface SpecTestReport {
+  whole: WholeVerdict;
+  sections: SectionSpecTest[];
+  tally: {
+    gained: number;
+    regressed: number;
+    deflated: number;
+    tF: number;
+    fT: number;
+    /** Parts deep-read (one AI call) vs skeleton-only (no call) — honest cost. */
+    deepRead: number;
+    skeletonOnly: number;
+  };
+  mode: ReadingMode;
+  labelA: string;
+  labelB: string;
+  /** 'changed', 'all', or a chapter title — the scope the suite ran at. */
+  scopeLabel: string;
+  /** Whether the held rubric came from the live testSuite or snapshot A's. */
+  rubricSource: 'live' | 'snapshot-a';
+}
+
 // --- GLASS BOX REVISION ENGINE ---
 
 /**

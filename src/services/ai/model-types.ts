@@ -41,6 +41,8 @@ export type AICallKind =
   | 'coachSprintTurn'
   | 'decomposeSprintStep'
   | 'compareVersions'
+  | 'runSpecTestSection'
+  | 'runSpecTestWhole'
   | 'analyzeAtmosphere'
   | 'developSpecLevel'
   | 'reconstructWhole'
@@ -71,6 +73,8 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'coachSprintTurn',
   'decomposeSprintStep',
   'compareVersions',
+  'runSpecTestSection',
+  'runSpecTestWhole',
   'analyzeAtmosphere',
   'developSpecLevel',
   'reconstructWhole',
@@ -102,6 +106,8 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   coachSprintTurn: 'Sprint coach (live)',
   decomposeSprintStep: 'Break down step',
   compareVersions: 'Compare versions',
+  runSpecTestSection: 'Spec test (part)',
+  runSpecTestWhole: 'Spec test (whole)',
   analyzeAtmosphere: 'Atmosphere',
   developSpecLevel: 'Develop spec (live)',
   reconstructWhole: 'Whole from part',

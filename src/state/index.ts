@@ -6,6 +6,7 @@ import { createProjectStateSlice, type ProjectStateSlice } from './project-state
 import { createUIStateSlice, type UIStateSlice } from './ui-state';
 import { createRevisionSlice, type RevisionSlice } from './revision-state';
 import { createComparisonSlice, type ComparisonSlice } from './comparison-state';
+import { createSpecTestSlice, type SpecTestSlice } from './spec-test-state';
 import { createClimateSlice, type ClimateSlice } from './climate-state';
 import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
 import { createParallelSlice, type ParallelSlice } from './parallel-state';
@@ -24,6 +25,7 @@ import { setModelConfigSource, setAgentTraceSink } from '../services/ai-provider
  * - {@link AIStateSlice}       — persona, prompts, coach cache
  * - {@link RevisionSlice}      — Glass Box revision workflow (ephemeral, unpersisted)
  * - {@link ComparisonSlice}    — Version Compare workspace (ephemeral, unpersisted)
+ * - {@link SpecTestSlice}      — Spec Test workspace (ephemeral, unpersisted)
  * - {@link ClimateSlice}       — Climate Artist workspace (ephemeral, unpersisted)
  * - {@link InterpolationSlice} — Generate-Specs workspace (ephemeral, unpersisted)
  * - {@link ParallelSlice}      — Parallel Editor workspace (ephemeral; outlineA persists in DocumentState)
@@ -40,6 +42,7 @@ export type AppState =
   & AIStateSlice
   & RevisionSlice
   & ComparisonSlice
+  & SpecTestSlice
   & ClimateSlice
   & InterpolationSlice
   & ParallelSlice
@@ -55,6 +58,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createAIStateSlice(...args),
   ...createRevisionSlice(...args),
   ...createComparisonSlice(...args),
+  ...createSpecTestSlice(...args),
   ...createClimateSlice(...args),
   ...createInterpolationSlice(...args),
   ...createParallelSlice(...args),

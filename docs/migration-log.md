@@ -3702,3 +3702,77 @@ gated on verifying the keyring path in real use, and the sidecar work needs Rust
 lifecycle changes. No new UI-render-layer tests (out of scope by design). A few
 pre-existing dead items in `App.tsx` (e.g. `handleLineFocus`, some stale type
 imports) were left untouched to keep these commits focused on the extraction.
+
+---
+
+## 2026-06-26 — Spec-anchored A/B whole-test ("CI for prose")
+
+**What changed.** Added a new evaluative capability: hold a section's
+`SectionSpec` as a fixed **rubric** (the test) and score version B against version
+A — move by move AND as a whole — answering the test-driven question the tool
+could not before: *did this revision improve the prose against my specs, or
+degrade it?* The design is deliberately Gestalt-faithful (see
+[`gestalt-design.md`](gestalt-design.md) §VI and
+[`gestalt-design-II.md`](gestalt-design-II.md) L1–L4): a test suite that only
+**sums** per-section piece-tests commits the exact error Wertheimer names — a
+section can satisfy its own rubric while inverting in the whole (`tF`, "true as a
+piece, false as a part"). So the report **leads with a WHOLE verdict** and the
+per-section deltas hang beneath it; the whole is never a sum.
+
+- **Two-altitude engine.** A per-section part-level pass (`runSpecTestSection`)
+  scores each move on both versions carrying the productive/recapitulative axis —
+  a move that goes present-but-recapitulative is `deflated`, a cut opportunity (L1)
+  — judged as a PART via a *mandatory* structural surround. A single whole-level
+  pass (`runSpecTestWhole`) reads the **role-skeleton** (each section's claim +
+  commitments, not prose) + the deterministic commitment-mesh delta to render
+  `tF`/`fT`/whole-true and a recentering vector (L4). New AI flows in
+  `src/services/ai/ai-provider.spec-test.ts`; prompts `spec-test.md`,
+  `spec-test-whole.md`, locked overlay `spec-test-mode-draft.md`; two
+  `AICallKind`s + model-config entries; types extended in `src/types/index.ts`
+  (`StructuralTruth`, `MoveDelta`, `SectionSpecTest`, `MeshDelta`, `WholeVerdict`,
+  `SpecTestReport`).
+- **Diff + mesh scoping (the cost lever).** The pure engine (`lib/specTestHelpers.ts`
+  + the store-free orchestrator `lib/specTestRun.ts`) aligns A/B by title (reusing
+  `compareHelpers`) and deep-reads only sections whose own prose changed **plus
+  their commitment-mesh neighbours** — because a change can sever a join with a
+  section that did *not* change (the `tF` failure a text-diff scope would miss).
+  The deterministic `checkCommitmentMesh` (reused) is the false-alarm-averse spine
+  of the mesh delta; the AI judges prose-level realization on top.
+- **Two surfaces, one engine.** A dedicated full-screen **Spec Test** workspace
+  (`features/spec-test/`, Dock `▣` / ⌘K) owns the whole-doc report card (whole
+  verdict first, parts beneath, incremental fill). Version Compare gained a
+  **spec-anchored** toggle that runs the SAME `runSpecTestForOperands` over its
+  operands and folds the whole verdict + section cards into its report — no
+  divergent logic. Both default the held rubric to the **live** testSuite (the TDD
+  reading), with a snapshot-A-frozen-specs toggle.
+- **Manual now, automatic later.** One on-demand run; the report is ephemeral/
+  regenerable (mirrors Version Compare, never persisted). `runSpecTestForOperands`
+  is store/UI-free, so a future trigger (snapshot create, or the
+  `session/<id>/end` tag — the `STATUS.md` spec-evaluation-delta TODO, start tag as
+  baseline) can call it with no workspace open.
+
+**How to verify.** `npm run typecheck`, `npm test` (462 pass — three new suites:
+`ai-provider.spec-test`, `specTestHelpers`, `spec-test-state`), and `npm run build`
+are green. Behaviorally (`npm run dev`): author specs with interlocking incoming/
+outgoing on 3+ sections, snapshot (A); edit one section so it reads better locally
+but stops delivering an `outgoingCommitment` an *unchanged* later section needs;
+open Spec Test, A = snapshot, B = current, run — confirm the **whole verdict reads
+`tF`** (not a green sum), the changed section's local gains show, and the mesh
+delta surfaces the introduced break with the unchanged neighbour (pulled in by
+mesh scope), with a recentering vector. Rewrite a move to merely restate its
+premises → `deflated`, not `gained`. The Compare "spec-anchored" toggle folds the
+same verdict in.
+
+**Rollback.** Additive — no existing flow changed except the Version Compare
+`runComparison` (a guarded branch; toggle off restores prior behavior) and the new
+slice in `state/index.ts`. `git revert` the commit; the new files (`features/
+spec-test/`, `lib/specTest*`, `services/ai/ai-provider.spec-test.ts`, the three
+prompts) drop cleanly.
+
+**Deliberate v1 limits (deferred).** The automatic snapshot/session-end trigger
+(the engine seam ships, not the trigger); a persisted `.twriter/spec-tests/` sidecar
+(reports are ephemeral, as in Version Compare); per-section `reconstructWhole`
+Beethoven calls (the folded-in `wholeSignature` suffices); order-swap "rigorous"
+debiasing; id-based section alignment (waits on stable section IDs); the treemap
+strain/force-map whole-view (`gestalt-design-II.md` L3b). A chapter-subtree scope
+is folded into the simpler Changed/All control for now.

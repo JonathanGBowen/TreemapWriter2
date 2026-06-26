@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
-import type { ReadingMode, Snapshot, SnapshotMeta, VersionComparison } from '../types';
+import type { ReadingMode, Snapshot, SnapshotMeta, SpecTestReport, VersionComparison } from '../types';
 
 /**
  * The Version Compare workspace, as an ephemeral slice. Like the Glass Box
@@ -38,6 +38,14 @@ export interface ComparisonSlice {
   compareMode: ReadingMode;
   comparison: VersionComparison | null;
   comparisonStatus: ComparisonStatus;
+  /**
+   * Spec-anchored mode: when on, "Run evaluation" runs the held-rubric A/B
+   * whole-test (the SAME engine as the Spec Test workspace) over the selected
+   * operands instead of the free exegetical comparison, and the report folds in
+   * the whole verdict + per-section move deltas. Session-only.
+   */
+  compareSpecAnchored: boolean;
+  specAnchoredResult: SpecTestReport | null;
 
   /** Deep, blob-free history index (newest first), loaded lazily when the workspace opens. */
   snapshotIndex: SnapshotMeta[];
@@ -56,6 +64,8 @@ export interface ComparisonSlice {
   setVersionB: (ref: VersionRef) => void;
   setCompareLens: (id: string | null) => void;
   setCompareMode: (m: ReadingMode) => void;
+  setCompareSpecAnchored: (on: boolean) => void;
+  setSpecAnchoredResult: (r: SpecTestReport | null) => void;
   setComparison: (c: VersionComparison | null) => void;
   setComparisonStatus: (s: ComparisonStatus) => void;
   setSnapshotIndex: (metas: SnapshotMeta[]) => void;
@@ -74,6 +84,8 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   compareMode: 'draft',
   comparison: null,
   comparisonStatus: 'idle',
+  compareSpecAnchored: false,
+  specAnchoredResult: null,
   snapshotIndex: [],
   indexStatus: 'idle',
   loadedA: null,
@@ -89,6 +101,8 @@ export const createComparisonSlice: StateCreator<AppState, [], [], ComparisonSli
   setVersionB: (ref) => set({ versionBId: ref }),
   setCompareLens: (id) => set({ activeCompareLensId: id }),
   setCompareMode: (m) => set({ compareMode: m }),
+  setCompareSpecAnchored: (on) => set({ compareSpecAnchored: on }),
+  setSpecAnchoredResult: (r) => set({ specAnchoredResult: r }),
   setComparison: (c) => set({ comparison: c }),
   setComparisonStatus: (s) => set({ comparisonStatus: s }),
   setSnapshotIndex: (metas) => set({ snapshotIndex: metas }),

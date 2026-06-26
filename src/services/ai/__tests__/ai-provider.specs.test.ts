@@ -30,6 +30,8 @@ const config: PromptsConfig = {
   sprintCoachPrompt: '',
   decomposeStepPrompt: '',
   compareVersionsPrompt: '',
+  specTestPrompt: '',
+  specTestWholePrompt: '',
   weatherReportPrompt: '',
   radarScanPrompt: '',
   stormSpotterPrompt: '',

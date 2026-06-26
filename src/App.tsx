@@ -664,6 +664,7 @@ export const App = () => {
     { id: 'prompts', label: 'Prompts', hint: 'AI routing', glyph: '❝', run: () => useStore.getState().setShowPromptsGraphModal(true) },
     { id: 'raw-data', label: 'Raw data', hint: 'JSON editor', glyph: '{}', run: () => useStore.getState().setShowProjectFileModal(true) },
     { id: 'compare', label: 'Compare versions', hint: 'A/B evaluation', glyph: '≈', run: () => useStore.getState().openCompare() },
+    { id: 'spec-test', label: 'Spec test', hint: 'A/B against the rubric · whole + parts', glyph: '▣', run: () => useStore.getState().openSpecTest() },
     { id: 'climate', label: 'Climate', hint: 'Atmospheric report', glyph: '≋', run: () => useStore.getState().openClimate() },
     { id: 'history', label: 'Version history', hint: 'Snapshots & restore', glyph: '◷', run: () => useStore.getState().setShowHistoryModal(true) },
     { id: 'snapshot', label: 'Snapshot now', hint: 'Commit a labeled version', glyph: '◆', shortcut: '⌘S', run: handleManualSave },

@@ -144,6 +144,22 @@ persisted field (`gist` ↔ `.twriter/gist.json`), ephemeral `state/gist-state.t
 and pure `lib/gist-helpers.ts` + `lib/gist-normalize.ts` (19 tests). Deliberate v1
 limits below.
 
+The **Spec Test** (spec-anchored A/B whole-test) shipped 2026-06-26 (see
+[`docs/migration-log.md`](docs/migration-log.md)): hold a section's `SectionSpec`
+as a fixed rubric and score version B against A — move by move AND as a whole — to
+answer the test-driven question *did this revision improve the prose against my
+specs, or degrade it?* It is Gestalt-faithful: the report **leads with a WHOLE
+verdict** (`tF`/`fT`/whole-true, center-of-gravity drift, a recentering vector)
+grounded in the commitment-mesh delta, with per-section move deltas (carrying the
+productive/recapitulative axis) beneath — a suite that summed piece-verdicts would
+miss the `tF` failure (a part improving while the whole pays for it). Scope is diff
++ mesh-neighbour (a change pulls in the unchanged sections it might have severed a
+join with); the held rubric defaults to the live testSuite (the TDD reading), with
+a snapshot-A toggle. Two surfaces over one store-free engine (`lib/specTestRun.ts`):
+a dedicated workspace (`▣ Spec test`, Dock / ⌘K) and a spec-anchored toggle folded
+into Version Compare. Manual + ephemeral for now; the engine seam is ready for an
+automatic snapshot/session-end trigger. Deliberate v1 limits below.
+
 The Glass-Box revision workspace gained (2026-06-19, see
 [`docs/migration-log.md`](docs/migration-log.md)): **sourceless revision** as the
 default when no sources exist (proposals grounded in the document itself, steered
@@ -183,8 +199,11 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   `CarryForward`) and lifecycle thunks already exist, so this is UI on top of a
   settled spine. Two smaller follow-ons flagged by the brief: surfacing *last
   session's carry-forward* at the next check-in (the records already store it),
-  and a **spec-evaluation delta** between the session start/end snapshots (a TODO
-  integration point — the start tag is the ready-made baseline ref).
+  and a **spec-evaluation delta** between the session start/end snapshots. The
+  evaluation *engine* now exists (the spec-anchored A/B whole-test,
+  `runSpecTestForOperands`, shipped 2026-06-26, store/UI-free); what remains is the
+  automatic trigger that calls it on check-out with the start tag as the baseline
+  ref — the manual surfaces already ship.
 
 - **Profile-driven wave, remaining items (F2 · F3 · F5).** The 2026-06-20 wave
   shipped F1/F4/F6; the analysis flagged three more, ranked by clinical leverage:
@@ -344,6 +363,20 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   (the brief is emphatic on this). The brief's future directions (long-hover claim
   tooltips off the persisted analysis, local magnification, draft-to-draft gist diffs,
   selection-scoped gists) are all out of scope for v1.
+
+- **Spec Test follow-ups.** Shipped 2026-06-26. Deliberate v1 limits, by mood:
+  the **automatic trigger** is unbuilt — `runSpecTestForOperands`
+  ([`src/lib/specTestRun.ts`](src/lib/specTestRun.ts)) is store/UI-free and ready,
+  so wiring it to fire on snapshot / `session/<id>/end` (start tag as baseline) is
+  the additive follow-on against the spec-evaluation-delta note above; reports are
+  **ephemeral** (a `.twriter/spec-tests/<a>..<b>.yaml` sidecar would persist/export
+  them, mirroring the Compare-persist follow-up); the whole-signature is folded into
+  the part call rather than a dedicated `reconstructWhole` per section; **order-swap**
+  "rigorous (swap & average)" debiasing is a single-flag add; section alignment is by
+  title (id-based waits on the stable-section-ID work above); and scope is Changed/All
+  (a chapter-subtree scope is the trivial extension). The treemap **strain/force-map**
+  whole-view ([`docs/gestalt-design-II.md`](docs/gestalt-design-II.md) L3b) remains the
+  heaviest, highest-ceiling deferral. None block use.
 
 - **Sourceless-revision follow-ups.** Shipped 2026-06-19. Deliberate limits, by
   mood: the Instruction library is global only (no per-project active instruction

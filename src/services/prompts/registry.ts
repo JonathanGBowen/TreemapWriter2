@@ -37,6 +37,8 @@ import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
 import sprintCoachPrompt from './sprint-coach.md?raw';
 import decomposeStepPrompt from './decompose-step.md?raw';
 import compareVersionsPrompt from './compare-versions.md?raw';
+import specTestPrompt from './spec-test.md?raw';
+import specTestWholePrompt from './spec-test-whole.md?raw';
 import weatherReportPrompt from './weather-report.md?raw';
 import radarScanPrompt from './radar-scan.md?raw';
 import stormSpotterPrompt from './storm-spotter.md?raw';
@@ -58,6 +60,7 @@ import suggestDirectivesTemplate from './suggest-directives.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
 import compareModeDraft from './compare-mode-draft.md?raw';
+import specTestModeDraft from './spec-test-mode-draft.md?raw';
 import analysisModeDraft from './analysis-mode-draft.md?raw';
 import diagnosticModeDraft from './diagnostic-mode-draft.md?raw';
 
@@ -369,6 +372,28 @@ export const PROMPT_REGISTRY = [
     variables: [],
   },
   {
+    key: 'specTestPrompt',
+    defaultText: strip(specTestPrompt),
+    label: 'Spec Test — Part',
+    description:
+      'Spec-anchored A/B whole-test: scores ONE section across two versions against the held rubric, move by move (with the productive/recapitulative axis), judged AS A PART — catches piece-improvements that cost the whole (tF).',
+    category: 'comparison',
+    flow: 'runSpecTestSection',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'specTestWholePrompt',
+    defaultText: strip(specTestWholePrompt),
+    label: 'Spec Test — Whole',
+    description:
+      'Spec-anchored A/B whole-test: the WHOLE verdict — did B serve the whole better than A, or only the pieces? Reads the role-skeleton + mesh delta for center-of-gravity drift and tF/fT, never a sum of section verdicts.',
+    category: 'comparison',
+    flow: 'runSpecTestWhole',
+    editability: 'editable',
+    variables: [],
+  },
+  {
     key: 'weatherReportPrompt',
     defaultText: strip(weatherReportPrompt),
     label: 'Weather Report',
@@ -421,6 +446,16 @@ export const PROMPT_REGISTRY = [
     description: 'Draft-in-process overlay for Version Compare: scaffolding is not a loss; lean into continuity.',
     category: 'comparison',
     flow: 'compareVersions',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'specTestModeDraft',
+    defaultText: strip(specTestModeDraft),
+    label: 'Spec Test — Draft Mode',
+    description: 'Draft-in-process overlay for the Spec Test: a still-missing move is scaffolding; reserve regressions for genuine backsliding; read a deflated move as a cut opportunity (fT).',
+    category: 'comparison',
+    flow: 'runSpecTestSection',
     editability: 'locked',
     variables: [],
   },
