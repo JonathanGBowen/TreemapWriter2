@@ -281,7 +281,23 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   (broken/weak/fog/backward/cycle) into the Structural-Tension Register as S₁→S₂ vectors. The
   spec-derivation `contentPreview` slices (800 / 600) remain the only input char-slices (every
   other arbitrary cap was deleted for the `checkContextFit` token-budget pre-flight,
-  2026-06-18).
+  2026-06-18). **Fourth reading — essay IV (proposal, not yet shipped; see
+  [`docs/gestalt-design-IV.md`](docs/gestalt-design-IV.md)):** a direct reading of
+  Wertheimer's *earliest* work (*Numbers and Number-Gestalts*, 1912) mines its theory
+  of **concrete thinking** and the **non-uniform, situated magnitude-series** for five
+  even-weight contributions to the tool's handling of *number, magnitude and division*
+  — (C1) a magnitude-tF/fT *divergence signal* (word-count magnitude vs. structural
+  load; the treemap **area** re-encoding stays gated as before); (C2) **approximate
+  magnitude** rendering (zones of indifference + privileged relevance-levels) on
+  orientation surfaces, exact counts kept only where the task needs them; (C3) a second,
+  **quasi-local/proportional** centering ("three-quarters through") beside the
+  topological radix, riding the existing `Station.docIndex`; (C4) **division without
+  shards** — a seam-first fix to `decompose-step.md`'s count-first granularity; (C5) the
+  gist reframed as a **typus** plus a named **concrete-thinking design law** (no
+  reality-detached operation may be asked of the writer) with a §20 audit. Proposed
+  sequencing: **Tier A** C4 · C5-law · C2 · C3 (surgical), **Tier B** C1-divergence ·
+  C5-typus-reframe, **Tier C** C1-area (gated) · C5-multi-articulation (`StoredGist`
+  schema).
 - ~~**Streaming AI in a sidebar coach panel.**~~ Done 2026-06-20 (see
   [`docs/migration-log.md`](docs/migration-log.md)). `streamCoachAdvice` now
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and
