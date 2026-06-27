@@ -12,6 +12,9 @@ import type {
   TestSuite,
   TestSuiteEntry,
   WholeFromPart,
+  QualitativeSignature,
+  PartQuality,
+  FeltTrouble,
 } from '../types';
 import type { AppState } from '.';
 import {
@@ -144,6 +147,15 @@ export interface DocumentStateSlice {
    */
   setWholeFromPart: (sectionId: string, result: WholeFromPart) => void;
   setRecenterings: (sectionId: string, result: Recenterings) => void;
+  /**
+   * Deweyan qualitative results. The signature + Goya test are ephemeral (like
+   * the gestalt results above); the felt trouble is PERSISTED (a writer-typed
+   * note is intellectual work) — see the Rust sidecar round-trip. No-op if the
+   * section isn't present in the suite.
+   */
+  setQualitativeSignature: (sectionId: string, result: QualitativeSignature) => void;
+  setPartQuality: (sectionId: string, result: PartQuality) => void;
+  setFeltTrouble: (sectionId: string, trouble: FeltTrouble | undefined) => void;
 }
 
 export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentStateSlice> = (set, get) => ({
@@ -325,6 +337,39 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         testSuite: {
           ...state.testSuite,
           [sectionId]: { ...state.testSuite[sectionId], recenterings: result },
+        },
+      };
+    }),
+
+  setQualitativeSignature: (sectionId, result) =>
+    set((state) => {
+      if (!state.testSuite[sectionId]) return state;
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...state.testSuite[sectionId], qualitativeSignature: result },
+        },
+      };
+    }),
+
+  setPartQuality: (sectionId, result) =>
+    set((state) => {
+      if (!state.testSuite[sectionId]) return state;
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...state.testSuite[sectionId], partQuality: result },
+        },
+      };
+    }),
+
+  setFeltTrouble: (sectionId, trouble) =>
+    set((state) => {
+      if (!state.testSuite[sectionId]) return state;
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...state.testSuite[sectionId], feltTrouble: trouble },
         },
       };
     }),

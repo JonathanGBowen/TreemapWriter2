@@ -187,6 +187,73 @@ export interface RecenteringsResult {
 /** Stored recentering result: the AI output plus staleness metadata. */
 export type Recenterings = RecenteringsResult & { timestamp: number; inputHash: string };
 
+// --- DEWEYAN QUALITATIVE OPERATIONS ---
+// Grown from Dewey, "Qualitative Thought" (1930). Where the Gestalt ops above
+// hold the whole as STRUCTURE (a claim, a mesh, a topology), these hold it as
+// the felt PERVASIVE QUALITY that, for Dewey, grounds and regulates all
+// structure ("the quality of the whole permeates, affects, and controls every
+// detail"). See docs/dewey-design.md.
+
+/**
+ * The document's pervasive quality — INDICATED, never defined. Dewey is explicit
+ * that "the situation as such is not and cannot be stated or made explicit"; the
+ * most a representation can do is be a *clue* that re-calls the felt whole. This
+ * is the "ground" the Goya test reads a part against. Distinct from the root
+ * claim (a proposition) and the gist (the document at low resolution).
+ */
+export interface QualitativeSignatureResult {
+  /** A clue to the pervasive quality — the felt tone running through the whole. */
+  quality: string;
+  /** A few short registers/threads of that quality (not an and-sum of properties). */
+  registers?: string[];
+  /** Optional one-line reading for the writer. */
+  note?: string;
+}
+
+/** Stored qualitative signature (root-level): the AI output plus staleness metadata. */
+export type QualitativeSignature = QualitativeSignatureResult & { timestamp: number; inputHash: string };
+
+/**
+ * The "Goya test" (Dewey: a viewer says "that is a Goya" from the quality of the
+ * whole, "long before he has made any analysis"). From a section's prose ALONE,
+ * read the pervasive quality it carries and judge whether it *belongs* to the
+ * document's quality — assimilation before similarity. The qualitative twin of
+ * the Beethoven test: a part can reconstruct the thesis (structure) yet read
+ * tonally alien (quality), and vice versa.
+ */
+export interface PartQualityResult {
+  /** The pervasive quality this part carries, read from its prose alone (a clue). */
+  partQuality: string;
+  /** Does the part belong to the whole's quality? ('no-baseline' when no signature exists.) */
+  belonging: 'belongs' | 'shifted' | 'alien' | 'no-baseline';
+  /** When not 'belongs': how the part's quality pulls away from the whole's. */
+  divergence?: string;
+  /** Optional short reading. */
+  note?: string;
+}
+
+/** Stored Goya-test result: the AI output plus staleness metadata. */
+export type PartQuality = PartQualityResult & { timestamp: number; inputHash: string };
+
+/**
+ * The pre-articulate trouble — Dewey's problem that is "had or experienced
+ * before it can be stated," the felt "Oh" that marks "something pervading all
+ * elements." A first-class home for the stuck state where a writer senses
+ * something is wrong but cannot yet say what. The `articulate` ramp converts it
+ * into a stated gap → vector ("a problem stated is well on its way to solution").
+ * Persisted: a writer-typed note is intellectual work, like analysis/dialogue.
+ */
+export interface FeltTrouble {
+  /** The writer's raw, pre-articulate note. May be terse or vague by design. */
+  note: string;
+  /** When the note was last registered/updated. */
+  timestamp: number;
+  /** The articulated result, once the ramp has run: the felt quality made into a located gap → vector. */
+  articulated?: NextAction;
+  /** Hash of the section text the articulation was run against (staleness). */
+  articulatedHash?: string;
+}
+
 // --- SECTION ANALYSIS SYSTEM ---
 
 /**
@@ -812,6 +879,12 @@ export interface TestSuiteEntry {
   wholeFromPart?: WholeFromPart;
   /** Ephemeral: recentering / question-the-goal proposals. Not persisted. */
   recenterings?: Recenterings;
+  /** Ephemeral: the document's pervasive quality (root entry only). Dewey's "ground". Not persisted. */
+  qualitativeSignature?: QualitativeSignature;
+  /** Ephemeral: the Goya test (does this part carry the whole's quality?). Not persisted. */
+  partQuality?: PartQuality;
+  /** Persisted: a writer's pre-articulate felt trouble + its articulated gap→vector (intellectual work). */
+  feltTrouble?: FeltTrouble;
 }
  
 export interface TestSuite {

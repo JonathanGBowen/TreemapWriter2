@@ -79,6 +79,11 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   // Gestalt whole/part ops — focused reasoning over one section.
   reconstructWhole: g(HEAVY, THINK),
   proposeRecenterings: g(HEAVY, THINK),
+  // Deweyan qualitative ops — reading the felt pervasive quality is the central
+  // risk (it's subtle, easy to flatten into summary), so the strongest tier.
+  readPervasiveQuality: g(HEAVY, THINK),
+  readPartQuality: g(HEAVY, THINK),
+  articulateTrouble: g(HEAVY, THINK),
 };
 
 /**

@@ -4369,3 +4369,67 @@ its seed, and any saved project per-call overrides naming the old Pro id surface
 retry, context skip, exhaustion, streaming pre/post-first-chunk, thinking convention);
 `model-catalog.test.ts` / `model-config.test.ts` / `depth-choice.test.ts` updated for the
 new family.
+
+---
+
+## 2026-06-27 — Deweyan qualitative layer (first pass)
+
+**What changed.** A companion to the three Gestalt design essays, grown by reading
+Dewey's *Qualitative Thought* (1930) directly. New essay
+[`docs/dewey-design.md`](dewey-design.md) (with a running-notes appendix). The thesis:
+the tool already holds the whole as **structure** (the root claim, the commitment-mesh,
+the radix/centering topology) but never as the felt **pervasive quality** that — for
+Dewey — grounds and regulates all structure ("the quality of the whole permeates,
+affects, and controls every detail"). Structure is the necessary middle; quality is its
+ground and its telos.
+
+Three AI moves shipped, each mirroring the Phase-2 gestalt flow pattern
+(`ai-provider.gestalt.ts` → new sibling `src/services/ai/ai-provider.qualitative.ts`:
+prompt builder + JSON schema + tolerant normalizer + `__test` export; null on junk, the
+caller toasts):
+
+1. **`readPervasiveQuality`** (the "ground", root only) — indicate, never *state*
+   (Dewey: the situation "cannot be stated"), the pervasive quality running through the
+   whole. Stored on the `root` entry as `qualitativeSignature`.
+2. **`readPartQuality`** (the "Goya test") — from a section's prose alone, read the
+   quality it carries and judge whether it *belongs* to the whole's quality
+   (assimilation before similarity). The qualitative twin of the Beethoven test
+   (`reconstructWhole`); degrades to `no-baseline` with no signature.
+3. **`articulateTrouble`** (the "felt before stated" ramp) — convert a writer's
+   pre-articulate `feltTrouble` note into a located gap → vector (reuses the diagnostic
+   `NextAction`). "A problem stated is well on its way to solution."
+
+**Wiring.** Types on `src/types/index.ts` (`QualitativeSignature(Result)`,
+`PartQuality(Result)`, `FeltTrouble` + three `TestSuiteEntry` fields). Interface +
+input types on `src/services/ai-provider.ts`; dispatch on `ai-provider.impl.ts`; three
+AICallKinds (`model-types.ts`) at the HEAVY/THINK tier (`model-config.ts`); three
+editable prompts (`read-pervasive-quality.md`, `read-part-quality.md`,
+`articulate-trouble.md`) + registry entries + `HISTORICAL_KEYS`. Store setters on
+`src/state/document-state.ts`. UI: `QualitativeActions` + `use-qualitative-actions`
+(`src/features/tests-panel/`), rendered beside `GestaltActions` in `SpecTab`.
+
+**Persistence.** The signature + Goya test are ephemeral (like the gestalt results). The
+**felt trouble is persisted** — a writer-typed note is intellectual work, like analysis:
+a `felt_trouble: Option<serde_json::Value>` field was added to the Rust `TestSuiteEntry`
+*and* `PersistedTestEntry` round-trip (`src-tauri/src/types.rs`), schema-agnostic exactly
+like `analysis`. Old YAML/blobs ignore the unknown field on read (`PersistedTestEntry` is
+loose-by-construction), so no data migration is needed either way.
+
+**Deferred (named in the essay).** A *qualitative* treemap recoloring (quality as
+figure/ground) — gated on the same heatmap-accessibility verdict as the Gestalt Tension
+Lens; the active-verb/predication reshaping of the spec; quality-governed ("enough is
+always enough") context assembly; and a quality axis on the commitment-mesh (the
+"mesh-as-Bradley" critique).
+
+**Verify.** `npm run typecheck`, `npm run lint` (0 errors; pre-existing warnings only),
+`npm test` (515 pass / 70 files — adds `ai-provider.qualitative.test.ts` + the updated
+`registry`/`specs` fixtures), and `npm run build` all green. In-app, on the demo project:
+read the pervasive quality on the whole; run the Goya test on a section (alignment +
+divergence render, go stale on edit); type a felt trouble, Articulate → a gap → vector
+appears and survives reload. `cargo check` for the Rust field could not run in this
+environment (missing GTK system libs) — the change is additive and mirrors `analysis`.
+
+**Rollback.** `git revert`. Frontend changes are additive (new files + new optional
+fields); the Rust `felt_trouble` field is `skip_serializing_if`/`default`, so reverted
+code ignores any `feltTrouble:` already written to YAML. No data migration in either
+direction.

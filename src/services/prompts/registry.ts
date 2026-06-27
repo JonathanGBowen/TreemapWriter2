@@ -31,6 +31,9 @@ import generateReverseOutlinePrompt from './generate-reverse-outline.md?raw';
 import regenerateParagraphPrompt from './regenerate-paragraph.md?raw';
 import reconstructWholePrompt from './reconstruct-whole.md?raw';
 import recenterPrompt from './recenter.md?raw';
+import readPervasiveQualityPrompt from './read-pervasive-quality.md?raw';
+import readPartQualityPrompt from './read-part-quality.md?raw';
+import articulateTroublePrompt from './articulate-trouble.md?raw';
 import gistAnalysisPrompt from './gist-analysis.md?raw';
 import gistCompositionPrompt from './gist-composition.md?raw';
 import generateSprintPlanPrompt from './generate-sprint-plan.md?raw';
@@ -305,6 +308,39 @@ export const PROMPT_REGISTRY = [
       "The unstick move (Umzentrierung): proposes alternative structural centerings of a section and asks whether the section's goal itself is right for the whole.",
     category: 'diagnostics-coaching',
     flow: 'proposeRecenterings',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'readPervasiveQualityPrompt',
+    defaultText: strip(readPervasiveQualityPrompt),
+    label: 'Pervasive Quality',
+    description:
+      "Deweyan qualitative signature: indicate (never state) the pervasive quality running through the whole document — the felt \"ground\" the Goya test reads a part against.",
+    category: 'analysis-dialogue',
+    flow: 'readPervasiveQuality',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'readPartQualityPrompt',
+    defaultText: strip(readPartQualityPrompt),
+    label: 'Goya Test',
+    description:
+      "Deweyan qualitative probe: from a section's prose alone, read the quality it carries and judge whether it BELONGS to the whole's quality (assimilation), the qualitative twin of the Beethoven test.",
+    category: 'analysis-dialogue',
+    flow: 'readPartQuality',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'articulateTroublePrompt',
+    defaultText: strip(articulateTroublePrompt),
+    label: 'Articulate Trouble',
+    description:
+      "Deweyan \"felt before stated\" ramp: convert a writer's pre-articulate felt trouble about a section into one located gap → vector (a problem stated is well on its way to solution).",
+    category: 'diagnostics-coaching',
+    flow: 'articulateTrouble',
     editability: 'editable',
     variables: [],
   },

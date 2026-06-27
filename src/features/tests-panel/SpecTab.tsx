@@ -8,6 +8,7 @@ import { Disclosure } from "../shared/Disclosure";
 import { PanelHeader } from "./PanelHeader";
 import { MoveList } from "./MoveList";
 import { GestaltActions } from "./GestaltActions";
+import { QualitativeActions } from "./QualitativeActions";
 import { DependencyChips } from "./DependencyChips";
 import { PanelFooter } from "./PanelFooter";
 import { EmptyState } from "./EmptyState";
@@ -181,6 +182,7 @@ function SpecBody({ id, spec, entry, flatSections }: { id: string; spec: Section
       {diagnostic?.commitmentFindings && <CommitmentMeshCard findings={diagnostic.commitmentFindings} />}
       <MoveList spec={spec} diagnostic={diagnostic} onEdit={editMove} onAdd={addMove} onRemove={removeMove} onRefine={() => setShowSpecModal(true)} />
       <GestaltActions />
+      <QualitativeActions />
       <ClaimDisclosure spec={spec} onClaim={setClaim} onFunction={setFunction} />
       <DependencyChips sectionId={id} dependencies={entry.dependencies || []} flatSections={flatSections} testSuite={testSuite} onUpdate={(deps) => updateDependencies(id, deps)} />
       <ContextDisclosure spec={spec} coherenceNotes={diagnostic?.coherenceNotes || []} />

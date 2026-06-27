@@ -72,6 +72,9 @@ import type {
   DevelopSpecLevelInput,
   ReconstructWholeInput,
   RecenterInput,
+  ReadPervasiveQualityInput,
+  ReadPartQualityInput,
+  ArticulateTroubleInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import { AI_CALL_KIND_LABELS } from './model-types';
@@ -92,6 +95,7 @@ import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
 import { reconstructWhole, proposeRecenterings } from './ai-provider.gestalt';
+import { readPervasiveQuality, readPartQuality, articulateTrouble } from './ai-provider.qualitative';
 import { analyzeGist } from './ai-provider.gist-analysis';
 import { composeGist } from './ai-provider.gist-composition';
 import { refreshGistSpan } from './ai-provider.gist-refresh';
@@ -665,6 +669,36 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('proposeRecenterings', input);
     return proposeRecenterings(
       this.dispatch(choice, 'proposeRecenterings'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async readPervasiveQuality(input: ReadPervasiveQualityInput) {
+    const choice = this.choose('readPervasiveQuality', input);
+    return readPervasiveQuality(
+      this.dispatch(choice, 'readPervasiveQuality'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async readPartQuality(input: ReadPartQualityInput) {
+    const choice = this.choose('readPartQuality', input);
+    return readPartQuality(
+      this.dispatch(choice, 'readPartQuality'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async articulateTrouble(input: ArticulateTroubleInput) {
+    const choice = this.choose('articulateTrouble', input);
+    return articulateTrouble(
+      this.dispatch(choice, 'articulateTrouble'),
       choice.model,
       choice.thinkingBudget,
       input,

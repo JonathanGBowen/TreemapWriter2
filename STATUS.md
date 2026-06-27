@@ -282,6 +282,24 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   spec-derivation `contentPreview` slices (800 / 600) remain the only input char-slices (every
   other arbitrary cap was deleted for the `checkContextFit` token-budget pre-flight,
   2026-06-18).
+- **Deweyan / qualitative layer — first pass shipped 2026-06-27** (see
+  [`docs/dewey-design.md`](docs/dewey-design.md) + [`docs/migration-log.md`](docs/migration-log.md)).
+  A companion to the three Gestalt essays, grown from Dewey's *Qualitative Thought* (1930):
+  where the Gestalt work holds the whole as **structure** (claim, mesh, topology), this holds it
+  as the felt **pervasive quality** that, for Dewey, grounds and regulates structure. Three AI
+  moves shipped, mirroring the gestalt flow pattern (`src/services/ai/ai-provider.qualitative.ts`,
+  surfaced by `QualitativeActions`/`use-qualitative-actions` in `SpecTab`): **(1) pervasive
+  quality** — the document's qualitative signature, indicated-not-stated (root only, the
+  "ground"); **(2) the Goya test** — does a part *carry* the whole's quality (assimilation),
+  the qualitative twin of the Beethoven test; **(3) felt-before-stated** — a first-class,
+  *persisted* register for the pre-articulate trouble ("something's off, can't say what") + an
+  `articulateTrouble` ramp that converts it into a located gap → vector. The felt trouble is
+  persisted via a `felt_trouble` field added to the Rust `TestSuiteEntry`/`PersistedTestEntry`
+  round-trip (schema-agnostic `Value`, like `analysis`). **Deferred** (named in
+  `dewey-design.md`): a *qualitative* treemap recoloring (quality as figure/ground — gated on
+  the same heatmap-accessibility verdict as the Gestalt Tension Lens); the active-verb/predication
+  reshaping of the spec; quality-governed ("enough is always enough") context assembly; and a
+  quality axis on the commitment-mesh (the "mesh-as-Bradley" critique).
 - ~~**Streaming AI in a sidebar coach panel.**~~ Done 2026-06-20 (see
   [`docs/migration-log.md`](docs/migration-log.md)). `streamCoachAdvice` now
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and

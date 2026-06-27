@@ -33,6 +33,9 @@ import type {
   GistBudgets,
   WholeFromPartResult,
   RecenteringsResult,
+  QualitativeSignatureResult,
+  PartQualityResult,
+  NextAction,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
@@ -163,6 +166,24 @@ export interface AIProvider {
    * right for the whole?" beat. The unstick operation. Null ⇒ no usable proposal.
    */
   proposeRecenterings(input: RecenterInput): Promise<RecenteringsResult | null>;
+  /**
+   * Deweyan — the document's qualitative signature (the "ground"). Indicate, never
+   * state, the pervasive quality running through the whole. Run on the root. The
+   * baseline the Goya test reads a part against. Null ⇒ no usable reading.
+   */
+  readPervasiveQuality(input: ReadPervasiveQualityInput): Promise<QualitativeSignatureResult | null>;
+  /**
+   * Deweyan — the "Goya test". From a section's prose alone, read the quality it
+   * carries and judge whether it BELONGS to the whole's quality (assimilation),
+   * independent of the structural Beethoven test. Null ⇒ no usable reading.
+   */
+  readPartQuality(input: ReadPartQualityInput): Promise<PartQualityResult | null>;
+  /**
+   * Deweyan — the "felt before stated" ramp. Convert a writer's pre-articulate
+   * felt trouble into a located gap → vector (reuses the diagnostic NextAction).
+   * Null ⇒ no usable articulation.
+   */
+  articulateTrouble(input: ArticulateTroubleInput): Promise<NextAction | null>;
 }
 
 /** Compact, in-memory backlog summary shown as context chips in the Brief. */
@@ -470,6 +491,42 @@ export interface RecenterInput {
   structuralSurround?: string;
   /** Computed dependency-topology facts (rank, what rests on it, backward links, cycles). */
   structuralEvidence?: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ReadPervasiveQualityInput {
+  /** Document title, for framing. */
+  documentTitle?: string;
+  /** The whole document's text. */
+  documentText: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ReadPartQualityInput {
+  sectionTitle: string;
+  /** The section's prose, read alone — no surround, no spec. */
+  sectionText: string;
+  /** The document's pervasive quality (qualitative signature), for the belonging judgment. Optional. */
+  documentQuality?: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ArticulateTroubleInput {
+  sectionTitle: string;
+  sectionText: string;
+  /** The writer's raw, pre-articulate felt note. */
+  feltNote: string;
+  /** Pre-formatted part-in-whole context (formatStructuralSurround), so the gap is read as a part. */
+  structuralSurround?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

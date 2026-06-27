@@ -33,6 +33,10 @@ const HISTORICAL_KEYS = [
   // Gestalt whole/part ops (Phase 2) — Beethoven test + recentering.
   'reconstructWholePrompt',
   'recenterPrompt',
+  // Deweyan qualitative ops — pervasive quality (ground), Goya test, felt-before-stated ramp.
+  'readPervasiveQualityPrompt',
+  'readPartQualityPrompt',
+  'articulateTroublePrompt',
   // Gist Editor — the two generation stages (analysis + composition).
   'gistAnalysisPrompt',
   'gistCompositionPrompt',

@@ -10,7 +10,10 @@
 > ADHD.** Where the two essays touch the same idea, this one cross-links rather
 > than copies (the doctrine table and the Tier-1 record live in the first essay;
 > the type inventory lives in the code). When essay and code disagree, trust the
-> code.
+> code. A **Deweyan companion** ([`dewey-design.md`](dewey-design.md)) reads the
+> same problem through *Qualitative Thought* (1930) — the felt **pervasive
+> quality** beneath the structure these essays build, and a first-class home for
+> the *had-but-not-yet-stated* trouble that is the ADHD writer's hardest moment.
 >
 > **Provenance.** Read directly for this essay: *Syllogisms in Productive
 > Thinking* (the Levy 1981 reprint of Wertheimer), *On the Concept of Democracy*

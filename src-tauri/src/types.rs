@@ -123,6 +123,11 @@ pub struct TestSuiteEntry {
     pub last_diagnostic: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub last_result: Option<serde_json::Value>,
+    /// A writer's pre-articulate felt trouble + its articulated gap→vector.
+    /// PERSISTED (intellectual work, like analysis); schema-agnostic on the
+    /// Rust side — the TS layer owns the shape.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub felt_trouble: Option<serde_json::Value>,
 }
 
 fn default_status() -> String {
@@ -153,6 +158,10 @@ pub struct PersistedTestEntry {
     /// specs) — they ride the YAML sidecar and therefore git history.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub analysis: Option<serde_json::Value>,
+    /// A writer's felt trouble + its articulated gap→vector — persisted like
+    /// analysis (the pre-articulate note is intellectual work, Dewey's "Oh").
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub felt_trouble: Option<serde_json::Value>,
 }
 
 impl PersistedTestEntry {
@@ -164,6 +173,7 @@ impl PersistedTestEntry {
             dependencies: entry.dependencies.clone(),
             main_claim: entry.main_claim.clone(),
             analysis: entry.analysis.clone(),
+            felt_trouble: entry.felt_trouble.clone(),
         }
     }
 
@@ -182,6 +192,7 @@ impl PersistedTestEntry {
             analysis: self.analysis,
             last_diagnostic: None,
             last_result: None,
+            felt_trouble: self.felt_trouble,
         }
     }
 }

@@ -9,7 +9,10 @@
 > whole-view / "directional vector connectors"). This one does not restate them —
 > it isolates *centering*, shows that the tool already **had** Wertheimer's
 > relational network and was centering it the wrong way, and records the fix that
-> shipped. When essay and code disagree, trust the code.
+> shipped. When essay and code disagree, trust the code. For the felt **pervasive
+> quality** beneath all this structure — and Dewey's warning that a centering
+> readout is worth only as much as it returns the writer to a heightened
+> qualitative apprehension — see the companion [`dewey-design.md`](dewey-design.md).
 >
 > **Provenance.** Read directly for this essay: *Productive Thinking* — the
 > Introduction, "Two Boys Play Badminton / A Girl Describes Her Office" (Chap. 7),
