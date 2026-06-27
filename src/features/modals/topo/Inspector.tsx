@@ -254,7 +254,7 @@ const StationInspector: React.FC<{
                 {c.isTelos && <CenterBadge label="◎ TELOS" c={TK.purple} />}
                 {c.inCycle && <CenterBadge label="⟲ CYCLE" c={TK.magenta} />}
                 <span style={{ fontFamily: mono, fontSize: 7, color: TK.muted, letterSpacing: '0.1em' }}>
-                  RANK {c.rank}/{centering.maxRank} · RESTS ON {restsOn} · {c.centrality} REST ON THIS
+                  RANK {c.rank}/{centering.maxRank} · RESTS ON {restsOn} · {c.centrality} REST ON THIS · POS {Math.round(c.position * 100)}%
                 </span>
               </div>
             )}

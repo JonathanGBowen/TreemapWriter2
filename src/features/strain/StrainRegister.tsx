@@ -10,6 +10,7 @@ const KIND_LABEL: Record<StrainSignalKind, string> = {
   'center-of-gravity': 'center of gravity',
   adrift: 'adrift from whole',
   recapitulative: 'recapitulative move',
+  ballast: 'weight vs. work',
 };
 
 /** Directed neighbour suffix, in words ("← Chapter 1" / "→ Methods"). */

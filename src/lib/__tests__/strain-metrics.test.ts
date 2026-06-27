@@ -153,6 +153,33 @@ describe('computeAllStrain (bands + AI corroboration)', () => {
     expect(b?.signals.every((sig) => sig.source === 'ai')).toBe(true);
   });
 
+  it('ballast (C1) fires only when a recapitulative move coincides with chapter-scale bulk', () => {
+    const big: Section = { ...sec('big', 'Big Chapter'), wordCount: 8000 };
+    const small: Section = { ...sec('small', 'Small Section'), wordCount: 100 };
+    const recapDiag = {
+      moveResults: [{ moveId: 'm', moveDescription: '', status: 'present' as const, advance: 'recapitulative' as const }],
+      coherenceNotes: [],
+      overallReadiness: 'developing' as const,
+      nextPriority: '',
+    };
+
+    // Large + recapitulative → ballast (plus the recapitulative signal), capped at medium.
+    const heavy = computeAllStrain([big], { big: entry({ spec: spec(), lastDiagnostic: recapDiag }) });
+    const bh = heavy.strained.find((s) => s.sectionId === 'big');
+    expect(bh?.signals.some((sig) => sig.kind === 'ballast')).toBe(true);
+    expect(bh?.band).toBe('medium');
+
+    // Same recapitulative move but small → NO ballast (size gate holds).
+    const light = computeAllStrain([small], { small: entry({ spec: spec(), lastDiagnostic: recapDiag }) });
+    const bl = light.strained.find((s) => s.sectionId === 'small');
+    expect(bl?.signals.some((sig) => sig.kind === 'ballast')).toBe(false);
+
+    // Large but NOT recapitulative → no ballast at all (never fires on size alone).
+    const okDiag = { ...recapDiag, moveResults: [{ moveId: 'm', moveDescription: '', status: 'present' as const, advance: 'productive' as const }] };
+    const work = computeAllStrain([big], { big: entry({ spec: spec(), lastDiagnostic: okDiag }) });
+    expect(work.strained.some((s) => s.signals.some((sig) => sig.kind === 'ballast'))).toBe(false);
+  });
+
   it('spec-less and blocked sections produce no strain', () => {
     // spec-less b
     expect(computeAllStrain(SECTIONS, { a: entry({ spec: baseSpecs.a }), b: entry() }).count).toBe(0);

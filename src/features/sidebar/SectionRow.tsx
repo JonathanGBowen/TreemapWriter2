@@ -1,4 +1,5 @@
 import { Section } from "../../types";
+import { roundedCount } from "../../lib/magnitude";
 
 /** Status → the small filled square used in the section list. Glow = alive: a
  *  section's readiness is a static state, so success/fail/stale stay flat; only
@@ -51,7 +52,7 @@ export function SectionRow({
       <div className={`flex-1 text-ui-row whitespace-nowrap overflow-hidden text-ellipsis ${selected ? 'text-hld-cyan opacity-100 font-bold' : 'text-hld-text opacity-65'}`}>
         {section.title}
       </div>
-      <div className="text-ui-meta text-hld-muted-text">{section.wordCount}w</div>
+      <div className="text-ui-meta text-hld-muted-text" title={`${section.wordCount} words`}>{roundedCount(section.wordCount)}</div>
     </div>
   );
 }

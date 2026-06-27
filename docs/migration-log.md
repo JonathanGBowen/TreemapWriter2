@@ -4369,3 +4369,55 @@ its seed, and any saved project per-call overrides naming the old Pro id surface
 retry, context skip, exhaustion, streaming pre/post-first-chunk, thinking convention);
 `model-catalog.test.ts` / `model-config.test.ts` / `depth-choice.test.ts` updated for the
 new family.
+
+---
+
+## 2026-06-27 — Gestalt essay IV (Tier A + B) shipped
+
+**What changed.** Implemented the shippable tiers of
+[`docs/gestalt-design-IV.md`](gestalt-design-IV.md) — a direct reading of Wertheimer's
+1912 *Numbers and Number-Gestalts* (concrete thinking; the non-uniform, situated
+magnitude-series). Five contributions, given even weight; each turns an abstract-uniform
+encoding into a concrete-situated one. No repository/Rust/persistence change.
+
+- **C2 · Approximate magnitude.** New pure helper `src/lib/magnitude.ts`
+  (`magnitudeBand` — privileged relevance-levels with zones of indifference; `roundedCount`
+  — round numbers). Treemap tiles now show the band ("a section"), with the **exact** count
+  preserved on hover (customdata) and in the screen-reader `<ul>` (which also gained
+  level/title/count fields via `flattenTree`, fixing a latent "undefined" in that mirror).
+  `SectionRow` shows `roundedCount` with the exact count on `title`. Exact figures kept
+  where the task needs them (gist budget, charts, session deltas).
+- **C3 · The second centering (quasi-local / proportional).** `topo-centering.ts` gains
+  `position` (0..1 from `docIndex`) + a `quasiLocal` label on `StationCentering`; surfaced
+  as `POS %` in the topo Inspector and woven into `formatStructuralEvidence` (a position
+  line, and backward arcs now state their proportional span). `recenter.md` gained one
+  sentence inviting use of it. Additive to the pure, unit-tested radix engine.
+- **C4 · Division without shards.** `decompose-step.md` now cuts at the step's own seams
+  (granularity is a bias on how fine, not a target count) and requires each sub-step to
+  stand as a whole — "a part of the step, not a shard of it." Prompt text only.
+- **C1 · The false number (divergence signal).** A size-gated `ballast` kind in the
+  Structural-Tension Register (`strain-metrics.ts` + `StrainRegister.tsx`): fires only when
+  chapter-scale bulk (`CHAPTER_WORDS`, shared with `magnitude.ts`) coincides with an existing
+  recapitulative move — conservative, AI-sourced, capped at medium. Treemap **area** is
+  unchanged (still word count).
+- **C5 · The concrete-thinking law + the typus.** `VISION.md` gains principle 8 ("Concrete
+  operation — no senseless task") and a cross-referencing ADHD-UX bullet; `gist-composition.md`
+  Rule 4 reframes its anti-abstraction doctrine as a *typus* (holds the manifold; never the
+  genus).
+
+**Deferred (Tier C, gates unchanged).** Treemap **area = structural load** (killed-heatmap
+accessibility verdict + stable section IDs); multiple-articulation gist (`StoredGist`
+schema extension). Recorded in the essay and STATUS so the reasoning is not re-derived.
+
+**Behavior note.** `promptsConfig` is sparse, so the `decompose-step` / `recenter` /
+`gist-composition` edits change behavior only for prompts the user has not overridden.
+
+**Verify.** `npm test` (515 pass / 70 files — new: `magnitude.test.ts`; extended:
+`topo-centering.test.ts` position, `strain-metrics.test.ts` ballast), `npm run typecheck`,
+`npm run lint` (0 errors; pre-existing warnings only), `npm run build` all green. In-app:
+treemap tiles read as bands with exact counts on hover; the topo Inspector shows `POS %`;
+a long recapitulative section surfaces a "weight vs. work" row in the tension register.
+
+**Rollback.** `git revert` — changes are an additive pure helper + additive fields on a
+pure module + prompt/doc text + one new strain-signal kind; no schema, state, or interface
+break. A user's overridden prompts are unaffected.

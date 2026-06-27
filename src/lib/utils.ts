@@ -205,7 +205,11 @@ export const flattenTree = (nodes: Section[], parentId: string = 'root') => {
       label: node.title,
       parent: parentId,
       value: node.wordCount || 1, // Ensure visibility even if empty
-      content: node.content
+      content: node.content,
+      // Carried for the treemap's screen-reader mirror (level/title/exact count).
+      title: node.title,
+      level: node.level,
+      wordCount: node.wordCount,
     });
     if (node.children.length > 0) {
       flat = flat.concat(flattenTree(node.children, node.id));

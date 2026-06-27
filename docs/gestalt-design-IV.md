@@ -24,11 +24,14 @@
 > two modes of mind, the abstract-uniform and the concrete-situated. That thesis turns
 > out to bear directly on a tool built for one concrete mind under load.
 >
-> **A note on standing.** This is a *proposal* layer, like essay II when it was
-> written. It names exact code sites and gives the contributions even weight, but
-> **changes no code.** What ships, and when, is recorded in `STATUS.md` →
-> "Gestalt roadmap" and the migration-log, which are canonical. Read the contributions
-> below for the *why*; trust the code for the *what*.
+> **A note on standing.** This began as a *proposal* layer, like essay II. **Status
+> (2026-06-27): Tiers A + B have shipped** — C2 (approximate magnitude), C3 (the second
+> centering), C4 (division without shards), C1's divergence signal, and C5 (the
+> concrete-thinking law + the typus reframe). **Tier C remains deferred** on the gates
+> the essay names: the treemap **area** re-encoding (C1) and the multiple-articulation
+> gist (C5). The shipped record is `STATUS.md` → "Gestalt roadmap" and the migration-log,
+> which are canonical. Read the contributions below for the *why*; trust the code for the
+> *what*.
 
 ---
 
@@ -175,7 +178,7 @@ Even weight; no master thesis. Each is one move from abstract-uniform to
 concrete-situated. Status glyphs follow essay I: ⌛ *Proposed*; ⌛ *Deferred* where a
 real gate exists.
 
-### C1 · The false number — magnitude as value, not count ⌛ *Proposed (divergence signal); ⌛ Deferred (area re-encoding)*
+### C1 · The false number — magnitude as value, not count ✓ *Shipped (divergence signal, 2026-06-27); ⌛ Deferred (area re-encoding)*
 
 *The text.* §18: "number and value, or number and efficacy, are by no means always
 parallel"; "a numerical increase by no means always signifies a parallel increase in
@@ -204,7 +207,7 @@ diminishing-returns diagnostic of §18 made visible: the copper-small-change sec
 flagged. The typed home is the existing `StructuralTruth` union in
 `src/types/index.ts` — the magnitude reading attaches to it by name.
 
-### C2 · Approximate magnitude — zones of indifference, relevance-levels ⌛ *Proposed*
+### C2 · Approximate magnitude — zones of indifference, relevance-levels ✓ *Shipped (2026-06-27)*
 
 *The text.* §§8–10: the series is graded, not uniform; "a dozen" is "a more specific
 stepped-configuration of 'many'" with a zone of indifference; privileged thresholds
@@ -229,7 +232,7 @@ band. Apply it to **orientation** surfaces (treemap label/hover, the SR `<ul>`,
 exactness up to the limit of the task, and no further. This is Gestalt-faithful and
 ADHD-faithful at once: less precision-noise, more graspable shape.
 
-### C3 · The second centering — quasi-local / proportional ⌛ *Proposed*
+### C3 · The second centering — quasi-local / proportional ✓ *Shipped (2026-06-27)*
 
 *The text.* §17: a part has a "quasi-local predetermination" — a *place within the
 extent of the whole*. "101 is near 100"; "50 … the middle of 100." Position relative to
@@ -253,7 +256,7 @@ noted here only conceptually — a linear dissertation has no cyclic series, tho
 writing process, like the clock, is "a chain that cannot be started at an arbitrary
 point" and whose operations are not freely reversible.
 
-### C4 · Division without shards — cut at the joints ⌛ *Proposed*
+### C4 · Division without shards — cut at the joints ✓ *Shipped (2026-06-27)*
 
 *The text.* §15: division is "not the equality of the parts" but "a predetermination
 inherent in the *Gestalt* of the whole … the tendency to obtain new natural, unitary
@@ -279,7 +282,7 @@ target cardinality imposed on it. The deterministic test for "real part vs. shar
 already exists: `checkCommitmentMesh` (`diagnostic-helpers.ts`) — a part whose joins
 dangle is a shard. No schema or caller changes.
 
-### C5 · The typus, and the concrete-thinking law ⌛ *Proposed (reframe); ⌛ Deferred (multi-articulation)*
+### C5 · The typus, and the concrete-thinking law ✓ *Shipped (reframe + law, 2026-06-27); ⌛ Deferred (multi-articulation)*
 
 This contribution pairs the constructive theory of generality (§6) with the governing
 principle it implies (§§5, 16.5, 20). They belong together: the typus is what concrete

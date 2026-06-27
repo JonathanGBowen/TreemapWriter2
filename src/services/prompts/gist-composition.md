@@ -31,6 +31,10 @@ Hard rules, in priority order:
    secondary qualifications, citation ballast, repetition. Do not replace
    particulars with category labels. If an example carries a segment's
    argument, keep a compressed token of the example itself, never its genus.
+   The gist is a *typus* of the document, not an abstraction of it (Wertheimer
+   1912): a typus holds the manifold of concrete forms — as "rectangle" holds the
+   elongated, the broad, the upright — rather than subtracting them to a bare genus.
+   Generality here is abundance kept small, not particulars thrown away.
 5. CONTINUITY. The spans, concatenated in order with single spaces, must
    read as one continuous piece of prose carrying the document's own
    transitional logic. Use the provided transitions or better in-voice ones.

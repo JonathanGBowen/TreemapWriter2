@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deriveTopo } from '../topo-derive';
-import { computeCentering, upstreamClosure } from '../topo-centering';
+import { computeCentering, upstreamClosure, quasiLocalLabel } from '../topo-centering';
 import type { Section, TestSuite, TestSuiteEntry } from '../../../../types';
 
 // --- tiny builders -------------------------------------------------------
@@ -108,6 +108,34 @@ describe('computeCentering — degenerate inputs', () => {
     expect(c.byId).toEqual({});
     expect(c.maxRank).toBe(0);
     expect(c.backwardCount).toBe(0);
+  });
+});
+
+describe('computeCentering — quasi-local position (§17, the second centering)', () => {
+  it('spreads position 0..1 over authored order, with concrete place-words', () => {
+    const c = computeCentering(build(['a', 'b', 'c', 'd', 'e']));
+    expect(c.byId.a.position).toBe(0); // first section
+    expect(c.byId.e.position).toBe(1); // last section
+    expect(c.byId.c.position).toBeCloseTo(0.5); // middle of five
+    expect(c.byId.a.quasiLocal).toBe('near the beginning');
+    expect(c.byId.c.quasiLocal).toBe('around the middle');
+    expect(c.byId.e.quasiLocal).toBe('near the end');
+  });
+
+  it('a single-section document sits at the beginning, not divide-by-zero', () => {
+    const c = computeCentering(build(['solo']));
+    expect(c.byId.solo.position).toBe(0);
+    expect(c.byId.solo.quasiLocal).toBe('near the beginning');
+  });
+});
+
+describe('quasiLocalLabel — band thresholds', () => {
+  it('maps each band', () => {
+    expect(quasiLocalLabel(0)).toBe('near the beginning');
+    expect(quasiLocalLabel(0.3)).toBe('in the first half');
+    expect(quasiLocalLabel(0.5)).toBe('around the middle');
+    expect(quasiLocalLabel(0.75)).toBe('in the second half');
+    expect(quasiLocalLabel(1)).toBe('near the end');
   });
 });
 

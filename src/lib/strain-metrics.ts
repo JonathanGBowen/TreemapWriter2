@@ -8,6 +8,7 @@
 
 import type { Section, SectionSpec, TestSuite } from '../types';
 import { checkCommitmentMesh } from './diagnostic-helpers';
+import { CHAPTER_WORDS } from './magnitude';
 
 export type StrainBand = 'none' | 'medium' | 'high';
 
@@ -16,7 +17,11 @@ export type StrainSignalKind =
   | 'dangling-outgoing'
   | 'center-of-gravity'
   | 'adrift'
-  | 'recapitulative';
+  | 'recapitulative'
+  // C1 (docs/gestalt-design-IV.md): Wertheimer 1912 §18 — number ≠ value. A section
+  // large in WORD COUNT but light in structural ADVANCE: bulk that is not doing work,
+  // "a mountain of copper small change [that] cannot buy a house."
+  | 'ballast';
 
 export interface StrainSignal {
   kind: StrainSignalKind;
@@ -53,8 +58,9 @@ function isBlocked(sectionId: string, byId: Map<string, Section>, testSuite: Tes
   return false;
 }
 
-/** Collect the AI corroboration signals for a section from its last diagnostic + gestalt ops. */
-function aiSignals(testSuite: TestSuite, sectionId: string): StrainSignal[] {
+/** Collect the AI corroboration signals for a section from its last diagnostic + gestalt ops.
+ *  `words` is the section's word count, used only for the size-gated ballast signal. */
+function aiSignals(testSuite: TestSuite, sectionId: string, words: number): StrainSignal[] {
   const entry = testSuite[sectionId];
   if (!entry) return [];
   const out: StrainSignal[] = [];
@@ -77,10 +83,23 @@ function aiSignals(testSuite: TestSuite, sectionId: string): StrainSignal[] {
     });
   }
 
-  if (entry.lastDiagnostic?.moveResults.some((m) => m.advance === 'recapitulative')) {
+  const hasRecapitulative = entry.lastDiagnostic?.moveResults.some((m) => m.advance === 'recapitulative') ?? false;
+  if (hasRecapitulative) {
     out.push({
       kind: 'recapitulative',
       detail: 'has a move that is present but recapitulative (adds nothing new)',
+      source: 'ai',
+    });
+  }
+
+  // Ballast (C1): only when a recapitulative move COINCIDES with large bulk — number
+  // diverging from value. Conservative by design (rides an existing AI finding + a size
+  // gate), so it never fires on a large section that is doing real work, and being
+  // AI-sourced it cannot originate a high band.
+  if (hasRecapitulative && words >= CHAPTER_WORDS) {
+    out.push({
+      kind: 'ballast',
+      detail: 'heavy in words but light in advance — a chapter-scale section carrying a recapitulative move',
       source: 'ai',
     });
   }
@@ -114,7 +133,7 @@ export function computeStrain(
     direction: f.direction,
     source: 'deterministic' as const,
   }));
-  const ai = aiSignals(testSuite, sectionId);
+  const ai = aiSignals(testSuite, sectionId, byId.get(sectionId)?.wordCount ?? 0);
   const signals = [...deterministic, ...ai];
   if (signals.length === 0) return blank;
 

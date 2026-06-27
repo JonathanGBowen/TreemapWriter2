@@ -117,6 +117,20 @@ problem, solved once.**
    session*. The documentation set is part of the product. Keeping it honest is
    load-bearing, not housekeeping: every session that pays the re-derivation tax
    is a session the user paid for.
+8. **Concrete operation — no senseless task** (sibling to #6). Every operation the
+   tool asks of the writer must carry its *full, concrete meaning, attached to the
+   live document* — never a reality-detached chore performed for its own sake. This
+   is Wertheimer's 1912 finding (*Numbers and Number-Gestalts*) that thinking
+   abstracted from lived reality is not a higher mode but a stalling one: set someone
+   a senseless abstract task and you reap "caprice, boredom, or vexation … fatigue
+   and headaches." For a mind whose scarce resource is executive function that is not
+   a metaphor — it is the failure mode. So a prompted action names *what the structure
+   now requires and why, here* (the `NextAction` gap→vector demand rhetoric;
+   `coach.md`; `questionTheGoal`'s permission to drop a goal gone senseless), and the
+   tool prefers approximate magnitude where only orientation is wanted over false
+   precision (see `src/lib/magnitude.ts`). The test for any new affordance: *could the
+   writer say what this is for, in terms of the document in front of them?* If not, it
+   is busywork — cut it. (See [`gestalt-design-IV.md`](gestalt-design-IV.md).)
 
 ## Aesthetic
 
@@ -153,6 +167,11 @@ amplify those moments of consequence; it is never decoration at the margins.
   minimum fallback, not the goal.
 - **Surface state at a glance** via color and shape, not text. The treemap is the
   primary affordance for "where am I in this document?".
+- **Never demand a senseless operation** (principle 8). An action whose meaning is
+  not live in the document — busywork, a number more precise than the task needs, a
+  step the writer cannot say the *point* of — is an executive-function tax. Prefer
+  approximate magnitude (a section / about a chapter) to false precision on glance
+  surfaces, and frame every next step as a structural demand, not a chore.
 
 ## What we will not build
 
