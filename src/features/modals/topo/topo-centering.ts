@@ -28,6 +28,11 @@ export interface StationCentering {
   isRadix: boolean; // a genuine source the document rests on (inDegree 0, centrality > 0)
   isTelos: boolean; // a genuine sink something feeds (outDegree 0, inDegree > 0)
   inCycle: boolean; // member of a dependency cycle (structural pathology)
+  // Wertheimer 1912 §17 — the SECOND centering: not rank in the dependency order
+  // (topological) but the part's quasi-local PLACE in the extent of the whole. "101 is
+  // near 100"; "50 is the middle." A complement to rank, read off authored position.
+  position: number; // 0..1 — docIndex / maxDocIndex (0 = first section, 1 = last)
+  quasiLocal: string; // prose place: "near the beginning" … "near the end"
 }
 
 export interface Centering {
@@ -128,6 +133,16 @@ function condensationRanks(
   return rank;
 }
 
+// Wertheimer 1912 §17 — a proportional position (0..1) over authored order, said in
+// concrete place-words rather than an index. The band IS a zone of indifference.
+export function quasiLocalLabel(position: number): string {
+  if (position < 0.15) return 'near the beginning';
+  if (position < 0.45) return 'in the first half';
+  if (position < 0.55) return 'around the middle';
+  if (position < 0.85) return 'in the second half';
+  return 'near the end';
+}
+
 // A prerequisite (source) that sits AFTER its dependent (target) in authored
 // order — the reader must read ahead. Wertheimer's "two-wings" distortion.
 function backwardArcSet(model: TopoModel): Set<string> {
@@ -148,6 +163,8 @@ export function computeCentering(model: TopoModel): Centering {
   const { compId, compMembers } = sccGroups(ids, reach);
   const rankComp = condensationRanks(model, compId, compMembers);
 
+  const maxDocIndex = model.stations.reduce((m, s) => Math.max(m, s.docIndex), 0);
+
   const byId: Record<string, StationCentering> = {};
   for (const s of model.stations) {
     const id = s.id;
@@ -157,6 +174,7 @@ export function computeCentering(model: TopoModel): Centering {
     transitiveDependents.delete(id);
     const comp = compId.get(id) as number;
     const centrality = transitiveDependents.size;
+    const position = s.docIndex / Math.max(1, maxDocIndex);
     byId[id] = {
       id,
       inDegree,
@@ -167,6 +185,8 @@ export function computeCentering(model: TopoModel): Centering {
       isRadix: inDegree === 0 && centrality > 0,
       isTelos: outDegree === 0 && inDegree > 0,
       inCycle: (compMembers.get(comp) as string[]).length > 1,
+      position,
+      quasiLocal: quasiLocalLabel(position),
     };
   }
 
@@ -207,15 +227,30 @@ export function formatStructuralEvidence(model: TopoModel, centering: Centering,
   const c = centering.byId[sectionId];
   if (!c || (c.inDegree === 0 && c.outDegree === 0)) return '';
   const rests = upstreamClosure(model, sectionId).size;
+  const pct = (p: number) => `${Math.round(p * 100)}%`;
   const lines: string[] = [
     `Dependency rank ${c.rank} of ${centering.maxRank} (0 = a source the rest builds on; ${centering.maxRank} = a final sink).`,
     `${c.centrality} section(s) transitively rest on this one; it rests on ${rests}.`,
+    // §17 quasi-local centering: where it sits in the extent of the whole, not its rank.
+    `It sits ${c.quasiLocal} (position ${pct(c.position)} through the document).`,
   ];
   if (c.isRadix) lines.push('It is a RADIX — a structural source the document rests on (depends on nothing; much depends on it).');
   if (c.isTelos) lines.push('It is a TELOS — a structural sink: it builds on earlier work but nothing yet builds on it.');
   if (c.inCycle) lines.push('It lies in a DEPENDENCY CYCLE — a structural pathology (its prerequisites ultimately depend back on it).');
-  const back = [...model.inbound(sectionId), ...model.outbound(sectionId)].filter((a) => centering.backwardArcs.has(a.id)).length;
-  if (back > 0) lines.push(`${back} of its links run BACKWARD against reading order (a prerequisite placed after what needs it).`);
+  const backArcs = [...model.inbound(sectionId), ...model.outbound(sectionId)].filter((a) => centering.backwardArcs.has(a.id));
+  if (backArcs.length > 0) {
+    // Report the widest backward span concretely: a prerequisite placed far after what
+    // needs it is a worse two-wings distortion than one placed just after (§17).
+    const widest = backArcs.reduce((best, a) => {
+      const span = Math.abs((centering.byId[a.source]?.position ?? 0) - (centering.byId[a.target]?.position ?? 0));
+      return span > best.span ? { a, span } : best;
+    }, { a: backArcs[0], span: -1 });
+    const sp = centering.byId[widest.a.source]?.position ?? 0;
+    const tp = centering.byId[widest.a.target]?.position ?? 0;
+    lines.push(
+      `${backArcs.length} of its links run BACKWARD against reading order: a prerequisite that sits ${pct(sp)} through is needed at ${pct(tp)} (a span of ${pct(widest.span)} of the document).`,
+    );
+  }
   return lines.join('\n');
 }
 

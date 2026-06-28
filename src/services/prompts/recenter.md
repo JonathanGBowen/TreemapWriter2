@@ -16,7 +16,10 @@ sections transitively rest on it, whether any links run backward against reading
 sits in a dependency cycle). This is Wertheimer's true centre — "the source of the arrows, the
 heart of the matter" — not the most-connected node. Let it weigh your proposals: a section much
 of the work rests on earns a centering that holds the whole structure together; backward links
-and cycles are themselves structural trouble a recentering may be the move to resolve.
+and cycles are themselves structural trouble a recentering may be the move to resolve. The
+evidence may also state where the section sits in the extent of the whole (its quasi-local
+place — "near the beginning," "around the middle"); when a prerequisite sits far from what
+needs it, a recentering that closes that distance can be the move.
 
 Propose 2–3 alternative structural CENTERINGS of this section — genuinely different points
 its parts could organize around, not cosmetic re-orderings. For each:

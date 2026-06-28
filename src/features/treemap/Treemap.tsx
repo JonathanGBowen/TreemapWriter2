@@ -6,6 +6,7 @@ import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponentImport from 'react-plotly.js/factory';
 import { Section, TestSuite } from "../../types";
 import { flattenTree } from "../../lib/utils";
+import { magnitudeBand, roundedCount } from "../../lib/magnitude";
 import { summarizeReadiness } from "../tests-panel/diagnostic-config";
 
 // `react-plotly.js/factory` is a CommonJS module (module.exports.default = factory).
@@ -215,13 +216,17 @@ export const Treemap: React.FC<TreemapProps> = ({
       sort: false, // DISABLE SORTING to preserve Markdown reading order
       ids: ids,
       labels: ['Dissertation', ...flatData.map(d => d.label.length > 25 ? d.label.substring(0, 22).trim() + '...' : d.label)],
-      customdata: ['', ...flatData.map(d => d.label)],
+      // customdata carries [full untruncated label, EXACT word count] per node — the
+      // hover keeps both, even though the on-tile `text` shows an approximate magnitude
+      // (Wertheimer's zones of indifference: a glance wants the shape, not false
+      // precision; hover is the measurement gesture and stays exact). See magnitude.ts.
+      customdata: [['Dissertation', `${totalWordCount} words`], ...flatData.map(d => [d.label, `${d.value} words`])],
       parents: ['', ...flatData.map(d => d.parent)],
       values: [Math.max(1, totalWordCount), ...flatData.map(d => d.value)], // Ensure at least 1
-      text: [`${totalWordCount} words`, ...flatData.map(d => `${d.value} words`)],
+      text: [`${roundedCount(totalWordCount)} words`, ...flatData.map(d => magnitudeBand(d.value).label)],
       textinfo: "label+text",
       hoverinfo: "label+text",
-      hovertemplate: "<b>%{customdata}</b><br>%{text}<extra></extra>",
+      hovertemplate: "<b>%{customdata[0]}</b><br>%{customdata[1]}<extra></extra>",
       textfont: { color: fontColors, family: '"JetBrains Mono", monospace' },
       marker: {
         colors: colors,
@@ -274,7 +279,7 @@ export const Treemap: React.FC<TreemapProps> = ({
           const readiness = summarizeReadiness(testSuite[d.id]?.lastDiagnostic?.overallReadiness);
           return (
             <li key={d.id}>
-              {`Level ${d.level}: ${d.title} — ${d.wordCount} words, ${readiness.label}`}
+              {`Level ${d.level}: ${d.title} — ${magnitudeBand(d.wordCount).label} (${d.wordCount} words), ${readiness.label}`}
               {d.id === selectedId ? ', selected' : ''}
             </li>
           );

@@ -281,7 +281,33 @@ the live Zotero local-API picker / Web-API sync are deliberately out of scope (b
   (broken/weak/fog/backward/cycle) into the Structural-Tension Register as S₁→S₂ vectors. The
   spec-derivation `contentPreview` slices (800 / 600) remain the only input char-slices (every
   other arbitrary cap was deleted for the `checkContextFit` token-budget pre-flight,
-  2026-06-18).
+  2026-06-18). **Fourth reading — essay IV (Tier A + B shipped 2026-06-27; see
+  [`docs/gestalt-design-IV.md`](docs/gestalt-design-IV.md) +
+  [`docs/migration-log.md`](docs/migration-log.md)):** a direct reading of
+  Wertheimer's *earliest* work (*Numbers and Number-Gestalts*, 1912) mines its theory
+  of **concrete thinking** and the **non-uniform, situated magnitude-series** for five
+  even-weight contributions to the tool's handling of *number, magnitude and division*
+  — (C1) a magnitude-tF/fT *divergence signal* (word-count magnitude vs. structural
+  load; the treemap **area** re-encoding stays gated as before); (C2) **approximate
+  magnitude** rendering (zones of indifference + privileged relevance-levels) on
+  orientation surfaces, exact counts kept only where the task needs them; (C3) a second,
+  **quasi-local/proportional** centering ("three-quarters through") beside the
+  topological radix, riding the existing `Station.docIndex`; (C4) **division without
+  shards** — a seam-first fix to `decompose-step.md`'s count-first granularity; (C5) the
+  gist reframed as a **typus** plus a named **concrete-thinking design law** (no
+  reality-detached operation may be asked of the writer) with a §20 audit. **Shipped
+  (Tier A + B):** the `src/lib/magnitude.ts` helper (`magnitudeBand` / `roundedCount`)
+  now drives treemap tile labels (exact counts kept on hover + the SR mirror) and the
+  sidebar word meta (C2); `topo-centering.ts` carries a `position`/`quasiLocal` metric
+  surfaced in the topo Inspector (`POS %`) and the recenter / reconstruct-whole evidence,
+  with backward arcs now reporting their proportional span (C3); `decompose-step.md` cuts
+  at the step's seams instead of to a fixed count (C4); a size-gated `ballast` signal joins
+  the Structural-Tension Register when chapter-scale bulk coincides with a recapitulative
+  move (C1, divergence — treemap **area** still word count); and VISION principle 8
+  ("Concrete operation — no senseless task") plus the gist's *typus* reframe (C5). **Still
+  deferred (Tier C, unchanged gates):** treemap **area = structural load** (killed-heatmap
+  accessibility verdict + stable section IDs) and the multiple-articulation gist
+  (`StoredGist` schema extension).
 - ~~**Streaming AI in a sidebar coach panel.**~~ Done 2026-06-20 (see
   [`docs/migration-log.md`](docs/migration-log.md)). `streamCoachAdvice` now
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and
