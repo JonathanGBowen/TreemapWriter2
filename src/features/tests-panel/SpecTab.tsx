@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Section, SectionSpec, SectionFunction, TestSuiteEntry, CommitmentFinding, NextAction } from "../../types";
 import { SECTION_FUNCTIONS } from "../../lib/constants";
+import { buildStructuralSurround } from "../../lib/diagnostic-helpers";
+import { selectSpecMap } from "../../lib/spec-map";
 import { useStore } from "../../state";
 import { useCurrentSection } from "./use-current-section";
 import { Pip } from "../shared/Pip";
@@ -114,35 +116,43 @@ function CommitmentMeshCard({ findings }: { findings: CommitmentFinding[] }) {
   );
 }
 
-function ContextList({ label, items }: { label: string; items: string[] }) {
+/** One labelled group inside the Context & commitments zone — a quiet mono
+ *  eyebrow (optional glyph) over a list of role-reconstruction sentences. */
+function CtxGroup({ glyph, label, items }: { glyph?: string; label: string; items: string[] }) {
   return (
     <div>
-      <div className="font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text-2 mb-[4px]">{label}</div>
+      <div className="font-mono text-[8px] tracking-[0.13em] uppercase text-hld-muted-text mb-[4px]">
+        {glyph && <span className="mr-[5px]">{glyph}</span>}{label}
+      </div>
       <div className="flex flex-col gap-[5px]">
-        {items.map((t, i) => <div key={i} className="text-[12px] leading-relaxed font-sans text-hld-text pl-[9px] border-l border-hld-border">{t}</div>)}
+        {items.map((t, i) => <div key={i} className="text-[12px] leading-relaxed font-sans text-hld-muted-text-2 pl-[9px] border-l border-hld-border">{t}</div>)}
       </div>
     </div>
   );
 }
 
-function ContextDisclosure({ spec, coherenceNotes }: { spec: SectionSpec; coherenceNotes: string[] }) {
-  const count = spec.incomingContext.length + spec.outgoingCommitments.length + coherenceNotes.length;
-  if (count === 0) return null;
+/** The relocated structural surround (Quiet target, EDIT 4). The editor's rail
+ *  is gone; the part-in-whole context lives here, where the product already keeps
+ *  structure — as the Spec body's single lit block (◇ Whole / → Receives /
+ *  ↘ Supplies). Self-gates to nothing when there is no context to show. */
+function ContextCommitmentsZone({ documentClaim, spec, coherenceNotes }: { documentClaim?: string; spec: SectionSpec; coherenceNotes: string[] }) {
+  const hasAny = !!documentClaim || spec.incomingContext.length > 0 || spec.outgoingCommitments.length > 0 || coherenceNotes.length > 0;
+  if (!hasAny) return null;
   return (
-    <Disclosure label="Context & commitments" count={count}>
-      <div className="flex flex-col gap-[10px]">
-        {spec.incomingContext.length > 0 && <ContextList label="Receives from prior" items={spec.incomingContext} />}
-        {spec.outgoingCommitments.length > 0 && <ContextList label="Must establish for later" items={spec.outgoingCommitments} />}
-        {coherenceNotes.length > 0 && (
-          <div>
-            <div className="font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text-2 mb-[4px]">Coherence</div>
-            <div className="flex flex-col gap-[5px]">
-              {coherenceNotes.map((n, i) => <div key={i} className="text-[12px] leading-relaxed font-sans text-hld-muted-text-2 pl-[9px] border-l border-hld-border">{n}</div>)}
-            </div>
-          </div>
-        )}
+    <div className="border-l-2 border-hld-cyan bg-[rgba(0,232,245,0.05)] shadow-[inset_0_0_18px_rgba(0,232,245,0.05)] px-[13px] py-[11px]">
+      <div className="flex items-center gap-[7px] mb-[10px]">
+        <Pip status="cyan" size="sm" />
+        <span className="font-mono text-[8.5px] tracking-[0.15em] uppercase text-hld-cyan">Context &amp; commitments</span>
+        <span className="flex-1" />
+        <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-hld-muted">from center</span>
       </div>
-    </Disclosure>
+      <div className="flex flex-col gap-[9px]">
+        {documentClaim && <CtxGroup glyph="◇" label="Whole" items={[documentClaim]} />}
+        {spec.incomingContext.length > 0 && <CtxGroup glyph="→" label="Receives" items={spec.incomingContext} />}
+        {spec.outgoingCommitments.length > 0 && <CtxGroup glyph="↘" label="Supplies" items={spec.outgoingCommitments} />}
+        {coherenceNotes.length > 0 && <CtxGroup label="Coherence" items={coherenceNotes} />}
+      </div>
+    </div>
   );
 }
 
@@ -162,11 +172,18 @@ function LegacyResult({ status, critique }: { status: string; critique?: string 
  *  is NEXT → Moves (the actionable core); claim, dependencies and context fold. */
 function SpecBody({ id, spec, entry, flatSections }: { id: string; spec: SectionSpec; entry: TestSuiteEntry; flatSections: ReturnType<typeof flatten> }) {
   const testSuite = useStore((s) => s.testSuite);
+  const sections = useStore((s) => s.sections);
   const updateSpec = useStore((s) => s.updateSpec);
   const updateMainClaim = useStore((s) => s.updateMainClaim);
   const updateDependencies = useStore((s) => s.updateDependencies);
   const setShowSpecModal = useStore((s) => s.setShowSpecModal);
   const diagnostic = entry.lastDiagnostic;
+  // The relocated structural surround — the whole this part serves (root claim)
+  // plus its own incoming/outgoing commitments. Pure, derived from the tree.
+  const surround = useMemo(
+    () => buildStructuralSurround(id, sections, selectSpecMap(testSuite)),
+    [id, sections, testSuite],
+  );
 
   const writeMoves = (requiredMoves: SectionSpec['requiredMoves']) => updateSpec(id, { ...spec, requiredMoves });
   const editMove = (i: number, text: string) => writeMoves(spec.requiredMoves.map((m, idx) => (idx === i ? { ...m, description: text } : m)));
@@ -177,13 +194,13 @@ function SpecBody({ id, spec, entry, flatSections }: { id: string; spec: Section
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-[16px] py-[16px] flex flex-col gap-[18px]">
+      <ContextCommitmentsZone documentClaim={surround.documentClaim} spec={spec} coherenceNotes={diagnostic?.coherenceNotes || []} />
       {diagnostic && <NextCard nextAction={diagnostic.nextAction} fallback={diagnostic.nextPriority} />}
       {diagnostic?.commitmentFindings && <CommitmentMeshCard findings={diagnostic.commitmentFindings} />}
       <MoveList spec={spec} diagnostic={diagnostic} onEdit={editMove} onAdd={addMove} onRemove={removeMove} onRefine={() => setShowSpecModal(true)} />
       <GestaltActions />
       <ClaimDisclosure spec={spec} onClaim={setClaim} onFunction={setFunction} />
       <DependencyChips sectionId={id} dependencies={entry.dependencies || []} flatSections={flatSections} testSuite={testSuite} onUpdate={(deps) => updateDependencies(id, deps)} />
-      <ContextDisclosure spec={spec} coherenceNotes={diagnostic?.coherenceNotes || []} />
       {!diagnostic && entry.lastResult && <LegacyResult status={entry.status} critique={entry.lastResult.critique} />}
     </div>
   );

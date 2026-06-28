@@ -30,6 +30,18 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
 
+The **Quiet center column** shipped 2026-06-28 (see
+[`docs/migration-log.md`](docs/migration-log.md)) — the decided form of a Claude Design
+"Tidy Center Column" exploration. The editor's two structure-as-prose chrome blocks were
+removed so the manuscript *is* the column: the pinned structural-surround rail is gone, the
+floating "you were here" nudge became a slim left-margin **resume marker** (new
+`features/coach/ResumeMarker.tsx`, with per-section caret restore via a new ephemeral
+`sectionCaret` slice; the F1 90 s stall escalation is preserved), and one quiet
+`NEXT EXPECTS →` caption sits above the prose. The surround it carried now leads the right
+Spec panel as a lit **"Context & commitments"** zone (`◇ WHOLE / → RECEIVES / ↘ SUPPLIES`) —
+where the product already keeps structure. Deferred polish: pixel-tracking the marker to the
+remembered line (`coordsAtPos`) and cross-reload caret persistence.
+
 **Fixed 2026-06-24 — a silent desktop persistence outage** (see
 [`docs/migration-log.md`](docs/migration-log.md)). From 2026-06-17, every
 `project_write` (prose, specs, analyses, snapshots) had been failing silently on
@@ -261,7 +273,10 @@ streams keep their own inline indicators rather than the pill.
   ref — the manual surfaces already ship.
 
 - **Profile-driven wave, remaining items (F2 · F3 · F5).** The 2026-06-20 wave
-  shipped F1/F4/F6; the analysis flagged three more, ranked by clinical leverage:
+  shipped F1/F4/F6 (the **F4** surround rail and the **F1** floating cue were later
+  *relocated* by the 2026-06-28 Quiet center-column redesign — rail → Spec-panel
+  "Context & commitments" zone, nudge → margin resume marker, with F1's stall escalation
+  preserved); the analysis flagged three more, ranked by clinical leverage:
   **(F2) durable authorship/provenance marking for all AI-introduced text** —
   recognition memory is 2nd–5th %ile and false-alarms, so AI prose must stay
   visibly + persistently distinguishable from the user's own (the sourceless

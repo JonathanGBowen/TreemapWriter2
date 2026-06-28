@@ -10,20 +10,32 @@ import type { AppState } from '.';
  * which is the committed (parsed-from-disk) version. The split protects user
  * input across crashes: even mid-keystroke, the committed copy is intact.
  */
+/** Last caret a section was left at — drives per-section resume (the editor's
+ *  margin "resume marker" and caret-restore on re-entry). Committed when a
+ *  section is departed, so it only ever names a place you can return to. */
+export interface SectionCaret {
+  anchor: number;
+  head: number;
+}
+
 export interface EditorStateSlice {
   localContent: string;
   selectedId: string | null;
   activeLineIndex: number | null;
+  /** sectionId → the caret last left there. Ephemeral (per session). */
+  sectionCaret: Record<string, SectionCaret>;
 
   setLocalContent: (content: string | ((prev: string) => string)) => void;
   setSelectedId: (id: string | null | ((prev: string | null) => string | null)) => void;
   setActiveLineIndex: (idx: number | null) => void;
+  setSectionCaret: (id: string, caret: SectionCaret) => void;
 }
 
 export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateSlice> = (set) => ({
   localContent: '',
   selectedId: null,
   activeLineIndex: null,
+  sectionCaret: {},
 
   setLocalContent: (content) =>
     set((state) => ({
@@ -34,4 +46,6 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
       selectedId: typeof id === 'function' ? id(state.selectedId) : id,
     })),
   setActiveLineIndex: (idx) => set({ activeLineIndex: idx }),
+  setSectionCaret: (id, caret) =>
+    set((state) => ({ sectionCaret: { ...state.sectionCaret, [id]: caret } })),
 });

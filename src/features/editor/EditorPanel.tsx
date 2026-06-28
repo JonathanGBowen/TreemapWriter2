@@ -12,8 +12,7 @@ import { languages } from '@codemirror/language-data';
 import { GFM, Table } from '@lezer/markdown';
 import { hldExtensions, hldTheme } from '../../lib/editorTheme';
 import { livePreviewPlugin } from '../../lib/livePreview';
-import { SurroundRail } from '../coach/SurroundRail';
-import { AmbientCue } from '../coach/AmbientCue';
+import { ResumeMarker } from '../coach/ResumeMarker';
 import { EditorView, keymap, drawSelection, highlightSpecialChars, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
@@ -88,6 +87,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const projectName = useStore(s => s.projectName);
   const setShowHistoryModal = useStore(s => s.setShowHistoryModal);
   const openRevisionWorkspace = useStore(s => s.openRevisionWorkspace);
+  const setSectionCaret = useStore(s => s.setSectionCaret);
 
   // Project lifecycle, for the no-project empty state (desktop only). On the
   // desktop demo/preview there is no on-disk handle, so nothing the user types
@@ -103,9 +103,18 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const onOpenHistory = () => setShowHistoryModal(true);
 
   const currentSection = useCurrentSection();
-  
+
+  // The one quiet caption line (EDIT 2): the section's first outgoing commitment
+  // — "what the next section expects" — the single structural fact worth a glance
+  // while writing. Self-gates to nothing when there is no commitment yet.
+  const currentEntry = currentSection ? testSuite[currentSection.id] : undefined;
+  const nextExpects = currentEntry?.spec?.outgoingCommitments?.[0]?.trim() || '';
+
   const [titleInput, setTitleInput] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  // Live caret per section (no re-render); committed to the store on departure so
+  // the resume marker + caret-restore only ever name a place you can return to.
+  const caretRef = useRef<Record<string, { anchor: number; head: number }>>({});
   
   const mdInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +211,14 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       }
     };
     findMatch(sections);
-    
+
+    // Remember the live caret for whatever section it now sits in (cheap ref
+    // write; the store commit happens on departure — see the section effect).
+    if (match) {
+      const sel = viewUpdate.state.selection.main;
+      caretRef.current[(match as Section).id] = { anchor: sel.anchor, head: sel.head };
+    }
+
     if (match && match.id !== currentSection?.id) {
       // Mark that this change came from the editor, so we don't jump scroll
       skipNextScroll.current = true;
@@ -210,37 +226,67 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
+  // Restore the caret a section was last left at (resume-marker click, and the
+  // default on re-entry). Falls back to the section start when none is remembered.
+  const restoreCaret = (anchor: number, head: number) => {
+    const view = cmRef.current?.view;
+    if (!view) return;
+    view.focus();
+    try {
+      view.dispatch({
+        selection: { anchor, head },
+        effects: [EditorView.scrollIntoView(head, { y: 'center' })],
+      });
+    } catch (e) {
+      console.warn('Could not restore caret', e);
+    }
+  };
+
+  const handleResume = () => {
+    if (!currentSection) return;
+    const pos = useStore.getState().sectionCaret[currentSection.id];
+    if (pos) restoreCaret(pos.anchor, pos.head);
+  };
+
   const prevSectionId = useRef(currentSection?.id);
 
-  // Handle external section changes (e.g., clicking on tree graph)
+  // Handle section changes (e.g., clicking a tree tile). On leaving a section,
+  // commit its last caret so a return restores it (the resume point); on entry,
+  // restore the remembered caret if any, else fall back to the section start.
   useEffect(() => {
-    if (!focusMode && currentSection && currentSection.id !== prevSectionId.current) {
-      prevSectionId.current = currentSection.id;
-      
-      const view = cmRef.current?.view;
-      if (view) {
-         if (!skipNextScroll.current) {
-           view.focus();
-           try {
-             // Dispatch selection and scroll effect together for atomicity
-             view.dispatch({ 
-                selection: { anchor: currentSection.startOffset, head: currentSection.startOffset },
-                effects: [
-                  EditorView.scrollIntoView(currentSection.startOffset, { y: 'start', yMargin: 100 })
-                ]
-             });
-           } catch(e) {
-             console.warn("Could not scroll to section", e);
-           }
-         }
-      }
-    } else if (focusMode && currentSection && currentSection.id !== prevSectionId.current) {
-      prevSectionId.current = currentSection.id;
+    const departing = prevSectionId.current;
+    const changed = !!currentSection && currentSection.id !== departing;
+    if (changed && departing && caretRef.current[departing]) {
+      setSectionCaret(departing, caretRef.current[departing]);
     }
-    
+
+    if (changed) {
+      const sec = currentSection!;
+      prevSectionId.current = sec.id;
+      if (!focusMode) {
+        const view = cmRef.current?.view;
+        if (view && !skipNextScroll.current) {
+          // Restore the resume point for this section, or its start if unvisited.
+          const remembered = useStore.getState().sectionCaret[sec.id];
+          const anchor = remembered?.anchor ?? sec.startOffset;
+          const head = remembered?.head ?? sec.startOffset;
+          view.focus();
+          try {
+            // Dispatch selection and scroll effect together for atomicity
+            view.dispatch({
+              selection: { anchor, head },
+              effects: [EditorView.scrollIntoView(head, { y: 'start', yMargin: 100 })],
+            });
+          } catch (e) {
+            console.warn("Could not scroll to section", e);
+          }
+        }
+      }
+    }
+
     // Reset the skip flag
     skipNextScroll.current = false;
-  }, [currentSection, focusMode]);
+  }, [currentSection, focusMode, setSectionCaret]);
 
   
   const handleMdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,15 +411,26 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
          </div>
       </div>
 
-      {/* Part-in-whole rail — pinned in BOTH focus and normal mode, so the
-          argument's structure stays external working memory while writing a
-          part. Self-gates to nothing when there is no spec. */}
-      {!isEmptyState && !needsProject && <SurroundRail />}
+      {/* One quiet caption line (Quiet target, EDIT 2) — chrome above the
+          manuscript, centered to the prose measure. The structural surround now
+          lives in the Spec panel; only "what the next section expects" stays
+          here, the single structural fact worth a glance while writing.
+          Self-gates to nothing when there is no outgoing commitment yet. */}
+      {!isEmptyState && !needsProject && nextExpects && (
+        <div className="shrink-0 w-full max-w-[800px] mx-auto px-[64px] pt-[10px] pb-[6px]">
+          <div className="flex items-baseline gap-[11px] min-w-0">
+            <span className="font-mono text-[8.5px] tracking-[0.14em] uppercase text-hld-muted-text whitespace-nowrap shrink-0">Next expects →</span>
+            <span className="text-[13px] leading-[1.5] italic text-hld-muted-text-2 min-w-0 truncate" title={nextExpects}>{nextExpects}</span>
+          </div>
+        </div>
+      )}
 
       {/* Editor Area */}
       <div className="flex-1 overflow-hidden bg-transparent relative h-full">
-        {/* Non-initiated cue — surfaces the next move without a button press. */}
-        {!needsProject && <AmbientCue />}
+        {/* Re-entry resume marker (Quiet target, EDIT 3) — a slim cyan bar in the
+            left margin that replaces the floating "you were here" nudge. Reveals
+            on hover and auto-escalates on a mid-section stall; click resumes. */}
+        {!needsProject && !isEmptyState && !focusMode && <ResumeMarker onResume={handleResume} />}
         <div className="h-full relative">
 
           {focusMode && currentSection && (
