@@ -1,5 +1,5 @@
 import { get, set } from 'idb-keyval';
-import type { ModelConfig } from './ai/model-types';
+import type { ModelChoice, ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { reconcileCatalog } from './ai/model-catalog';
 import type { CooldownSnapshot, FallbackSettings } from './ai/model-fallback';
@@ -35,6 +35,8 @@ const AGENT_SIDECAR_URL_KEY = 'treemap_writer_agent_sidecar_url';
 const AGENT_SDK_MODEL_KEY = 'treemap_writer_agent_sdk_model';
 const AGENT_TRACE_SAVING_KEY = 'treemap_writer_agent_trace_saving';
 const AGENT_TRACES_KEY = 'treemap_writer_agent_traces';
+const LOCAL_AGENT_ENABLED_KEY = 'treemap_writer_local_agent_enabled';
+const LOCAL_AGENT_MODEL_KEY = 'treemap_writer_local_agent_model';
 const FALLBACK_SETTINGS_KEY = 'treemap_writer_model_fallback';
 const MODEL_COOLDOWNS_KEY = 'treemap_writer_model_cooldowns';
 
@@ -238,6 +240,30 @@ export async function getSavedAgentTraces(): Promise<TraceRun[]> {
 
 export async function setSavedAgentTraces(runs: TraceRun[]): Promise<void> {
   await set(AGENT_TRACES_KEY, runs);
+}
+
+/**
+ * Local agent (provider-agnostic, Rig-free): the on/off toggle + which model it
+ * runs. Global, OFF by default. Independent of the Claude Agent SDK toggle — the
+ * two agentic surfaces can be on at once. The model is a full ModelChoice so the
+ * user can point it at a local Ollama model, Gemini, or Anthropic.
+ */
+export async function getLocalAgentEnabled(): Promise<boolean> {
+  return Boolean(await get(LOCAL_AGENT_ENABLED_KEY));
+}
+
+export async function setLocalAgentEnabled(enabled: boolean): Promise<void> {
+  await set(LOCAL_AGENT_ENABLED_KEY, enabled);
+}
+
+/** The model the local agent runs. Null when never set (the slice falls back to the built-in default). */
+export async function getLocalAgentModel(): Promise<ModelChoice | null> {
+  const stored = await get<ModelChoice>(LOCAL_AGENT_MODEL_KEY);
+  return stored && typeof stored === 'object' && typeof stored.model === 'string' ? stored : null;
+}
+
+export async function setLocalAgentModel(choice: ModelChoice): Promise<void> {
+  await set(LOCAL_AGENT_MODEL_KEY, choice);
 }
 
 /**

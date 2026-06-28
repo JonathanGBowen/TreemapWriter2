@@ -879,7 +879,17 @@ export interface SectionInput {
   content: string;
   wordCount: number;
 }
- 
+
+/**
+ * One file the local agent's `repo_read`/`list_files` tools can see, returned by
+ * `Repository.agentListFiles`. `path` is relative to the project root (forward
+ * slashes); `size` is bytes. Desktop-only (mirrors `SearchHit`).
+ */
+export interface AgentFileEntry {
+  path: string;
+  size: number;
+}
+
 export interface ProjectMeta {
   id: string;
   name: string;

@@ -86,6 +86,25 @@ the in-progress UIs (replacing the static "analyzing" markers), and finished run
 optionally auditable from a viewer in the Experimental settings (saved app-global by
 default with a toggle to disable; never in project files).
 
+A **provider-agnostic local agent** shipped 2026-06-28 (see
+[`docs/migration-log.md`](docs/migration-log.md)) — parallel to, and independent of, the
+Claude Agent SDK transport. It is a multi-turn, tool-using loop built on the existing
+`LLMClient` seam (`src/services/ai/agent/`), so it runs on **any** provider — including a
+**local Ollama model**, with no API billing and no Node helper — exposed as one
+`AIProvider.runAgent` method + a `'runAgent'` call kind. Per the Gestalt principle its
+default context is the **whole working text** (a selected section in its structural
+surround, or the whole document), never a retrieved subset; retrieval tools are scoped to
+reaching *beyond* the working text — project files, AI-generated artifacts, FTS5
+manuscript search, and git history. Its bounded tools include read access to the repo, a
+**scoped writer** confined to `.twriter/agent-output/` (Rust `commands/agent_fs.rs` +
+`fs_io::resolve_within` path guard), and two structured routines that delegate to existing
+`AIProvider` methods. Off by default behind an "Experimental — Local agent" toggle (AI
+settings) with its own model picker and an inline console; the live thinking/activity
+trace reuses the Agent SDK ticker/modal. **Deferred by design:** semantic embeddings /
+vector RAG (v1 leans on whole-text context + the FTS5/artifact/history tools), a dedicated
+full-screen agent workspace, and a Gemini-only structured-output hardening of the tool
+protocol.
+
 The **Generate-Specs workspace** shipped 2026-06-22 (see
 [`docs/migration-log.md`](docs/migration-log.md)): the old one-shot "interpolate"
 modal is now a full-screen workspace (like Compare / Glass Box / Climate) that walks

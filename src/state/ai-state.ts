@@ -4,6 +4,7 @@ import type { AnalysisSpell, Persona, PromptsConfig, ReadingMode, RevisionInstru
 import { DEFAULT_INSTRUCTION_ID } from '../lib/defaultInstructions';
 import type { AppState } from '.';
 import type { ModelChoice, ModelConfig } from '../services/ai/model-types';
+import { DEFAULT_MODEL_CONFIG } from '../services/ai/model-config';
 import type { CatalogModel } from '../services/ai/model-catalog';
 import { DEFAULT_CATALOG, ollamaCatalogModel } from '../services/ai/model-catalog';
 import type { CooldownSnapshot } from '../services/ai/model-fallback';
@@ -95,6 +96,17 @@ export interface AIStateSlice {
   /** Which model the Agent SDK runs when Agent mode is on. */
   agentSdkModel: string;
 
+  /**
+   * Local agent (provider-agnostic, Rig-free; global prefs). OFF by default and
+   * independent of the Claude Agent SDK toggle. When on, the Local Agent surface
+   * runs a multi-turn, tool-using loop on `localAgentModel` (which can be a local
+   * Ollama model). Retrieval is scoped to artifacts/history; writes go only to
+   * `.twriter/agent-output/`.
+   */
+  localAgentEnabled: boolean;
+  /** Which model the local agent runs (provider-agnostic; defaults to the runAgent built-in). */
+  localAgentModel: ModelChoice;
+
   setActivePersonaId: (id: string) => void;
   setCustomPersonas: (personas: Persona[] | ((prev: Persona[]) => Persona[])) => void;
   /** Set the effective config (e.g. from the editor UI); derives + stores the per-project override. */
@@ -133,6 +145,10 @@ export interface AIStateSlice {
   setAgentSidecarUrl: (url: string) => void;
   /** Choose the Agent SDK model; writes through to preferences. */
   setAgentSdkModel: (model: string) => void;
+  /** Toggle the local agent; writes through to preferences. */
+  setLocalAgentEnabled: (enabled: boolean) => void;
+  /** Choose the local agent's model; writes through to preferences. */
+  setLocalAgentModel: (choice: ModelChoice) => void;
   /** Load global AI prefs from storage and refresh the Ollama catalog. Call once at boot. */
   hydrateAIPreferences: () => Promise<void>;
   /** Re-query the local Ollama server and merge its models into the catalog. */
@@ -164,6 +180,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
   agentModeEnabled: false,
   agentSidecarUrl: DEFAULT_AGENT_SIDECAR_URL,
   agentSdkModel: prefs.DEFAULT_AGENT_SDK_MODEL,
+  localAgentEnabled: false,
+  localAgentModel: DEFAULT_MODEL_CONFIG.runAgent,
 
   setActivePersonaId: (id) => set({ activePersonaId: id }),
   setCustomPersonas: (personas) =>
@@ -263,6 +281,16 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     void prefs.setAgentSdkModel(model);
   },
 
+  setLocalAgentEnabled: (enabled) => {
+    set({ localAgentEnabled: enabled });
+    void prefs.setLocalAgentEnabled(enabled);
+  },
+
+  setLocalAgentModel: (choice) => {
+    set({ localAgentModel: choice });
+    void prefs.setLocalAgentModel(choice);
+  },
+
   hydrateAIPreferences: async () => {
     const [
       globalModelDefault,
@@ -275,6 +303,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       agentModeEnabled,
       agentSidecarUrl,
       agentSdkModel,
+      localAgentEnabled,
+      localAgentModel,
       fallbackSettings,
       modelCooldowns,
     ] = await Promise.all([
@@ -288,6 +318,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       prefs.getAgentModeEnabled(),
       prefs.getAgentSidecarUrl(),
       prefs.getAgentSdkModel(),
+      prefs.getLocalAgentEnabled(),
+      prefs.getLocalAgentModel(),
       prefs.getFallbackSettings(),
       prefs.getModelCooldowns(),
     ]);
@@ -311,6 +343,8 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       agentModeEnabled,
       agentSidecarUrl,
       agentSdkModel,
+      localAgentEnabled,
+      localAgentModel: localAgentModel ?? DEFAULT_MODEL_CONFIG.runAgent,
       fallbackEnabled: fallbackSettings.enabled,
       fallbackLadder,
       modelCooldowns,

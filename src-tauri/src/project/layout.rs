@@ -67,6 +67,14 @@ impl Layout {
         self.twriter_dir().join("sessions")
     }
 
+    /// The single, hardcoded write root for the local agent's tools
+    /// (`commands/agent_fs.rs`). A non-authoritative scratch area: the agent
+    /// proposes here, the user reviews. Gitignored — never committed, never
+    /// part of the dissertation's history. The agent can write nowhere else.
+    pub fn agent_output_dir(&self) -> PathBuf {
+        self.twriter_dir().join("agent-output")
+    }
+
     pub fn session_yaml(&self, id: &str) -> PathBuf {
         self.sessions_dir().join(format!("{id}.yaml"))
     }
@@ -119,6 +127,10 @@ mod tests {
         );
         assert_eq!(layout.cache_sqlite(), Path::new("/projects/diss/.twriter/index.sqlite"));
         assert_eq!(layout.gitignore(), Path::new("/projects/diss/.gitignore"));
+        assert_eq!(
+            layout.agent_output_dir(),
+            Path::new("/projects/diss/.twriter/agent-output")
+        );
     }
 
     #[test]

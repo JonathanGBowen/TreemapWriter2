@@ -17,6 +17,7 @@
 // can show a live thinking/activity trace and save it for optional auditing.
 
 import type { LLMClient, LLMRequest } from './llm-client';
+import { emitAgentTrace as emit, newRunId } from './agent-trace-sink';
 
 export const DEFAULT_AGENT_SIDECAR_URL = 'http://localhost:8787';
 
@@ -25,35 +26,6 @@ export interface AgentSidecarHealth {
   /** Whether the helper found a CLAUDE_CODE_OAUTH_TOKEN (Max subscription). */
   authed: boolean;
   model?: string;
-}
-
-/** A trace event emitted by the client as a run progresses. Consumed by the trace store. */
-export type AgentTraceSinkEvent =
-  | { type: 'start'; runId: string; label?: string; callKind?: string; model: string; at: number }
-  | { type: 'think'; runId: string; delta: string; at: number }
-  | { type: 'text'; runId: string; delta: string; at: number }
-  | { type: 'activity'; runId: string; label: string; at: number }
-  | { type: 'end'; runId: string; status: 'success' | 'error'; errorMessage?: string; at: number };
-
-export type AgentTraceSink = (event: AgentTraceSinkEvent) => void;
-
-// Injected at boot (mirrors setModelConfigSource) so the client never imports the
-// store — avoids a cycle. Null in tests / before boot, which is harmless.
-let traceSink: AgentTraceSink | null = null;
-export function setAgentTraceSink(sink: AgentTraceSink | null): void {
-  traceSink = sink;
-}
-function emit(event: AgentTraceSinkEvent): void {
-  try {
-    traceSink?.(event);
-  } catch {
-    // A misbehaving sink must never break an AI call.
-  }
-}
-
-function newRunId(): string {
-  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
-  return c?.randomUUID?.() ?? `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /** Body sent to the helper. Pure + exported so it can be unit-tested. (Trace fields stay client-side.) */

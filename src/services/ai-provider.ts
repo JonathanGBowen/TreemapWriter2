@@ -36,6 +36,7 @@ import type {
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
+import type { AgentTool } from './ai/agent/agent-types';
 
 /**
  * AI provider boundary. Components and slices call this interface; only the
@@ -163,6 +164,16 @@ export interface AIProvider {
    * right for the whole?" beat. The unstick operation. Null ⇒ no usable proposal.
    */
   proposeRecenterings(input: RecenterInput): Promise<RecenteringsResult | null>;
+  /**
+   * The local, provider-agnostic agent: a multi-turn, tool-using loop over the
+   * configured model (incl. local Ollama). The full conversation travels each
+   * turn (stateless provider). The caller supplies the prebuilt whole-text
+   * `context` (see `buildAgentContext` — the Gestalt default) and the bounded
+   * `tools` (see `buildToolRegistry`). Yields the final answer when ready;
+   * intermediate reasoning + tool activity flow to the live trace sink. Parallel
+   * to — and independent of — the Claude Agent SDK helper.
+   */
+  runAgent(input: RunAgentInput): AsyncIterable<string>;
 }
 
 /** Compact, in-memory backlog summary shown as context chips in the Brief. */
@@ -627,6 +638,25 @@ export interface SpecTestWholeInput {
   /** Reading stance: 'draft' (default) steadies a mid-revision writer. */
   mode?: ReadingMode;
   config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface RunAgentInput {
+  /** Full conversation so far; the last message is the new user turn. */
+  messages: DialogueMessage[];
+  /**
+   * The agent's working context, prebuilt by `buildAgentContext`: the whole
+   * working text (a selected section in its structural surround, or the whole
+   * document) — never a retrieved subset of the working prose.
+   */
+  context: string;
+  /** The bounded tools the agent may call, prebuilt by `buildToolRegistry`. */
+  tools: AgentTool[];
+  config: PromptsConfig;
+  /** Max tool-use rounds before a final answer is forced. Defaults to 8. */
+  maxSteps?: number;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

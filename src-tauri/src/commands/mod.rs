@@ -6,6 +6,7 @@
 // (project / db / git / fs_io), and translate the result into the IPC
 // wire format. Business logic lives below the command layer.
 
+pub mod agent_fs;
 pub mod credentials;
 pub mod document;
 pub mod project;

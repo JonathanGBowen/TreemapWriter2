@@ -79,6 +79,9 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   // Gestalt whole/part ops — focused reasoning over one section.
   reconstructWhole: g(HEAVY, THINK),
   proposeRecenterings: g(HEAVY, THINK),
+  // Local multi-turn tool-using agent — sustained reasoning across turns. The
+  // user can repoint this at a local Ollama model in the Local Agent settings.
+  runAgent: g(HEAVY, THINK),
 };
 
 /**

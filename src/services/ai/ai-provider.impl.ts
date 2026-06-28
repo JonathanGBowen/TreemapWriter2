@@ -72,6 +72,7 @@ import type {
   DevelopSpecLevelInput,
   ReconstructWholeInput,
   RecenterInput,
+  RunAgentInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import { AI_CALL_KIND_LABELS } from './model-types';
@@ -108,6 +109,7 @@ import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
 import { runSpecTestSection, runSpecTestWhole } from './ai-provider.spec-test';
 import { analyzeAtmosphere } from './ai-provider.atmosphere';
+import { runAgentLoop } from './agent';
 
 const MAX_OUTPUT_TOKENS = 16000;
 
@@ -905,5 +907,27 @@ export class MultiProviderAIProvider implements AIProvider {
     for await (const chunk of stream) {
       yield chunk;
     }
+  }
+
+  /**
+   * The local, provider-agnostic agent. Resolves + dispatches the model (so the
+   * fallback ladder, throttle, and context-budget pre-flight all apply), then
+   * hands the wrapped client to the tool-using loop. The loop emits its own live
+   * trace (the providers here, unlike the Agent SDK client, emit none), and the
+   * caller pre-built the whole-text context + tools — so this method stays a thin
+   * seam, exactly like `continueDialogue`.
+   */
+  async *runAgent(input: RunAgentInput): AsyncIterable<string> {
+    const choice = this.choose('runAgent', input);
+    const client = this.dispatch(choice, 'runAgent');
+    yield* runAgentLoop({
+      client,
+      model: choice.model,
+      thinkingBudget: choice.thinkingBudget,
+      messages: input.messages,
+      context: input.context,
+      tools: input.tools,
+      maxSteps: input.maxSteps,
+    });
   }
 }

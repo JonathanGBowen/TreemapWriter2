@@ -112,6 +112,10 @@ pub fn run() {
             // commands/search.rs
             commands::search::index_sections,
             commands::search::search_sections,
+            // commands/agent_fs.rs — local-agent filesystem tools
+            commands::agent_fs::agent_list_files,
+            commands::agent_fs::agent_read_file,
+            commands::agent_fs::agent_write_output,
             // commands/session.rs
             commands::session::session_list,
             commands::session::session_save,
