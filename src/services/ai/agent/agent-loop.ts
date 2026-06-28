@@ -19,13 +19,16 @@ import type { DialogueMessage } from '../../../types';
 import type { AgentTool, ToolResult } from './agent-types';
 import {
   buildAgentSystemInstruction,
-  finalTextOf,
   parseAgentAction,
   serializeToolResults,
   toolActivityLabel,
 } from './tool-protocol';
 
 const MAX_STEPS_DEFAULT = 8;
+
+/** Yielded when the model exhausts the tool-use budget without a final answer. */
+const STEP_LIMIT_MESSAGE =
+  'Stopped after reaching the tool-use limit without a final answer. Try narrowing the request or raising the step limit.';
 
 export interface RunAgentLoopOptions {
   /** The dispatched transport (already wrapped with fallback/throttle by the provider). */
@@ -93,14 +96,22 @@ export async function* runAgentLoop(opts: RunAgentLoopOptions): AsyncIterable<st
         emitAgentTrace({ type: 'think', runId, delta, at: Date.now() });
       }
 
-      const action = lastTurn
-        ? ({ kind: 'final', text: finalTextOf(full) } as const)
-        : parseAgentAction(full, knownTools);
+      const action = parseAgentAction(full, knownTools);
 
       if (action.kind === 'final') {
-        emitAgentTrace({ type: 'text', runId, delta: action.text, at: Date.now() });
+        // The answer already streamed live as `think` deltas above; emitting it
+        // again as a `text` event would render it twice in the trace modal, so
+        // we just close the run and hand the answer to the caller.
         emitAgentTrace({ type: 'end', runId, status: 'success', at: Date.now() });
         yield action.text;
+        return;
+      }
+
+      if (lastTurn) {
+        // The model still wants tools at the step limit. Don't surface its raw
+        // tool-call JSON as the answer — stop with a clear note instead.
+        emitAgentTrace({ type: 'end', runId, status: 'success', at: Date.now() });
+        yield STEP_LIMIT_MESSAGE;
         return;
       }
 

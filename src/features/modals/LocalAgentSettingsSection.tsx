@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bot, ChevronDown, ChevronRight, Loader2, Send } from 'lucide-react';
-import { useStore } from '../../store';
+import { useStore } from '../../state';
 import { ModelPicker } from './ModelPicker';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
 import { useLocalAgent, type AgentScope } from './use-local-agent';

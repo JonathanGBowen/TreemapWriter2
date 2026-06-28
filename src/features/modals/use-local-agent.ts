@@ -6,7 +6,7 @@
 // provider is stateless). Intermediate reasoning + tool activity show in the live
 // trace ticker (mounted globally); this hook surfaces the final answers.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { repository } from '../../services/repository-registry';
@@ -29,10 +29,14 @@ export function useLocalAgent(): UseLocalAgent {
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Synchronous re-entrancy guard: the `running` state lags a render, so two
+  // rapid invocations (e.g. ⌘/Ctrl+Enter twice) could both pass a state-based
+  // check and start concurrent runs. The ref flips immediately.
+  const runningRef = useRef(false);
 
   const run = useCallback(
     async (prompt: string, scope: AgentScope) => {
-      if (running || !prompt.trim()) return;
+      if (runningRef.current || !prompt.trim()) return;
       const st = useStore.getState();
       const specs = selectSpecMap(st.testSuite);
 
@@ -54,6 +58,7 @@ export function useLocalAgent(): UseLocalAgent {
       });
 
       const nextMessages: DialogueMessage[] = [...messages, { role: 'user', text: prompt }];
+      runningRef.current = true;
       setMessages(nextMessages);
       setRunning(true);
       setError(null);
@@ -72,12 +77,17 @@ export function useLocalAgent(): UseLocalAgent {
         setMessages((m) => [...m, { role: 'model', text: answer }]);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
+        // Drop the optimistic user turn so the transcript never ends on a
+        // dangling user message — resending [user, user] next run is rejected by
+        // providers (e.g. Anthropic) that require alternating roles.
+        setMessages(messages);
       } finally {
+        runningRef.current = false;
         setRunning(false);
         useStore.getState().endOp(opId);
       }
     },
-    [messages, running],
+    [messages],
   );
 
   const reset = useCallback(() => {

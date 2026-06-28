@@ -55,7 +55,7 @@ describe('runAgentLoop', () => {
     expect(ran).toEqual([{ x: 'hi' }]);
   });
 
-  it('emits start, activity, text, and end trace events', async () => {
+  it('emits start, activity (live think), and a success end — answer is not re-emitted as text', async () => {
     const events: AgentTraceSinkEvent[] = [];
     setAgentTraceSink((e) => events.push(e));
     const tools: AgentTool[] = [{ name: 'echo', description: 'echo', run: async () => 'r' }];
@@ -65,14 +65,17 @@ describe('runAgentLoop', () => {
 
     const types = events.map((e) => e.type);
     expect(types[0]).toBe('start');
-    expect(types).toContain('activity');
-    expect(types).toContain('text');
+    expect(types).toContain('think'); // turns stream live as think deltas
+    expect(types).toContain('activity'); // one per tool call
+    // The final answer streamed as think and is yielded — never re-emitted as a
+    // separate `text` event (which would render twice in the trace modal).
+    expect(types).not.toContain('text');
     expect(types[types.length - 1]).toBe('end');
     const end = events[events.length - 1];
     expect(end.type === 'end' && end.status).toBe('success');
   });
 
-  it('respects maxSteps by forcing a final answer (no infinite loop)', async () => {
+  it('respects maxSteps and yields a clean limit message, not raw tool-call JSON', async () => {
     const tools: AgentTool[] = [{ name: 'echo', description: 'echo', run: async () => 'r' }];
     // A model that ALWAYS asks for a tool — only the step cap can stop it.
     const { client, calls } = fakeClient([toolCall('echo', {})]);
@@ -83,7 +86,9 @@ describe('runAgentLoop', () => {
 
     // maxSteps tool rounds + 1 forced-final turn = 3 model calls.
     expect(calls()).toBe(3);
-    expect(typeof out).toBe('string');
+    // The user must NOT see the model's raw tool-call JSON as the answer.
+    expect(out).not.toContain('"action"');
+    expect(out.toLowerCase()).toContain('limit');
   });
 
   it('reports a tool error to the model and still completes', async () => {

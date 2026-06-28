@@ -97,8 +97,16 @@ fn read_file_impl(root: &Path, path: &str) -> AppResult<String> {
             MAX_READ_BYTES
         ));
     }
-    std::fs::read_to_string(&resolved)
-        .map_err(|_| crate::error::AppError::from(anyhow::anyhow!("{path} is not a UTF-8 text file")))
+    std::fs::read_to_string(&resolved).map_err(|e| {
+        // Non-UTF-8 content reads as InvalidData; report that precisely and let
+        // any other I/O error (permission, race with a delete/replace) surface
+        // as itself rather than masquerading as "binary".
+        if e.kind() == std::io::ErrorKind::InvalidData {
+            crate::error::AppError::from(anyhow::anyhow!("{path} is not a UTF-8 text file"))
+        } else {
+            crate::error::AppError::from(e)
+        }
+    })
 }
 
 fn write_output_impl(
@@ -211,6 +219,19 @@ mod tests {
         assert!(read_file_impl(root, "../escape").is_err());
         assert!(read_file_impl(root, "sub").is_err(), "directory is not readable as a file");
         assert!(read_file_impl(root, "nope.md").is_err(), "missing file errors");
+    }
+
+    #[test]
+    fn reads_reject_non_utf8_with_a_clear_message() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        // Invalid UTF-8 bytes — read_to_string yields ErrorKind::InvalidData.
+        fs::write(root.join("blob.bin"), [0xff, 0xfe, 0x00, 0x9c]).unwrap();
+        let err = read_file_impl(root, "blob.bin").unwrap_err();
+        assert!(
+            err.to_string().contains("not a UTF-8 text file"),
+            "got: {err}"
+        );
     }
 
     #[test]

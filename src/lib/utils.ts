@@ -218,6 +218,16 @@ export const flattenTree = (nodes: Section[], parentId: string = 'root') => {
   return flat;
 };
 
+/** Depth-first lookup of a section by id in a section tree; null if absent. */
+export const findSectionById = (nodes: Section[], id: string): Section | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findSectionById(node.children, id);
+    if (found) return found;
+  }
+  return null;
+};
+
 /**
  * Robustly extract and parse JSON from AI responses that might contain preamble/postamble.
  */

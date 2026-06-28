@@ -96,4 +96,23 @@ describe('buildAgentContext', () => {
     expect(ctx).toContain('Method');
     expect(ctx).not.toContain(big);
   });
+
+  it('on section-scope overflow, the header reflects the whole-document outline (no section mislabel)', () => {
+    const big = 'y'.repeat(500);
+    const bigIntro = { ...intro, fullContent: big };
+    const ch1WithBigIntro = { ...ch1, children: [bigIntro, method] };
+    const ctx = buildAgentContext({
+      scope: 'section',
+      selectedSectionId: 'intro',
+      sections: [ch1WithBigIntro],
+      markdown: 'WHOLE DOC',
+      specs,
+      budgetChars: 50,
+    });
+    // Header must NOT claim it is the section's full text while serving an outline.
+    expect(ctx).toContain('outline of the whole document');
+    expect(ctx).not.toContain('section "Introduction"');
+    expect(ctx).toContain('OUTLINE of the whole');
+    expect(ctx).not.toContain(big);
+  });
 });

@@ -10,6 +10,7 @@
 
 import type { Section, SectionSpec } from '../../../types';
 import { buildStructuralSurround, formatStructuralSurround } from '../../../lib/diagnostic-helpers';
+import { findSectionById } from '../../../lib/utils';
 
 export interface AgentContextInput {
   /** 'section' frames a selected section in its surround; 'document' sends the whole markdown. */
@@ -27,23 +28,15 @@ export interface AgentContextInput {
   budgetChars?: number;
 }
 
-function findById(nodes: Section[], id: string): Section | null {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    const hit = findById(n.children, id);
-    if (hit) return hit;
-  }
-  return null;
-}
-
 /** A heading-level outline of the WHOLE: every section's title + its claim (or a short head snippet). */
 function outlineOfWhole(sections: Section[], specs: Record<string, SectionSpec | undefined>): string {
   const lines: string[] = [];
   const walk = (nodes: Section[]) => {
     for (const n of nodes) {
       const claim = specs[n.id]?.mainClaim?.trim();
-      const head = n.content.trim().replace(/\s+/g, ' ').slice(0, 160);
-      const gist = claim ? `claim: ${claim}` : head ? `${head}${n.content.length > 160 ? '…' : ''}` : '';
+      const collapsed = n.content.trim().replace(/\s+/g, ' ');
+      const head = collapsed.slice(0, 160);
+      const gist = claim ? `claim: ${claim}` : head ? `${head}${collapsed.length > 160 ? '…' : ''}` : '';
       lines.push(`${'#'.repeat(Math.max(1, n.level))} ${n.title}${gist ? ` — ${gist}` : ''}`);
       walk(n.children);
     }
@@ -64,7 +57,7 @@ export function buildAgentContext(input: AgentContextInput): string {
   let surround = '';
 
   if (scope === 'section' && selectedSectionId) {
-    const section = findById(sections, selectedSectionId);
+    const section = findSectionById(sections, selectedSectionId);
     if (section) {
       title = section.title;
       workingText = section.fullContent;
@@ -81,9 +74,14 @@ export function buildAgentContext(input: AgentContextInput): string {
       ].join('\n')
     : workingText;
 
-  const header = title
-    ? `WORKING TEXT — section "${title}" (read as a whole; judge its parts in this context):`
-    : 'WORKING TEXT — the whole document (read as a whole; judge its parts in this context):';
+  // On overflow the body is a document-wide outline, so the header must reflect
+  // that even in section scope — otherwise it would claim to be the section's
+  // full text while handing over a whole-document outline.
+  const header = overflows
+    ? 'WORKING TEXT — outline of the whole document (read as a whole; judge its parts in this context):'
+    : title
+      ? `WORKING TEXT — section "${title}" (read as a whole; judge its parts in this context):`
+      : 'WORKING TEXT — the whole document (read as a whole; judge its parts in this context):';
 
   return [header, body, surround].filter(Boolean).join('\n\n');
 }

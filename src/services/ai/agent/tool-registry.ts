@@ -19,6 +19,7 @@ import type { Persona, Section, SectionSpec, PromptsConfig } from '../../../type
 import type { Repository } from '../../repository';
 import type { AIProvider } from '../../ai-provider';
 import { buildStructuralSurround, formatStructuralSurround } from '../../../lib/diagnostic-helpers';
+import { findSectionById } from '../../../lib/utils';
 import type { AgentTool } from './agent-types';
 
 export interface ToolRegistryDeps {
@@ -40,19 +41,10 @@ const MAX_RESULT_CHARS = 20_000;
 const clamp = (s: string): string =>
   s.length > MAX_RESULT_CHARS ? `${s.slice(0, MAX_RESULT_CHARS)}\n…(truncated)` : s;
 
-function findById(nodes: Section[], id: string): Section | null {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    const hit = findById(n.children, id);
-    if (hit) return hit;
-  }
-  return null;
-}
-
 /** Resolve a section by id or, failing that, by exact/loose title match. */
 function resolveSection(deps: ToolRegistryDeps, ref: unknown): Section | null {
   if (typeof ref !== 'string' || !ref) return null;
-  const byId = findById(deps.sections, ref);
+  const byId = findSectionById(deps.sections, ref);
   if (byId) return byId;
   const wanted = ref.trim().toLowerCase();
   let found: Section | null = null;
@@ -73,6 +65,13 @@ const argString = (args: Record<string, unknown>, ...keys: string[]): string | u
   }
   return undefined;
 };
+
+/** The hint returned to the model when a section id/title arg matches nothing. */
+const NO_SECTION_HINT = 'No section matched that id/title. Call list_sections to see valid ids.';
+
+/** The section's part-in-whole context block (empty string when it has none). */
+const surroundFor = (deps: ToolRegistryDeps, section: Section): string =>
+  formatStructuralSurround(buildStructuralSurround(section.id, deps.sections, deps.specs));
 
 /** A neutral persona for routine tools run by the agent (no human persona in scope). */
 const AGENT_PERSONA: Persona = {
@@ -116,10 +115,8 @@ export function buildToolRegistry(deps: ToolRegistryDeps): AgentTool[] {
     argsHint: '{ "sectionId": "<id or exact title>" }',
     run: async (args) => {
       const section = resolveSection(deps, argString(args, 'sectionId', 'id', 'title'));
-      if (!section) return 'No section matched that id/title. Call list_sections to see valid ids.';
-      const surround = formatStructuralSurround(
-        buildStructuralSurround(section.id, deps.sections, deps.specs),
-      );
+      if (!section) return NO_SECTION_HINT;
+      const surround = surroundFor(deps, section);
       return clamp([`# ${section.title}`, section.fullContent, surround].filter(Boolean).join('\n\n'));
     },
   });
@@ -222,10 +219,8 @@ export function buildToolRegistry(deps: ToolRegistryDeps): AgentTool[] {
     argsHint: '{ "sectionId": "<id or exact title>" }',
     run: async (args) => {
       const section = resolveSection(deps, argString(args, 'sectionId', 'id', 'title'));
-      if (!section) return 'No section matched that id/title. Call list_sections to see valid ids.';
-      const structuralSurround = formatStructuralSurround(
-        buildStructuralSurround(section.id, deps.sections, deps.specs),
-      );
+      if (!section) return NO_SECTION_HINT;
+      const structuralSurround = surroundFor(deps, section);
       const analysis = await deps.aiProvider.analyzeSection({
         sectionTitle: section.title,
         sectionText: section.fullContent,
@@ -243,7 +238,7 @@ export function buildToolRegistry(deps: ToolRegistryDeps): AgentTool[] {
     argsHint: '{ "sectionId": "<id or exact title>" }',
     run: async (args) => {
       const section = resolveSection(deps, argString(args, 'sectionId', 'id', 'title'));
-      if (!section) return 'No section matched that id/title. Call list_sections to see valid ids.';
+      if (!section) return NO_SECTION_HINT;
       const spec = deps.specs[section.id];
       if (!spec) return `Section "${section.title}" has no spec yet; cannot run a diagnostic.`;
       const result = await deps.aiProvider.runDiagnostic({
@@ -255,7 +250,7 @@ export function buildToolRegistry(deps: ToolRegistryDeps): AgentTool[] {
         fullDocument: deps.markdown,
         sections: deps.sections,
         config: deps.config,
-        findSection: findById,
+        findSection: findSectionById,
         specs: deps.specs,
       });
       return JSON.stringify(result, null, 2);
