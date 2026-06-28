@@ -4496,3 +4496,54 @@ constants, an additive store slice + one mounted component, a `notifyAiError`
 re-route, an additive picker prop, and a wrapper component. No schema, persisted-
 shape, or interface break; `model-fallback.ts`'s "imports only model-types"
 invariant is preserved.
+
+---
+
+## 2026-06-28 — Built-in Gemini model list now actually reaches users (catalog/ladder reconcile)
+
+**What changed.** Follow-up to the same-day "single ordered Gemini list" change. That
+change updated the *code* seeds, but the model catalog and fallback ladder are
+**global preferences persisted in IndexedDB**, and `hydrateAIPreferences` loaded the
+stale persisted values over the code defaults with no reconciliation — so the new
+Gemini list never reached anyone who'd already run the app (in the pickers *or*
+functionally). There was no "reset to defaults" affordance anywhere.
+
+- **Catalog reconcile on read.** New `reconcileCatalog(persisted)` + `isBuiltinModel`
+  + a shared `CUSTOM_MODEL_DESC` in [model-catalog.ts](src/services/ai/model-catalog.ts);
+  [`getModelCatalog`](src/services/preferences.ts) now returns `reconcileCatalog(stored)`.
+  Built-in (gemini/anthropic/agent-sdk) rows ALWAYS come from `DEFAULT_CATALOG`, so a
+  code update reaches every picker; persisted rows are kept only when genuinely the
+  user's — a detected Ollama row, or a model the catalog editor added (stamped
+  `CUSTOM_MODEL_DESC`). A *former* built-in id retired from an earlier default is
+  dropped ("removed ones go"). Idempotent; safe for all UI-created data (the editor
+  is the only add path and always stamps the marker; seed rows never carry it).
+- **Ladder reconcile on hydrate.** New `reconcileFallbackLadder(persisted, catalog)`
+  in [model-defaults.ts](src/services/ai/model-defaults.ts): drop rungs whose model is
+  no longer in the (reconciled) catalog; if a non-empty ladder was *entirely* stale,
+  restore `DEFAULT_FALLBACK_LADDER`; partial → prune only (order kept); returns the
+  same reference when unchanged so [hydrateAIPreferences](src/state/ai-state.ts)
+  re-persists only when it actually cleaned something.
+- **UI.** A "Reset to default ladder" button in
+  [FallbackSettingsSection](src/features/modals/FallbackSettingsSection.tsx); and in
+  the [AiSettingsSection](src/features/modals/AiSettingsSection.tsx) catalog editor,
+  built-in rows are now non-removable (disabled trash + `DisabledHint` "managed by the
+  app") since reconcile re-adds them anyway — only Ollama/custom rows stay removable.
+
+**Why this covers every surface.** Every model-picker dropdown reads the single
+`modelCatalog` store value and all fallback behavior reads `fallbackLadder`, so
+reconciling those two values fixes all dropdowns, the catalog/ladder editors, and the
+functional dispatch/throttle/`buildCandidates` path together. **Flagged out of scope
+(no silent mutation):** `globalModelDefault` / per-project `modelConfig` can pin a
+retired model id; `ModelPicker` already shows it as "(unavailable)" so the user can
+re-pick — left alone deliberately.
+
+**Verify.** `npm run typecheck`, `npm test` (548 pass / 73 files — new
+`model-defaults.test.ts`; extended `model-catalog.test.ts` with reconcile/idempotency/
+custom-vs-retired cases), `npm run lint` (0 errors), `npm run build` all green. In-app:
+with a stale persisted catalog/ladder, reload → dropdowns + ladder show the current
+Gemini list; built-in trash is disabled; "Reset to default ladder" restores order; a
+custom/Ollama model you added survives.
+
+**Rollback.** `git revert` — additive pure helpers + a reconcile-on-read in one prefs
+getter + one hydrate wiring + two small UI affordances. Non-destructive for UI-created
+data; no schema/persisted-shape break (`reconcileCatalog` tolerates old persisted rows).

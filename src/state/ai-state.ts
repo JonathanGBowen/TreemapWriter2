@@ -7,7 +7,7 @@ import type { ModelChoice, ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
 import { DEFAULT_CATALOG, ollamaCatalogModel } from '../services/ai/model-catalog';
 import type { CooldownSnapshot } from '../services/ai/model-fallback';
-import { DEFAULT_FALLBACK_SETTINGS } from '../services/ai/model-defaults';
+import { DEFAULT_FALLBACK_SETTINGS, reconcileFallbackLadder } from '../services/ai/model-defaults';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from '../services/ai/clients';
 import * as prefs from '../services/preferences';
 import {
@@ -293,6 +293,10 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
     ]);
     // Seed the registry's cooldown registry so dispatch honors persisted cooldowns.
     seedCooldowns(modelCooldowns);
+    // `modelCatalog` is already reconciled with the code seed (getModelCatalog). Clean
+    // the persisted ladder against it: drop rungs for models that no longer exist, and
+    // if a non-empty ladder was entirely stale, restore the default (reconcileFallbackLadder).
+    const fallbackLadder = reconcileFallbackLadder(fallbackSettings.ladder, modelCatalog);
     // Re-resolve the effective config against the just-loaded global tier — a
     // project may already be open by the time prefs hydrate.
     set((s) => ({
@@ -308,9 +312,14 @@ export const createAIStateSlice: StateCreator<AppState, [], [], AIStateSlice> = 
       agentSidecarUrl,
       agentSdkModel,
       fallbackEnabled: fallbackSettings.enabled,
-      fallbackLadder: fallbackSettings.ladder,
+      fallbackLadder,
       modelCooldowns,
     }));
+    // Persist the cleaned ladder once when reconciliation actually changed it (the
+    // helper returns the same reference when nothing was pruned — avoids per-boot churn).
+    if (fallbackLadder !== fallbackSettings.ladder) {
+      void prefs.setFallbackSettings({ enabled: fallbackSettings.enabled, ladder: fallbackLadder });
+    }
     applyOllamaBaseUrl(ollamaBaseUrl);
     applyAgentSidecarUrl(agentSidecarUrl);
     // Non-blocking: surface locally-installed Ollama models if the server is up.

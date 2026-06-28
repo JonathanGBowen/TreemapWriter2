@@ -186,6 +186,18 @@ accurate `## References` section and APA audit instead of guessing. Full source 
 still rides the existing `.md` upload; bibliographies are session-only, and BibTeX /
 the live Zotero local-API picker / Web-API sync are deliberately out of scope (below).
 
+A **catalog/ladder reconcile** shipped 2026-06-28 (follow-up to the six-fix pass; see
+[`docs/migration-log.md`](docs/migration-log.md)) so the built-in Gemini list actually
+reaches users: the model catalog + fallback ladder are persisted prefs, and hydration
+loaded stale values over the code defaults. Now `getModelCatalog` reconciles on read
+(built-in gemini/anthropic/agent-sdk rows always come from `DEFAULT_CATALOG`; detected
+Ollama + editor-added custom models preserved; retired former-built-ins dropped), the
+ladder is cleaned of dead rungs on hydrate (with a "Reset to default ladder" button),
+and built-in catalog rows are non-removable. Fixes every dropdown + the functional
+dispatch at once since they all read the two reconciled store values. Deliberately left
+alone (no silent mutation): a `globalModelDefault`/per-project pin to a retired id is
+shown as "(unavailable)" for the user to re-pick.
+
 An **AI / Gemini robustness & UX pass** shipped 2026-06-28 (six fixes; see
 [`docs/migration-log.md`](docs/migration-log.md)): the catalog's ordered Gemini list
 is now the **single source of truth** for the fallback ladder (derived in
