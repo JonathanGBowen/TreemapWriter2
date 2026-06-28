@@ -4421,3 +4421,60 @@ a long recapitulative section surfaces a "weight vs. work" row in the tension re
 **Rollback.** `git revert` — changes are an additive pure helper + additive fields on a
 pure module + prompt/doc text + one new strain-signal kind; no schema, state, or interface
 break. A user's overridden prompts are unaffected.
+
+---
+
+## 2026-06-28 — Quiet center column (the "Tidy Center Column" design, Quiet target)
+
+**What changed.** Implemented the **Quiet** editor redesign from a Claude Design handoff —
+the decided form of the "Tidy Center Column" exploration (its `Before`/`Gutter` modes were
+exploration; the bundle shipped a locked `Editor — Quiet (target)` + an implementation
+README). The manuscript is now the column: the two chrome blocks that restated *structure as
+prose* in the editor are gone, and the surround moved to where the product already keeps
+structure (the Spec panel). Four edits + one new ephemeral state:
+
+- **Removed the structural-surround rail from the editor.** Deleted
+  `src/features/coach/SurroundRail.tsx` (imported only by the editor) and its now-orphaned
+  `surroundCollapsed` / `setSurroundCollapsed` flags in `ui-state.ts`.
+  `buildStructuralSurround` / `selectSpecMap` are **kept** (still used by diagnostics and the
+  relocated zone).
+- **One quiet caption line** in `EditorPanel.tsx`, in the slot the rail vacated — chrome
+  *above* the manuscript (centered to the prose measure): `NEXT EXPECTS →` + the section's
+  first outgoing commitment. Self-gates when there is none. Deliberately kept out of the
+  writing section (author's call).
+- **Replaced the floating "You were here" nudge with a margin resume marker.** New
+  `src/features/coach/ResumeMarker.tsx` (replaces `AmbientCue.tsx`): a slim cyan bar in the
+  prose's left margin, revealing `RESUME · YOU WERE HERE` + `⤢ Go deeper` on hover and —
+  **preserving the non-initiated ADHD cue (F1)** — auto-revealing with "Still here?" on a
+  mid-section stall. It reuses `use-ambient-cue.ts` (kept) for the stall/`goDeeper` logic;
+  click restores the per-section caret.
+- **Promoted the surround into the Spec panel** (`tests-panel/SpecTab.tsx`): the previously
+  *folded* `ContextDisclosure` is now an always-open **lit** "Context & commitments" zone at
+  the top of the Spec body — cyan `Pip` + `◇ WHOLE` (root claim) / `→ RECEIVES`
+  (`spec.incomingContext`) / `↘ SUPPLIES` (`spec.outgoingCommitments`), coherence notes
+  preserved. It is the body's single lit block; `NextCard` stays calm-tint and `Run
+  diagnostic` keeps the footer-lit exception.
+- **New ephemeral state** `sectionCaret` (`state/editor-state.ts`): a per-section
+  `{anchor,head}` map, captured live (a ref) and committed on section departure, so re-entry
+  restores the last caret and the marker always names a place you can return to. In-memory
+  per session.
+
+**Verify.** `npm run typecheck`, `npm test` (518 pass / 71 files — new
+`state/__tests__/editor-state.test.ts`; the `use-ambient-cue` tests still green),
+`npm run lint` (0 errors; pre-existing warnings only), and `npm run build` all green. In-app
+(browser, sample dissertation, a section carrying a spec): no rail above the prose; the
+`NEXT EXPECTS →` caption above the editor; the cyan resume marker in the left margin (hover →
+`RESUME · YOU WERE HERE` + `⤢ Go deeper`); the lit `Context & commitments` zone leads the
+Spec panel with `◇ WHOLE / → RECEIVES / ↘ SUPPLIES`. Switch sections → caption + zone
+recompute; return → caret restore; idle 90 s → the marker escalates.
+
+**Deliberate v1 limits.** The resume marker sits at a fixed left-margin offset (~150 px), not
+pixel-tracked to the remembered line — exact per-line alignment via `coordsAtPos` is the
+deferred polish (the fixed offset matches the mock and avoids CodeMirror scroll-sync
+fragility). `sectionCaret` is session-ephemeral (no cross-reload persistence); restore uses
+`EditorView.scrollIntoView(head)` rather than a stored `scrollTop`.
+
+**Rollback.** `git revert`. Re-adds `SurroundRail.tsx` / `AmbientCue.tsx` and the
+`surroundCollapsed` flags; removes `ResumeMarker.tsx`, the caption, the lit zone, and the
+`sectionCaret` slice field. No domain-type, Repository, or Rust change — purely presentation
+plus one ephemeral UI-state field.

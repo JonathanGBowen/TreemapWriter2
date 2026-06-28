@@ -28,8 +28,6 @@ export interface UIStateSlice {
    * button press. Never persisted.
    */
   ambientCueEnabled: boolean;
-  /** Editor structural-surround rail collapsed (glance vs hidden). */
-  surroundCollapsed: boolean;
   /**
    * Section id whose ambient cue the user soft-dismissed this visit. Cleared on
    * section change so a re-entered section cues again — undo, not a persisted off.
@@ -122,7 +120,6 @@ export interface UIStateSlice {
   setFocusMode: (mode: boolean) => void;
   setRunTutorial: (run: boolean) => void;
   setAmbientCueEnabled: (on: boolean) => void;
-  setSurroundCollapsed: (collapsed: boolean) => void;
   setCueDismissedForId: (id: string | null) => void;
   dismissStrain: (id: string) => void;
   setActiveTab: (tab: 'editor' | 'preview') => void;
@@ -176,7 +173,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   focusMode: true,
   runTutorial: false,
   ambientCueEnabled: true,
-  surroundCollapsed: false,
   cueDismissedForId: null,
   dismissedStrainIds: [],
   activeTab: 'editor',
@@ -227,7 +223,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setFocusMode: (mode) => set({ focusMode: mode }),
   setRunTutorial: (run) => set({ runTutorial: run }),
   setAmbientCueEnabled: (on) => set({ ambientCueEnabled: on }),
-  setSurroundCollapsed: (collapsed) => set({ surroundCollapsed: collapsed }),
   setCueDismissedForId: (id) => set({ cueDismissedForId: id }),
   dismissStrain: (id) =>
     set((s) => (s.dismissedStrainIds.includes(id) ? s : { dismissedStrainIds: [...s.dismissedStrainIds, id] })),

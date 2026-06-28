@@ -1,8 +1,8 @@
 // Section-id → spec projection, used wherever a part must be read inside its
-// whole. `buildStructuralSurround` (diagnostic-helpers) and the editor's
-// SurroundRail both need the same `{ [sectionId]: SectionSpec, root?: ... }`
-// shape; this is the one place that derives it from the testSuite so the
-// pattern is not re-spelled at each call site.
+// whole. `buildStructuralSurround` (diagnostic-helpers) and the Spec panel's
+// "Context & commitments" zone both need the same
+// `{ [sectionId]: SectionSpec, root?: ... }` shape; this is the one place that
+// derives it from the testSuite so the pattern is not re-spelled at each call site.
 
 import type { SectionSpec, TestSuite } from '../types';
 
