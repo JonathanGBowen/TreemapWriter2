@@ -18,6 +18,7 @@ import {
   setAgentTraceSink,
   setFallbackSource,
   setCooldownSink,
+  setThrottleWaitSink,
 } from '../services/ai-provider-registry';
 
 /**
@@ -96,6 +97,8 @@ setFallbackSource(() => {
   };
 });
 setCooldownSink((snapshot) => useStore.getState().setModelCooldowns(snapshot));
+// Surface throttle waits as "queued" on the activity pill (mirrors setCooldownSink).
+setThrottleWaitSink((waiting) => useStore.getState().setThrottleWaiting(waiting));
 
 // Feed the Agent SDK activity trace into the store (the client never imports the
 // store — avoids a cycle, mirroring setModelConfigSource). Then load any

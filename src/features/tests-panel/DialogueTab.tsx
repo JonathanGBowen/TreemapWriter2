@@ -5,6 +5,7 @@ import type { DialogueMessage } from "../../types";
 import { useStore } from "../../state";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
+import { DisabledHint } from "../shared/DisabledHint";
 
 /** Left edge = your sentence (faint cyan); a muted panel = the partner's. The
  *  who-labels are monochrome — the position already says who's speaking (P4). */
@@ -104,15 +105,21 @@ const DialogueComposer: React.FC<{
           <Send size={13} />
         </button>
       </div>
-      <button
-        onClick={onRefactor}
-        disabled={!canRefactor}
-        className="w-full py-[13px] bracketed hld-lit-magenta font-mono uppercase tracking-[0.12em] text-[11px] font-bold flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed"
-        style={{ "--br-color": "var(--color-hld-magenta)" } as CSSProperties}
-        title="Synthesize this dialogue into a new analysis version"
+      <DisabledHint
+        when={!canRefactor && !isStreaming && !isProcessing}
+        hint="Have a back-and-forth first — ask a question and get a reply, then conclude."
+        className="block w-full"
       >
-        {isProcessing ? <>Refactoring…</> : <><FlaskConical size={11} /> Conclude → new version</>}
-      </button>
+        <button
+          onClick={onRefactor}
+          disabled={!canRefactor}
+          className="w-full py-[13px] bracketed hld-lit-magenta font-mono uppercase tracking-[0.12em] text-[11px] font-bold flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed"
+          style={{ "--br-color": "var(--color-hld-magenta)" } as CSSProperties}
+          title="Synthesize this dialogue into a new analysis version"
+        >
+          {isProcessing ? <>Refactoring…</> : <><FlaskConical size={11} /> Conclude → new version</>}
+        </button>
+      </DisabledHint>
       {canClear && (
         <div className="flex justify-end">
           <button

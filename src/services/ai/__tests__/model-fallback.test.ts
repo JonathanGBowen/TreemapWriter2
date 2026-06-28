@@ -3,13 +3,13 @@ import {
   AllModelsExhaustedError,
   buildCandidates,
   classifyAIError,
-  DEFAULT_FALLBACK_LADDER,
   formatResetEt,
   isThinkingConfigError,
   ModelCooldowns,
   nextResetUtc,
   withTransientRetry,
 } from '../model-fallback';
+import { DEFAULT_FALLBACK_LADDER } from '../model-defaults';
 import type { ModelChoice } from '../model-types';
 
 describe('classifyAIError', () => {
@@ -53,6 +53,24 @@ describe('classifyAIError', () => {
   it('reads a nested error.status shape', () => {
     expect(
       classifyAIError({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'per day' } }),
+    ).toBe('daily-quota');
+  });
+
+  it('prefers a structured per-minute scope over a misleading day signal', () => {
+    // A client parsed the structured error as per-MINUTE; even though the prose
+    // says "per day", it must classify as rate-limit so it never triggers a cooldown.
+    expect(
+      classifyAIError({
+        status: 429,
+        message: 'Quota exceeded (mentions per day in prose)',
+        __quotaScope: 'per-minute',
+      }),
+    ).toBe('rate-limit');
+  });
+
+  it('honors a structured per-day scope even without day text', () => {
+    expect(
+      classifyAIError({ status: 429, message: 'RESOURCE_EXHAUSTED', __quotaScope: 'per-day' }),
     ).toBe('daily-quota');
   });
 });
@@ -189,6 +207,41 @@ describe('withTransientRetry', () => {
     await expect(withTransientRetry(fn, { ...fast, maxAttempts: 3 })).rejects.toBeTruthy();
     expect(fn).toHaveBeenCalledTimes(3);
   });
+
+  it('waits at least the server retry hint on a transient error', async () => {
+    const sleeps: number[] = [];
+    let calls = 0;
+    const fn = vi.fn(async () => {
+      if (calls++ === 0) throw { status: 429, message: 'rate limit', __retryDelayMs: 5000 };
+      return 'ok';
+    });
+    await withTransientRetry(fn, {
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      random: () => 0,
+      baseDelayMs: 100,
+    });
+    // backoff would be 100·2^0·(0.5+0)=50ms; the 5000ms hint wins.
+    expect(sleeps[0]).toBe(5000);
+  });
+
+  it('caps the honored hint so a long per-minute window does not stall', async () => {
+    const sleeps: number[] = [];
+    let calls = 0;
+    const fn = vi.fn(async () => {
+      if (calls++ === 0) throw { status: 429, message: 'rate limit', __retryDelayMs: 60_000 };
+      return 'ok';
+    });
+    await withTransientRetry(fn, {
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      random: () => 0,
+      baseDelayMs: 100,
+    });
+    expect(sleeps[0]).toBe(8000); // MAX_HINTED_DELAY_MS
+  });
 });
 
 describe('AllModelsExhaustedError', () => {
@@ -197,5 +250,11 @@ describe('AllModelsExhaustedError', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.reason).toBe('context');
     expect(err.name).toBe('AllModelsExhaustedError');
+  });
+
+  it('carries a rate-limit reason and the retry-after hint', () => {
+    const err = new AllModelsExhaustedError('rate-limit', 'busy', undefined, 12_000);
+    expect(err.reason).toBe('rate-limit');
+    expect(err.retryAfterMs).toBe(12_000);
   });
 });

@@ -4,6 +4,7 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
+import { notifyAiError } from '../shared/ai-error';
 import type { Section } from '../../types';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
@@ -83,6 +84,7 @@ export const useClimateActions = () => {
     }
 
     setClimateStatus('running');
+    const opId = useStore.getState().beginOp({ label: 'Reading atmosphere…', workspace: 'climate' });
     try {
       const report = await aiProvider.analyzeAtmosphere({
         instrument: climateInstrument,
@@ -100,7 +102,9 @@ export const useClimateActions = () => {
       setClimateStatus('idle');
     } catch (e) {
       setClimateStatus('error');
-      toast.error(`Atmospheric reading failed: ${errMessage(e)}`);
+      notifyAiError(e, `Atmospheric reading failed: ${errMessage(e)}`);
+    } finally {
+      useStore.getState().endOp(opId);
     }
   }, [setClimateReport, setClimateStatus]);
 

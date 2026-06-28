@@ -62,6 +62,7 @@ export const useGistActions = () => {
 
       setGenerating(true);
       setIsProcessing(true);
+      const opId = useStore.getState().beginOp({ label: 'Generating gist…', workspace: 'gist' });
       try {
         // Stage A — analysis (inspectable intermediate state).
         const analysis = await aiProvider.analyzeGist({
@@ -115,6 +116,7 @@ export const useGistActions = () => {
       } finally {
         setGenerating(false);
         setIsProcessing(false);
+        useStore.getState().endOp(opId);
       }
     },
     [setGist, setGenerating, setStale, setIsProcessing, saveCurrentState],
@@ -137,6 +139,7 @@ export const useGistActions = () => {
 
       setRefreshingId(segmentId);
       setIsProcessing(true);
+      const opId = useStore.getState().beginOp({ label: 'Refreshing gist span…', workspace: 'gist' });
       try {
         const span = await aiProvider.refreshGistSpan({
           segmentId,
@@ -163,6 +166,7 @@ export const useGistActions = () => {
       } finally {
         setRefreshingId(null);
         setIsProcessing(false);
+        useStore.getState().endOp(opId);
       }
     },
     [setGist, setRefreshingId, setStale, setIsProcessing, saveCurrentState],
@@ -179,6 +183,7 @@ export const useGistActions = () => {
       const gist = useStore.getState().gist;
       if (!gist) return;
       setIsProcessing(true);
+      const opId = useStore.getState().beginOp({ label: 'Re-fitting gist…', workspace: 'gist' });
       try {
         const anchorTermsBySpan: Record<string, string[]> = {};
         for (const sp of gist.fine) anchorTermsBySpan[sp.id] = gist.analysis.segments.find((a) => a.id === sp.id)?.anchor_terms ?? [];
@@ -191,6 +196,7 @@ export const useGistActions = () => {
         // Silent: the grain-ladder fallback already guarantees the panel never scrolls.
       } finally {
         setIsProcessing(false);
+        useStore.getState().endOp(opId);
       }
     },
     [setGist, setIsProcessing, saveCurrentState],

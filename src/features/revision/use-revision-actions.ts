@@ -86,6 +86,7 @@ export const useRevisionActions = () => {
 
     setRevisionPhase('generating');
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Generating revisions…', workspace: 'revision' });
     try {
       const proposals = await aiProvider.generateRevisions({
         sectionTitle,
@@ -105,6 +106,7 @@ export const useRevisionActions = () => {
       setRevisionPhase('config');
     } finally {
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [currentSection, setRevisionPhase, setProposals, setIsProcessing]);
 

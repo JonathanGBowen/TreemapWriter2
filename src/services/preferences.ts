@@ -3,7 +3,7 @@ import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
 import type { CooldownSnapshot, FallbackSettings } from './ai/model-fallback';
-import { DEFAULT_FALLBACK_SETTINGS } from './ai/model-fallback';
+import { DEFAULT_FALLBACK_SETTINGS } from './ai/model-defaults';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from './ai/clients';
 import type { AnalysisSpell, PromptsConfig, RevisionInstruction } from '../types';
 import type { TraceRun } from '../state/trace-state';

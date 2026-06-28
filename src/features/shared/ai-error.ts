@@ -1,6 +1,14 @@
 import { toast } from 'sonner';
 import { useStore } from '../../store';
-import { AllModelsExhaustedError } from '../../services/ai/model-fallback';
+import { AllModelsExhaustedError, formatResetEt } from '../../services/ai/model-fallback';
+
+/** Soonest daily-quota reset across the models currently on cooldown, e.g. "3:00 AM ET". */
+function soonestResetLabel(): string | null {
+  const snapshot = useStore.getState().modelCooldowns;
+  if (!Array.isArray(snapshot) || snapshot.length === 0) return null;
+  const soonest = snapshot.reduce((a, b) => (a.resetUtc <= b.resetUtc ? a : b));
+  return formatResetEt(soonest.resetUtc);
+}
 
 // Matches the "no/!invalid API key" family of messages thrown by the LLM
 // clients ("API Key missing", "Anthropic API Key missing") and by the provider
@@ -30,16 +38,38 @@ export function notifyAiError(e: unknown, fallback: string): void {
     return;
   }
   if (e instanceof AllModelsExhaustedError) {
-    toast.error(
-      e.reason === 'context'
-        ? 'No available model can hold this request. Try a larger-context model or shorter input.'
-        : 'All fallback models are rate-limited right now (daily quotas reset at 3:00 AM ET). Try again later or adjust the fallback ladder in AI Settings.',
-      {
-        action: {
-          label: 'AI Settings',
-          onClick: () => useStore.getState().setShowPersonaModal(true),
-        },
+    const openSettings = {
+      action: {
+        label: 'AI Settings',
+        onClick: () => useStore.getState().setShowPersonaModal(true),
       },
+    };
+    if (e.reason === 'context') {
+      toast.error(
+        'No available model can hold this request. Try a larger-context model or shorter input.',
+        openSettings,
+      );
+      return;
+    }
+    if (e.reason === 'rate-limit') {
+      // A per-MINUTE limit (or transient overload), NOT the daily quota — the user
+      // should wait seconds, not hours. This is the distinction that was conflated.
+      const secs = e.retryAfterMs ? Math.max(1, Math.round(e.retryAfterMs / 1000)) : null;
+      toast.error(
+        secs
+          ? `Models are briefly rate-limited (per-minute quota). Wait ~${secs}s and try again.`
+          : 'Models are briefly rate-limited (per-minute quota). Wait a moment and try again.',
+        openSettings,
+      );
+      return;
+    }
+    // reason === 'quota' — every model is out of its per-DAY quota until the reset.
+    const reset = soonestResetLabel();
+    toast.error(
+      reset
+        ? `All fallback models are out of their daily quota (resets ${reset}). Try again later, or adjust the fallback ladder in AI Settings.`
+        : 'All fallback models are out of their daily quota. Try again later, or adjust the fallback ladder in AI Settings.',
+      openSettings,
     );
     return;
   }

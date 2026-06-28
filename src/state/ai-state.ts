@@ -7,7 +7,7 @@ import type { ModelChoice, ModelConfig } from '../services/ai/model-types';
 import type { CatalogModel } from '../services/ai/model-catalog';
 import { DEFAULT_CATALOG, ollamaCatalogModel } from '../services/ai/model-catalog';
 import type { CooldownSnapshot } from '../services/ai/model-fallback';
-import { DEFAULT_FALLBACK_SETTINGS } from '../services/ai/model-fallback';
+import { DEFAULT_FALLBACK_SETTINGS } from '../services/ai/model-defaults';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from '../services/ai/clients';
 import * as prefs from '../services/preferences';
 import {
