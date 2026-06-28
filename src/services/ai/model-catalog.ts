@@ -261,3 +261,41 @@ export function ollamaCatalogModel(name: string): CatalogModel {
     tier: 'balanced',
   };
 }
+
+const modelKey = (provider: ProviderId, id: string): string => `${provider}:${id}`;
+
+/** Description stamped on every model the user adds in the catalog editor. Shared so
+ *  the editor and the reconcile below agree on what counts as a user-custom row. */
+export const CUSTOM_MODEL_DESC = 'Custom model.';
+
+/** True for an app-managed built-in model — one of the code-seeded DEFAULT_CATALOG rows. */
+export function isBuiltinModel(model: { provider: ProviderId; id: string }): boolean {
+  return DEFAULT_CATALOG.some((m) => m.provider === model.provider && m.id === model.id);
+}
+
+/**
+ * Reconcile a PERSISTED catalog with the current code seed. The built-in models
+ * (Gemini / Anthropic / Agent-SDK) ALWAYS come from DEFAULT_CATALOG, so editing the
+ * code list (GEMINI_CATALOG) updates every picker even though the catalog is a
+ * persisted, user-editable preference. Persisted rows are kept ONLY when they are
+ * genuinely the user's: a detected Ollama row (`provider === 'ollama'`) or a model
+ * added in the catalog editor (stamped `CUSTOM_MODEL_DESC`). Everything else that
+ * isn't in the seed — i.e. a *former* built-in id retired from an earlier default —
+ * is dropped, so stale model options actually disappear ("removed ones go"). This is
+ * safe for all UI-created data: the editor is the only way to add a model and it
+ * always stamps the custom desc, and seed models never carry it.
+ *
+ * Idempotent; defensive against junk (non-arrays / malformed rows dropped).
+ */
+export function reconcileCatalog(persisted: CatalogModel[] | null | undefined): CatalogModel[] {
+  const seeded = new Set(DEFAULT_CATALOG.map((m) => modelKey(m.provider, m.id)));
+  const extras = (Array.isArray(persisted) ? persisted : []).filter(
+    (m): m is CatalogModel =>
+      m != null &&
+      typeof m.provider === 'string' &&
+      typeof m.id === 'string' &&
+      !seeded.has(modelKey(m.provider as ProviderId, m.id)) &&
+      (m.provider === 'ollama' || m.desc === CUSTOM_MODEL_DESC),
+  );
+  return [...DEFAULT_CATALOG, ...extras];
+}
