@@ -1,6 +1,7 @@
 import { Check, RefreshCw, RotateCcw, Sparkles } from 'lucide-react';
 import { useStore } from '../../state';
 import { changedRows, rowsNeedingRegen, type ParallelRow } from '../../state/parallel-state';
+import { DisabledHint } from '../shared/DisabledHint';
 
 const acceptable = (r: ParallelRow): boolean =>
   r.status === 'regenerated' || r.status === 'deleted' || (r.status === 'inserted' && r.draftB != null);
@@ -49,35 +50,47 @@ export function ParallelActionBar({
           </button>
         )}
 
-        <button
-          type="button"
-          disabled={busy || toRegen === 0}
-          onClick={onRegenerate}
-          title="Regenerate the paragraphs whose outline you changed"
-          className="px-3 py-1.5 border border-hld-cyan/40 text-hld-cyan hover:bg-hld-cyan/10 font-mono text-[10px] uppercase tracking-[0.12em] flex items-center gap-1.5 disabled:opacity-40 disabled:border-hld-border disabled:text-hld-muted-text transition-colors"
+        <DisabledHint
+          when={!busy && toRegen === 0}
+          hint="Change a paragraph's outline first — nothing needs regenerating yet."
         >
-          <RefreshCw size={12} /> Regenerate{toRegen ? ` (${toRegen})` : ''}
-        </button>
+          <button
+            type="button"
+            disabled={busy || toRegen === 0}
+            onClick={onRegenerate}
+            title="Regenerate the paragraphs whose outline you changed"
+            className="px-3 py-1.5 border border-hld-cyan/40 text-hld-cyan hover:bg-hld-cyan/10 font-mono text-[10px] uppercase tracking-[0.12em] flex items-center gap-1.5 disabled:opacity-40 disabled:border-hld-border disabled:text-hld-muted-text transition-colors"
+          >
+            <RefreshCw size={12} /> Regenerate{toRegen ? ` (${toRegen})` : ''}
+          </button>
+        </DisabledHint>
 
-        <button
-          type="button"
-          disabled={busy || acceptCount === 0}
-          onClick={onAcceptAll}
-          title="Apply every ready change to your document (one undo reverts all)"
-          className="px-3 py-1.5 border border-hld-green/40 text-hld-green hover:bg-hld-green/10 font-mono text-[10px] uppercase tracking-[0.12em] flex items-center gap-1.5 disabled:opacity-40 disabled:border-hld-border disabled:text-hld-muted-text transition-colors"
+        <DisabledHint
+          when={!busy && acceptCount === 0}
+          hint="Nothing is ready to apply yet — regenerate at least one changed paragraph."
         >
-          <Check size={12} /> Accept all{acceptCount ? ` (${acceptCount})` : ''}
-        </button>
+          <button
+            type="button"
+            disabled={busy || acceptCount === 0}
+            onClick={onAcceptAll}
+            title="Apply every ready change to your document (one undo reverts all)"
+            className="px-3 py-1.5 border border-hld-green/40 text-hld-green hover:bg-hld-green/10 font-mono text-[10px] uppercase tracking-[0.12em] flex items-center gap-1.5 disabled:opacity-40 disabled:border-hld-border disabled:text-hld-muted-text transition-colors"
+          >
+            <Check size={12} /> Accept all{acceptCount ? ` (${acceptCount})` : ''}
+          </button>
+        </DisabledHint>
 
-        <button
-          type="button"
-          disabled={!dirty}
-          onClick={onResetAll}
-          title="Reset every changed point to the original"
-          className="px-3 py-1.5 border border-hld-border text-hld-muted-text hover:text-hld-text font-mono text-[10px] uppercase tracking-[0.12em] flex items-center gap-1.5 disabled:opacity-40 transition-colors"
-        >
-          <RotateCcw size={12} /> Reset all
-        </button>
+        <DisabledHint when={!dirty} hint="Nothing has changed yet — make an edit to enable reset.">
+          <button
+            type="button"
+            disabled={!dirty}
+            onClick={onResetAll}
+            title="Reset every changed point to the original"
+            className="px-3 py-1.5 border border-hld-border text-hld-muted-text hover:text-hld-text font-mono text-[10px] uppercase tracking-[0.12em] flex items-center gap-1.5 disabled:opacity-40 transition-colors"
+          >
+            <RotateCcw size={12} /> Reset all
+          </button>
+        </DisabledHint>
       </div>
     </div>
   );

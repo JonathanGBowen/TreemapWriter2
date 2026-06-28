@@ -4,6 +4,7 @@ import type { DialogueMessage, SectionSpec } from '../types';
 import type { ModelChoice } from '../services/ai/model-types';
 import { specStages, type SpecStage } from '../services/ai/ai-provider.specs';
 import { resolveModelChoice } from '../services/ai/resolve-model-choice';
+import { DEFAULT_MODEL_CONFIG } from '../services/ai/model-config';
 
 /**
  * The Generate-Specs workspace, as an ephemeral slice. Like the Version Compare,
@@ -79,7 +80,9 @@ export const createInterpolationSlice: StateCreator<AppState, [], [], Interpolat
   interpolateOpen: false,
   interpStages: [],
   stageCursor: 0,
-  interpDepth: { provider: 'gemini', model: 'gemini-3-flash-preview', thinkingBudget: 0 },
+  // Placeholder until openInterpolate resolves the real choice; seed from the same
+  // call kind's built-in default so it can never name a model that's left the catalog.
+  interpDepth: DEFAULT_MODEL_CONFIG.generateSpecs,
   specCache: {},
   stageWork: {},
   walkStarted: false,

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useStore } from '../../store';
 import { pingAgentSidecar } from '../../services/ai-provider-registry';
 import type { AgentSidecarHealth } from '../../services/ai/clients';
+import { ModelPicker } from './ModelPicker';
 
 /**
  * Experimental Claude Agent SDK controls, tucked into a collapsed disclosure so
@@ -15,7 +16,6 @@ export const AgentSdkSettingsSection: React.FC = () => {
   const enabled = useStore((s) => s.agentModeEnabled);
   const sidecarUrl = useStore((s) => s.agentSidecarUrl);
   const agentSdkModel = useStore((s) => s.agentSdkModel);
-  const catalog = useStore((s) => s.modelCatalog);
   const setEnabled = useStore((s) => s.setAgentModeEnabled);
   const setSidecarUrl = useStore((s) => s.setAgentSidecarUrl);
   const setAgentSdkModel = useStore((s) => s.setAgentSdkModel);
@@ -27,8 +27,6 @@ export const AgentSdkSettingsSection: React.FC = () => {
   const [urlDraft, setUrlDraft] = useState(sidecarUrl);
   const [health, setHealth] = useState<AgentSidecarHealth | null>(null);
   const [checking, setChecking] = useState(false);
-
-  const agentModels = catalog.filter((m) => m.provider === 'agent-sdk');
 
   const check = async () => {
     const url = urlDraft.trim();
@@ -85,23 +83,17 @@ export const AgentSdkSettingsSection: React.FC = () => {
             </button>
           </div>
 
-          {/* Agent model */}
+          {/* Agent model — the shared picker, scoped to the Agent SDK provider. */}
           <div>
             <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted mb-1 block">
               Model
             </label>
-            <select
-              value={agentSdkModel}
-              onChange={(e) => setAgentSdkModel(e.target.value)}
+            <ModelPicker
+              providers={['agent-sdk']}
+              value={{ provider: 'agent-sdk', model: agentSdkModel }}
+              onChange={(c) => c && setAgentSdkModel(c.model)}
               className="w-full bg-hld-bg border border-hld-border rounded px-2 py-2 text-[12px] font-mono text-hld-text outline-none focus:border-hld-cyan"
-            >
-              {agentModels.length === 0 && <option value={agentSdkModel}>{agentSdkModel}</option>}
-              {agentModels.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Helper URL + status */}

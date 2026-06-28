@@ -9,6 +9,7 @@ import { GoogleGenAI } from '@google/genai';
 import type { LLMClient, LLMMessage, LLMRequest } from './llm-client';
 import { trimToFirstUser } from './llm-client';
 import { isThinkingConfigError } from '../model-fallback';
+import { annotateGeminiError } from './gemini-error';
 
 /**
  * Gemma models are reachable through the Gemini API but are served WITHOUT
@@ -54,8 +55,12 @@ export class GeminiClient implements LLMClient {
     } catch (err) {
       // The thinking field's name differs across Gemini families; if the model
       // rejects it, retry once without it rather than failing the call.
-      if (!isThinkingConfigError(err)) throw err;
-      return (await run(true)).text || '';
+      if (!isThinkingConfigError(err)) throw annotateGeminiError(err);
+      try {
+        return (await run(true)).text || '';
+      } catch (err2) {
+        throw annotateGeminiError(err2);
+      }
     }
   }
 
@@ -70,8 +75,12 @@ export class GeminiClient implements LLMClient {
     try {
       stream = await open(false);
     } catch (err) {
-      if (!isThinkingConfigError(err)) throw err;
-      stream = await open(true);
+      if (!isThinkingConfigError(err)) throw annotateGeminiError(err);
+      try {
+        stream = await open(true);
+      } catch (err2) {
+        throw annotateGeminiError(err2);
+      }
     }
     for await (const chunk of stream) {
       if (chunk.text) yield chunk.text;

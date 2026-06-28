@@ -8,6 +8,7 @@ import { buildSpecByTitle } from '../../lib/specTestHelpers';
 import { runSpecTestForOperands } from '../../lib/specTestRun';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { checkContextFit } from '../../services/ai/context-budget';
+import { notifyAiError } from '../shared/ai-error';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
 
@@ -61,6 +62,7 @@ export const useSpecTestActions = () => {
     setReport(null);
     resetPartial();
     setStatus('running');
+    const opId = useStore.getState().beginOp({ label: 'Running spec test…', workspace: 'spec-test' });
     try {
       const report = await runSpecTestForOperands(aiProvider, a, b, {
         specByTitle,
@@ -77,7 +79,9 @@ export const useSpecTestActions = () => {
       setStatus('idle');
     } catch (e) {
       setStatus('error');
-      toast.error(`Spec test failed: ${errMessage(e)}`);
+      notifyAiError(e, `Spec test failed: ${errMessage(e)}`);
+    } finally {
+      useStore.getState().endOp(opId);
     }
   }, [setReport, setStatus, resetPartial]);
 

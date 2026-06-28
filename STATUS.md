@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-24.** Update this file whenever a feature ships or is
+> **Current as of 2026-06-28.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -197,6 +197,36 @@ reference (`Author (Year)` chip, APA + abstract as content), so Citations builds
 accurate `## References` section and APA audit instead of guessing. Full source text
 still rides the existing `.md` upload; bibliographies are session-only, and BibTeX /
 the live Zotero local-API picker / Web-API sync are deliberately out of scope (below).
+
+A **catalog/ladder reconcile** shipped 2026-06-28 (follow-up to the six-fix pass; see
+[`docs/migration-log.md`](docs/migration-log.md)) so the built-in Gemini list actually
+reaches users: the model catalog + fallback ladder are persisted prefs, and hydration
+loaded stale values over the code defaults. Now `getModelCatalog` reconciles on read
+(built-in gemini/anthropic/agent-sdk rows always come from `DEFAULT_CATALOG`; detected
+Ollama + editor-added custom models preserved; retired former-built-ins dropped), the
+ladder is cleaned of dead rungs on hydrate (with a "Reset to default ladder" button),
+and built-in catalog rows are non-removable. Fixes every dropdown + the functional
+dispatch at once since they all read the two reconciled store values. Deliberately left
+alone (no silent mutation): a `globalModelDefault`/per-project pin to a retired id is
+shown as "(unavailable)" for the user to re-pick.
+
+An **AI / Gemini robustness & UX pass** shipped 2026-06-28 (six fixes; see
+[`docs/migration-log.md`](docs/migration-log.md)): the catalog's ordered Gemini list
+is now the **single source of truth** for the fallback ladder (derived in
+`src/services/ai/model-defaults.ts`, so the two can't drift); a per-MINUTE rate limit
+is no longer mistaken for a per-DAY quota (structured-error parsing in
+`clients/gemini-error.ts` → `__quotaScope`/`__retryDelayMs`, a `'rate-limit'`
+`ExhaustionReason`, retry-hint-aware backoff, and a **proactive token-bucket throttle**
+from the catalog's new `requestsPerMinute`); a **global activity pill**
+(`AiActivityIndicator`, an `activeOps` registry separate from `isProcessing`) makes any
+in-flight call visible from any view and **jumps back** to its workspace, with throttle
+waits shown as "queued"; stray AI error sites route through `notifyAiError`; the shared
+`ModelPicker` gained a `providers?` filter (folding the Agent-SDK straggler); and a
+`DisabledHint` wrapper explains spec-gated controls (the "Run Diagnostic blocked until a
+spec exists" case and peers). Deliberate follow-ons: the throttle is best-effort spacing
+(honored retry-hint capped at 8s, then falls to the next model's bucket); the pill labels
+the latest op only (a `+N` count when several run); and conversational dialogue/coach
+streams keep their own inline indicators rather than the pill.
 
 ## Next (felt priorities)
 

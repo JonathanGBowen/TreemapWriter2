@@ -12,6 +12,8 @@ import { isTauri } from '../../services/tauri-environment';
 import { AI_CALL_KINDS, AI_CALL_KIND_LABELS } from '../../services/ai/model-types';
 import type { ModelChoice, ProviderId } from '../../services/ai/model-types';
 import type { CatalogModel } from '../../services/ai/model-catalog';
+import { isBuiltinModel, CUSTOM_MODEL_DESC } from '../../services/ai/model-catalog';
+import { DisabledHint } from '../shared/DisabledHint';
 import { ModelPicker } from './ModelPicker';
 import { AgentSdkSettingsSection } from './AgentSdkSettingsSection';
 import { FallbackSettingsSection } from './FallbackSettingsSection';
@@ -316,7 +318,7 @@ const CatalogEditor: React.FC<{
         provider,
         id: model,
         displayName: model,
-        desc: 'Custom model.',
+        desc: CUSTOM_MODEL_DESC,
         supportsThinking: false,
         defaultThinkingBudget: 0,
         tier: 'balanced',
@@ -331,24 +333,32 @@ const CatalogEditor: React.FC<{
         Model Catalog
       </h5>
       <div className="space-y-1 max-h-40 overflow-y-auto mb-3">
-        {catalog.map((m) => (
-          <div
-            key={`${m.provider}:${m.id}`}
-            className="flex items-center justify-between gap-2 text-[11px] font-mono text-hld-text bg-hld-bg border border-hld-border rounded px-2 py-1"
-          >
-            <span className="truncate">
-              <span className="text-hld-muted">{m.provider}</span> · {m.id}
-              {m.provider === 'ollama' && <span className="text-hld-muted"> (detected)</span>}
-            </span>
-            <button
-              onClick={() => onChange(catalog.filter((c) => !(c.provider === m.provider && c.id === m.id)))}
-              className="text-hld-muted hover:text-hld-magenta shrink-0"
-              title="Remove from catalog"
+        {catalog.map((m) => {
+          // Built-in models are app-managed: they refresh from code on each launch,
+          // so removing one wouldn't stick. Only Ollama/custom rows are removable.
+          const builtin = isBuiltinModel(m);
+          return (
+            <div
+              key={`${m.provider}:${m.id}`}
+              className="flex items-center justify-between gap-2 text-[11px] font-mono text-hld-text bg-hld-bg border border-hld-border rounded px-2 py-1"
             >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
+              <span className="truncate">
+                <span className="text-hld-muted">{m.provider}</span> · {m.id}
+                {m.provider === 'ollama' && <span className="text-hld-muted"> (detected)</span>}
+              </span>
+              <DisabledHint when={builtin} hint="Built-in models are managed by the app and refresh automatically.">
+                <button
+                  onClick={() => onChange(catalog.filter((c) => !(c.provider === m.provider && c.id === m.id)))}
+                  disabled={builtin}
+                  className="text-hld-muted hover:text-hld-magenta shrink-0 disabled:opacity-30 disabled:hover:text-hld-muted disabled:cursor-not-allowed"
+                  title="Remove from catalog"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </DisabledHint>
+            </div>
+          );
+        })}
       </div>
       <div className="flex gap-2">
         <select

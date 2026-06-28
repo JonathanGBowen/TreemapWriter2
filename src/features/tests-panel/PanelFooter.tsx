@@ -4,6 +4,7 @@ import { Play } from "lucide-react";
 import { useStore } from "../../state";
 import { DEFAULT_PERSONAS } from "../../lib/defaultPersonas";
 import { AgentTraceTicker } from "../shared/AgentTraceTicker";
+import { DisabledHint } from "../shared/DisabledHint";
 
 /** Pinned footer: the single lit RUN DIAGNOSTIC action (P1), with a quiet caption
  *  below naming the evaluator persona and the content-suggestions escape — both
@@ -22,15 +23,21 @@ export function PanelFooter({ runDisabled }: { runDisabled: boolean }) {
 
   return (
     <div className="px-[16px] py-[16px] border-t border-hld-border shrink-0">
-      <button
-        type="button"
-        onClick={() => setShowRunModal(true)}
-        disabled={runDisabled}
-        style={{ '--br-color': 'var(--color-hld-magenta)' } as CSSProperties}
-        className="bracketed hld-lit-magenta w-full py-[14px] flex items-center justify-center gap-2 font-mono text-[11px] font-bold tracking-[0.14em] uppercase disabled:opacity-35 disabled:cursor-not-allowed"
+      <DisabledHint
+        when={runDisabled}
+        hint="Generate a spec (or add goals) for this section before running a diagnostic."
+        className="block w-full"
       >
-        {isProcessing ? 'Evaluating…' : <><Play size={11} fill="currentColor" /> Run Diagnostic</>}
-      </button>
+        <button
+          type="button"
+          onClick={() => setShowRunModal(true)}
+          disabled={runDisabled}
+          style={{ '--br-color': 'var(--color-hld-magenta)' } as CSSProperties}
+          className="bracketed hld-lit-magenta w-full py-[14px] flex items-center justify-center gap-2 font-mono text-[11px] font-bold tracking-[0.14em] uppercase disabled:opacity-35 disabled:cursor-not-allowed"
+        >
+          {isProcessing ? 'Evaluating…' : <><Play size={11} fill="currentColor" /> Run Diagnostic</>}
+        </button>
+      </DisabledHint>
       <AgentTraceTicker
         kinds={['analyzeSection', 'runDiagnostic', 'refactorAnalysis']}
         className="mt-[8px] flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"

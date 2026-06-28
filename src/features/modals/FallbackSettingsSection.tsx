@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Layers, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Trash2, Plus } from 'lucide-react';
+import { Layers, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Trash2, Plus, RotateCcw } from 'lucide-react';
 import { useStore } from '../../store';
 import { clearModelCooldown } from '../../services/ai-provider-registry';
 import { findCatalogModel } from '../../services/ai/model-catalog';
+import { DEFAULT_FALLBACK_LADDER } from '../../services/ai/model-defaults';
 import { formatResetEt } from '../../services/ai/model-fallback';
 import type { ModelChoice } from '../../services/ai/model-types';
 import { ModelPicker } from './ModelPicker';
@@ -94,9 +95,19 @@ export const FallbackSettingsSection: React.FC = () => {
 
           {/* Ladder */}
           <div className={enabled ? '' : 'opacity-50 pointer-events-none'}>
-            <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted mb-2 block">
-              Fallback ladder
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-mono uppercase tracking-widest font-bold text-hld-muted">
+                Fallback ladder
+              </label>
+              <button
+                type="button"
+                onClick={() => setLadder([...DEFAULT_FALLBACK_LADDER])}
+                title="Restore the default Gemini fallback ladder"
+                className="flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest text-hld-muted hover:text-hld-cyan transition-colors"
+              >
+                <RotateCcw size={11} /> Reset
+              </button>
+            </div>
             <div className="space-y-1 mb-3">
               {ladder.map((c, i) => (
                 <div

@@ -9,6 +9,7 @@ import { buildSpecByTitle } from '../../lib/specTestHelpers';
 import { runSpecTestForOperands } from '../../lib/specTestRun';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { checkContextFit } from '../../services/ai/context-budget';
+import { notifyAiError } from '../shared/ai-error';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
 
@@ -68,6 +69,7 @@ export const useComparisonActions = () => {
       }
       const stChoice = resolveModelChoice('runSpecTestSection', modelConfig, globalModelDefault);
       setComparisonStatus('running');
+      const specOpId = useStore.getState().beginOp({ label: 'Running spec test…', workspace: 'compare' });
       try {
         const report = await runSpecTestForOperands(aiProvider, a, b, {
           specByTitle,
@@ -83,7 +85,9 @@ export const useComparisonActions = () => {
         setComparisonStatus('idle');
       } catch (e) {
         setComparisonStatus('error');
-        toast.error(`Spec test failed: ${errMessage(e)}`);
+        notifyAiError(e, `Spec test failed: ${errMessage(e)}`);
+      } finally {
+        useStore.getState().endOp(specOpId);
       }
       return;
     }
@@ -108,6 +112,7 @@ export const useComparisonActions = () => {
     }
 
     setComparisonStatus('running');
+    const opId = useStore.getState().beginOp({ label: 'Comparing versions…', workspace: 'compare' });
     try {
       const result = await aiProvider.compareVersions({
         labelA: a.label,
@@ -123,7 +128,9 @@ export const useComparisonActions = () => {
       setComparisonStatus('idle');
     } catch (e) {
       setComparisonStatus('error');
-      toast.error(`Comparison failed: ${errMessage(e)}`);
+      notifyAiError(e, `Comparison failed: ${errMessage(e)}`);
+    } finally {
+      useStore.getState().endOp(opId);
     }
   }, [setComparison, setComparisonStatus]);
 

@@ -1,9 +1,9 @@
 import { get, set } from 'idb-keyval';
 import type { ModelConfig } from './ai/model-types';
 import type { CatalogModel } from './ai/model-catalog';
-import { DEFAULT_CATALOG } from './ai/model-catalog';
+import { reconcileCatalog } from './ai/model-catalog';
 import type { CooldownSnapshot, FallbackSettings } from './ai/model-fallback';
-import { DEFAULT_FALLBACK_SETTINGS } from './ai/model-fallback';
+import { DEFAULT_FALLBACK_SETTINGS } from './ai/model-defaults';
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_AGENT_SIDECAR_URL } from './ai/clients';
 import type { AnalysisSpell, PromptsConfig, RevisionInstruction } from '../types';
 import type { TraceRun } from '../state/trace-state';
@@ -59,10 +59,15 @@ export async function setGlobalModelDefault(config: ModelConfig): Promise<void> 
   await set(MODELS_GLOBAL_DEFAULT_KEY, config);
 }
 
-/** Editable model catalog; falls back to the seed if nothing is stored. */
+/**
+ * Editable model catalog, reconciled with the code seed on every read: built-in
+ * models always reflect the current `DEFAULT_CATALOG` (so a code update reaches
+ * users with a stale persisted catalog), while detected Ollama + custom rows are
+ * preserved. Idempotent; storage self-heals on the next `setModelCatalog` write.
+ */
 export async function getModelCatalog(): Promise<CatalogModel[]> {
   const stored = await get<CatalogModel[]>(MODELS_CATALOG_KEY);
-  return Array.isArray(stored) && stored.length > 0 ? stored : DEFAULT_CATALOG;
+  return reconcileCatalog(stored);
 }
 
 export async function setModelCatalog(catalog: CatalogModel[]): Promise<void> {

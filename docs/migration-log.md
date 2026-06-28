@@ -4478,3 +4478,126 @@ fragility). `sectionCaret` is session-ephemeral (no cross-reload persistence); r
 `surroundCollapsed` flags; removes `ResumeMarker.tsx`, the caption, the lit zone, and the
 `sectionCaret` slice field. No domain-type, Repository, or Rust change — purely presentation
 plus one ephemeral UI-state field.
+## 2026-06-28 — AI / Gemini robustness & UX pass (six fixes)
+
+**What changed.** Six related fixes around the AI surface; no architectural change
+— each tightens an existing seam. The `AIProvider` dispatch, the shared
+`ModelPicker`, and the pure error classifier were already in place.
+
+- **One ordered Gemini list (single source of truth).** The catalog's Gemini rows
+  and the fallback ladder were two hand-maintained lists of the same 7 models. The
+  ordered Gemini list now lives once in `src/services/ai/model-catalog.ts`
+  (`GEMINI_CATALOG`); `DEFAULT_FALLBACK_LADDER`/`DEFAULT_FALLBACK_SETTINGS` are
+  **derived** from it in a new leaf `src/services/ai/model-defaults.ts`
+  (`ladder = GEMINI_CATALOG.map(...)`). `model-fallback.ts` stays a pure leaf
+  (imports only `model-types`); importers (`ai-state`, `ai-provider-registry`,
+  `preferences`, two test files) repointed. Stale refs reconciled: the
+  `interpolation-state` seed reads `DEFAULT_MODEL_CONFIG.generateSpecs`; the Rust
+  gist-roundtrip test fixture's model id refreshed.
+- **Per-minute (RPM) vs daily quota.** `classifyAIError` no longer guesses
+  minute-vs-day from message text alone. A new `src/services/ai/clients/gemini-error.ts`
+  (the one file that knows Gemini's error shape) parses the structured
+  `QuotaFailure`/`RetryInfo` and attaches provider-neutral hints
+  (`__quotaScope` / `__retryDelayMs`, typed in `model-types`); `classifyAIError`
+  prefers the structured scope (a `per-minute` scope can no longer be upgraded to a
+  multi-hour daily cooldown by a stray "day" substring). `ExhaustionReason` gains
+  `'rate-limit'` so `dispatch.exhausted()` distinguishes "all on daily cooldown"
+  from "all hit a per-minute limit"; `notifyAiError` shows the right copy for each
+  (with the soonest reset time for daily, `~Ns` for per-minute). `withTransientRetry`
+  honors the server retry hint (capped at 8s). **Proactive throttle:** a new pure
+  leaf `src/services/ai/request-throttle.ts` (token bucket, injectable clock) spaces
+  outgoing calls within each model's `requestsPerMinute` (new catalog field: 5/min
+  flash, 15/min flash-lite & gemma); wired into dispatch + the registry. Its "is
+  waiting" signal surfaces as **"queued"** on the activity pill (below).
+- **Calls survive leaving the workspace + a global activity pill.** New `activeOps`
+  registry in `ui-state` (separate from the `isProcessing` mutual-exclusion lock)
+  + a single `AiActivityIndicator` pill mounted in `App.tsx`, visible from any view.
+  When the running op names a workspace it's a **jump-back** button (`focusWorkspace`
+  — sets the open flag, never clears in-flight state). `beginOp`/`endOp` wired (in
+  `try/finally`) across the diagnostic, estimate-deps, interpolate (generate/develop/
+  run-all), gist (generate/refresh/refit), revision, parallel (outline/regenerate),
+  compare, spec-test, climate, analysis, and gestalt flows. Verified: every flow
+  already writes its final result to the store, so leaving a view never drops a
+  completed result — the pill only adds visibility.
+- **Legible errors.** AI-call catch sites that bypassed `notifyAiError` (compare,
+  spec-test, climate, `App.handleEstimateDependencies`) now route through it, so a
+  missing key / quota exhaustion gets the actionable toast (with the RPM-vs-daily
+  copy). Deliberate inline-error flows (sprint/coach graceful fallbacks) and
+  persistence/sync errors keep their specific messages.
+- **Shared model selector.** `ModelPicker` gained a `providers?` filter prop; the
+  Agent-SDK settings' raw `<select>` now reuses it (`providers={['agent-sdk']}`).
+- **Tooltips on inactive controls.** New `src/features/shared/DisabledHint.tsx`
+  wrapper (native `title` on a disabled button is unreliable in the webview).
+  Applied to the spec-gated "Run Diagnostic" (the flagship "blocked until specs"
+  case), interpolate "Accept & continue", the Parallel action bar, and the Dialogue
+  "Conclude" button — each explaining the precondition only while disabled for it.
+
+**New files.** `model-defaults.ts`, `clients/gemini-error.ts`, `request-throttle.ts`
+(+ their tests), `features/shared/AiActivityIndicator.tsx`,
+`features/shared/DisabledHint.tsx`.
+
+**Verify.** `npm run typecheck`, `npm test` (535 pass / 72 files — new:
+`request-throttle.test.ts`, `clients/gemini-error.test.ts`; extended:
+`model-fallback.test.ts` — structured scope, reason union, retry-hint backoff),
+`npm run lint` (0 errors; pre-existing warnings only), `npm run build` all green.
+In-app: a Gemini per-minute 429 burst shows "rate-limited, wait ~Ns" (not the daily
+reset copy); a long burst reads "queued" not a hang; starting a workspace call then
+leaving keeps the pill and lands the result, and jump-back returns to it; hovering a
+disabled "Run Diagnostic" on a spec-less section explains why.
+
+**Rollback.** `git revert` — additive throughout: new leaf modules + derived
+constants, an additive store slice + one mounted component, a `notifyAiError`
+re-route, an additive picker prop, and a wrapper component. No schema, persisted-
+shape, or interface break; `model-fallback.ts`'s "imports only model-types"
+invariant is preserved.
+
+---
+
+## 2026-06-28 — Built-in Gemini model list now actually reaches users (catalog/ladder reconcile)
+
+**What changed.** Follow-up to the same-day "single ordered Gemini list" change. That
+change updated the *code* seeds, but the model catalog and fallback ladder are
+**global preferences persisted in IndexedDB**, and `hydrateAIPreferences` loaded the
+stale persisted values over the code defaults with no reconciliation — so the new
+Gemini list never reached anyone who'd already run the app (in the pickers *or*
+functionally). There was no "reset to defaults" affordance anywhere.
+
+- **Catalog reconcile on read.** New `reconcileCatalog(persisted)` + `isBuiltinModel`
+  + a shared `CUSTOM_MODEL_DESC` in [model-catalog.ts](src/services/ai/model-catalog.ts);
+  [`getModelCatalog`](src/services/preferences.ts) now returns `reconcileCatalog(stored)`.
+  Built-in (gemini/anthropic/agent-sdk) rows ALWAYS come from `DEFAULT_CATALOG`, so a
+  code update reaches every picker; persisted rows are kept only when genuinely the
+  user's — a detected Ollama row, or a model the catalog editor added (stamped
+  `CUSTOM_MODEL_DESC`). A *former* built-in id retired from an earlier default is
+  dropped ("removed ones go"). Idempotent; safe for all UI-created data (the editor
+  is the only add path and always stamps the marker; seed rows never carry it).
+- **Ladder reconcile on hydrate.** New `reconcileFallbackLadder(persisted, catalog)`
+  in [model-defaults.ts](src/services/ai/model-defaults.ts): drop rungs whose model is
+  no longer in the (reconciled) catalog; if a non-empty ladder was *entirely* stale,
+  restore `DEFAULT_FALLBACK_LADDER`; partial → prune only (order kept); returns the
+  same reference when unchanged so [hydrateAIPreferences](src/state/ai-state.ts)
+  re-persists only when it actually cleaned something.
+- **UI.** A "Reset to default ladder" button in
+  [FallbackSettingsSection](src/features/modals/FallbackSettingsSection.tsx); and in
+  the [AiSettingsSection](src/features/modals/AiSettingsSection.tsx) catalog editor,
+  built-in rows are now non-removable (disabled trash + `DisabledHint` "managed by the
+  app") since reconcile re-adds them anyway — only Ollama/custom rows stay removable.
+
+**Why this covers every surface.** Every model-picker dropdown reads the single
+`modelCatalog` store value and all fallback behavior reads `fallbackLadder`, so
+reconciling those two values fixes all dropdowns, the catalog/ladder editors, and the
+functional dispatch/throttle/`buildCandidates` path together. **Flagged out of scope
+(no silent mutation):** `globalModelDefault` / per-project `modelConfig` can pin a
+retired model id; `ModelPicker` already shows it as "(unavailable)" so the user can
+re-pick — left alone deliberately.
+
+**Verify.** `npm run typecheck`, `npm test` (548 pass / 73 files — new
+`model-defaults.test.ts`; extended `model-catalog.test.ts` with reconcile/idempotency/
+custom-vs-retired cases), `npm run lint` (0 errors), `npm run build` all green. In-app:
+with a stale persisted catalog/ladder, reload → dropdowns + ladder show the current
+Gemini list; built-in trash is disabled; "Reset to default ladder" restores order; a
+custom/Ollama model you added survives.
+
+**Rollback.** `git revert` — additive pure helpers + a reconcile-on-read in one prefs
+getter + one hydrate wiring + two small UI affordances. Non-destructive for UI-created
+data; no schema/persisted-shape break (`reconcileCatalog` tolerates old persisted rows).

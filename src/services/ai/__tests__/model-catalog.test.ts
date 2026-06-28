@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_CATALOG, findCatalogModel, ollamaCatalogModel } from '../model-catalog';
+import {
+  CUSTOM_MODEL_DESC,
+  DEFAULT_CATALOG,
+  findCatalogModel,
+  isBuiltinModel,
+  ollamaCatalogModel,
+  reconcileCatalog,
+} from '../model-catalog';
+import type { CatalogModel } from '../model-catalog';
 
 describe('DEFAULT_CATALOG', () => {
   it('seeds the flash/lite/gemma Gemini family (no Pro) + Anthropic, never Ollama', () => {
@@ -62,5 +70,67 @@ describe('DEFAULT_CATALOG', () => {
       id: 'llama3.1:8b',
       supportsThinking: false,
     });
+  });
+});
+
+describe('isBuiltinModel', () => {
+  it('is true for a seed model and false for Ollama/custom', () => {
+    expect(isBuiltinModel({ provider: 'gemini', id: 'gemini-flash-latest' })).toBe(true);
+    expect(isBuiltinModel({ provider: 'anthropic', id: 'claude-opus-4-8' })).toBe(true);
+    expect(isBuiltinModel({ provider: 'ollama', id: 'llama3.1:8b' })).toBe(false);
+    expect(isBuiltinModel({ provider: 'gemini', id: 'my-custom' })).toBe(false);
+  });
+});
+
+describe('reconcileCatalog', () => {
+  it('returns the seed when nothing useful is persisted', () => {
+    expect(reconcileCatalog(null)).toEqual(DEFAULT_CATALOG);
+    expect(reconcileCatalog(undefined)).toEqual(DEFAULT_CATALOG);
+    expect(reconcileCatalog([])).toEqual(DEFAULT_CATALOG);
+  });
+
+  it('refreshes built-in metadata from code, overriding stale persisted metadata', () => {
+    const stale = [
+      // a built-in carrying stale metadata (wrong name, missing requestsPerMinute)
+      { provider: 'gemini', id: 'gemini-flash-latest', displayName: 'STALE NAME', desc: '', supportsThinking: false, defaultThinkingBudget: 0, tier: 'fast' },
+    ] as CatalogModel[];
+    const out = reconcileCatalog(stale);
+    const flash = findCatalogModel(out, 'gemini', 'gemini-flash-latest');
+    // metadata comes from code, not the stale persisted row
+    expect(flash?.displayName).toBe('Gemini Flash (latest)');
+    expect(flash?.requestsPerMinute).toBe(5);
+    // no duplicate row for the built-in
+    expect(out.filter((m) => m.provider === 'gemini' && m.id === 'gemini-flash-latest')).toHaveLength(1);
+  });
+
+  it('drops a retired former built-in id (a non-seed model without the custom marker)', () => {
+    const out = reconcileCatalog([
+      { provider: 'gemini', id: 'gemini-3.1-pro-preview', displayName: 'old pro', desc: 'Strongest.', supportsThinking: false, defaultThinkingBudget: 0, tier: 'deep' },
+    ] as CatalogModel[]);
+    expect(findCatalogModel(out, 'gemini', 'gemini-3.1-pro-preview')).toBeUndefined();
+    expect(out).toEqual(DEFAULT_CATALOG);
+  });
+
+  it('preserves detected Ollama and user-added custom models, appended after the seed', () => {
+    // A genuine custom model carries the editor's CUSTOM_MODEL_DESC marker.
+    const custom = { provider: 'gemini', id: 'gemini-experimental-x', displayName: 'gemini-experimental-x', desc: CUSTOM_MODEL_DESC, supportsThinking: false, defaultThinkingBudget: 0, tier: 'balanced' } as CatalogModel;
+    const ollama = ollamaCatalogModel('llama3.1:8b');
+    const out = reconcileCatalog([custom, ollama]);
+    // the seed comes first, in order
+    expect(out.slice(0, DEFAULT_CATALOG.length)).toEqual(DEFAULT_CATALOG);
+    expect(out.some((m) => m.id === 'gemini-experimental-x')).toBe(true);
+    expect(out.some((m) => m.provider === 'ollama' && m.id === 'llama3.1:8b')).toBe(true);
+  });
+
+  it('is idempotent', () => {
+    const once = reconcileCatalog([ollamaCatalogModel('llama3.1:8b')]);
+    expect(reconcileCatalog(once)).toEqual(once);
+  });
+
+  it('drops malformed rows', () => {
+    const out = reconcileCatalog(
+      [null, {}, { provider: 'gemini' }, { id: 'x' }] as unknown as CatalogModel[],
+    );
+    expect(out).toEqual(DEFAULT_CATALOG);
   });
 });
