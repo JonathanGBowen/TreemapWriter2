@@ -9,7 +9,7 @@
 // so it stays trivially testable and reusable. The dispatch wrapper that drives
 // it lives in ai-provider.impl.ts; persistence is owned by the registry.
 
-import type { ModelChoice, ProviderId } from './model-types';
+import type { ModelChoice, ProviderId, QuotaAnnotatedError } from './model-types';
 
 // --- Error classification -------------------------------------------------
 
@@ -65,6 +65,9 @@ function errorStatus(err: unknown): number | null {
 export function classifyAIError(err: unknown): AIErrorClass {
   const status = errorStatus(err);
   const text = errorText(err).toLowerCase();
+  // A provider client may have parsed the structured error and attached a
+  // definitive minute-vs-day scope. When present it is authoritative.
+  const scope = (err as QuotaAnnotatedError | null | undefined)?.__quotaScope;
 
   const resourceExhausted =
     status === 429 || /resource_exhausted|too many requests|rate.?limit|quota/.test(text);
@@ -72,8 +75,14 @@ export function classifyAIError(err: unknown): AIErrorClass {
     text,
   );
 
-  // Daily quota: a resource-exhausted error that explicitly names a per-day limit.
-  if (resourceExhausted && daySignal) return 'daily-quota';
+  // Daily quota: prefer the structured scope; otherwise fall back to a per-day
+  // signal in the message. A structured 'per-minute' scope deliberately SKIPS the
+  // text heuristic, so a spurious "day" substring can never upgrade a per-minute
+  // burst into a multi-hour daily cooldown (the bug this guards against).
+  if (resourceExhausted) {
+    if (scope === 'per-day') return 'daily-quota';
+    if (scope === undefined && daySignal) return 'daily-quota';
+  }
 
   // Transient unavailability. The user's "high volume of requests / not available"
   // lands here, distinct from a daily quota (req: must NOT trigger the long cooldown).
@@ -282,20 +291,10 @@ export interface FallbackSettings {
   ladder: ModelChoice[];
 }
 
-export const DEFAULT_FALLBACK_LADDER: ModelChoice[] = [
-  { provider: 'gemini', model: 'gemini-flash-latest' },
-  { provider: 'gemini', model: 'gemini-3-flash-preview' },
-  { provider: 'gemini', model: 'gemini-2.5-flash' },
-  { provider: 'gemini', model: 'gemini-3.1-flash-lite' },
-  { provider: 'gemini', model: 'gemini-2.5-flash-lite' },
-  { provider: 'gemini', model: 'gemma-4-31b-it' },
-  { provider: 'gemini', model: 'gemma-4-26b-a4b-it' },
-];
-
-export const DEFAULT_FALLBACK_SETTINGS: FallbackSettings = {
-  enabled: true,
-  ladder: DEFAULT_FALLBACK_LADDER,
-};
+// DEFAULT_FALLBACK_LADDER / DEFAULT_FALLBACK_SETTINGS now live in `model-defaults.ts`,
+// derived from the catalog's ordered Gemini list (the single source of truth). This
+// file keeps the FallbackSettings *type* and the policy below — it imports nothing
+// but model-types, so it stays a trivially testable leaf.
 
 /**
  * The ordered candidates for a call: the configured start choice, then every
@@ -333,9 +332,19 @@ export interface TransientRetryOptions {
 const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * Cap on how long a server-suggested retry delay is honored IN PLACE. Past this,
+ * it's faster to fall to the next model's (separate) quota bucket than to wait —
+ * which the dispatch layer does once this throws. The full delay is still surfaced
+ * to the user for messaging.
+ */
+const MAX_HINTED_DELAY_MS = 8000;
+
+/**
  * Run `fn`, retrying in place ONLY for transient classes (overloaded / per-minute
  * rate limit) with exponential backoff + jitter. Daily-quota and real errors throw
- * immediately so the caller can mark a cooldown / surface the failure.
+ * immediately so the caller can mark a cooldown / surface the failure. When the
+ * error carries a server retry hint (`__retryDelayMs`), the wait is at least that
+ * long (capped), so a short per-minute window is respected before retrying.
  */
 export async function withTransientRetry<T>(
   fn: () => Promise<T>,
@@ -352,14 +361,27 @@ export async function withTransientRetry<T>(
       const cls = classifyAIError(err);
       const transient = cls === 'overloaded' || cls === 'rate-limit';
       if (!transient || attempt >= maxAttempts - 1) throw err;
-      await sleep(base * 2 ** attempt * (0.5 + random()));
+      const backoff = base * 2 ** attempt * (0.5 + random());
+      const hinted = (err as QuotaAnnotatedError).__retryDelayMs;
+      const delay =
+        typeof hinted === 'number' && hinted > 0
+          ? Math.max(backoff, Math.min(hinted, MAX_HINTED_DELAY_MS))
+          : backoff;
+      await sleep(delay);
     }
   }
 }
 
 // --- Exhaustion ----------------------------------------------------------
 
-export type ExhaustionReason = 'quota' | 'context';
+/**
+ *  - 'quota'       every candidate is on a per-DAY cooldown → wait until the reset.
+ *  - 'rate-limit'  every candidate hit a per-MINUTE / transient limit → retry soon.
+ *  - 'context'     no available model's window can hold the request.
+ * The 'quota' vs 'rate-limit' split is what lets the UI tell the user whether to
+ * wait hours or seconds (instead of always blaming the daily quota).
+ */
+export type ExhaustionReason = 'quota' | 'context' | 'rate-limit';
 
 /** Thrown when no candidate could run the call. */
 export class AllModelsExhaustedError extends Error {
@@ -367,6 +389,8 @@ export class AllModelsExhaustedError extends Error {
     public readonly reason: ExhaustionReason,
     message: string,
     public readonly cause?: unknown,
+    /** Server-suggested wait (ms) for the per-minute 'rate-limit' case, if known. */
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = 'AllModelsExhaustedError';

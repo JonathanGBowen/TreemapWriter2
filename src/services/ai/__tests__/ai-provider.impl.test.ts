@@ -10,7 +10,8 @@ import { MultiProviderAIProvider } from '../ai-provider.impl';
 import type { ProviderClients, FallbackDeps } from '../ai-provider.impl';
 import { DEFAULT_PROMPTS_CONFIG } from '../../prompts';
 import { DEFAULT_CATALOG } from '../model-catalog';
-import { ModelCooldowns, DEFAULT_FALLBACK_LADDER } from '../model-fallback';
+import { ModelCooldowns } from '../model-fallback';
+import { DEFAULT_FALLBACK_LADDER } from '../model-defaults';
 import type { LLMClient, LLMRequest } from '../clients';
 import type { ModelChoice } from '../model-types';
 import type {

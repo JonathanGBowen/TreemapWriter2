@@ -106,6 +106,7 @@ export const useInterpolateActions = () => {
 
       await startWalk();
       setStageStatus(stageId, 'generating');
+      const opId = useStore.getState().beginOp({ label: 'Generating specs…', workspace: 'interpolate' });
       try {
         const specs = await aiProvider.generateSpecLevel({
           stage,
@@ -125,6 +126,8 @@ export const useInterpolateActions = () => {
       } catch (e) {
         setStageStatus(stageId, 'error');
         notifyAiError(e, `Spec generation failed: ${errMessage(e)}`);
+      } finally {
+        useStore.getState().endOp(opId);
       }
     },
     [startWalk, setStageProposed, setStageStatus],
@@ -156,6 +159,7 @@ export const useInterpolateActions = () => {
       inFlight.add(stageId);
       setStreaming({ stageId, text: '' });
       setStageStatus(stageId, 'streaming');
+      const opId = useStore.getState().beginOp({ label: 'Developing specs…', workspace: 'interpolate' });
       let partial = '';
       try {
         for await (const chunk of aiProvider.developSpecLevel({
@@ -196,6 +200,7 @@ export const useInterpolateActions = () => {
       } finally {
         inFlight.delete(stageId);
         setStreaming((prev) => (prev?.stageId === stageId ? null : prev));
+        useStore.getState().endOp(opId);
       }
     },
     [startWalk, setStageMessages, setStageStatus, setStageProposed],
@@ -227,6 +232,7 @@ export const useInterpolateActions = () => {
   const runAllRemaining = useCallback(async () => {
     await startWalk();
     const { interpStages, stageCursor } = useStore.getState();
+    const opId = useStore.getState().beginOp({ label: 'Generating all specs…', workspace: 'interpolate' });
     try {
       for (let i = stageCursor; i < interpStages.length; i++) {
         const stage = interpStages[i];
@@ -251,6 +257,8 @@ export const useInterpolateActions = () => {
       toast.success('All levels generated.');
     } catch (e) {
       notifyAiError(e, `Run-all stopped: ${errMessage(e)}`);
+    } finally {
+      useStore.getState().endOp(opId);
     }
   }, [startWalk, setStageStatus, setStageProposed, setTestSuite, acceptStage, saveCurrentState]);
 

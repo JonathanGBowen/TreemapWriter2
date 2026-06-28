@@ -79,13 +79,20 @@ import type { LLMClient, LLMMessage, LLMRequest } from './clients';
 import type { CatalogModel } from './model-catalog';
 import { findCatalogModel } from './model-catalog';
 import { checkContextFit } from './context-budget';
-import type { FallbackSettings, ModelCooldowns, TransientRetryOptions } from './model-fallback';
+import type {
+  ExhaustionReason,
+  FallbackSettings,
+  ModelCooldowns,
+  TransientRetryOptions,
+} from './model-fallback';
 import {
   AllModelsExhaustedError,
   buildCandidates,
   classifyAIError,
   withTransientRetry,
 } from './model-fallback';
+import type { RequestThrottle } from './request-throttle';
+import type { QuotaAnnotatedError } from './model-types';
 import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { generateRevisions } from './ai-provider.revisions';
@@ -152,6 +159,12 @@ export interface FallbackDeps {
   cooldowns: ModelCooldowns;
   /** Backoff knobs for the in-place transient retry; defaults applied when omitted. */
   retry?: TransientRetryOptions;
+  /**
+   * Proactive per-minute throttle. When present, each candidate call waits (if
+   * needed) to stay within the model's `requestsPerMinute` before firing. Absent ⇒
+   * no client-side throttling (e.g. unit tests).
+   */
+  throttle?: RequestThrottle;
 }
 
 interface OverrideFields {
@@ -235,13 +248,30 @@ export class MultiProviderAIProvider implements AIProvider {
         (c) =>
           !cooldowns.isActive(c.provider, c.model, now) && checkContextFit(catalog, c, text).overflow,
       );
-      return new AllModelsExhaustedError(
-        contextBlocked ? 'context' : 'quota',
-        contextBlocked
+      // Distinguish a per-DAY wall (wait for the reset) from a per-MINUTE / transient
+      // wall (retry soon). `cause === undefined` means every candidate was filtered
+      // out before any call ran — i.e. all on a daily cooldown (context handled
+      // above); a transient `cause` means we tried and hit per-minute/overload limits.
+      let reason: ExhaustionReason;
+      if (contextBlocked) {
+        reason = 'context';
+      } else if (cause === undefined) {
+        reason = 'quota';
+      } else {
+        const cls = classifyAIError(cause);
+        reason = cls === 'rate-limit' || cls === 'overloaded' ? 'rate-limit' : 'quota';
+      }
+      const retryAfterMs =
+        reason === 'rate-limit'
+          ? (cause as QuotaAnnotatedError | undefined)?.__retryDelayMs
+          : undefined;
+      const message =
+        reason === 'context'
           ? `No available model can hold this request (${AI_CALL_KIND_LABELS[kind]}).`
-          : `All fallback models are unavailable for ${AI_CALL_KIND_LABELS[kind]}.`,
-        cause,
-      );
+          : reason === 'rate-limit'
+            ? `All fallback models are rate-limited right now (${AI_CALL_KIND_LABELS[kind]}).`
+            : `All fallback models are out of quota for ${AI_CALL_KIND_LABELS[kind]}.`;
+      return new AllModelsExhaustedError(reason, message, cause, retryAfterMs);
     };
     // On a per-candidate failure: cool down on daily quota, advance on transient,
     // rethrow a genuine error. Returns true to continue to the next candidate.
@@ -260,6 +290,17 @@ export class MultiProviderAIProvider implements AIProvider {
     const makeReq = (req: LLMRequest, cand: ModelChoice): LLMRequest =>
       this.buildReq(req, cand, catalog);
     const clientFor = (cand: ModelChoice): LLMClient => this.rawClientFor(cand.provider, kind);
+    // Proactive per-minute throttle: wait (if needed) to stay within the model's
+    // catalog `requestsPerMinute` before each actual call. Counts every attempt
+    // (including transient retries), since each is a real request against the quota.
+    const throttle = fb.throttle;
+    const gate = (cand: ModelChoice): Promise<void> =>
+      throttle
+        ? throttle.acquire(
+            `${cand.provider}:${cand.model}`,
+            findCatalogModel(catalog, cand.provider, cand.model)?.requestsPerMinute,
+          )
+        : Promise.resolve();
 
     return {
       async generateText(req: LLMRequest): Promise<string> {
@@ -270,7 +311,10 @@ export class MultiProviderAIProvider implements AIProvider {
           const built = makeReq(req, cand);
           const client = clientFor(cand);
           try {
-            return await withTransientRetry(() => client.generateText(built), fb.retry);
+            return await withTransientRetry(async () => {
+              await gate(cand);
+              return client.generateText(built);
+            }, fb.retry);
           } catch (err) {
             lastErr = err;
             advance(cand, err); // throws on a genuine error
@@ -290,6 +334,7 @@ export class MultiProviderAIProvider implements AIProvider {
             // Transient retry covers establishment + the first chunk (a fresh
             // iterator per attempt); once a chunk has been yielded we can't restart.
             const { iter, first } = await withTransientRetry(async () => {
+              await gate(cand);
               const it = client.streamText(built)[Symbol.asyncIterator]();
               return { iter: it, first: await it.next() };
             }, fb.retry);

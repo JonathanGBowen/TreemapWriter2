@@ -31,8 +31,10 @@ export { setAgentTraceSink } from './ai/clients';
 export type { AgentTraceSinkEvent } from './ai/clients';
 import { MultiProviderAIProvider } from './ai/ai-provider.impl';
 import { resolveModelChoice } from './ai/resolve-model-choice';
-import { ModelCooldowns, DEFAULT_FALLBACK_SETTINGS } from './ai/model-fallback';
+import { ModelCooldowns } from './ai/model-fallback';
 import type { CooldownSnapshot, FallbackSettings } from './ai/model-fallback';
+import { DEFAULT_FALLBACK_SETTINGS } from './ai/model-defaults';
+import { RequestThrottle } from './ai/request-throttle';
 import { DEFAULT_CATALOG } from './ai/model-catalog';
 import type { CatalogModel } from './ai/model-catalog';
 import { getSecret } from './credentials';
@@ -115,9 +117,21 @@ export function setFallbackSource(source: () => FallbackContext): void {
   fallbackSource = source;
 }
 
+// Proactive per-minute throttle (limits read from the catalog's requestsPerMinute).
+// Its "is anything waiting?" signal is forwarded to the UI so a throttle wait reads
+// as "queued", never as a hang. Boot wires the sink in (mirrors setCooldownSink).
+let throttleWaitSink: ((waiting: boolean) => void) | null = null;
+const throttle = new RequestThrottle(undefined, (waiting) => throttleWaitSink?.(waiting));
+
+/** Boot forwards throttle-wait changes into the store so the activity pill can show "queued". */
+export function setThrottleWaitSink(sink: (waiting: boolean) => void): void {
+  throttleWaitSink = sink;
+}
+
 const impl = new MultiProviderAIProvider({ gemini, anthropic, ollama, agentSdk }, resolveChoice, {
   getContext: () => fallbackSource(),
   cooldowns,
+  throttle,
 });
 
 export const aiProvider: AIProvider = impl;

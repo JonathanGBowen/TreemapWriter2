@@ -56,19 +56,28 @@ export interface CatalogModel {
    * system instruction into the prompt instead.
    */
   supportsSystemInstruction?: boolean;
+  /**
+   * Per-MINUTE request quota for this model, where the provider enforces one
+   * (Gemini's free tier: 5/min for flash, 15/min for flash-lite & gemma). The
+   * dispatch layer reads this to throttle outgoing calls so a burst flow doesn't
+   * trip the per-minute 429 in the first place. Absent ⇒ no client-side throttle.
+   */
+  requestsPerMinute?: number;
 }
 
 /**
- * Seed catalog. Gemini ids are the union of the four legacy modal arrays;
- * Anthropic ids are the current GA models. Users add/edit/remove from here in
- * the AI Settings modal; Ollama rows are injected at runtime.
+ * The ordered Gemini/Gemma list — the SINGLE source of truth for both the picker
+ * rows and the default fallback ladder. The order here IS the ladder order
+ * (strongest → weakest); `model-defaults.ts` derives `DEFAULT_FALLBACK_LADDER`
+ * from this array, so the two can never drift. (Pro is omitted by design: its
+ * daily free quota is too small to rely on. Flash models are the de-facto "heavy"
+ * tier and run with maximum thinking; Gemma sits at the bottom as a last resort
+ * and is served without system-instruction / structured-output support.)
+ *
+ * `requestsPerMinute` encodes Gemini's free-tier per-minute quota so the dispatch
+ * layer can throttle proactively (5/min flash, 15/min flash-lite & gemma).
  */
-export const DEFAULT_CATALOG: CatalogModel[] = [
-  // --- Gemini + Gemma --- (Pro is omitted by design: its daily free quota is too
-  // small to rely on. The order here is also the default fallback ladder,
-  // biggest/strongest → smallest. Flash models are the de-facto "heavy" tier and
-  // run with maximum thinking; Gemma sits at the bottom as a last resort and is
-  // served without system-instruction / structured-output support.)
+export const GEMINI_CATALOG: CatalogModel[] = [
   {
     provider: 'gemini',
     id: 'gemini-flash-latest',
@@ -81,6 +90,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'deep',
     contextWindow: 1_000_000,
     thinking: 'level',
+    requestsPerMinute: 5,
   },
   {
     provider: 'gemini',
@@ -92,6 +102,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'balanced',
     contextWindow: 1_000_000,
     thinking: 'level',
+    requestsPerMinute: 5,
   },
   {
     provider: 'gemini',
@@ -103,6 +114,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'balanced',
     contextWindow: 1_000_000,
     thinking: 'budget',
+    requestsPerMinute: 5,
   },
   {
     provider: 'gemini',
@@ -114,6 +126,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'fast',
     contextWindow: 1_000_000,
     thinking: 'level',
+    requestsPerMinute: 15,
   },
   {
     provider: 'gemini',
@@ -125,6 +138,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     tier: 'fast',
     contextWindow: 1_000_000,
     thinking: 'budget',
+    requestsPerMinute: 15,
   },
   {
     provider: 'gemini',
@@ -137,6 +151,7 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     contextWindow: 131_072,
     supportsJsonSchema: false,
     supportsSystemInstruction: false,
+    requestsPerMinute: 15,
   },
   {
     provider: 'gemini',
@@ -149,7 +164,17 @@ export const DEFAULT_CATALOG: CatalogModel[] = [
     contextWindow: 131_072,
     supportsJsonSchema: false,
     supportsSystemInstruction: false,
+    requestsPerMinute: 15,
   },
+];
+
+/**
+ * Seed catalog = the ordered Gemini list above, then the Anthropic GA models and
+ * their Agent-SDK twins. Users add/edit/remove from here in the AI Settings modal;
+ * Ollama rows are injected at runtime.
+ */
+export const DEFAULT_CATALOG: CatalogModel[] = [
+  ...GEMINI_CATALOG,
   // --- Anthropic --- (thinking is adaptive/native; no numeric budget exposed)
   {
     provider: 'anthropic',

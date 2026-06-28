@@ -127,6 +127,7 @@ export const useParallelActions = () => {
 
     setParallelPhase('outlining');
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Reverse-outlining…', workspace: 'parallel' });
     try {
       const bullets = await aiProvider.generateReverseOutline({
         sectionTitle: scope.title,
@@ -146,6 +147,7 @@ export const useParallelActions = () => {
       setParallelPhase('editing');
     } finally {
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [setParallelPhase, setIsProcessing, setRows, persistOutline]);
 
@@ -162,6 +164,7 @@ export const useParallelActions = () => {
     const voice = getPromptText('regenerateVoiceDefault');
     setParallelPhase('regenerating');
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Regenerating paragraphs…', workspace: 'parallel' });
     try {
       await runPooled(targets, REGEN_CONCURRENCY, async (row) => {
         const live = useStore.getState().rows;
@@ -193,6 +196,7 @@ export const useParallelActions = () => {
       setParallelPhase('review');
     } finally {
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [setParallelPhase, setIsProcessing, setRegenerating, setRowDraftB]);
 

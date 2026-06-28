@@ -4,6 +4,7 @@ import { useInterpolateActions } from './use-interpolate-actions';
 import { SpecChat } from './SpecChat';
 import { SteerInput } from './SteerInput';
 import { SpecPreview } from './SpecPreview';
+import { DisabledHint } from '../shared/DisabledHint';
 
 const findTitle = (nodes: Section[], id: string): string | null => {
   for (const n of nodes) {
@@ -109,14 +110,19 @@ export function StagePanel() {
             <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-hld-muted-text">
               Proposed — editable
             </span>
-            <button
-              type="button"
-              onClick={() => void acceptLevel(stage.id)}
-              disabled={!hasProposal || busy}
-              className="hld-lit px-3 py-[7px] font-mono text-[10px] uppercase tracking-[0.12em] disabled:opacity-40 disabled:cursor-not-allowed"
+            <DisabledHint
+              when={!hasProposal && !busy}
+              hint="Generate or develop this level's specs first, then accept to continue."
             >
-              Accept &amp; continue ›
-            </button>
+              <button
+                type="button"
+                onClick={() => void acceptLevel(stage.id)}
+                disabled={!hasProposal || busy}
+                className="hld-lit px-3 py-[7px] font-mono text-[10px] uppercase tracking-[0.12em] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Accept &amp; continue ›
+              </button>
+            </DisabledHint>
           </div>
           <SpecPreview
             stage={stage}

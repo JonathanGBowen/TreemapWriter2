@@ -17,6 +17,8 @@ interface ModelPickerProps {
   onChange: (choice: ModelChoice | null) => void;
   /** If set, a leading option that clears the choice (emits null). */
   inheritLabel?: string;
+  /** Restrict the picker to these providers (e.g. ['agent-sdk']). Omitted ⇒ all. */
+  providers?: ProviderId[];
   className?: string;
 }
 
@@ -29,9 +31,11 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
   value,
   onChange,
   inheritLabel,
+  providers,
   className,
 }) => {
   const catalog = useStore((s) => s.modelCatalog);
+  const order = providers ? PROVIDER_ORDER.filter((p) => providers.includes(p)) : PROVIDER_ORDER;
   const current = value ? `${value.provider}:${value.model}` : '';
   // The selected model may not be in the catalog (Ollama server offline, model
   // removed, or hand-edited config). Without a matching <option> the browser
@@ -73,7 +77,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
           {value.provider}: {value.model} (unavailable)
         </option>
       )}
-      {PROVIDER_ORDER.map((p) =>
+      {order.map((p) =>
         grouped[p].length ? (
           <optgroup key={p} label={PROVIDER_LABEL[p]}>
             {grouped[p].map((m) => (

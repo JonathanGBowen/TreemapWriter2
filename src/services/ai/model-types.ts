@@ -131,3 +131,20 @@ export interface ModelChoice {
  * per-project in the project file (`.twriter/models.json` on desktop).
  */
 export type ModelConfig = Partial<Record<AICallKind, ModelChoice>>;
+
+/** Whether a rate-limit error names a per-MINUTE or per-DAY quota. */
+export type QuotaScope = 'per-minute' | 'per-day';
+
+/**
+ * Provider-neutral quota hints a thrown error MAY carry. A provider's client (the
+ * only code that understands that provider's structured error shape) parses a
+ * rate-limit response and attaches these; the provider-agnostic policy in
+ * `model-fallback.ts` reads them WITHOUT importing any client — so the leaf stays
+ * pure. Both fields are best-effort: absent ⇒ fall back to text/status heuristics.
+ */
+export interface QuotaAnnotatedError {
+  /** Definitive minute-vs-day classification parsed from the structured error. */
+  __quotaScope?: QuotaScope;
+  /** Server-suggested retry delay (ms), e.g. from Gemini's RetryInfo. */
+  __retryDelayMs?: number;
+}

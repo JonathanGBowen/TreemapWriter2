@@ -347,7 +347,7 @@ mod tests {
         // The TS layer owns the StoredGist shape; Rust round-trips it as an opaque Value.
         let gist = serde_json::json!({
             "generatedAt": 1_700_000_000_000_i64,
-            "model": "gemini-3.1-pro-preview",
+            "model": "gemini-2.5-flash",
             "segmentation": [
                 { "id": "intro-0", "headingPath": ["Introduction"], "anchor": "We fare forth", "sourceHash": "abc" }
             ],

@@ -148,6 +148,7 @@ export const useAnalysisActions = () => {
       : formatStructuralSurround(buildStructuralSurround(sectionId, sections, specs)) || undefined;
 
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Analyzing section…' });
     try {
       const result = await aiProvider.analyzeSection({
         sectionTitle,
@@ -169,6 +170,7 @@ export const useAnalysisActions = () => {
     } catch (e) {
       notifyAiError(e, `Analysis failed: ${errMessage(e)}`);
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
       return;
     }
     // The analysis succeeded the moment the version is in state; a persistence
@@ -179,6 +181,7 @@ export const useAnalysisActions = () => {
       toast.error(`Analysis saved in memory, but writing to disk failed: ${errMessage(e)}`);
     } finally {
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [currentSection, setIsProcessing, addAnalysisVersion, saveCurrentState]);
 
@@ -284,6 +287,7 @@ export const useAnalysisActions = () => {
     if (!dialogue.some((m) => m.role === 'user') || !dialogue.some((m) => m.role === 'model')) return;
 
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Refactoring analysis…' });
     try {
       const result = await aiProvider.refactorAnalysis({
         sectionTitle,
@@ -309,6 +313,7 @@ export const useAnalysisActions = () => {
       // until the provider call resolves.
       notifyAiError(e, `Refactor failed: ${errMessage(e)}`);
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
       return;
     }
     // The refactor succeeded the moment the version is in state; a save
@@ -320,6 +325,7 @@ export const useAnalysisActions = () => {
       toast.error(`Refactor saved in memory, but writing to disk failed: ${errMessage(e)}`);
     } finally {
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [currentSection, setIsProcessing, addAnalysisVersion, clearDialogue, setTestsPanelTab, saveCurrentState]);
 

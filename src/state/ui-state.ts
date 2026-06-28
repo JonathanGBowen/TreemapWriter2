@@ -3,6 +3,39 @@ import type { AppState } from '.';
 import type { PendingMerge, Section } from '../types';
 import { repository } from '../services/repository-registry';
 
+/** Workspaces a running AI op can belong to — used by the activity pill to jump back. */
+export type OpWorkspace =
+  | 'interpolate'
+  | 'revision'
+  | 'parallel'
+  | 'gist'
+  | 'compare'
+  | 'spec-test'
+  | 'climate';
+
+/** One in-flight AI operation, surfaced by the global activity pill. */
+export interface ActiveOp {
+  id: string;
+  /** Short present-tense label, e.g. "Generating specs…". */
+  label: string;
+  /** Origin workspace, if any — enables the pill's non-destructive jump-back. */
+  workspace?: OpWorkspace;
+}
+
+/** The store flag that brings each workspace forward (set true, never cleared here). */
+const WORKSPACE_OPEN_FLAG: Record<OpWorkspace, keyof AppState> = {
+  interpolate: 'interpolateOpen',
+  revision: 'revisionWorkspaceOpen',
+  parallel: 'parallelOpen',
+  gist: 'gistOpen',
+  compare: 'comparisonOpen',
+  'spec-test': 'specTestOpen',
+  climate: 'climateOpen',
+};
+
+/** Monotonic op id source. Module-level: the slice is created once per session. */
+let opSeq = 0;
+
 /**
  * UI ephemera. Modal openness, panel widths, focus mode, and other state
  * that only exists to drive the view. Lost on reload — and that is fine.
@@ -54,6 +87,17 @@ export interface UIStateSlice {
 
   // In-flight indicators
   isProcessing: boolean;
+
+  /**
+   * Live registry of in-flight AI operations, for the global activity pill — so a
+   * running call is visible from ANY view, not just the workspace that started it.
+   * Deliberately SEPARATE from `isProcessing` (the mutual-exclusion lock that many
+   * `if (isProcessing) return;` guards read): `activeOps` includes streaming and
+   * throttle-queued calls and never gates anything. Ephemeral; lost on reload.
+   */
+  activeOps: ActiveOp[];
+  /** True while the per-minute throttle is making a call wait (shown as "queued"). */
+  throttleWaiting: boolean;
 
   /**
    * Set when a persist (`saveCurrentState` / autosave) fails — i.e. the latest
@@ -136,6 +180,17 @@ export interface UIStateSlice {
   /** Clear the query and the highlight. */
   clearSearch: () => void;
   setIsProcessing: (proc: boolean) => void;
+  /** Register an in-flight AI op; returns an id to pass to endOp when it settles. */
+  beginOp: (op: { label: string; workspace?: OpWorkspace }) => string;
+  /** Deregister an op (call in a finally so it clears on every path). */
+  endOp: (id: string) => void;
+  setThrottleWaiting: (waiting: boolean) => void;
+  /**
+   * Bring a workspace forward (the activity pill's jump-back). Non-destructive: it
+   * only sets the open flag, never clears in-flight working state — so returning to
+   * a workspace mid-call can't discard a regenerable pass.
+   */
+  focusWorkspace: (workspace: OpWorkspace) => void;
   setSaveError: (err: string | null) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;
   setSyncError: (err: string | null) => void;
@@ -186,6 +241,8 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   searchMatchedIds: [],
 
   isProcessing: false,
+  activeOps: [],
+  throttleWaiting: false,
   saveError: null,
 
   syncStatus: 'no-remote',
@@ -269,6 +326,15 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   },
   clearSearch: () => set({ searchQuery: '', searchMatchedIds: [] }),
   setIsProcessing: (proc) => set({ isProcessing: proc }),
+  beginOp: (op) => {
+    const id = `op-${++opSeq}`;
+    set((s) => ({ activeOps: [...s.activeOps, { id, ...op }] }));
+    return id;
+  },
+  endOp: (id) => set((s) => ({ activeOps: s.activeOps.filter((o) => o.id !== id) })),
+  setThrottleWaiting: (throttleWaiting) => set({ throttleWaiting }),
+  focusWorkspace: (workspace) =>
+    set({ [WORKSPACE_OPEN_FLAG[workspace]]: true } as unknown as Partial<AppState>),
   setSaveError: (err) => set({ saveError: err }),
   setSyncStatus: (status) => set({ syncStatus: status }),
   setSyncError: (err) => set({ syncError: err }),

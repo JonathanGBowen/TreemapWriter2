@@ -26,6 +26,7 @@ import { aiProvider } from './services/ai-provider-registry';
 import { guardContextFit } from './features/shared/context-guard';
 import { useAutosave } from './features/shared/useAutosave';
 import { notifyAiError } from './features/shared/ai-error';
+import { AiActivityIndicator } from './features/shared/AiActivityIndicator';
 import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { isTauri } from './services/tauri-environment';
@@ -474,6 +475,7 @@ export const App = () => {
     return;
   }
   
+  let diagOpId: string | null = null;
   try {
     // Create snapshot before destructive AI action
     await createSnapshot('pre-ai-write', { sectionIds: [testId] });
@@ -499,7 +501,8 @@ export const App = () => {
       [testId]: { ...prev[testId], goals: prev[testId]?.goals || '', status: 'running' }
     }));
     setIsProcessing(true);
-   
+    diagOpId = useStore.getState().beginOp({ label: 'Running diagnostic…' });
+
     // Spec map (sectionId → spec, incl. 'root') so the diagnostic can judge this
     // section as a part inside its live structural surround, not as an isolated piece.
     const specs = selectSpecMap(testSuite);
@@ -544,6 +547,7 @@ export const App = () => {
     }));
   } finally {
     setIsProcessing(false);
+    if (diagOpId) useStore.getState().endOp(diagOpId);
   }
 };
 
@@ -565,6 +569,7 @@ export const App = () => {
   }, []);
 
   const handleEstimateDependencies = useCallback(async () => {
+    const opId = useStore.getState().beginOp({ label: 'Estimating dependencies…' });
     try {
       toast.info("Estimating dependencies...", { id: "est-deps" });
       const depsMap = await aiProvider.estimateDependencies({
@@ -596,7 +601,12 @@ export const App = () => {
       toast.success("Dependencies estimated and updated.", { id: "est-deps" });
     } catch (e) {
       console.error(e);
-      toast.error("Failed to estimate dependencies.", { id: "est-deps" });
+      // Clear the "Estimating…" loading toast, then surface the failure through the
+      // shared handler so a missing key / quota exhaustion gets its actionable toast.
+      toast.dismiss("est-deps");
+      notifyAiError(e, "Failed to estimate dependencies.");
+    } finally {
+      useStore.getState().endOp(opId);
     }
   }, [sections, testSuite]);
 
@@ -740,6 +750,7 @@ export const App = () => {
         />
 
         <Toaster position="bottom-right" richColors />
+        <AiActivityIndicator />
       </div>
     </div>
   );

@@ -59,6 +59,7 @@ export const useGestaltActions = () => {
 
     inFlight.add(sectionId);
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Reconstructing whole…' });
     try {
       const result = await aiProvider.reconstructWhole({
         sectionTitle,
@@ -81,6 +82,7 @@ export const useGestaltActions = () => {
     } finally {
       inFlight.delete(sectionId);
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [currentSection, setIsProcessing, setWholeFromPart]);
 
@@ -115,6 +117,7 @@ export const useGestaltActions = () => {
 
     inFlight.add(sectionId);
     setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Proposing recenterings…' });
     try {
       const result = await aiProvider.proposeRecenterings({
         sectionTitle,
@@ -140,6 +143,7 @@ export const useGestaltActions = () => {
     } finally {
       inFlight.delete(sectionId);
       setIsProcessing(false);
+      useStore.getState().endOp(opId);
     }
   }, [currentSection, setIsProcessing, setRecenterings]);
 
