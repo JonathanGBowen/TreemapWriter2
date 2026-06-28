@@ -26,10 +26,12 @@ pub async fn project_create(
     std::fs::create_dir_all(&path)?;
     let layout = Layout::new(&path);
 
-    // .gitignore — keep the SQLite cache + diagnostics out of git history.
+    // .gitignore — keep the SQLite cache + diagnostics out of git history, and
+    // the local agent's scratch output (`.twriter/agent-output/`) too: it's a
+    // non-authoritative proposal area the user reviews, never dissertation history.
     crate::fs_io::atomic_write_str(
         &layout.gitignore(),
-        ".twriter/index.sqlite\n.twriter/index.sqlite-journal\n.twriter/index.sqlite-wal\n.twriter/index.sqlite-shm\n.twriter/diagnostics.json\n",
+        ".twriter/index.sqlite\n.twriter/index.sqlite-journal\n.twriter/index.sqlite-wal\n.twriter/index.sqlite-shm\n.twriter/diagnostics.json\n.twriter/agent-output/\n",
     )?;
 
     // Empty markdown file. The user (or the importer) writes real prose later.

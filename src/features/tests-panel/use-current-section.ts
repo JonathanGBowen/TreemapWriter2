@@ -1,16 +1,12 @@
 import { useMemo } from 'react';
 import type { Section } from '../../types';
 import { useStore } from '../../state';
-import { buildRootSection } from '../../lib/utils';
+import { buildRootSection, findSectionById } from '../../lib/utils';
 
-export const findSectionById = (nodes: Section[], id: string): Section | null => {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    const found = findSectionById(node.children, id);
-    if (found) return found;
-  }
-  return null;
-};
+// Re-exported for back-compat: the canonical definition now lives in lib/utils
+// (the home of the other section-tree helpers). Existing importers of
+// `findSectionById` from this module keep working.
+export { findSectionById };
 
 /**
  * The section the panel operates on, derived from the editor selection.

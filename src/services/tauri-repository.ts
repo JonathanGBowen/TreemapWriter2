@@ -11,6 +11,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  AgentFileEntry,
   DiskSignature,
   MarkdownDelta,
   ProjectMeta,
@@ -282,5 +283,28 @@ export const tauriRepository: Repository = {
       console.warn('search_sections failed:', e);
       return [];
     }
+  },
+
+  // --- Local-agent filesystem tools ---
+
+  async agentListFiles(subdir?: string): Promise<AgentFileEntry[]> {
+    try {
+      return await invoke<AgentFileEntry[]>('agent_list_files', {
+        subdir: subdir ?? null,
+      });
+    } catch (e) {
+      console.warn('agent_list_files failed:', e);
+      return [];
+    }
+  },
+
+  async agentReadFile(path: string): Promise<string> {
+    // Errors propagate: the agent loop surfaces a failed read as a tool error so
+    // the model can recover, rather than silently receiving an empty file.
+    return invoke<string>('agent_read_file', { path });
+  },
+
+  async agentWriteOutput(name: string, contents: string): Promise<string> {
+    return invoke<string>('agent_write_output', { name, contents });
   },
 };

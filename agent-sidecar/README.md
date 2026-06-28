@@ -20,7 +20,7 @@ as before.
 
 ```sh
 cd agent-sidecar
-npm install                 # installs the Agent SDK (separate from the app's deps)
+npm install       ch          # installs the Agent SDK (separate from the app's deps)
 claude setup-token          # prints a long-lived OAuth token for your subscription
 export CLAUDE_CODE_OAUTH_TOKEN=<paste-the-token>
 ```

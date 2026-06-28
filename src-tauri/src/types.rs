@@ -482,6 +482,17 @@ pub struct SearchHit {
     pub rank: f64,
 }
 
+/// One entry returned by the local agent's `agent_list_files` tool
+/// (`commands/agent_fs.rs`): a path relative to the project root plus its byte
+/// size. The agent uses these to decide what to `agent_read_file`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentFileEntry {
+    /// Path relative to the project root, using forward slashes.
+    pub path: String,
+    pub size: u64,
+}
+
 /// A section pushed down from the frontend parser (`src/lib/utils.ts`) for
 /// indexing. The frontend already owns markdown→section parsing, so we reuse
 /// it rather than duplicating a parser in Rust. Loose/defaulted so callers may

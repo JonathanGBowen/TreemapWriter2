@@ -46,7 +46,8 @@ export type AICallKind =
   | 'analyzeAtmosphere'
   | 'developSpecLevel'
   | 'reconstructWhole'
-  | 'proposeRecenterings';
+  | 'proposeRecenterings'
+  | 'runAgent';
 
 /** Every call kind, in display order. The single source of truth for "what is configurable". */
 export const AI_CALL_KINDS: AICallKind[] = [
@@ -79,6 +80,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'developSpecLevel',
   'reconstructWhole',
   'proposeRecenterings',
+  'runAgent',
 ];
 
 /** Short, glyph-light labels for the per-call override UI. No sentences (HLD). */
@@ -112,6 +114,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   developSpecLevel: 'Develop spec (live)',
   reconstructWhole: 'Whole from part',
   proposeRecenterings: 'Recenter',
+  runAgent: 'Local agent',
 };
 
 /**

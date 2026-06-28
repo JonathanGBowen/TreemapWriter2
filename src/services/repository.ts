@@ -1,4 +1,5 @@
 import type {
+  AgentFileEntry,
   DiskSignature,
   MarkdownDelta,
   Persona,
@@ -272,4 +273,31 @@ export interface Repository {
    * Empty / operator-only queries return `[]`.
    */
   searchSections(query: string, limit?: number): Promise<SearchHit[]>;
+
+  // --- Local-agent filesystem tools (desktop only) ---
+
+  /**
+   * List readable files under the open project root (or a `subdir` within it),
+   * relative to the root, for the local agent's `list_files` tool. Desktop wraps
+   * `agent_list_files` (skips VCS/build noise + the SQLite cache); the browser
+   * has no filesystem and returns `[]` (the tool is omitted from the registry
+   * there). Best-effort: failures are swallowed to `[]`.
+   */
+  agentListFiles(subdir?: string): Promise<AgentFileEntry[]>;
+
+  /**
+   * Read one text file anywhere under the open project root, for the local
+   * agent's `repo_read` tool. Desktop wraps `agent_read_file` (path-guarded
+   * against `..`/absolute/symlink escapes; rejects binary + oversized files);
+   * the browser throws (the tool is omitted from the registry there).
+   */
+  agentReadFile(path: string): Promise<string>;
+
+  /**
+   * Write `contents` to `name` under `.twriter/agent-output/` (the agent's
+   * gitignored scratch area), for the local agent's `write_output` tool.
+   * Returns the project-relative path written. Desktop wraps `agent_write_output`
+   * (refuses any path escaping that directory); the browser throws.
+   */
+  agentWriteOutput(name: string, contents: string): Promise<string>;
 }

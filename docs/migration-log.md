@@ -4601,3 +4601,79 @@ custom/Ollama model you added survives.
 **Rollback.** `git revert` — additive pure helpers + a reconcile-on-read in one prefs
 getter + one hydrate wiring + two small UI affordances. Non-destructive for UI-created
 data; no schema/persisted-shape break (`reconcileCatalog` tolerates old persisted rows).
+
+---
+
+## 2026-06-28 — Local agent (provider-agnostic, multi-turn, tool-using; no Rig, no sidecar)
+
+**What changed.** A second agentic surface, built entirely on the existing
+`AIProvider`/`LLMClient` seam — so it runs on **any** configured provider, including
+local **Ollama**, with no API billing and no Node helper. It is parallel to and
+independent of the Claude Agent SDK transport; that helper is untouched. Off by
+default. (Supersedes the "rebuild it in Rust with rig-core" sketch in
+`rig-agent-integration-prompt.md`: most of what that proposed — providers, routines,
+types, tolerant parsing, fallback, the live trace UI — already existed in TS, so the
+real gap was only the multi-turn tool loop. Rebuilding the rest in Rust would have
+duplicated it and added a churning pre-1.0 dep against the "default no to deps" rule.)
+
+- **The loop (TS).** New `src/services/ai/agent/`: `agent-loop.ts` (observe→think→act,
+  bounded by `maxSteps`, forces a final answer at the cap), `tool-protocol.ts` (a
+  provider-agnostic **prompted JSON tool protocol** parsed by the app's tolerant
+  `extractFencedJson` + `safeJsonParse` — the same convention `developSpecLevel` ships,
+  so it works on Gemini/Anthropic/Ollama alike with no native function-calling),
+  `tool-registry.ts` (the bounded tools, bound to the Repository + AIProvider),
+  `agent-context.ts`, `agent-types.ts`, `index.ts`. Exposed as one `AIProvider.runAgent`
+  method + a new `'runAgent'` AICallKind, so model selection, the fallback ladder, the
+  throttle, and the context-budget pre-flight all apply via the existing `dispatch`.
+- **Whole-text context (the Gestalt default).** `buildAgentContext` sends the WHOLE
+  working text — a selected section's full subtree IN its `formatStructuralSurround`
+  (reused from `diagnostic-helpers`), or the whole `project.md` — never a retrieved
+  subset of the working prose. Only an over-budget whole degrades, and then to an
+  OUTLINE of the whole, never a content subset. Retrieval tools are scoped to reaching
+  BEYOND the working text: project files, AI-generated artifacts, manuscript FTS5
+  search, and git history.
+- **Bounded tools.** In-memory prose (`read_document`/`read_section`/`list_sections`),
+  git history (`list_snapshots`/`read_snapshot`), and — desktop only — `search_manuscript`
+  (FTS5), `list_files`/`repo_read`, `write_output`, plus two routine tools
+  (`analyze_section`/`run_diagnostic`) that delegate to existing `AIProvider` methods
+  (their own call kinds, so the loop can't recurse). Browser omits the FS tools.
+- **Rust filesystem tools.** New `src-tauri/src/commands/agent_fs.rs`:
+  `agent_list_files` / `agent_read_file` (read anywhere under the project root) and
+  `agent_write_output` (write ONLY under `.twriter/agent-output/`). A new
+  `fs_io::resolve_within` is the path guard (rejects `..`, absolute, NUL, and symlink
+  escapes; canonicalizes + re-checks containment), `Layout::agent_output_dir()` is the
+  single home for the write root, and `.twriter/agent-output/` is added to the
+  scaffolded `.gitignore` (non-authoritative scratch the user reviews). Typed wrappers
+  on the `Repository` (`agentListFiles`/`agentReadFile`/`agentWriteOutput`); browser
+  throws/returns empty.
+- **Trace reuse.** The Agent SDK client's trace sink was extracted to a shared
+  `clients/agent-trace-sink.ts` (`emitAgentTrace` + `setAgentTraceSink`); the loop emits
+  the SAME `AgentTraceSinkEvent` shape, so the live ticker + audit modal light up for
+  the local agent with zero UI changes (the providers here emit no trace of their own).
+- **Settings + invocation.** `localAgentEnabled` / `localAgentModel` (global prefs,
+  off by default) in `ai-state` + `preferences`. New
+  `features/modals/LocalAgentSettingsSection.tsx` (toggle + model picker scoped to
+  ollama/gemini/anthropic + an inline "Try it" console) mounted in `AiSettingsSection`,
+  driven by the `useLocalAgent` hook.
+
+**Deferred (by design).** Semantic embeddings / vector RAG (v1 uses whole-text context
++ FTS5/artifact/history tools); a dedicated full-screen agent workspace (the settings
+console is the v1 surface); a Gemini-only `responseJsonSchema` hardening of the tool
+protocol. See [`../STATUS.md`](../STATUS.md).
+
+**Verify.** `cargo test` in `src-tauri/` (50 pass — new `resolve_within` guard tests
+incl. `..`/absolute/NUL/symlink-escape, `agent_output_dir`, and an `agent_fs` test that
+`write_output` lands under `.twriter/agent-output/` and refuses `../../project.md`);
+`cargo clippy` (no new warnings); `npm run typecheck` clean; `npm test` (569 pass / 77
+files — new `tool-protocol`, `agent-loop`, `agent-context` suites); `npm run lint` (0
+errors). Manual (desktop, Ollama or Gemini): AI settings → Experimental — Local agent →
+On, pick a model, "summarize the selected section in its context and write a TODO to
+agent-output" → the live ticker shows think/activity, a file appears under
+`.twriter/agent-output/` (gitignored), and the audit modal shows the run.
+
+**Rollback.** `git revert` — almost entirely additive: a new TS module + Rust command
+file + settings section, one new `AIProvider` method + AICallKind, three new Repository
+methods. The one shared edit is the behavior-neutral trace-sink extraction (covered by
+the existing `trace-state` + registry tests). No persisted-shape change beyond two new
+opt-in IndexedDB preference keys; the new `.gitignore` line affects only newly-created
+projects.

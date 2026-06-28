@@ -16,6 +16,7 @@ import { isBuiltinModel, CUSTOM_MODEL_DESC } from '../../services/ai/model-catal
 import { DisabledHint } from '../shared/DisabledHint';
 import { ModelPicker } from './ModelPicker';
 import { AgentSdkSettingsSection } from './AgentSdkSettingsSection';
+import { LocalAgentSettingsSection } from './LocalAgentSettingsSection';
 import { FallbackSettingsSection } from './FallbackSettingsSection';
 
 /**
@@ -125,6 +126,9 @@ export const AiSettingsSection: React.FC = () => {
 
       {/* Experimental: Claude Agent SDK (Max subscription) — collapsed by default */}
       <AgentSdkSettingsSection />
+
+      {/* Experimental: provider-agnostic local agent (Ollama/Gemini/Anthropic) — collapsed by default */}
+      <LocalAgentSettingsSection />
     </div>
   );
 };

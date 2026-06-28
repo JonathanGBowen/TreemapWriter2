@@ -1,5 +1,6 @@
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import type {
+  AgentFileEntry,
   DiskSignature,
   MarkdownDelta,
   ProjectMeta,
@@ -245,5 +246,21 @@ export const browserRepository: Repository = {
     // `!isTauri()`; returning [] keeps the interface total and honest rather
     // than shipping a second, divergent substring-scan engine.
     return [];
+  },
+
+  // --- Local-agent filesystem tools: desktop-only (no filesystem here) ---
+
+  async agentListFiles(): Promise<AgentFileEntry[]> {
+    // No filesystem in the browser; the agent registry omits the FS tools when
+    // `!isTauri()`, so this is only a defensive total-interface stub.
+    return [];
+  },
+
+  async agentReadFile(): Promise<string> {
+    throw new Error('Reading repository files requires the desktop app.');
+  },
+
+  async agentWriteOutput(): Promise<string> {
+    throw new Error('Writing agent output requires the desktop app.');
   },
 };
