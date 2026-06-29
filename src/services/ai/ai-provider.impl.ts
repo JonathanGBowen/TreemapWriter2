@@ -928,6 +928,7 @@ export class MultiProviderAIProvider implements AIProvider {
       context: input.context,
       tools: input.tools,
       maxSteps: input.maxSteps,
+      preamble: input.preamble,
     });
   }
 }

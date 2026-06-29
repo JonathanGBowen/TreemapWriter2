@@ -3,6 +3,7 @@
 // thin and testable. Mirrors lib/analysis-helpers.ts in spirit.
 
 import type { DirectiveSuggestion, RevisionMode, RevisionProposal, RevisionType } from '../types';
+import { safeJsonParse } from './utils';
 
 /**
  * Whether a revision pass is ready to generate. `revision` mode needs a directive
@@ -158,6 +159,32 @@ export const applyProposal = (
   const at = findProposalOffset(content, p.original_text);
   if (at < 0) return content;
   return content.slice(0, at) + p.proposed_text + content.slice(at + p.original_text.length);
+};
+
+/**
+ * Parse a deep-revision AGENT's final answer into something `normalizeRevisions` can
+ * read: a JSON array (preferred) or an object envelope, tolerating fenced code blocks
+ * and an array buried in stray prose. Returns null when nothing array-like is found.
+ * The agent is instructed to emit ONLY the array; this is the safety net.
+ */
+export const parseAgentProposals = (answer: string): unknown => {
+  const direct = safeJsonParse(answer, null);
+  if (Array.isArray(direct)) return direct;
+  // Prefer an explicit array slice over safeJsonParse's brace-match, which can grab a
+  // single inner object out of an array printed amid prose. Also unwraps the array
+  // from an `{ proposals: [...] }` envelope.
+  const lb = answer.indexOf('[');
+  const rb = answer.lastIndexOf(']');
+  if (lb >= 0 && rb > lb) {
+    try {
+      const arr = JSON.parse(answer.slice(lb, rb + 1));
+      if (Array.isArray(arr)) return arr;
+    } catch {
+      /* fall through */
+    }
+  }
+  // Last resort: a clean object envelope normalizeRevisions can still unwrap.
+  return direct && typeof direct === 'object' ? direct : null;
 };
 
 /**

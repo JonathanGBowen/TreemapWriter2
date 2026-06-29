@@ -657,6 +657,13 @@ export interface RunAgentInput {
   config: PromptsConfig;
   /** Max tool-use rounds before a final answer is forced. Defaults to 8. */
   maxSteps?: number;
+  /**
+   * Optional extra instruction folded into the agent's system prompt — used by
+   * task-scoped agent flows (e.g. the deep-revision pass) to set the output
+   * contract on top of the generic agent system instruction. The conversational
+   * console leaves it unset.
+   */
+  preamble?: string;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

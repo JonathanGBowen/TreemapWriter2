@@ -4823,3 +4823,52 @@ needs the full inserted text stored per mark, not just the anchor + length; v1 i
 binary (tinted while the anchored opening is intact). Escalating per-act-type marks
 (coach nudge < edit < wholesale paragraph) ride on the `source` field, which is in
 place; differentiated rendering is the additive next step.
+
+---
+
+## 2026-06-29 — WS4a: bounded + gated deep-revision agent (the flagship integration)
+
+**What changed.** Final workstream of the AI-integration audit, and the first time
+the provider-agnostic local agent is woven into a real feature workflow instead of an
+isolated settings console. A **"deep pass"** in the Glass-Box Revision Workspace runs
+the agent so it can *gather cross-section / manuscript-search / history context before
+proposing* — then routes its proposals through the **unchanged** review + accept gate.
+The agent proposes; the human accepts; it never writes `project.md`.
+
+- **Reuses `runAgent`** (no new AICallKind, no new gate). Added an optional
+  `preamble` to `RunAgentInput`, forwarded to the loop (which already accepted one),
+  so a task-scoped flow can set its output contract atop the generic agent system
+  instruction. The conversational console leaves it unset.
+- **Locked prompt** `revision-agent.md` + one `revision-agent.md` registry entry
+  (`revisionAgentPreamble`, `editability: 'locked'`, `flow: 'runAgent'`): gather with
+  the tools, then emit ONLY a `RevisionProposal[]` JSON array (verbatim `original_text`,
+  in-voice `proposed_text`, grounded `rationale`, `confidence_score`).
+- **`useRevisionActions.generateDeep`**: builds the agent context + bounded tools via
+  the existing `buildAgentContext`/`buildToolRegistry`, runs `runAgent` with the
+  preamble + the directive as the user turn, parses the final answer with a new pure
+  `parseAgentProposals` (tolerates fenced blocks / an array amid prose / an
+  `{proposals:[...]}` envelope) → the existing `normalizeRevisions` → `setProposals` →
+  the unchanged `ProposalsColumn`. Accepting rides the existing snapshot +
+  `applyProposal` path, so each accepted span also gets a **WS2 provenance mark**.
+- **`ReviseConfig`** gains a glyphic **deep-pass toggle** shown only when the Local
+  agent is enabled (AI settings) — off by default; the standard single-pass engine
+  stays the default. The live trace ticker streams the agent's tool calls.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(593 pass / 80 files — new `parseAgentProposals` suite, 8 cases covering the agent
+answer → proposals path); `npm run build` succeeds. Manual (Local agent enabled): in
+the Revision Workspace, toggle "deep pass", Generate → the trace ticker shows
+read_section / search_manuscript / history tool calls, proposals land in the unchanged
+review column, Accept snapshots + applies + marks the span; the agent never writes the
+manuscript.
+
+**Rollback.** `git revert` — additive: one optional `RunAgentInput.preamble` field +
+its forward, one locked prompt, one pure parse helper + action, one UI toggle. No
+schema, persistence, or default-behavior change (deep pass is opt-in behind the
+off-by-default Local agent).
+
+**Deferred (additive follow-ons, per the audit §4).** WS4b — a whole-document
+commitment/dependency-audit agent and a git-history argument-drift trace (read-only,
+into the Argument Topology surface) — and a bounded move-completion loop inside a
+Living Sprint (the F3 Good-Enough gate, rubric-declared). All reuse this same
+`runAgent` + accept-gate spine.

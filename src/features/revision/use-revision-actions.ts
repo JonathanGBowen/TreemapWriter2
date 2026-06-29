@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
-import { applyProposal } from '../../lib/revision-helpers';
+import { applyProposal, normalizeRevisions, parseAgentProposals } from '../../lib/revision-helpers';
 import { makeProvenanceMark } from '../../lib/provenance';
 import { resolveActiveInstruction } from '../../lib/defaultInstructions';
 import { revisionBudgetText } from './revision-budget';
@@ -10,6 +10,11 @@ import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
 import { useCurrentSection } from '../tests-panel/use-current-section';
+import { repository } from '../../services/repository-registry';
+import { isTauri } from '../../services/tauri-environment';
+import { selectSpecMap } from '../../lib/spec-map';
+import { buildAgentContext, buildToolRegistry } from '../../services/ai/agent';
+import { getPromptText } from '../../services/prompts';
 import type { SessionProposal } from '../../state/revision-state';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
@@ -111,6 +116,96 @@ export const useRevisionActions = () => {
     }
   }, [currentSection, setRevisionPhase, setProposals, setIsProcessing]);
 
+  /**
+   * The bounded + gated "deep pass": run the local agent so it can gather
+   * cross-section / manuscript-search / history context BEFORE proposing, then route
+   * its proposals through the SAME Glass-Box review + accept gate as the single-pass
+   * engine. The agent only proposes; the human accepts. Off unless the Local agent is
+   * enabled (AI settings). Reuses the agent context/tool builders + the tolerant
+   * revision normalizer — no new call kind, no new gate.
+   */
+  const generateDeep = useCallback(async () => {
+    if (!currentSection) return;
+    const st = useStore.getState();
+    if (st.isProcessing) return;
+    if (!st.localAgentEnabled) {
+      toast.error('Enable the Local agent in AI settings to run a deep pass.');
+      return;
+    }
+    if (st.revisionMode === 'revision' && !st.directive.trim()) {
+      toast.error('Add a directive — what should this deep revision accomplish?');
+      return;
+    }
+
+    const specs = selectSpecMap(st.testSuite);
+    const context = buildAgentContext({
+      scope: 'section',
+      selectedSectionId: st.selectedId,
+      sections: st.sections,
+      markdown: st.markdown,
+      specs,
+    });
+    const tools = buildToolRegistry({
+      repository,
+      aiProvider,
+      sections: st.sections,
+      markdown: st.markdown,
+      specs,
+      config: st.promptsConfig,
+      enableFsTools: isTauri(),
+    });
+    const sources = st.revisionSources.filter((s) => st.selectedSourceIds.includes(s.id));
+    const instruction = resolveActiveInstruction(
+      st.revisionInstructions,
+      st.activeRevisionInstructionId,
+    ).body;
+    // The user turn carries only the task PARAMETERS; the standing how-to-revise
+    // contract lives in the locked `revisionAgentPreamble` (.md), folded into the
+    // agent's system instruction.
+    const task = [
+      `Section: "${currentSection.title}"`,
+      st.revisionMode === 'revision' && st.directive.trim()
+        ? `Directive — what this revision must accomplish: ${st.directive.trim()}`
+        : '',
+      instruction.trim() ? `Grounding instruction: ${instruction.trim()}` : '',
+      sources.length ? `${sources.length} source document(s) are available to you.` : '',
+      'Propose deep, well-grounded revisions to this section per your instructions. The section and its structural surround are already in your context.',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    setRevisionPhase('generating');
+    setIsProcessing(true);
+    const opId = useStore.getState().beginOp({ label: 'Deep revision (agent)…', workspace: 'revision' });
+    let answer = '';
+    try {
+      for await (const chunk of aiProvider.runAgent({
+        messages: [{ role: 'user', text: task }],
+        context,
+        tools,
+        config: st.promptsConfig,
+        modelChoice: st.localAgentModel,
+        preamble: getPromptText('revisionAgentPreamble'),
+      })) {
+        answer += chunk;
+      }
+      const proposals =
+        normalizeRevisions(parseAgentProposals(answer), {
+          sectionLabel: currentSection.title,
+          sourceless: sources.length === 0,
+        }) ?? [];
+      setProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));
+      setRevisionPhase('review');
+      if (proposals.length === 0) toast.info('The deep pass found no well-grounded edits.');
+    } catch (e) {
+      notifyAiError(e, `Deep revision failed: ${errMessage(e)}`);
+      setRevisionPhase('config');
+    } finally {
+      setIsProcessing(false);
+      useStore.getState().endOp(opId);
+    }
+  }, [currentSection, setRevisionPhase, setProposals, setIsProcessing]);
+
   const accept = useCallback(
     async (proposal: SessionProposal) => {
       if (!currentSection) return;
@@ -140,5 +235,5 @@ export const useRevisionActions = () => {
 
   const reject = useCallback((id: string) => resolveProposal(id, 'rejected'), [resolveProposal]);
 
-  return { generate, accept, reject };
+  return { generate, generateDeep, accept, reject };
 };

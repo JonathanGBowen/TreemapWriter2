@@ -57,6 +57,7 @@ import gistRefitPrompt from './gist-refit.md?raw';
 import citationsSystem from './citations-system.md?raw';
 import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
+import revisionAgentPreamble from './revision-agent.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
 import compareModeDraft from './compare-mode-draft.md?raw';
@@ -614,6 +615,17 @@ export const PROMPT_REGISTRY = [
         required: true,
       },
     ],
+  },
+  {
+    key: 'revisionAgentPreamble',
+    defaultText: strip(revisionAgentPreamble),
+    label: 'Deep Revision Agent',
+    description:
+      'Glass Box deep pass: the system preamble for the bounded local agent — gather cross-section / manuscript-search / history context, then emit RevisionProposal[] JSON for the unchanged accept gate. Engine internal — not user-editable.',
+    category: 'revision-engine',
+    flow: 'runAgent',
+    editability: 'locked',
+    variables: [],
   },
 ] as const satisfies readonly PromptEntry[];
 
