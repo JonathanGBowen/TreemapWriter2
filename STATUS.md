@@ -30,6 +30,25 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
 
+**Gestalt segmentation — "Articulation"** shipped 2026-06-29 (see
+[`docs/migration-log.md`](docs/migration-log.md)). A top-down, recursive walk that
+divides a long text into its natural parts (Wertheimer's division-by-articulation —
+cut at the joints, no shards, *situated* by genre) and proposes valid markdown
+headings, as a faithful sibling of the Generate-Specs sweep: pure surgery in
+`lib/segment-helpers.ts` (reusing `paragraph-helpers`), the discovered-levels walk
+in `services/ai/ai-provider.segment.ts`, the `segmentSpan` provider seam + call
+kind, four editable `segmentation` prompts, and a new Articulation workspace
+(`features/segment/*` + ephemeral `state/segment-state.ts`) with conservative /
+exploratory / summaries modes, per-edit review, and a "Continue to specs" hand-off.
+When a draft has no headings, the dock's `✦ Generate specs` auto-runs Articulation
+first (`startSpecSweep`). The experimental summaries mode stores a one-sentence
+reverse-outline gloss on a new, separate `TestSuiteEntry.reverseSummary` (never the
+exegetical `mainClaim`), shown in the Spec tab and persisted via the YAML sidecar.
+*Lingering debts (by design, deferred):* summaries attach to newly-inserted parts
+(existing headings in an already-structured doc don't get a gloss); inserts/critique
+inherit the app's title-based section-id caveat; the desktop `reverse_summary` sidecar
+mirror was added by inspection but not `cargo check`'d here (no GTK libs in CI).
+
 The **Quiet center column** shipped 2026-06-28 (see
 [`docs/migration-log.md`](docs/migration-log.md)) — the decided form of a Claude Design
 "Tidy Center Column" exploration. The editor's two structure-as-prose chrome blocks were

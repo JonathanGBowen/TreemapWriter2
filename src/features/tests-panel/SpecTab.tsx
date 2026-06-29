@@ -156,6 +156,20 @@ function ContextCommitmentsZone({ documentClaim, spec, coherenceNotes }: { docum
   );
 }
 
+/** The Articulation tool's reverse-outline gloss — one sentence on what this part
+ *  DOES. A quiet teal note, deliberately separate from the exegetical claim (which
+ *  lives in Claim & function): a reverse-outline summary is never the main claim. */
+function ReverseSummaryCard({ sentence }: { sentence: string }) {
+  return (
+    <div className="shrink-0 px-[16px] py-[10px] border-b border-hld-border bg-[rgba(20,184,166,0.05)]">
+      <div className="font-mono text-[8.5px] tracking-[0.15em] uppercase text-teal-400/80 mb-[3px]">
+        Reverse outline
+      </div>
+      <div className="text-[13px] leading-relaxed font-sans italic text-hld-muted-text-2">{sentence}</div>
+    </div>
+  );
+}
+
 function LegacyResult({ status, critique }: { status: string; critique?: string }) {
   const pass = status === 'success';
   return (
@@ -241,6 +255,7 @@ export function SpecTab() {
         onOpenSettings={() => setShowPersonaModal(true)}
         settingsLabel="Evaluator & AI settings"
       />
+      {entry?.reverseSummary && <ReverseSummaryCard sentence={entry.reverseSummary} />}
       {spec && entry ? (
         <SpecBody id={id} spec={spec} entry={entry} flatSections={flatSections} />
       ) : (

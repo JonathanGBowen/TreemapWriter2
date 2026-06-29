@@ -9,6 +9,7 @@ import { createComparisonSlice, type ComparisonSlice } from './comparison-state'
 import { createSpecTestSlice, type SpecTestSlice } from './spec-test-state';
 import { createClimateSlice, type ClimateSlice } from './climate-state';
 import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
+import { createSegmentSlice, type SegmentSlice } from './segment-state';
 import { createParallelSlice, type ParallelSlice } from './parallel-state';
 import { createGistSlice, type GistSlice } from './gist-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
@@ -51,6 +52,7 @@ export type AppState =
   & SpecTestSlice
   & ClimateSlice
   & InterpolationSlice
+  & SegmentSlice
   & ParallelSlice
   & GistSlice
   & TraceSlice
@@ -67,6 +69,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createSpecTestSlice(...args),
   ...createClimateSlice(...args),
   ...createInterpolationSlice(...args),
+  ...createSegmentSlice(...args),
   ...createParallelSlice(...args),
   ...createGistSlice(...args),
   ...createTraceSlice(...args),

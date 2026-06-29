@@ -45,6 +45,7 @@ export type AICallKind =
   | 'runSpecTestWhole'
   | 'analyzeAtmosphere'
   | 'developSpecLevel'
+  | 'segmentSpan'
   | 'reconstructWhole'
   | 'proposeRecenterings'
   | 'runAgent';
@@ -78,6 +79,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'runSpecTestWhole',
   'analyzeAtmosphere',
   'developSpecLevel',
+  'segmentSpan',
   'reconstructWhole',
   'proposeRecenterings',
   'runAgent',
@@ -112,6 +114,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   runSpecTestWhole: 'Spec test (whole)',
   analyzeAtmosphere: 'Atmosphere',
   developSpecLevel: 'Develop spec (live)',
+  segmentSpan: 'Articulate (segment)',
   reconstructWhole: 'Whole from part',
   proposeRecenterings: 'Recenter',
   runAgent: 'Local agent',

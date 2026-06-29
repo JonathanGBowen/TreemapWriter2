@@ -664,7 +664,8 @@ export const App = () => {
   const paletteCommands: Command[] = [
     { id: 'sprint', label: 'Sprint', hint: 'Goal or draft · timed', glyph: '»', run: () => useStore.getState().setShowSprintModal(true) },
     { id: 'coach', label: 'Coach', hint: 'Stuck? Find the bottleneck', glyph: '◉', run: () => useStore.getState().setShowCoachModal(true) },
-    { id: 'generate-specs', label: 'Generate specs', hint: 'Structural analysis, top-down', glyph: '✦', run: () => useStore.getState().openInterpolate() },
+    { id: 'articulate', label: 'Articulate', hint: 'Segment a text into its natural parts', glyph: '⑂', run: () => useStore.getState().openSegment() },
+    { id: 'generate-specs', label: 'Generate specs', hint: 'Structural analysis, top-down', glyph: '✦', run: () => useStore.getState().startSpecSweep() },
     { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
     { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },

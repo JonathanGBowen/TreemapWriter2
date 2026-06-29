@@ -14,6 +14,9 @@ import type {
   SourceDocument,
   ReverseOutlineBullet,
   ParagraphKind,
+  SegmentMode,
+  SegmentGranularity,
+  SegmentGenre,
   ParagraphRewrite,
   DirectiveSuggestion,
   ArgumentShape,
@@ -36,6 +39,7 @@ import type {
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
+import type { SegmentSpanResult } from './ai/ai-provider.segment';
 import type { AgentTool } from './ai/agent/agent-types';
 
 /**
@@ -151,6 +155,14 @@ export interface AIProvider {
    * ```json``` proposal block the caller parses on commit.
    */
   developSpecLevel(input: DevelopSpecLevelInput): AsyncIterable<string>;
+  /**
+   * Gestalt segmentation ("Articulation") — divide ONE span of prose into its
+   * natural parts: propose anchored heading edits (insert/retitle/relevel/merge/
+   * split), or judge the span a unitary whole. The discovered-not-predeclared
+   * sibling of `generateSpecLevel`; the recursive descent is driven by the caller
+   * (use-segment-actions), which recomputes the next level's spans after each accept.
+   */
+  segmentSpan(input: SegmentSpanInput): Promise<SegmentSpanResult>;
   /**
    * Gestalt — the "Beethoven test" (L3a). Reconstruct the WHOLE document's claim
    * from one section's prose ALONE, then compare to the actual claim. A drifted
@@ -285,6 +297,23 @@ export interface GenerateSpecLevelInput extends SpecLevelBase {
 export interface DevelopSpecLevelInput extends SpecLevelBase {
   /** Full conversation history; the last message is the new user turn. */
   messages: DialogueMessage[];
+}
+
+/** One span handed to the segmentation walk. `blocks` are the span's paragraph
+ *  blocks (full text — anchors are computed from it); `targetLevel` is the markdown
+ *  heading level a seam here would insert. */
+export interface SegmentSpanInput {
+  blocks: { index: number; text: string; kind: ParagraphKind }[];
+  /** Accepted/existing ancestor titles — the part-in-whole context. */
+  headingPath: string[];
+  targetLevel: number;
+  mode: SegmentMode;
+  granularity: SegmentGranularity;
+  genre: SegmentGenre;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
 }
 
 export interface RunDiagnosticInput {
