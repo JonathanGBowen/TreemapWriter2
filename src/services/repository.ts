@@ -5,6 +5,7 @@ import type {
   Persona,
   PromptsConfig,
   ProjectMeta,
+  ProvenanceDoc,
   PullOutcome,
   PushOutcome,
   Resolution,
@@ -61,6 +62,12 @@ export interface StoredProjectData {
    * per document; null/absent until the writer first generates a gist.
    */
   gist?: StoredGist | null;
+  /**
+   * The durable provenance layer for AI-introduced spans (`.twriter/provenance.json`
+   * on desktop). Anchored to the prose; never written into project.md. Opaque to the
+   * Rust mirror (an opaque `Value`, like `gist`), so the TS layer owns the shape.
+   */
+  provenance?: ProvenanceDoc | null;
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

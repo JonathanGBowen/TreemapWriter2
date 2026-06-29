@@ -12,7 +12,9 @@ import { languages } from '@codemirror/language-data';
 import { GFM, Table } from '@lezer/markdown';
 import { hldExtensions, hldTheme } from '../../lib/editorTheme';
 import { livePreviewPlugin } from '../../lib/livePreview';
+import { provenanceField, setProvenanceMarks } from '../../lib/provenanceMarks';
 import { ResumeMarker } from '../coach/ResumeMarker';
+import { ActiveMoveMarker } from '../coach/ActiveMoveMarker';
 import { EditorView, keymap, drawSelection, highlightSpecialChars, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
@@ -182,6 +184,18 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   };
 
   const cmRef = useRef<ReactCodeMirrorRef>(null);
+  const focusCmRef = useRef<ReactCodeMirrorRef>(null);
+
+  // Push durable provenance marks (F2) into whichever editor is mounted; the
+  // provenanceField re-resolves anchors against the live doc, so the tint tracks
+  // edits and falls off a span the writer has overwritten.
+  const provenanceMarks = useStore((s) => s.provenanceMarks);
+  useEffect(() => {
+    for (const ref of [cmRef, focusCmRef]) {
+      const view = ref.current?.view;
+      if (view) view.dispatch({ effects: setProvenanceMarks.of(provenanceMarks) });
+    }
+  }, [provenanceMarks, focusMode]);
 
   const handleMainChange = (val: string) => {
     setLocalContent(val);
@@ -431,6 +445,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             left margin that replaces the floating "you were here" nudge. Reveals
             on hover and auto-escalates on a mid-section stall; click resumes. */}
         {!needsProject && !isEmptyState && !focusMode && <ResumeMarker onResume={handleResume} />}
+        {/* Point-of-action move cue (F5): names the move the structure now owes,
+            in the left margin, co-located with the prose. */}
+        {!needsProject && !isEmptyState && !focusMode && <ActiveMoveMarker />}
         <div className="h-full relative">
 
           {focusMode && currentSection && (
@@ -506,6 +523,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             <div className="flex-1 h-full max-w-[800px] mx-auto overflow-hidden">
               {focusMode && currentSection ? (
                 <CodeMirror
+                  ref={focusCmRef}
                   value={focusText}
                   onChange={handleFocusChange}
                   editable={!needsProject}
@@ -518,7 +536,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                     }), 
                     ...hldExtensions, 
                     ...manualBasicSetup,
-                    livePreviewPlugin
+                    livePreviewPlugin,
+                    provenanceField,
                   ]}
                   theme={hldTheme}
                   autoFocus
@@ -545,7 +564,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                     }), 
                     ...hldExtensions, 
                     ...manualBasicSetup,
-                    livePreviewPlugin
+                    livePreviewPlugin,
+                    provenanceField,
                   ]}
                   basicSetup={false}
                 />

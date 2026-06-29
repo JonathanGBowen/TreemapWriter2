@@ -3,6 +3,7 @@ import type {
   AnalysisVersion,
   Dependency,
   DialogueMessage,
+  ProvenanceMark,
   Recenterings,
   ReverseOutlineDoc,
   Section,
@@ -73,6 +74,12 @@ export interface DocumentStateSlice {
    * ephemeral gist slice. Null until the writer first generates a gist.
    */
   gist: StoredGist | null;
+  /**
+   * Durable provenance marks for AI-introduced spans (F2). Domain data — it must
+   * survive reloads, snapshots, and Version Compare — so it lives here, anchored to
+   * the prose, never written into project.md. Empty until the first AI accept.
+   */
+  provenanceMarks: ProvenanceMark[];
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -85,6 +92,10 @@ export interface DocumentStateSlice {
   upsertReverseOutline: (doc: ReverseOutlineDoc) => void;
   /** Replace the document's persisted gist (null clears it). */
   setGist: (gist: StoredGist | null) => void;
+  /** Replace all provenance marks (the load path). */
+  setProvenanceMarks: (marks: ProvenanceMark[]) => void;
+  /** Record one AI span's provenance at accept-time. */
+  addProvenanceMark: (mark: ProvenanceMark) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -154,6 +165,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   revisions: [],
   reverseOutlines: [],
   gist: null,
+  provenanceMarks: [],
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -179,6 +191,9 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
       ],
     })),
   setGist: (gist) => set({ gist }),
+  setProvenanceMarks: (marks) => set({ provenanceMarks: marks }),
+  addProvenanceMark: (mark) =>
+    set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>

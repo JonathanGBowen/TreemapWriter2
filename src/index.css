@@ -331,6 +331,15 @@
   background: rgba(0, 232, 112, 0.12);
   border-bottom: 1px solid rgba(0, 232, 112, 0.6);
 }
+/* Durable provenance (F2): AI-introduced prose stays visibly + persistently
+   distinguishable from the writer's own — a calm, desaturated purple underlay
+   (purple = the palette's secondary/AI hue), keyed to the provenance layer
+   (.twriter/provenance.json), never written into project.md. Anchored by a verbatim
+   prefix; the tint falls off once the writer rewrites the span's opening. */
+.cm-ai-prose {
+  background: rgba(170, 0, 255, 0.07);
+  border-bottom: 1px solid rgba(170, 0, 255, 0.28);
+}
 
 /* Visible keyboard focus — the one missing a11y affordance (was suppressed
    everywhere). Canonical on the button/tool primitives; a narrow global fallback

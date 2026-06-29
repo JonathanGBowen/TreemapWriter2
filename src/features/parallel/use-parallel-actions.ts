@@ -4,6 +4,7 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { getPromptText } from '../../services/prompts';
 import { applyProposal } from '../../lib/revision-helpers';
+import { makeProvenanceMark } from '../../lib/provenance';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
 import { sourceHashOf } from '../../lib/parallel-helpers';
 import {
@@ -212,6 +213,9 @@ export const useParallelActions = () => {
         /* non-fatal — the change is still autosaved + recoverable */
       }
       setLocalContent((doc) => applyRowToDoc(doc, row, useStore.getState().rows));
+      // Durable provenance (F2): the regenerated paragraph (draftB) is AI-introduced.
+      const mark = makeProvenanceMark(row.draftB ?? '', 'parallel', Date.now());
+      if (mark) useStore.getState().addProvenanceMark(mark);
       markRowAccepted(row.id);
       try {
         await saveCurrentState();
@@ -235,6 +239,12 @@ export const useParallelActions = () => {
       /* non-fatal */
     }
     setLocalContent((doc) => targets.reduce((acc, r) => applyRowToDoc(acc, r, s.rows), doc));
+    // Durable provenance (F2): mark each regenerated paragraph as AI-introduced.
+    const at = Date.now();
+    targets.forEach((r) => {
+      const mark = makeProvenanceMark(r.draftB ?? '', 'parallel', at);
+      if (mark) useStore.getState().addProvenanceMark(mark);
+    });
     targets.forEach((r) => markRowAccepted(r.id));
     try {
       await saveCurrentState();

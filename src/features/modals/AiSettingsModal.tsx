@@ -1,26 +1,16 @@
 import React, { useState, useRef } from "react";
-import { Sparkles, Trash2, Check, Bot, Download, Upload } from "lucide-react";
-import { Persona, PromptsConfig } from "../../types";
+import { Sparkles, Trash2, Check, Bot, Cpu, Download, Upload } from "lucide-react";
+import { Persona } from "../../types";
 import { toast } from "sonner";
-import { DEFAULT_PROMPTS_CONFIG } from "../../lib/constants";
-import { useStore } from "../../store";
+import { useStore } from "../../state";
+import { DEFAULT_PERSONAS } from "../../lib/defaultPersonas";
 import { aiProvider } from "../../services/ai-provider-registry";
 import { resolveModelChoice } from "../../services/ai/resolve-model-choice";
 import { guardContextFit } from "../shared/context-guard";
 import { ModalShell } from "./ModalShell";
-import { Disclosure } from "../shared/Disclosure";
+import { SegControl } from "./SegControl";
 import { AiSettingsSection } from "./AiSettingsSection";
 import { AgentTraceTicker } from "../shared/AgentTraceTicker";
-
-interface PersonaSettingsModalProps {
-  activePersonaId: string;
-  personas: Persona[];
-  onSelectPersona: (id: string) => void;
-  onAddPersona: (persona: Persona) => void;
-  onDeletePersona: (id: string) => void;
-  documentContext: string; // Used for generating relevant personas
-  promptsConfig?: PromptsConfig;
-}
 
 /** One persona as a calm selectable row: square outline avatar, name + role,
  *  cyan check when active, quiet hover-delete for custom personas. */
@@ -67,18 +57,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
-  activePersonaId,
-  personas,
-  onSelectPersona,
-  onAddPersona,
-  onDeletePersona,
-  documentContext,
-  promptsConfig = DEFAULT_PROMPTS_CONFIG
-}) => {
-  const isOpen = useStore(s => s.showPersonaModal);
-  const setShow = useStore(s => s.setShowPersonaModal);
-  const onClose = () => setShow(false);
+/**
+ * The AI settings home (self-mounting per AGENTS.md — reads everything from the
+ * store, takes no data props). Two peers behind one SegControl: "Model & keys"
+ * (the provider keys, default model, catalog, agent toggles — `AiSettingsSection`)
+ * and "Personas" (the evaluator voices). Model & keys is the default tab so the
+ * `notifyAiError` "fix your key" deep-link lands on the key field. Renamed from the
+ * old `PersonaSettingsModal`, whose persona-first framing buried the AI config that
+ * every error pointed at.
+ */
+export const AiSettingsModal: React.FC = () => {
+  const isOpen = useStore((s) => s.showPersonaModal);
+  const setShow = useStore((s) => s.setShowPersonaModal);
+  const activePersonaId = useStore((s) => s.activePersonaId);
+  const customPersonas = useStore((s) => s.customPersonas);
+  const setActivePersonaId = useStore((s) => s.setActivePersonaId);
+  const setCustomPersonas = useStore((s) => s.setCustomPersonas);
+  const markdown = useStore((s) => s.markdown);
+  const promptsConfig = useStore((s) => s.promptsConfig);
+
+  const [tab, setTab] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,20 +87,29 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const personas = [...DEFAULT_PERSONAS, ...customPersonas];
+  const onClose = () => setShow(false);
+  const onSelectPersona = (id: string) => setActivePersonaId(id);
+  const onAddPersona = (p: Persona) => setCustomPersonas((prev) => [...prev, p]);
+  const onDeletePersona = (id: string) => {
+    setCustomPersonas((prev) => prev.filter((p) => p.id !== id));
+    if (activePersonaId === id) setActivePersonaId('default');
+  };
+
   const handleGeneratePersonas = async () => {
     // The full document context is sent whole; abort on overflow rather than slicing.
     const { modelCatalog, modelConfig, globalModelDefault } = useStore.getState();
     const choice = resolveModelChoice('generatePersonas', modelConfig, globalModelDefault);
-    if (!guardContextFit({ catalog: modelCatalog, choice, text: documentContext, what: 'The document', setting: 'Generate personas' })) {
+    if (!guardContextFit({ catalog: modelCatalog, choice, text: markdown, what: 'The document', setting: 'Generate personas' })) {
       return;
     }
     setIsGenerating(true);
     try {
       const suggestions = await aiProvider.generatePersonas({
-        documentContext,
+        documentContext: markdown,
         config: promptsConfig,
       });
-      suggestions.forEach(p => {
+      suggestions.forEach((p) => {
         onAddPersona({
           id: `gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: p.name,
@@ -124,7 +131,7 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
       id: `custom-${Date.now()}`,
       name: newName,
       role: newRole || "Custom Role",
-      instruction: newInstruction
+      instruction: newInstruction,
     });
     setNewName("");
     setNewRole("");
@@ -132,8 +139,8 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   };
 
   const handleExport = () => {
-    const customPersonas = personas.filter(p => p.id.startsWith('custom-') || p.id.startsWith('gen-'));
-    const blob = new Blob([JSON.stringify(customPersonas, null, 2)], { type: 'application/json' });
+    const exported = customPersonas.filter((p) => p.id.startsWith('custom-') || p.id.startsWith('gen-'));
+    const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -158,7 +165,7 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
                 id: p.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 name: p.name,
                 role: p.role,
-                instruction: p.instruction
+                instruction: p.instruction,
               });
             }
           });
@@ -178,49 +185,57 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
   return (
     <ModalShell
       accent="cyan"
-      eyebrow="Evaluator"
-      title="Choose a persona"
+      eyebrow="AI"
+      title="Settings"
       onClose={onClose}
       onPrimary={onClose}
-      primaryLabel="Use persona"
+      primaryLabel="Done"
     >
-      <div className="flex flex-col gap-[14px]">
-        {/* Primary content: the persona list */}
-        <div className="flex flex-col gap-[8px]">
-          {personas.map((persona) => (
-            <PersonaRow
-              key={persona.id}
-              persona={persona}
-              isActive={persona.id === activePersonaId}
-              onSelect={() => onSelectPersona(persona.id)}
-              onDelete={persona.id !== 'default' ? () => onDeletePersona(persona.id) : undefined}
-            />
-          ))}
-        </div>
-
-        {/* One quiet link — replaces the glowing auto-generate banner */}
-        <button
-          type="button"
-          onClick={handleGeneratePersonas}
-          disabled={isGenerating}
-          className="self-start inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.1em] uppercase text-hld-muted-text-2 hover:text-hld-cyan disabled:opacity-50 transition-colors"
-        >
-          {isGenerating ? <span className="animate-spin">✦</span> : <Sparkles size={12} />}
-          {isGenerating ? 'Analyzing draft…' : 'Suggest personas from my draft'}
-        </button>
-        <AgentTraceTicker
-          kinds={['generatePersonas']}
-          className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+      <div className="flex flex-col gap-[16px]">
+        <SegControl
+          options={[
+            { glyph: <Cpu size={13} />, label: 'Model & keys' },
+            { glyph: <Bot size={13} />, label: 'Personas' },
+          ]}
+          value={tab}
+          onChange={setTab}
+          ariaLabel="AI settings section"
         />
 
-        {/* Everything else folds away */}
-        <div>
-          <Disclosure label="AI model & API key">
-            <AiSettingsSection />
-          </Disclosure>
+        {tab === 0 ? (
+          <AiSettingsSection />
+        ) : (
+          <div className="flex flex-col gap-[14px]">
+            {/* Primary content: the persona list */}
+            <div className="flex flex-col gap-[8px]">
+              {personas.map((persona) => (
+                <PersonaRow
+                  key={persona.id}
+                  persona={persona}
+                  isActive={persona.id === activePersonaId}
+                  onSelect={() => onSelectPersona(persona.id)}
+                  onDelete={persona.id !== 'default' ? () => onDeletePersona(persona.id) : undefined}
+                />
+              ))}
+            </div>
 
-          <Disclosure label="Create, import & export">
-            <div className="flex flex-col gap-[12px]">
+            {/* One quiet link — replaces the glowing auto-generate banner */}
+            <button
+              type="button"
+              onClick={handleGeneratePersonas}
+              disabled={isGenerating}
+              className="self-start inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.1em] uppercase text-hld-muted-text-2 hover:text-hld-cyan disabled:opacity-50 transition-colors"
+            >
+              {isGenerating ? <span className="animate-spin">✦</span> : <Sparkles size={12} />}
+              {isGenerating ? 'Analyzing draft…' : 'Suggest personas from my draft'}
+            </button>
+            <AgentTraceTicker
+              kinds={['generatePersonas']}
+              className="flex items-center gap-1.5 text-[10px] font-mono text-hld-muted min-w-0"
+            />
+
+            {/* Create / import / export */}
+            <div className="flex flex-col gap-[12px] pt-[4px] border-t border-hld-border">
               <Field label="Name">
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} className={inputClass} placeholder="e.g. The Harsh Critic" />
               </Field>
@@ -249,8 +264,8 @@ export const PersonaSettingsModal: React.FC<PersonaSettingsModalProps> = ({
                 </label>
               </div>
             </div>
-          </Disclosure>
-        </div>
+          </div>
+        )}
       </div>
     </ModalShell>
   );

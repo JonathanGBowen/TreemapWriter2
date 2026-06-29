@@ -138,6 +138,41 @@ export interface DiagnosticResult {
   nextPriority: string;
 }
 
+// --- PROVENANCE (F2: durable authorship marking) ---
+
+/**
+ * Which accept path introduced a span of AI text. Conceptually escalating: a
+ * `parallel` regenerate (an analogical rewrite of the writer's own bullet) is
+ * lighter-touch than a `revision` Glass-Box proposal. Extend, don't collapse.
+ */
+export type ProvenanceSource = 'revision' | 'parallel';
+
+/**
+ * A durable record that a span of prose entered the document from the AI. Lives in
+ * the provenance LAYER (`.twriter/provenance.json`), never inside `project.md` — so
+ * the manuscript stays clean and the single-source-of-truth + `applyProposal`
+ * substring contract are untouched. Relocated on load by literal `indexOf` of
+ * `anchor` (like `SavedOutlineBullet`/`GistSegment`); a rewrite of the span's opening
+ * drops the mark, and the text becomes the writer's own. Surfaced in-app as a
+ * desaturated tint; never exported with the manuscript.
+ */
+export interface ProvenanceMark {
+  id: string;
+  /** Verbatim prefix (~64 chars) of the inserted text — the relocation anchor. */
+  anchor: string;
+  /** Length of the inserted span at accept-time (the decoration extent). */
+  length: number;
+  /** Which accept path introduced it. */
+  source: ProvenanceSource;
+  /** Accept-time epoch ms. */
+  at: number;
+}
+
+/** The persisted provenance layer for one document (`.twriter/provenance.json`). */
+export interface ProvenanceDoc {
+  marks: ProvenanceMark[];
+}
+
 // --- GESTALT WHOLE/PART OPERATIONS (Phase 2) ---
 
 /**

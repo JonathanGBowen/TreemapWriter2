@@ -4677,3 +4677,221 @@ methods. The one shared edit is the behavior-neutral trace-sink extraction (cove
 the existing `trace-state` + registry tests). No persisted-shape change beyond two new
 opt-in IndexedDB preference keys; the new `.gitignore` line affects only newly-created
 projects.
+
+---
+
+## 2026-06-29 — AI integration & Human-AI-interaction audit (doc) entered
+
+**What changed.** Added [`docs/ai-integration-audit.md`](ai-integration-audit.md) —
+a point-in-time audit of how agentic AI is (and isn't) integrated, a
+literature-grounded single-call-vs-agent decision rubric, a Human-AI-interaction UX
+audit, and a four-workstream roadmap (WS1 config consolidation · WS3 point-of-action
+moves/F5 · WS2 durable provenance layer/F2 · WS4a a bounded+gated structural-revision
+agent). Doc-only at this entry; the workstreams land as their own entries.
+
+**Headline finding.** The app already has ~30 typed AI call-kinds and two agentic
+substrates (Claude Agent SDK transport; provider-agnostic local `runAgent` loop), but
+both are off-by-default and integrated into no feature workflow — the gap is
+integration + interaction design, not plumbing. The governing rule: an agent only when
+the path can't be hardcoded but progress is verifiable by a non-model oracle, the task
+needs grounding beyond one context window, and a human gates the result; otherwise a
+single schema-constrained call. Recommended agentic features are bounded + always
+gated (propose → human accepts → snapshot; never an autonomous write to `project.md`).
+
+**Verify.** Doc renders; links resolve; no fact duplicated against the code (the
+canonical-source rule). No code changed at this entry.
+
+**Rollback.** `git revert` (or delete `docs/ai-integration-audit.md` and this entry).
+Doc-only; no behavior, schema, or dependency change.
+
+---
+
+## 2026-06-29 — WS1: AI-configuration consolidation (audit follow-through)
+
+**What changed.** First workstream of the AI-integration audit
+([`ai-integration-audit.md`](ai-integration-audit.md)). Pure refactor, no
+persistence or behavior change.
+
+- Moved `RevisionTokenPreview` from `features/modals/` to `features/shared/` (it is
+  a shared presentational widget, not a modal); updated its one importer.
+- Extracted `features/modals/FeatureSettingsShell.tsx` — shared `SettingsSection`,
+  `SettingsPromptField` (accent + rows props), and `ModelKindRows` (the per-call-kind
+  override rows). The three feature-settings modals (`RevisionSettingsModal`,
+  `GistSettingsModal`, `ParallelSettingsModal`) were byte-identical apart from their
+  accent and kind/prompt lists; they now consume the shell and keep only their own
+  flag + framing. `SettingsPromptField`'s `promptKey` is typed to the string-valued
+  keys of `PromptsConfig`.
+- Renamed the misnamed `PersonaSettingsModal` → `AiSettingsModal`. It is now
+  **self-mounting** (reads `customPersonas`/`activePersonaId`/`markdown`/`promptsConfig`
+  from the store, derives `allPersonas = [...DEFAULT_PERSONAS, ...customPersonas]`,
+  takes **zero data props** — restoring the AGENTS.md modal convention it violated).
+  A `SegControl` splits it into **"Model & keys"** (default tab — so the
+  `notifyAiError` "fix your key" deep-link lands on the key field) and **"Personas"**.
+  Dropped the now-unused `allPersonas` prop threading from `ModalLayer` + `App`.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(570 pass / 77 files); `npm run build` succeeds. Manual: open AI settings from a
+forced key error → lands on "Model & keys"; the three feature-settings modals render
+unchanged; personas select/add/delete/import/export still work under the "Personas"
+tab.
+
+**Rollback.** `git revert` — additive + rename only; no schema, persistence, or
+dependency change. The old `PersonaSettingsModal.tsx` content is recoverable from git
+history if the rename needs unwinding.
+
+---
+
+## 2026-06-29 — WS3: point-of-action move instructions (F5)
+
+**What changed.** Second workstream of the AI-integration audit. Surfaces the move
+the structure now owes *at the point of action*, not as a skippable pre-gate — the
+F5 item from the profile-driven wave. No persistence, no Rust, no AI call.
+
+- `features/coach/active-move.ts` — pure `selectActiveMove(section, entry)` returning
+  the active move's one-line demand. Preference mirrors the diagnostic's own ladder:
+  `lastDiagnostic.nextAction` (gap→vector, demand rhetoric) ▷ first unmet
+  `MoveResult` (missing before partial/unclear) ▷ the spec's first `requiredMove`
+  (before any diagnostic). Null for the whole-doc node, a solved section, or when
+  nothing is owed. Unit-tested (8 cases).
+- `features/coach/ActiveMoveMarker.tsx` — a sibling of `ResumeMarker`: a quiet status
+  `Pip` in the prose's left margin (below the resume marker) that reveals the demand +
+  the gap behind it on hover/focus, co-located with the prose (defeats split-attention,
+  Chandler & Sweller / Amershi G3). A focusable `<button>`; click opens the coach.
+  Gated by the existing `ambientCueEnabled` switch (no new knob); reads the cached
+  diagnostic (no AI call). Mounted in `EditorPanel` beside `ResumeMarker`
+  (`!needsProject && !isEmptyState && !focusMode`).
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(578 pass / 78 files — new `active-move` suite); `npm run build` succeeds. Manual:
+put the caret in a section with an unmet move / a diagnostic `nextAction` → a margin
+pip appears (magenta=missing, yellow=partial); hover reveals the vector + gap; click
+opens the coach; the pip is gone for a solved section and on the whole-document node.
+
+**Rollback.** `git revert` — purely additive (one pure module, one component, one
+mount line + import). No schema, persistence, or dependency change.
+
+---
+
+## 2026-06-29 — WS2: durable provenance layer (F2)
+
+**What changed.** Third workstream of the AI-integration audit. AI-introduced prose
+now stays visibly + persistently distinguishable from the writer's own — the F2
+integrity item (recognition memory is impaired; people misremember authorship a week
+later). A durable provenance LAYER, never written into `project.md`.
+
+- **Types** (`src/types/index.ts`): `ProvenanceSource` (`'revision' | 'parallel'`),
+  `ProvenanceMark` (`id`, `anchor` ~64-char verbatim prefix, `length`, `source`,
+  `at`), `ProvenanceDoc` (`{ marks }`).
+- **Persistence** — a new `.twriter/provenance.json` sidecar following the
+  **opaque-`serde_json::Value`** rule end to end (the 2026-06-24 strict-mirror lesson):
+  Rust `types.rs` (opaque `Value`, like `gist`), `layout.rs` (`provenance_json()`),
+  `document.rs` (read + conditional write + a `provenance_round_trips_through_write_then_read`
+  test mirroring the gist one); TS `Repository.StoredProjectData.provenance`; both repo
+  impls pass it through generically (no per-field change). Committed like specs/gist
+  (not gitignored), so marks survive reload, snapshot, and multi-machine sync.
+- **Store** (`document-state.ts`): `provenanceMarks: ProvenanceMark[]` +
+  `setProvenanceMarks`/`addProvenanceMark`; mapped on load/save and the new-project
+  resets in `project-state.ts` (`provenance: { marks }` ⇄ `data.provenance?.marks`).
+- **Instrumentation** — a pure `src/lib/provenance.ts` `makeProvenanceMark(text, source, at)`
+  (null for blank; anchor = leading slice) called at the two accept chokepoints:
+  Glass-Box `use-revision-actions.ts` (`'revision'`) and Parallel
+  `use-parallel-actions.ts` acceptRow/acceptAll (`'parallel'`, the regenerated draftB).
+  This closes the unmarked-AI-text gap in the sourceless-revision path.
+- **Rendering** — a pure, store-free `src/lib/provenanceMarks.ts` CodeMirror
+  `StateField` + `setProvenanceMarks` effect + `buildProvenanceDeco` (anchors resolved
+  by literal `indexOf`; a rewritten opening drops the mark — the prose becomes the
+  writer's own). A desaturated purple `.cm-ai-prose` tint in `index.css`. `EditorPanel`
+  adds the field to both CodeMirror instances and dispatches marks on change (a
+  `focusCmRef` added for the focus editor). Never touches `project.md`, so the
+  manuscript exports clean.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(585 pass / 79 files — new `provenance` suite, 7 cases); `npm run build` succeeds.
+**Rust `cargo test` could NOT be run in this environment** (the GTK/WebKit system libs
+`gdk-3.0` etc. aren't installed and apt's index is stale) — the Rust change is a
+line-for-line mirror of the passing `gist` opaque-`Value` round-trip, and CI
+(`.github/workflows/ci.yml`) runs `cargo test` on push to verify. Manual (desktop):
+accept a Glass-Box or Parallel edit → the inserted span shows a faint purple tint that
+persists across reload + snapshot restore and falls off once its opening is rewritten.
+
+**Rollback.** `git revert`. TS + Rust landed together (serde drops unknown fields, so
+they must). Additive: one new sidecar file per project (harmless if orphaned — the
+loader drops anchors it can't find); no change to existing persisted shapes.
+
+**Deferred (by design).** A *gradient* decay (tint fading as more of a span diverges)
+needs the full inserted text stored per mark, not just the anchor + length; v1 is
+binary (tinted while the anchored opening is intact). Escalating per-act-type marks
+(coach nudge < edit < wholesale paragraph) ride on the `source` field, which is in
+place; differentiated rendering is the additive next step.
+
+---
+
+## 2026-06-29 — WS4a: bounded + gated deep-revision agent (the flagship integration)
+
+**What changed.** Final workstream of the AI-integration audit, and the first time
+the provider-agnostic local agent is woven into a real feature workflow instead of an
+isolated settings console. A **"deep pass"** in the Glass-Box Revision Workspace runs
+the agent so it can *gather cross-section / manuscript-search / history context before
+proposing* — then routes its proposals through the **unchanged** review + accept gate.
+The agent proposes; the human accepts; it never writes `project.md`.
+
+- **Reuses `runAgent`** (no new AICallKind, no new gate). Added an optional
+  `preamble` to `RunAgentInput`, forwarded to the loop (which already accepted one),
+  so a task-scoped flow can set its output contract atop the generic agent system
+  instruction. The conversational console leaves it unset.
+- **Locked prompt** `revision-agent.md` + one `revision-agent.md` registry entry
+  (`revisionAgentPreamble`, `editability: 'locked'`, `flow: 'runAgent'`): gather with
+  the tools, then emit ONLY a `RevisionProposal[]` JSON array (verbatim `original_text`,
+  in-voice `proposed_text`, grounded `rationale`, `confidence_score`).
+- **`useRevisionActions.generateDeep`**: builds the agent context + bounded tools via
+  the existing `buildAgentContext`/`buildToolRegistry`, runs `runAgent` with the
+  preamble + the directive as the user turn, parses the final answer with a new pure
+  `parseAgentProposals` (tolerates fenced blocks / an array amid prose / an
+  `{proposals:[...]}` envelope) → the existing `normalizeRevisions` → `setProposals` →
+  the unchanged `ProposalsColumn`. Accepting rides the existing snapshot +
+  `applyProposal` path, so each accepted span also gets a **WS2 provenance mark**.
+- **`ReviseConfig`** gains a glyphic **deep-pass toggle** shown only when the Local
+  agent is enabled (AI settings) — off by default; the standard single-pass engine
+  stays the default. The live trace ticker streams the agent's tool calls.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(593 pass / 80 files — new `parseAgentProposals` suite, 8 cases covering the agent
+answer → proposals path); `npm run build` succeeds. Manual (Local agent enabled): in
+the Revision Workspace, toggle "deep pass", Generate → the trace ticker shows
+read_section / search_manuscript / history tool calls, proposals land in the unchanged
+review column, Accept snapshots + applies + marks the span; the agent never writes the
+manuscript.
+
+**Rollback.** `git revert` — additive: one optional `RunAgentInput.preamble` field +
+its forward, one locked prompt, one pure parse helper + action, one UI toggle. No
+schema, persistence, or default-behavior change (deep pass is opt-in behind the
+off-by-default Local agent).
+
+**Deferred (additive follow-ons, per the audit §4).** WS4b — a whole-document
+commitment/dependency-audit agent and a git-history argument-drift trace (read-only,
+into the Argument Topology surface) — and a bounded move-completion loop inside a
+Living Sprint (the F3 Good-Enough gate, rubric-declared). All reuse this same
+`runAgent` + accept-gate spine.
+
+---
+
+## 2026-06-29 — WS4a follow-up: deep-pass live trace in the revision loader
+
+**What changed.** Corrects a gap in the WS4a deep pass: `GenLoader` (the Revision
+Workspace generating-phase loader) filtered its `AgentTraceTicker` to
+`['generateRevisions']`, but the deep pass runs as call-kind `runAgent` — so its live
+think/activity trail only appeared after the fact in the audit viewer, not inline.
+`GenLoader` now watches `['generateRevisions', 'runAgent']`, and when a `runAgent` run
+is in flight it swaps the receipt-framed caption ("Tracing sources… / No claim without
+a receipt") for a gather-framed one ("Gathering context… / reading neighbouring
+sections, searching the manuscript, checking history before it proposes"), which is
+also more accurate for a document-grounded (sourceless) pass. Scoped to `GenLoader.tsx`.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(593 pass); `npm run build` succeeds. Manual: enable the Local agent, toggle "deep
+pass", Generate → the ticker streams the agent's `read_section` / `search_manuscript` /
+think deltas live; the full per-run log remains in the AI-settings audit viewer.
+
+**Rollback.** `git revert` — one-component change; no schema/persistence/dependency
+change. Normal single-pass generate is unaffected (it emits no trace, so the added
+`runAgent` kind never matches there).

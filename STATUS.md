@@ -249,6 +249,22 @@ streams keep their own inline indicators rather than the pill.
 
 ## Next (felt priorities)
 
+- **Agentic-AI integration roadmap — WS1–WS4a shipped 2026-06-29.** A 2026-06-29 audit
+  ([`docs/ai-integration-audit.md`](docs/ai-integration-audit.md)) found the gap is
+  *integration*, not plumbing: ~30 typed call-kinds and two agentic substrates exist,
+  but both were off-by-default and woven into no feature workflow. It set a
+  single-call-vs-agent decision rubric, a Human-AI-interaction UX audit, and four
+  workstreams, **all shipped** (see [`docs/migration-log.md`](docs/migration-log.md)):
+  **WS1** AI-config consolidation, **WS3** point-of-action moves (F5), **WS2** durable
+  provenance layer (F2), **WS4a** a bounded+gated deep-revision agent (the local agent
+  woven into the Glass-Box accept gate). Recommended agentic features are *bounded +
+  always gated* (propose → human accepts → snapshot; never an autonomous `project.md`
+  write). **Deferred additive follow-ons:** **WS4b** — a whole-document
+  commitment/dependency-audit agent + a git-history argument-drift trace (read-only,
+  into Argument Topology) — and the **F3 "Good-Enough" gate** as a rubric-declared
+  bounded move-completion loop in a Living Sprint. Both reuse the same `runAgent` +
+  accept-gate spine.
+
 - ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all
   three audit tiers shipped (see [`docs/migration-log.md`](docs/migration-log.md)). A
   visual design audit found a real HLD design language that had stopped enforcing its
@@ -291,21 +307,23 @@ streams keep their own inline indicators rather than the pill.
   automatic trigger that calls it on check-out with the start tag as the baseline
   ref — the manual surfaces already ship.
 
-- **Profile-driven wave, remaining items (F2 · F3 · F5).** The 2026-06-20 wave
-  shipped F1/F4/F6 (the **F4** surround rail and the **F1** floating cue were later
+- **Profile-driven wave — F3 remains (F2 · F5 shipped 2026-06-29).** The 2026-06-20
+  wave shipped F1/F4/F6 (the **F4** surround rail and the **F1** floating cue were later
   *relocated* by the 2026-06-28 Quiet center-column redesign — rail → Spec-panel
   "Context & commitments" zone, nudge → margin resume marker, with F1's stall escalation
   preserved); the analysis flagged three more, ranked by clinical leverage:
-  **(F2) durable authorship/provenance marking for all AI-introduced text** —
-  recognition memory is 2nd–5th %ile and false-alarms, so AI prose must stay
-  visibly + persistently distinguishable from the user's own (the sourceless
-  revision + ghostwriter paths currently inject unmarked text; prefer recall over
-  recognition where feasible); **(F3) a "Good Enough" stop gate** against the
+  ~~**(F2) durable authorship/provenance marking for all AI-introduced text**~~ —
+  **shipped** as the durable provenance layer (WS2 of the AI-integration audit; see
+  [`docs/migration-log.md`](docs/migration-log.md)): a `.twriter/provenance.json`
+  sidecar marks every accepted AI span with a desaturated tint, closing the
+  unmarked-sourceless-text gap; **(F3) a "Good Enough" stop gate** against the
   perfection loop (port the explicit permission-to-stop from the user's own Glass
-  Box tool; tie to the readiness ladder); **(F5) point-of-action move
-  instructions** (surface sprint-move + `RequiredMove` instructions *when the
-  move becomes active*, not as a skippable pre-gate). F2 is the highest-leverage
-  and closes a genuine integrity hazard.
+  Box tool; tie to the readiness ladder) — **still open**, and the audit folds it into
+  the bounded move-completion agent loop (rubric-declared Good-Enough, never
+  model-self-judged); ~~**(F5) point-of-action move instructions**~~ — **shipped** as
+  the margin `ActiveMoveMarker` (WS3), which surfaces the active move's vector *when the
+  move becomes active*, not as a skippable pre-gate. F3 is now the highest-leverage
+  remaining item.
 
 - **Gestalt roadmap — substantially shipped 2026-06-26 (second reading + Phases 1–3).**
   Tier 1 shipped 2026-06-17 (part-not-piece context: prefix-truncation killed in spec

@@ -9,7 +9,7 @@ import type { ReadingMode } from "../../types";
 
 import { TestRunnerModal } from "./TestRunnerModal";
 import { VersionHistoryModal } from "./VersionHistoryModal";
-import { PersonaSettingsModal } from "./PersonaSettingsModal";
+import { AiSettingsModal } from "./AiSettingsModal";
 import { GrimoireModal } from "./GrimoireModal";
 import { SpecGeneratorModal } from "./SpecGeneratorModal";
 import { SprintModal } from "./sprint/SprintModal";
@@ -59,7 +59,6 @@ interface ModalLayerProps {
   currentSection: Section | null;
   documentStats: { wordCount: number; sectionCount: number; depth: number };
   activePersona: Persona;
-  allPersonas: Persona[];
   handleRunTests: (
     scope: "segment" | "parent" | "full",
     choice: ModelChoice,
@@ -78,7 +77,6 @@ export const ModalLayer = ({
   currentSection,
   documentStats,
   activePersona,
-  allPersonas,
   handleRunTests,
   getParentGoals,
   handleSaveContent,
@@ -90,9 +88,9 @@ export const ModalLayer = ({
   const {
     markdown, sections, testSuite, revisions, localContent, projectName,
     customPersonas, promptsConfig, cachedCoachAdvice, projectList,
-    activeProjectId, activePersonaId,
+    activeProjectId,
     setLocalContent, setMarkdown, setTestSuite, setProjectName, setPromptsConfig,
-    setActivePersonaId, setCustomPersonas, setShowSpecModal, setCachedCoachAdvice,
+    setCustomPersonas, setShowSpecModal, setCachedCoachAdvice,
     updateSectionGoals, saveCurrentState,
     switchProject, createNewProject, createDemoProject, openExistingProject, deleteProject,
   } = useStore(useShallow((state) => ({
@@ -107,13 +105,11 @@ export const ModalLayer = ({
     cachedCoachAdvice: state.cachedCoachAdvice,
     projectList: state.projectList,
     activeProjectId: state.activeProjectId,
-    activePersonaId: state.activePersonaId,
     setLocalContent: state.setLocalContent,
     setMarkdown: state.setMarkdown,
     setTestSuite: state.setTestSuite,
     setProjectName: state.setProjectName,
     setPromptsConfig: state.setPromptsConfig,
-    setActivePersonaId: state.setActivePersonaId,
     setCustomPersonas: state.setCustomPersonas,
     setShowSpecModal: state.setShowSpecModal,
     setCachedCoachAdvice: state.setCachedCoachAdvice,
@@ -156,18 +152,7 @@ export const ModalLayer = ({
         }}
       />
 
-      <PersonaSettingsModal
-        activePersonaId={activePersonaId}
-        personas={allPersonas}
-        onSelectPersona={setActivePersonaId}
-        onAddPersona={(p) => setCustomPersonas(prev => [...prev, p])}
-        onDeletePersona={(id) => {
-          setCustomPersonas(prev => prev.filter(p => p.id !== id));
-          if (activePersonaId === id) setActivePersonaId('default');
-        }}
-        documentContext={markdown}
-        promptsConfig={promptsConfig}
-      />
+      <AiSettingsModal />
 
       <GrimoireModal />
 

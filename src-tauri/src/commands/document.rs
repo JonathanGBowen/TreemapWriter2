@@ -87,6 +87,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
     let reverse_outlines: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.reverse_outline_json())?;
     let gist: Option<serde_json::Value> = crate::fs_io::read_json(&layout.gist_json())?;
+    let provenance: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.provenance_json())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -110,6 +112,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         models_config,
         reverse_outlines,
         gist,
+        provenance,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -148,6 +151,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(g) = &data.gist {
         crate::fs_io::write_json(&layout.gist_json(), g)?;
+    }
+    if let Some(p) = &data.provenance {
+        crate::fs_io::write_json(&layout.provenance_json(), p)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;
@@ -370,5 +376,30 @@ mod tests {
         assert!(layout.gist_json().is_file());
         let back = read_from(&layout).unwrap();
         assert_eq!(back.gist, Some(gist));
+    }
+
+    #[test]
+    fn provenance_round_trips_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the ProvenanceDoc shape; Rust round-trips it as an opaque Value.
+        let provenance = serde_json::json!({
+            "marks": [
+                { "id": "prov_1", "anchor": "We fare forth, then", "length": 42, "source": "revision", "at": 1_700_000_000_000_i64 }
+            ]
+        });
+
+        let data = StoredProjectData {
+            markdown: Some("# Introduction\n\nWe fare forth, then something goes wrong.".to_string()),
+            provenance: Some(provenance.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        assert!(layout.provenance_json().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.provenance, Some(provenance));
     }
 }
