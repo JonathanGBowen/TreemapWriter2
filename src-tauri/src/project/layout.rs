@@ -47,6 +47,10 @@ impl Layout {
         self.twriter_dir().join("gist.json")
     }
 
+    pub fn provenance_json(&self) -> PathBuf {
+        self.twriter_dir().join("provenance.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }

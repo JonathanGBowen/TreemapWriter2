@@ -4769,3 +4769,57 @@ opens the coach; the pip is gone for a solved section and on the whole-document 
 
 **Rollback.** `git revert` — purely additive (one pure module, one component, one
 mount line + import). No schema, persistence, or dependency change.
+
+---
+
+## 2026-06-29 — WS2: durable provenance layer (F2)
+
+**What changed.** Third workstream of the AI-integration audit. AI-introduced prose
+now stays visibly + persistently distinguishable from the writer's own — the F2
+integrity item (recognition memory is impaired; people misremember authorship a week
+later). A durable provenance LAYER, never written into `project.md`.
+
+- **Types** (`src/types/index.ts`): `ProvenanceSource` (`'revision' | 'parallel'`),
+  `ProvenanceMark` (`id`, `anchor` ~64-char verbatim prefix, `length`, `source`,
+  `at`), `ProvenanceDoc` (`{ marks }`).
+- **Persistence** — a new `.twriter/provenance.json` sidecar following the
+  **opaque-`serde_json::Value`** rule end to end (the 2026-06-24 strict-mirror lesson):
+  Rust `types.rs` (opaque `Value`, like `gist`), `layout.rs` (`provenance_json()`),
+  `document.rs` (read + conditional write + a `provenance_round_trips_through_write_then_read`
+  test mirroring the gist one); TS `Repository.StoredProjectData.provenance`; both repo
+  impls pass it through generically (no per-field change). Committed like specs/gist
+  (not gitignored), so marks survive reload, snapshot, and multi-machine sync.
+- **Store** (`document-state.ts`): `provenanceMarks: ProvenanceMark[]` +
+  `setProvenanceMarks`/`addProvenanceMark`; mapped on load/save and the new-project
+  resets in `project-state.ts` (`provenance: { marks }` ⇄ `data.provenance?.marks`).
+- **Instrumentation** — a pure `src/lib/provenance.ts` `makeProvenanceMark(text, source, at)`
+  (null for blank; anchor = leading slice) called at the two accept chokepoints:
+  Glass-Box `use-revision-actions.ts` (`'revision'`) and Parallel
+  `use-parallel-actions.ts` acceptRow/acceptAll (`'parallel'`, the regenerated draftB).
+  This closes the unmarked-AI-text gap in the sourceless-revision path.
+- **Rendering** — a pure, store-free `src/lib/provenanceMarks.ts` CodeMirror
+  `StateField` + `setProvenanceMarks` effect + `buildProvenanceDeco` (anchors resolved
+  by literal `indexOf`; a rewritten opening drops the mark — the prose becomes the
+  writer's own). A desaturated purple `.cm-ai-prose` tint in `index.css`. `EditorPanel`
+  adds the field to both CodeMirror instances and dispatches marks on change (a
+  `focusCmRef` added for the focus editor). Never touches `project.md`, so the
+  manuscript exports clean.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(585 pass / 79 files — new `provenance` suite, 7 cases); `npm run build` succeeds.
+**Rust `cargo test` could NOT be run in this environment** (the GTK/WebKit system libs
+`gdk-3.0` etc. aren't installed and apt's index is stale) — the Rust change is a
+line-for-line mirror of the passing `gist` opaque-`Value` round-trip, and CI
+(`.github/workflows/ci.yml`) runs `cargo test` on push to verify. Manual (desktop):
+accept a Glass-Box or Parallel edit → the inserted span shows a faint purple tint that
+persists across reload + snapshot restore and falls off once its opening is rewritten.
+
+**Rollback.** `git revert`. TS + Rust landed together (serde drops unknown fields, so
+they must). Additive: one new sidecar file per project (harmless if orphaned — the
+loader drops anchors it can't find); no change to existing persisted shapes.
+
+**Deferred (by design).** A *gradient* decay (tint fading as more of a span diverges)
+needs the full inserted text stored per mark, not just the anchor + length; v1 is
+binary (tinted while the anchored opening is intact). Escalating per-act-type marks
+(coach nudge < edit < wholesale paragraph) ride on the `source` field, which is in
+place; differentiated rendering is the additive next step.

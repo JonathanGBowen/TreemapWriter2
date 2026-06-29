@@ -259,6 +259,12 @@ pub struct StoredProjectData {
     /// budgets, the three grains, stale/orphan ids). One per document; committed.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub gist: Option<serde_json::Value>,
+    /// Durable provenance layer for AI-introduced spans (`.twriter/provenance.json`).
+    /// Schema-agnostic on the Rust side — the TS layer owns the shape (`ProvenanceDoc`:
+    /// `{ marks: ProvenanceMark[] }`). Opaque `Value`, like `gist`, so a sparse/evolving
+    /// shape can never reject the whole save (the 2026-06-24 strict-mirror lesson).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub provenance: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { applyProposal } from '../../lib/revision-helpers';
+import { makeProvenanceMark } from '../../lib/provenance';
 import { resolveActiveInstruction } from '../../lib/defaultInstructions';
 import { revisionBudgetText } from './revision-budget';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
@@ -123,6 +124,10 @@ export const useRevisionActions = () => {
       }
       // Literal first-occurrence replace — the engine's "never assume" contract.
       setLocalContent((prev) => applyProposal(prev, proposal));
+      // Durable provenance (F2): record this span as AI-introduced, anchored to the
+      // inserted text. Never touches project.md — only the .twriter sidecar.
+      const mark = makeProvenanceMark(proposal.proposed_text, 'revision', Date.now());
+      if (mark) useStore.getState().addProvenanceMark(mark);
       resolveProposal(proposal.id, 'accepted');
       try {
         await saveCurrentState();
