@@ -229,6 +229,31 @@ export const findSectionById = (nodes: Section[], id: string): Section | null =>
 };
 
 /**
+ * Resolve a section reference that may be an id OR a title (the form an LLM tends to
+ * return) to a Section, or null. Tries exact id → exact title → loose
+ * (trimmed/lowercased) title. Used to anchor agent-returned findings to real sections.
+ */
+export const resolveSectionRef = (ref: string, sections: Section[]): Section | null => {
+  const needle = (ref ?? '').trim();
+  if (!needle) return null;
+  const byId = findSectionById(sections, needle);
+  if (byId) return byId;
+  const lower = needle.toLowerCase();
+  let exact: Section | null = null;
+  let loose: Section | null = null;
+  const walk = (nodes: Section[]) => {
+    for (const n of nodes) {
+      const t = n.title.trim();
+      if (!exact && t === needle) exact = n;
+      if (!loose && t.toLowerCase() === lower) loose = n;
+      walk(n.children);
+    }
+  };
+  walk(sections);
+  return exact ?? loose;
+};
+
+/**
  * Robustly extract and parse JSON from AI responses that might contain preamble/postamble.
  */
 export const safeJsonParse = (text: string, fallback: any = {}) => {

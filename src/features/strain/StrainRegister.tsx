@@ -11,6 +11,11 @@ const KIND_LABEL: Record<StrainSignalKind, string> = {
   adrift: 'adrift from whole',
   recapitulative: 'recapitulative move',
   ballast: 'weight vs. work',
+  // WS4b whole-document audit findings (AI-sourced).
+  'unargued-commitment': 'unargued commitment',
+  'unsupported-assumption': 'unsupported assumption',
+  'drifted-claim': 'drifted claim',
+  'orphaned-commitment': 'orphaned commitment',
 };
 
 /** Directed neighbour suffix, in words ("← Chapter 1" / "→ Methods"). */
@@ -93,15 +98,16 @@ function StrainRow({ s, selected, onSelect, onDismiss }: {
 export function StrainRegister({ onSelect }: { onSelect: (id: string) => void }) {
   const sections = useStore((s) => s.sections);
   const testSuite = useStore((s) => s.testSuite);
+  const auditFindings = useStore((s) => s.auditFindings);
   const selectedId = useStore((s) => s.selectedId);
   const dismissedStrainIds = useStore((s) => s.dismissedStrainIds);
   const dismissStrain = useStore((s) => s.dismissStrain);
   const [open, setOpen] = useState(false);
 
   const strained = useMemo(() => {
-    const { strained } = computeAllStrain(sections, testSuite);
+    const { strained } = computeAllStrain(sections, testSuite, auditFindings);
     return strained.filter((s) => !dismissedStrainIds.includes(s.sectionId));
-  }, [sections, testSuite, dismissedStrainIds]);
+  }, [sections, testSuite, auditFindings, dismissedStrainIds]);
 
   if (strained.length === 0) return null;
 

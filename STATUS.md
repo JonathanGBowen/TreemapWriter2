@@ -249,21 +249,22 @@ streams keep their own inline indicators rather than the pill.
 
 ## Next (felt priorities)
 
-- **Agentic-AI integration roadmap — WS1–WS4a shipped 2026-06-29.** A 2026-06-29 audit
+- **Agentic-AI integration roadmap — WS1–WS4b shipped 2026-06-29.** A 2026-06-29 audit
   ([`docs/ai-integration-audit.md`](docs/ai-integration-audit.md)) found the gap is
   *integration*, not plumbing: ~30 typed call-kinds and two agentic substrates exist,
   but both were off-by-default and woven into no feature workflow. It set a
-  single-call-vs-agent decision rubric, a Human-AI-interaction UX audit, and four
+  single-call-vs-agent decision rubric, a Human-AI-interaction UX audit, and five
   workstreams, **all shipped** (see [`docs/migration-log.md`](docs/migration-log.md)):
   **WS1** AI-config consolidation, **WS3** point-of-action moves (F5), **WS2** durable
   provenance layer (F2), **WS4a** a bounded+gated deep-revision agent (the local agent
-  woven into the Glass-Box accept gate). Recommended agentic features are *bounded +
-  always gated* (propose → human accepts → snapshot; never an autonomous `project.md`
-  write). **Deferred additive follow-ons:** **WS4b** — a whole-document
-  commitment/dependency-audit agent + a git-history argument-drift trace (read-only,
-  into Argument Topology) — and the **F3 "Good-Enough" gate** as a rubric-declared
-  bounded move-completion loop in a Living Sprint. Both reuse the same `runAgent` +
-  accept-gate spine.
+  woven into the Glass-Box accept gate), and **WS4b** a read-only whole-document
+  argument-audit agent (commitments relied-on-but-never-argued + drift) surfaced in an
+  Audit modal and folded into the Structural-Tension Register. Recommended agentic
+  features are *bounded + always gated* (propose → human accepts → snapshot; never an
+  autonomous `project.md` write). **Deferred follow-ons:** the **F3 "Good-Enough" gate**
+  as a rubric-declared bounded move-completion loop in a Living Sprint; deep
+  multi-snapshot drift analysis; and the treemap **Tension-Lens** layer. All reuse the
+  same `runAgent` + accept-gate spine.
 
 - ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all
   three audit tiers shipped (see [`docs/migration-log.md`](docs/migration-log.md)). A

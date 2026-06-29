@@ -136,6 +136,7 @@ export interface UIStateSlice {
   sprintMode: 'goal' | 'content';
   showHistoryModal: boolean;
   showGraphModal: boolean;
+  showAuditModal: boolean;
   showCoachModal: boolean;
   showMigrationModal: boolean;
   showSyncConfigModal: boolean;
@@ -206,6 +207,7 @@ export interface UIStateSlice {
   setSprintMode: (mode: 'goal' | 'content') => void;
   setShowHistoryModal: (show: boolean) => void;
   setShowGraphModal: (show: boolean) => void;
+  setShowAuditModal: (show: boolean) => void;
   setShowCoachModal: (show: boolean) => void;
   setShowMigrationModal: (show: boolean) => void;
   setShowSyncConfigModal: (show: boolean) => void;
@@ -260,6 +262,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   sprintMode: 'content',
   showHistoryModal: false,
   showGraphModal: false,
+  showAuditModal: false,
   showCoachModal: false,
   showMigrationModal: false,
   showSyncConfigModal: false,
@@ -348,6 +351,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setSprintMode: (mode) => set({ sprintMode: mode }),
   setShowHistoryModal: (show) => set({ showHistoryModal: show }),
   setShowGraphModal: (show) => set({ showGraphModal: show }),
+  setShowAuditModal: (show) => set({ showAuditModal: show }),
   setShowCoachModal: (show) => set({ showCoachModal: show }),
   setShowMigrationModal: (show) => set({ showMigrationModal: show }),
   setShowSyncConfigModal: (show) => set({ showSyncConfigModal: show }),

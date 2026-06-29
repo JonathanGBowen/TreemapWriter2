@@ -6,7 +6,7 @@
 // user is false-alarm-sensitive, so blocked and spec-less sections are always neutral and
 // AI-alone caps at "medium". No React / Plotly / state imports → unit-testable.
 
-import type { Section, SectionSpec, TestSuite } from '../types';
+import type { AuditFinding, AuditFindingKind, Section, SectionSpec, TestSuite } from '../types';
 import { checkCommitmentMesh } from './diagnostic-helpers';
 import { CHAPTER_WORDS } from './magnitude';
 
@@ -21,7 +21,11 @@ export type StrainSignalKind =
   // C1 (docs/gestalt-design-IV.md): Wertheimer 1912 §18 — number ≠ value. A section
   // large in WORD COUNT but light in structural ADVANCE: bulk that is not doing work,
   // "a mountain of copper small change [that] cannot buy a house."
-  | 'ballast';
+  | 'ballast'
+  // WS4b: whole-document argument-audit findings, folded in as AI-sourced signals
+  // (so they cap at 'medium' alone and only reach 'high' when a deterministic mesh
+  // break corroborates the same section). Defined once in types/index.ts.
+  | AuditFindingKind;
 
 export interface StrainSignal {
   kind: StrainSignalKind;
@@ -107,11 +111,25 @@ function aiSignals(testSuite: TestSuite, sectionId: string, words: number): Stra
   return out;
 }
 
+/** Map a section's whole-document audit findings (WS4b) into AI-tier strain signals. */
+function auditSignalsFor(sectionId: string, auditFindings: AuditFinding[]): StrainSignal[] {
+  return auditFindings
+    .filter((f) => f.sectionId === sectionId)
+    .map((f) => ({
+      kind: f.kind,
+      detail: f.detail,
+      relatedTitle: f.relatedSectionTitle,
+      direction: f.direction,
+      source: 'ai' as const,
+    }));
+}
+
 /**
  * Strain for one section. Neutral (band 'none', no signals) when the section is blocked
- * or has no spec. Otherwise: deterministic mesh breaks set the base; AI signals corroborate.
- * Bands — 0 signals → none; with a deterministic base, total ≥2 → high else medium; with
- * NO deterministic base, AI alone caps at medium (it may escalate, never originate a high).
+ * or has no spec. Otherwise: deterministic mesh breaks set the base; AI signals (the last
+ * diagnostic + whole-document audit findings) corroborate. Bands — 0 signals → none; with
+ * a deterministic base, total ≥2 → high else medium; with NO deterministic base, AI alone
+ * caps at medium (it may escalate, never originate a high — so audit findings alone stay medium).
  */
 export function computeStrain(
   sectionId: string,
@@ -119,6 +137,7 @@ export function computeStrain(
   byId: Map<string, Section>,
   specs: SpecMap,
   testSuite: TestSuite,
+  auditFindings: AuditFinding[] = [],
 ): SectionStrain {
   const title = byId.get(sectionId)?.title ?? sectionId;
   const blank: SectionStrain = { sectionId, title, band: 'none', signals: [] };
@@ -133,7 +152,10 @@ export function computeStrain(
     direction: f.direction,
     source: 'deterministic' as const,
   }));
-  const ai = aiSignals(testSuite, sectionId, byId.get(sectionId)?.wordCount ?? 0);
+  const ai = [
+    ...aiSignals(testSuite, sectionId, byId.get(sectionId)?.wordCount ?? 0),
+    ...auditSignalsFor(sectionId, auditFindings),
+  ];
   const signals = [...deterministic, ...ai];
   if (signals.length === 0) return blank;
 
@@ -159,6 +181,7 @@ export function buildSpecMap(testSuite: TestSuite): SpecMap {
 export function computeAllStrain(
   sections: Section[],
   testSuite: TestSuite,
+  auditFindings: AuditFinding[] = [],
 ): { strained: SectionStrain[]; count: number } {
   const byId = new Map<string, Section>();
   const order: string[] = [];
@@ -172,7 +195,7 @@ export function computeAllStrain(
 
   const specs = buildSpecMap(testSuite);
   const strained = order
-    .map((id) => computeStrain(id, sections, byId, specs, testSuite))
+    .map((id) => computeStrain(id, sections, byId, specs, testSuite, auditFindings))
     .filter((s) => s.band !== 'none');
 
   return { strained, count: strained.length };

@@ -4895,3 +4895,52 @@ think deltas live; the full per-run log remains in the AI-settings audit viewer.
 **Rollback.** `git revert` — one-component change; no schema/persistence/dependency
 change. Normal single-pass generate is unaffected (it emits no trace, so the added
 `runAgent` kind never matches there).
+
+---
+
+## 2026-06-29 — WS4b: whole-document argument-audit agent
+
+**What changed.** The audit's #1-ranked agentic opportunity, and the first whole-document
+agent woven into a feature surface. A read-only **"Audit argument"** pass runs the local
+agent over the whole manuscript to find what the per-section diagnostic structurally
+can't — commitments relied on but never argued, assumptions their prerequisites never
+establish, and claims that drifted across sections or recent revisions. It changes
+nothing; each finding points the writer to a section, and fixes route through Glass-Box.
+Off by default behind `localAgentEnabled`.
+
+- **Agent-shaped by the rubric:** the deterministic `checkCommitmentMesh` +
+  `computeCentering` are the non-model oracle; the agent is **seeded** with their map
+  (`buildAuditSeed`) and asked to verify + extend it (semantic, multi-hop, historical) —
+  not re-derive it. Reuses `runAgent` (no new call kind) with a locked `audit-agent.md`
+  preamble; `buildAgentContext({scope:'document'})` + the existing tool registry
+  (cross-section reads, FTS5 search, ≤3 history snapshots); parses the final answer with
+  the tolerant `parseAgentProposals` → `normalizeAuditFindings` (anchors each finding to a
+  real section via the new shared `resolveSectionRef`, drops the unanchored, clamps
+  severity).
+- **Types + slice:** `AuditFinding`/`AuditFindingKind` (`types/index.ts`); a new ephemeral,
+  **never-persisted** `state/audit-state.ts` (`auditFindings`/`auditStatus`/`auditRunAt`).
+- **Surface:** `features/modals/AuditModal.tsx` (self-mounting on `showAuditModal`) — idle
+  explainer + lit Run (with an enable-the-agent hint when off) -> running (`Spinner` +
+  `AgentTraceTicker kinds={['runAgent']}` — the prominent live think/tool trace) -> review
+  (findings ranked high->medium, each jumping to its section). Launched from the command
+  palette + a new `⊙` Dock glyph.
+- **Structural-Tension Register integration** (fulfils STATUS's deferred S1->S2 wiring):
+  audit findings fold into the Register's AI tier via an optional `auditFindings` arg
+  threaded through `computeAllStrain`/`computeStrain`, so an audit-only section caps at
+  band `medium` and only reaches `high` when a deterministic mesh break corroborates it
+  (the "AI never originates a high" rule, enforced in the merge). New `StrainSignalKind`s
+  reuse `AuditFindingKind`; `KIND_LABEL` extended.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test` (605 pass —
+new `audit-helpers` + `strain-metrics.audit` suites, 12 cases incl. the deterministic-mesh
+escalation and the AI-never-originates-high cap); `npm run build` succeeds; a Chromium
+smoke test confirms the modal opens cleanly with no page errors.
+
+**Rollback.** `git revert` — additive: new types/slice/helpers/prompt/hook/modal + an
+optional `auditFindings` arg (default `[]`) on the strain functions. No persistence,
+schema, or default-behavior change (audit is opt-in behind the off-by-default Local agent;
+findings are ephemeral). No Rust.
+
+**Deferred (follow-ons).** Deep multi-snapshot drift analysis; a treemap Tension-Lens
+layer; persisting/exporting an audit report; surfacing findings on spec-less sections in
+the Register (the modal already shows the full set).

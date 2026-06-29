@@ -34,6 +34,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowCommandPalette = useStore((s) => s.setShowCommandPalette);
   const setShowSectionMapModal = useStore((s) => s.setShowSectionMapModal);
   const setShowGraphModal = useStore((s) => s.setShowGraphModal);
+  const setShowAuditModal = useStore((s) => s.setShowAuditModal);
   const setShowPromptsGraphModal = useStore((s) => s.setShowPromptsGraphModal);
   const setShowProjectFileModal = useStore((s) => s.setShowProjectFileModal);
   const openCompare = useStore((s) => s.openCompare);
@@ -75,9 +76,9 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     onBlur: () => setCaption(null),
   });
 
-  // Two workflow groups, seven each (the grid wraps to two rows). Compose/revise
-  // first, then evaluate/inspect. Every major modal/workspace is one glyph away —
-  // ⌘K (Assist) stays the searchable door + the home of the rarer actions.
+  // Two workflow groups (the grid wraps): compose/revise first, then evaluate/inspect
+  // (which carries the whole-document Audit). Every major modal/workspace is one glyph
+  // away — ⌘K (Assist) stays the searchable door + the home of the rarer actions.
   const tools: { g: string; name: string; aria: string; onClick: () => void }[] = [
     // compose / revise
     { g: '◉', name: 'Assist — every action, searchable (⌘K)', aria: 'Assist', onClick: () => setShowCommandPalette(true) },
@@ -89,6 +90,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '▦', name: 'Goal map — section goal editor', aria: 'Goal map', onClick: () => setShowSectionMapModal(true) },
     // evaluate / inspect
     { g: '◈', name: 'Dependencies — section graph', aria: 'Dependencies', onClick: () => setShowGraphModal(true) },
+    { g: '⊙', name: 'Audit — whole-document commitment & drift audit', aria: 'Audit', onClick: () => setShowAuditModal(true) },
     { g: '▣', name: 'Spec test — A/B against the rubric, whole + parts', aria: 'Spec test', onClick: () => openSpecTest() },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },

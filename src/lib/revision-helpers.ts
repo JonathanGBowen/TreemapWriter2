@@ -42,11 +42,12 @@ const clampScore = (v: unknown): number => {
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v));
 
 /** First non-null value among the candidate keys — tolerates the model's field-name variance. */
-const pickRaw = (o: Record<string, unknown>, keys: string[]): unknown => {
+export const pickRaw = (o: Record<string, unknown>, keys: string[]): unknown => {
   for (const k of keys) if (o[k] != null) return o[k];
   return undefined;
 };
-const pickStr = (o: Record<string, unknown>, keys: string[]): string => str(pickRaw(o, keys)).trim();
+export const pickStr = (o: Record<string, unknown>, keys: string[]): string =>
+  str(pickRaw(o, keys)).trim();
 
 /** Pull the result array out of whatever envelope the model returned. */
 const extractArray = (

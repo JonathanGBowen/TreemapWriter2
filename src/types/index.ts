@@ -173,6 +173,41 @@ export interface ProvenanceDoc {
   marks: ProvenanceMark[];
 }
 
+// --- ARGUMENT AUDIT (WS4b: whole-document agent findings) ---
+
+/**
+ * What a whole-document audit finding flags. Distinct from the per-section
+ * `CommitmentFinding`/`MeshFinding` (token-level, single-section): these are the
+ * audit agent's semantic, multi-hop, cross-section reads — the work the
+ * deterministic mesh check structurally cannot do.
+ */
+export type AuditFindingKind =
+  | 'unargued-commitment' // a claim relied on across the work but never actually argued
+  | 'unsupported-assumption' // a section assumes context its prerequisites never establish
+  | 'drifted-claim' // a definition/claim used inconsistently across sections or revisions
+  | 'orphaned-commitment'; // a commitment a section makes that nothing downstream uses
+
+/**
+ * One finding from the read-only whole-document argument audit (WS4b), anchored to
+ * the section that carries the problem. Read-only — fixes route through Glass-Box.
+ * Ephemeral + regenerable; never persisted.
+ */
+export interface AuditFinding {
+  id: string;
+  /** Section the finding is anchored to (resolved from the model's `sectionTitle`). */
+  sectionId: string;
+  sectionTitle: string;
+  kind: AuditFindingKind;
+  /** Concrete description of the gap, grounded in the prose. */
+  detail: string;
+  /** The other section the relation points to, when one applies. */
+  relatedSectionTitle?: string;
+  direction?: 'upstream' | 'downstream' | 'self';
+  severity: 'medium' | 'high';
+  /** Optional note when the finding involves drift across git revisions. */
+  drift?: string;
+}
+
 // --- GESTALT WHOLE/PART OPERATIONS (Phase 2) ---
 
 /**

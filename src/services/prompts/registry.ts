@@ -58,6 +58,7 @@ import citationsSystem from './citations-system.md?raw';
 import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
 import revisionAgentPreamble from './revision-agent.md?raw';
+import auditAgentPreamble from './audit-agent.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
 import compareModeDraft from './compare-mode-draft.md?raw';
@@ -623,6 +624,17 @@ export const PROMPT_REGISTRY = [
     description:
       'Glass Box deep pass: the system preamble for the bounded local agent — gather cross-section / manuscript-search / history context, then emit RevisionProposal[] JSON for the unchanged accept gate. Engine internal — not user-editable.',
     category: 'revision-engine',
+    flow: 'runAgent',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'auditAgentPreamble',
+    defaultText: strip(auditAgentPreamble),
+    label: 'Argument Audit Agent',
+    description:
+      'Whole-document audit (WS4b): the system preamble for the read-only bounded local agent — read the seeded deterministic mesh/topology map, then cross-section + manuscript-search + ≤3-snapshot history to find unargued commitments / unsupported assumptions / drifted claims, emitted as AuditFinding[] JSON. Engine internal — not user-editable.',
+    category: 'analysis-dialogue',
     flow: 'runAgent',
     editability: 'locked',
     variables: [],

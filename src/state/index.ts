@@ -11,6 +11,7 @@ import { createClimateSlice, type ClimateSlice } from './climate-state';
 import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
 import { createParallelSlice, type ParallelSlice } from './parallel-state';
 import { createGistSlice, type GistSlice } from './gist-state';
+import { createAuditSlice, type AuditSlice } from './audit-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
 import { createSessionSlice, type SessionSlice } from './session-state';
 import {
@@ -53,6 +54,7 @@ export type AppState =
   & InterpolationSlice
   & ParallelSlice
   & GistSlice
+  & AuditSlice
   & TraceSlice
   & SessionSlice;
 
@@ -69,6 +71,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createInterpolationSlice(...args),
   ...createParallelSlice(...args),
   ...createGistSlice(...args),
+  ...createAuditSlice(...args),
   ...createTraceSlice(...args),
   ...createSessionSlice(...args),
 }));
