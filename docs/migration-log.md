@@ -4872,3 +4872,26 @@ commitment/dependency-audit agent and a git-history argument-drift trace (read-o
 into the Argument Topology surface) — and a bounded move-completion loop inside a
 Living Sprint (the F3 Good-Enough gate, rubric-declared). All reuse this same
 `runAgent` + accept-gate spine.
+
+---
+
+## 2026-06-29 — WS4a follow-up: deep-pass live trace in the revision loader
+
+**What changed.** Corrects a gap in the WS4a deep pass: `GenLoader` (the Revision
+Workspace generating-phase loader) filtered its `AgentTraceTicker` to
+`['generateRevisions']`, but the deep pass runs as call-kind `runAgent` — so its live
+think/activity trail only appeared after the fact in the audit viewer, not inline.
+`GenLoader` now watches `['generateRevisions', 'runAgent']`, and when a `runAgent` run
+is in flight it swaps the receipt-framed caption ("Tracing sources… / No claim without
+a receipt") for a gather-framed one ("Gathering context… / reading neighbouring
+sections, searching the manuscript, checking history before it proposes"), which is
+also more accurate for a document-grounded (sourceless) pass. Scoped to `GenLoader.tsx`.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(593 pass); `npm run build` succeeds. Manual: enable the Local agent, toggle "deep
+pass", Generate → the ticker streams the agent's `read_section` / `search_manuscript` /
+think deltas live; the full per-run log remains in the AI-settings audit viewer.
+
+**Rollback.** `git revert` — one-component change; no schema/persistence/dependency
+change. Normal single-pass generate is unaffected (it emits no trace, so the added
+`runAgent` kind never matches there).
