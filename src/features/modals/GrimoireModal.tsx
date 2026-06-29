@@ -9,7 +9,7 @@ import { DEFAULT_SPELLS } from "../../lib/defaultSpells";
  * The Grimoire: a library of analytical lenses ("spells"). Built-ins ship in
  * code (read-only, but duplicable); custom spells form a global library shared
  * across projects. Selecting a spell sets the active lens for the next Analysis
- * run; "Plain reconstruction" clears it. Mirrors the chrome of PersonaSettingsModal.
+ * run; "Plain reconstruction" clears it. Mirrors the chrome of AiSettingsModal.
  */
 export const GrimoireModal: React.FC = () => {
   const isOpen = useStore((s) => s.showGrimoireModal);

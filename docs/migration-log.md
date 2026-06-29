@@ -4703,3 +4703,38 @@ canonical-source rule). No code changed at this entry.
 
 **Rollback.** `git revert` (or delete `docs/ai-integration-audit.md` and this entry).
 Doc-only; no behavior, schema, or dependency change.
+
+---
+
+## 2026-06-29 — WS1: AI-configuration consolidation (audit follow-through)
+
+**What changed.** First workstream of the AI-integration audit
+([`ai-integration-audit.md`](ai-integration-audit.md)). Pure refactor, no
+persistence or behavior change.
+
+- Moved `RevisionTokenPreview` from `features/modals/` to `features/shared/` (it is
+  a shared presentational widget, not a modal); updated its one importer.
+- Extracted `features/modals/FeatureSettingsShell.tsx` — shared `SettingsSection`,
+  `SettingsPromptField` (accent + rows props), and `ModelKindRows` (the per-call-kind
+  override rows). The three feature-settings modals (`RevisionSettingsModal`,
+  `GistSettingsModal`, `ParallelSettingsModal`) were byte-identical apart from their
+  accent and kind/prompt lists; they now consume the shell and keep only their own
+  flag + framing. `SettingsPromptField`'s `promptKey` is typed to the string-valued
+  keys of `PromptsConfig`.
+- Renamed the misnamed `PersonaSettingsModal` → `AiSettingsModal`. It is now
+  **self-mounting** (reads `customPersonas`/`activePersonaId`/`markdown`/`promptsConfig`
+  from the store, derives `allPersonas = [...DEFAULT_PERSONAS, ...customPersonas]`,
+  takes **zero data props** — restoring the AGENTS.md modal convention it violated).
+  A `SegControl` splits it into **"Model & keys"** (default tab — so the
+  `notifyAiError` "fix your key" deep-link lands on the key field) and **"Personas"**.
+  Dropped the now-unused `allPersonas` prop threading from `ModalLayer` + `App`.
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(570 pass / 77 files); `npm run build` succeeds. Manual: open AI settings from a
+forced key error → lands on "Model & keys"; the three feature-settings modals render
+unchanged; personas select/add/delete/import/export still work under the "Personas"
+tab.
+
+**Rollback.** `git revert` — additive + rename only; no schema, persistence, or
+dependency change. The old `PersonaSettingsModal.tsx` content is recoverable from git
+history if the rename needs unwinding.

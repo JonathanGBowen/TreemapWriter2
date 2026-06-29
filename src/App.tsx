@@ -739,7 +739,6 @@ export const App = () => {
           currentSection={currentSection}
           documentStats={documentStats}
           activePersona={activePersona}
-          allPersonas={allPersonas}
           handleRunTests={handleRunTests}
           getParentGoals={getParentGoals}
           handleSaveContent={handleSaveContent}
