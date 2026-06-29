@@ -13,6 +13,7 @@ import { GFM, Table } from '@lezer/markdown';
 import { hldExtensions, hldTheme } from '../../lib/editorTheme';
 import { livePreviewPlugin } from '../../lib/livePreview';
 import { ResumeMarker } from '../coach/ResumeMarker';
+import { ActiveMoveMarker } from '../coach/ActiveMoveMarker';
 import { EditorView, keymap, drawSelection, highlightSpecialChars, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
@@ -431,6 +432,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
             left margin that replaces the floating "you were here" nudge. Reveals
             on hover and auto-escalates on a mid-section stall; click resumes. */}
         {!needsProject && !isEmptyState && !focusMode && <ResumeMarker onResume={handleResume} />}
+        {/* Point-of-action move cue (F5): names the move the structure now owes,
+            in the left margin, co-located with the prose. */}
+        {!needsProject && !isEmptyState && !focusMode && <ActiveMoveMarker />}
         <div className="h-full relative">
 
           {focusMode && currentSection && (

@@ -4738,3 +4738,34 @@ tab.
 **Rollback.** `git revert` — additive + rename only; no schema, persistence, or
 dependency change. The old `PersonaSettingsModal.tsx` content is recoverable from git
 history if the rename needs unwinding.
+
+---
+
+## 2026-06-29 — WS3: point-of-action move instructions (F5)
+
+**What changed.** Second workstream of the AI-integration audit. Surfaces the move
+the structure now owes *at the point of action*, not as a skippable pre-gate — the
+F5 item from the profile-driven wave. No persistence, no Rust, no AI call.
+
+- `features/coach/active-move.ts` — pure `selectActiveMove(section, entry)` returning
+  the active move's one-line demand. Preference mirrors the diagnostic's own ladder:
+  `lastDiagnostic.nextAction` (gap→vector, demand rhetoric) ▷ first unmet
+  `MoveResult` (missing before partial/unclear) ▷ the spec's first `requiredMove`
+  (before any diagnostic). Null for the whole-doc node, a solved section, or when
+  nothing is owed. Unit-tested (8 cases).
+- `features/coach/ActiveMoveMarker.tsx` — a sibling of `ResumeMarker`: a quiet status
+  `Pip` in the prose's left margin (below the resume marker) that reveals the demand +
+  the gap behind it on hover/focus, co-located with the prose (defeats split-attention,
+  Chandler & Sweller / Amershi G3). A focusable `<button>`; click opens the coach.
+  Gated by the existing `ambientCueEnabled` switch (no new knob); reads the cached
+  diagnostic (no AI call). Mounted in `EditorPanel` beside `ResumeMarker`
+  (`!needsProject && !isEmptyState && !focusMode`).
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test`
+(578 pass / 78 files — new `active-move` suite); `npm run build` succeeds. Manual:
+put the caret in a section with an unmet move / a diagnostic `nextAction` → a margin
+pip appears (magenta=missing, yellow=partial); hover reveals the vector + gap; click
+opens the coach; the pip is gone for a solved section and on the whole-document node.
+
+**Rollback.** `git revert` — purely additive (one pure module, one component, one
+mount line + import). No schema, persistence, or dependency change.
