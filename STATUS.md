@@ -249,6 +249,18 @@ streams keep their own inline indicators rather than the pill.
 
 ## Next (felt priorities)
 
+- **Agentic-AI integration roadmap.** A 2026-06-29 audit
+  ([`docs/ai-integration-audit.md`](docs/ai-integration-audit.md)) found the gap is
+  *integration*, not plumbing: ~30 typed call-kinds and two agentic substrates exist,
+  but both are off-by-default and woven into no feature workflow. It sets a
+  single-call-vs-agent decision rubric, a Human-AI-interaction UX audit, and four
+  workstreams — **WS1** AI-config consolidation, **WS3** point-of-action moves (F5),
+  **WS2** durable provenance layer (F2), **WS4a** a bounded+gated structural-revision
+  agent. Recommended agentic features are *bounded + always gated* (propose → human
+  accepts → snapshot; never an autonomous `project.md` write). As each ships it moves
+  to migration-log; the F2/F3/F5 line below is the clinical framing those workstreams
+  serve.
+
 - ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all
   three audit tiers shipped (see [`docs/migration-log.md`](docs/migration-log.md)). A
   visual design audit found a real HLD design language that had stopped enforcing its

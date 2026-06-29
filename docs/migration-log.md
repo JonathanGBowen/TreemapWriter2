@@ -4677,3 +4677,29 @@ methods. The one shared edit is the behavior-neutral trace-sink extraction (cove
 the existing `trace-state` + registry tests). No persisted-shape change beyond two new
 opt-in IndexedDB preference keys; the new `.gitignore` line affects only newly-created
 projects.
+
+---
+
+## 2026-06-29 — AI integration & Human-AI-interaction audit (doc) entered
+
+**What changed.** Added [`docs/ai-integration-audit.md`](ai-integration-audit.md) —
+a point-in-time audit of how agentic AI is (and isn't) integrated, a
+literature-grounded single-call-vs-agent decision rubric, a Human-AI-interaction UX
+audit, and a four-workstream roadmap (WS1 config consolidation · WS3 point-of-action
+moves/F5 · WS2 durable provenance layer/F2 · WS4a a bounded+gated structural-revision
+agent). Doc-only at this entry; the workstreams land as their own entries.
+
+**Headline finding.** The app already has ~30 typed AI call-kinds and two agentic
+substrates (Claude Agent SDK transport; provider-agnostic local `runAgent` loop), but
+both are off-by-default and integrated into no feature workflow — the gap is
+integration + interaction design, not plumbing. The governing rule: an agent only when
+the path can't be hardcoded but progress is verifiable by a non-model oracle, the task
+needs grounding beyond one context window, and a human gates the result; otherwise a
+single schema-constrained call. Recommended agentic features are bounded + always
+gated (propose → human accepts → snapshot; never an autonomous write to `project.md`).
+
+**Verify.** Doc renders; links resolve; no fact duplicated against the code (the
+canonical-source rule). No code changed at this entry.
+
+**Rollback.** `git revert` (or delete `docs/ai-integration-audit.md` and this entry).
+Doc-only; no behavior, schema, or dependency change.
