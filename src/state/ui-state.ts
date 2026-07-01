@@ -6,6 +6,7 @@ import { repository } from '../services/repository-registry';
 /** Workspaces a running AI op can belong to — used by the activity pill to jump back. */
 export type OpWorkspace =
   | 'interpolate'
+  | 'segment'
   | 'revision'
   | 'parallel'
   | 'gist'
@@ -25,6 +26,7 @@ export interface ActiveOp {
 /** The store flag that brings each workspace forward (set true, never cleared here). */
 const WORKSPACE_OPEN_FLAG: Record<OpWorkspace, keyof AppState> = {
   interpolate: 'interpolateOpen',
+  segment: 'segmentOpen',
   revision: 'revisionWorkspaceOpen',
   parallel: 'parallelOpen',
   gist: 'gistOpen',

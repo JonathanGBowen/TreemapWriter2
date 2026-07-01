@@ -803,6 +803,64 @@ export interface GistComposition {
   fine: GistSpan[];
 }
 
+// --- GESTALT SEGMENTATION / ARTICULATION ---
+// Articulating a long text into its NATURAL parts (Wertheimer's division-by-
+// articulation): a recursive, top-down pass that suggests markdown headings at
+// the real joints — never carving to a count, never producing shards. The walk
+// itself (discovered-not-predeclared spans, the per-span LLM call) lives in
+// `services/ai/ai-provider.segment.ts`; these are the durable artifacts the
+// review UI edits and `lib/segment-helpers.ts` applies to the markdown. A new
+// band, parallel to the spec/diagnostic/reverse-outline layers — extend, never
+// collapse: a heading EDIT is not a `SectionSpec`, and the one-sentence summary
+// is a reverse-outline gloss, never the exegetical `mainClaim`.
+
+/**
+ * The pass's stance. `conservative` (default) only proposes what is DEFINITELY
+ * clear — inserting unambiguous seams in heading-less prose, and (where headings
+ * exist) critically evaluating them; `exploratory` re-derives the structure from
+ * scratch as if no headings existed; `summaries` adds a one-sentence reverse-
+ * outline gloss per part and tightens titles.
+ */
+export type SegmentMode = 'conservative' | 'exploratory' | 'summaries';
+
+/**
+ * A SOFT bias on how finely to cut — never a target cardinality (the count of
+ * parts falls out of where the joints are). Mirrors `SprintGranularity`'s values
+ * but is a distinct concept (where a text articulates, not how a step decomposes).
+ */
+export type SegmentGranularity = 'coarse' | 'medium' | 'fine';
+
+/**
+ * The document's genre/scale, which decides the idiomatic heading depth + level
+ * vocabulary (Wertheimer's *situated* number: a journal article, a monograph,
+ * and a multi-work compilation articulate at different scales). Inferred from the
+ * text, overridable by the author in the workspace.
+ */
+export type SegmentGenre = 'article' | 'monograph' | 'compilation';
+
+/**
+ * One proposed change to the heading structure, discriminated by `kind`. Anchored
+ * by verbatim opening text (literal-match-or-orphan, like `SavedOutlineBullet` /
+ * `ProvenanceMark` / `GistSegment`), never fragile char offsets:
+ * - `insert`  — a new heading before the block whose opening is `anchor` (a real
+ *               joint with no heading); `anchor` = that block's opening text.
+ * - `retitle` — rewrite an existing heading's title; `anchor` = its current line.
+ * - `relevel` — promote/demote an existing heading; `anchor` = its current line.
+ * - `merge`   — remove a heading whose section is a SHARD (its body rejoins the
+ *               part above on reparse); `anchor` = that heading's line.
+ * - `split`   — insert a heading at an interior seam of an existing section.
+ * `confidence` (0..1) gates the conservative threshold; `rationale` names the joint.
+ */
+export type SegmentEdit =
+  | { kind: 'insert'; anchor: string; level: number; title: string; summary?: string; confidence: number; rationale: string }
+  | { kind: 'retitle'; anchor: string; title: string; confidence: number; rationale: string }
+  | { kind: 'relevel'; anchor: string; level: number; confidence: number; rationale: string }
+  | { kind: 'merge'; anchor: string; confidence: number; rationale: string }
+  | { kind: 'split'; anchor: string; level: number; title: string; summary?: string; confidence: number; rationale: string };
+
+/** Review lifecycle of one proposed edit within a session (mirrors `ProposalStatus`). */
+export type SegmentEditStatus = 'pending' | 'accepted' | 'rejected';
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
 
 export interface TestResult {
@@ -847,6 +905,13 @@ export interface TestSuiteEntry {
   wholeFromPart?: WholeFromPart;
   /** Ephemeral: recentering / question-the-goal proposals. Not persisted. */
   recenterings?: Recenterings;
+  /**
+   * A one-sentence reverse-outline gloss of what this part DOES (the Articulation
+   * tool's experimental "summaries" mode). A faithful reverse-outline summary —
+   * NOT the exegetical `mainClaim` (which is a logician's reconstruction); kept a
+   * distinct field so the two are never conflated. Persisted with the spec sidecar.
+   */
+  reverseSummary?: string;
 }
  
 export interface TestSuite {

@@ -17,6 +17,10 @@ import l1TaskInstruction from './l1-task.md?raw';
 import subTaskInstruction from './sub-task.md?raw';
 import rootTaskInstruction from './root-task.md?raw';
 import developSpecPrompt from './develop-spec.md?raw';
+import segmentSystemInstruction from './segment-system-instruction.md?raw';
+import segmentLevelTask from './segment-level-task.md?raw';
+import segmentCritiqueTask from './segment-critique-task.md?raw';
+import segmentSummaryTask from './segment-summary-task.md?raw';
 import suggestContentPrompt from './suggest-content.md?raw';
 import coachPrompt from './coach.md?raw';
 import refineSpecPrompt from './refine-spec.md?raw';
@@ -69,6 +73,7 @@ const strip = (s: string) => s.replace(/\n+$/, '');
 
 export type PromptCategory =
   | 'spec-generation'
+  | 'segmentation'
   | 'diagnostics-coaching'
   | 'generation'
   | 'analysis-dialogue'
@@ -170,6 +175,52 @@ export const PROMPT_REGISTRY = [
       'Generate-Specs workspace: the conversation + output contract for iterating on a level’s spec with the agent (reuses the per-level task prompts as the field rubric).',
     category: 'spec-generation',
     flow: 'developSpecLevel',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'segmentSystemInstruction',
+    defaultText: strip(segmentSystemInstruction),
+    label: 'Articulation System',
+    description:
+      'Core Gestalt doctrine for dividing a text into its natural parts: cut at the joints, the count falls out, no shards, paragraph as the atomic part, situated idiom by genre.',
+    category: 'segmentation',
+    flow: 'segmentSpan',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'segmentLevelTask',
+    defaultText: strip(segmentLevelTask),
+    label: 'Find Seams',
+    description:
+      'Per-span pass: locate the natural seams one level down, or judge the span a unitary whole. Granularity biases fineness, never a target count.',
+    category: 'segmentation',
+    flow: 'segmentSpan',
+    editability: 'editable',
+    variables: [
+      { token: 'GRANULARITY', description: 'coarse|medium|fine — soft bias on how fine to cut.', required: true },
+    ],
+  },
+  {
+    key: 'segmentCritiqueTask',
+    defaultText: strip(segmentCritiqueTask),
+    label: 'Critique Headings',
+    description:
+      'Conservative critique of an existing heading structure: insert a missing seam, retitle, re-level, merge a shard, or split a heading that spans two wholes.',
+    category: 'segmentation',
+    flow: 'segmentSpan',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'segmentSummaryTask',
+    defaultText: strip(segmentSummaryTask),
+    label: 'Pithy Titles & Summaries',
+    description:
+      'Experimental summaries mode: a one-sentence reverse-outline gloss per part (not exegesis) plus maximally pithy, faithful titles.',
+    category: 'segmentation',
+    flow: 'segmentSpan',
     editability: 'editable',
     variables: [],
   },

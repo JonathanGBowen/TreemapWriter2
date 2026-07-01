@@ -31,6 +31,7 @@ import { CompareWorkspace } from "../compare/CompareWorkspace";
 import { SpecTestWorkspace } from "../spec-test/SpecTestWorkspace";
 import { ClimateWorkspace } from "../climate/ClimateWorkspace";
 import { InterpolateWorkspace } from "../interpolate/InterpolateWorkspace";
+import { SegmentWorkspace } from "../segment/SegmentWorkspace";
 import { DashboardWorkspace } from "../dashboard/DashboardWorkspace";
 import { ParallelWorkspace } from "../parallel/ParallelWorkspace";
 import { ParallelSettingsModal } from "./ParallelSettingsModal";
@@ -270,6 +271,8 @@ export const ModalLayer = ({
       <ClimateWorkspace />
 
       <InterpolateWorkspace />
+
+      <SegmentWorkspace />
 
       <DashboardWorkspace />
 

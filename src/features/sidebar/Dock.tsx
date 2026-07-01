@@ -43,6 +43,8 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const openDashboard = useStore((s) => s.openDashboard);
   const setShowCoachModal = useStore((s) => s.setShowCoachModal);
   const openInterpolate = useStore((s) => s.openInterpolate);
+  const openSegment = useStore((s) => s.openSegment);
+  const startSpecSweep = useStore((s) => s.startSpecSweep);
   const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
   const openParallel = useStore((s) => s.openParallel);
   const openGist = useStore((s) => s.openGist);
@@ -82,7 +84,8 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     // compose / revise
     { g: '◉', name: 'Assist — every action, searchable (⌘K)', aria: 'Assist', onClick: () => setShowCommandPalette(true) },
     { g: '◍', name: 'Coach — find the bottleneck', aria: 'Coach', onClick: () => setShowCoachModal(true) },
-    { g: '✦', name: 'Generate specs — structural analysis, top-down', aria: 'Generate specs', onClick: () => openInterpolate() },
+    { g: '⑂', name: 'Articulate — segment a text into its natural parts', aria: 'Articulate', onClick: () => openSegment() },
+    { g: '✦', name: 'Generate specs — structural analysis, top-down', aria: 'Generate specs', onClick: () => startSpecSweep() },
     { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
     { g: '▥', name: 'Parallel — reverse-outline revision', aria: 'Parallel', onClick: () => openParallel(false) },
     { g: '◊', name: 'Gist — whole-at-once re-entry', aria: 'Gist', onClick: () => openGist() },

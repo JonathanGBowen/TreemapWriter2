@@ -76,6 +76,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   analyzeAtmosphere: g(HEAVY, THINK),
   // Collaborative per-level spec development — a conversational reasoning turn.
   developSpecLevel: g(HEAVY, THINK),
+  // Articulation: finding the natural joints is reasoning-heavy structural work.
+  segmentSpan: g(HEAVY, THINK),
   // Gestalt whole/part ops — focused reasoning over one section.
   reconstructWhole: g(HEAVY, THINK),
   proposeRecenterings: g(HEAVY, THINK),

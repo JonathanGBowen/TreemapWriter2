@@ -119,6 +119,12 @@ export interface DocumentStateSlice {
   ) => void;
   updateDependencies: (sectionId: string, deps: Dependency[]) => void;
   updateMainClaim: (sectionId: string, text: string) => void;
+  /**
+   * Set a section's one-sentence reverse-outline gloss (the Articulation tool's
+   * summaries mode). Creates a blank entry if the section has none. Distinct from
+   * `updateMainClaim` — a reverse-outline summary is never the exegetical claim.
+   */
+  setReverseSummary: (sectionId: string, sentence: string) => void;
 
   /** Toggle whether a section's text is visible in the focus-mode editor. */
   toggleSectionVisibility: (sectionId: string) => void;
@@ -278,6 +284,17 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         testSuite: {
           ...state.testSuite,
           [sectionId]: { ...entry, mainClaim: text },
+        },
+      };
+    }),
+
+  setReverseSummary: (sectionId, sentence) =>
+    set((state) => {
+      const entry = state.testSuite[sectionId] ?? blankEntry();
+      return {
+        testSuite: {
+          ...state.testSuite,
+          [sectionId]: { ...entry, reverseSummary: sentence },
         },
       };
     }),

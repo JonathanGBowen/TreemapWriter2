@@ -70,6 +70,7 @@ import type {
   AnalyzeAtmosphereInput,
   GenerateSpecLevelInput,
   DevelopSpecLevelInput,
+  SegmentSpanInput,
   ReconstructWholeInput,
   RecenterInput,
   RunAgentInput,
@@ -96,6 +97,7 @@ import type { RequestThrottle } from './request-throttle';
 import type { QuotaAnnotatedError } from './model-types';
 import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
+import { segmentSpan, type SegmentSpanResult } from './ai-provider.segment';
 import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
@@ -411,6 +413,19 @@ export class MultiProviderAIProvider implements AIProvider {
         steer: input.steer,
       },
     );
+  }
+
+  async segmentSpan(input: SegmentSpanInput): Promise<SegmentSpanResult> {
+    const choice = this.choose('segmentSpan', input);
+    return segmentSpan(this.dispatch(choice, 'segmentSpan'), choice.model, choice.thinkingBudget ?? 0, {
+      blocks: input.blocks,
+      headingPath: input.headingPath,
+      targetLevel: input.targetLevel,
+      mode: input.mode,
+      granularity: input.granularity,
+      genre: input.genre,
+      config: input.config,
+    });
   }
 
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {

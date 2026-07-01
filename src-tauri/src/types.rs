@@ -110,6 +110,10 @@ pub struct TestSuiteEntry {
     pub dependencies: Option<Vec<Dependency>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub main_claim: Option<String>,
+    /// One-sentence reverse-outline gloss (the Articulation tool). Persisted with
+    /// the spec sidecar; distinct from `main_claim` (the exegetical reconstruction).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reverse_summary: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cached_suggestions: Option<CachedSuggestions>,
     /// Per-section analysis workbench (versions + Socratic dialogue).
@@ -149,6 +153,10 @@ pub struct PersistedTestEntry {
     pub dependencies: Option<Vec<Dependency>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub main_claim: Option<String>,
+    /// One-sentence reverse-outline gloss (the Articulation tool). Intellectual
+    /// work like specs/analyses, so it rides the YAML sidecar + git history.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reverse_summary: Option<String>,
     /// Analysis versions + dialogue ARE persisted (intellectual work, like
     /// specs) — they ride the YAML sidecar and therefore git history.
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -163,6 +171,7 @@ impl PersistedTestEntry {
             history: entry.history.clone(),
             dependencies: entry.dependencies.clone(),
             main_claim: entry.main_claim.clone(),
+            reverse_summary: entry.reverse_summary.clone(),
             analysis: entry.analysis.clone(),
         }
     }
@@ -178,6 +187,7 @@ impl PersistedTestEntry {
             history: self.history,
             dependencies: self.dependencies,
             main_claim: self.main_claim,
+            reverse_summary: self.reverse_summary,
             cached_suggestions: None,
             analysis: self.analysis,
             last_diagnostic: None,

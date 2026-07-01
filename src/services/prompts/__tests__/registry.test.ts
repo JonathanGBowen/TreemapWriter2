@@ -45,6 +45,11 @@ const HISTORICAL_KEYS = [
   'refineSpecPrompt',
   // Generate-Specs workspace (collaborative per-level co-development) — 2026-06-22.
   'developSpecPrompt',
+  // Gestalt segmentation / Articulation (2026-06-29) — four editable prompts.
+  'segmentSystemInstruction',
+  'segmentLevelTask',
+  'segmentCritiqueTask',
+  'segmentSummaryTask',
   'rootTaskInstruction',
   'subTaskInstruction',
   'suggestContentPrompt',

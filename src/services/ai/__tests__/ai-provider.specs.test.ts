@@ -36,6 +36,10 @@ const config: PromptsConfig = {
   radarScanPrompt: '',
   stormSpotterPrompt: '',
   forecastPrompt: '',
+  segmentSystemInstruction: '',
+  segmentLevelTask: '',
+  segmentCritiqueTask: '',
+  segmentSummaryTask: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */

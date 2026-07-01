@@ -4895,3 +4895,71 @@ think deltas live; the full per-run log remains in the AI-settings audit viewer.
 **Rollback.** `git revert` — one-component change; no schema/persistence/dependency
 change. Normal single-pass generate is unaffected (it emits no trace, so the added
 `runAgent` kind never matches there).
+
+---
+
+## 2026-06-29 — Gestalt segmentation ("Articulation")
+
+**What changed.** A new feature that divides a long text into its natural parts —
+in Wertheimer's technical sense (division by natural articulation) — and suggests
+valid markdown headings at the real joints, top-down, recursively, stopping where
+further division would yield *shards* rather than *wholes*. It is the
+automatically-incorporated first step of the generate-all-specs sweep when a
+document has no headings yet, and it stands alone to critically evaluate and revise
+an existing heading structure. Grounded in `docs/gestalt-design*.md` ("half a pot
+is not a pot, but a shard"; "Parts must be possible as meaningful parts of the
+whole"; cut at the joints, the count falls out; *situated* number / genre).
+
+The feature is a faithful sibling of the Generate-Specs (interpolation) sweep:
+
+- **Pure markdown surgery** — `src/lib/segment-helpers.ts` (`applySegmentEdits`,
+  `resolveEdits`, `stripHeadings`, `hasNoHeadings`, `applyAndReparse`). Reuses
+  `lib/paragraph-helpers.ts` (`segmentParagraphs`/`anchorFor`/`findBlockByAnchor`),
+  so a heading only ever lands at a paragraph boundary (never mid-paragraph), edits
+  apply right-to-left by offset, orphaned anchors drop, re-applying is idempotent.
+- **The recursive walk** — `src/services/ai/ai-provider.segment.ts`
+  (`spansForDepth`/`spanBlocks`/`buildSegmentPrompt`/`parseSegmentResponse`/
+  `segmentSpan`, plus `inferGenre`/`baseLevelFor`/`minSpanWordsFor`). Levels are
+  *discovered* (recomputed from the reparsed tree after each accept), not
+  predeclared; a span proposes anchored `SegmentEdit`s (insert/retitle/relevel/
+  merge/split) or is judged a unitary whole. The shard-floor is a guard, never a
+  target count.
+- **Provider seam** — `segmentSpan` on the `AIProvider` interface + impl, a new
+  `segmentSpan` call kind (`model-types.ts` / `model-config.ts`, heavy tier).
+- **Prompts** — four editable `.md` prompts under a new `'segmentation'` registry
+  category (`segment-system-instruction`, `segment-level-task` with a `{{GRANULARITY}}`
+  bias, `segment-critique-task`, `segment-summary-task`).
+- **Workspace** — ephemeral slice `src/state/segment-state.ts` + orchestration hook
+  `src/features/segment/use-segment-actions.ts` + overlay
+  `SegmentWorkspace`/`SegmentTopBar`/`SegmentRail`/`SegmentPanel`. Three modes
+  (conservative default · exploratory from-scratch · experimental summaries),
+  genre infer-with-override, granularity bias, per-edit accept/reject, "Run all",
+  and an explicit "Continue to specs ›" hand-off. The walk operates on a working
+  copy, committing to the document only as each level is accepted (snapshot-guarded
+  by one `pre-ai-write`).
+- **Spec-sweep chaining** — the dock's `✦ Generate specs` and the ⌘K command now
+  route through `startSpecSweep()`: no headings → open Articulation first, else the
+  spec sweep directly. A dedicated `⑂ Articulate` dock glyph + command opens it
+  standalone.
+- **Summaries** — the experimental mode attaches a one-sentence reverse-outline
+  gloss per part to a new, separate `TestSuiteEntry.reverseSummary` (NOT the
+  exegetical `mainClaim`), shown as a distinct "Reverse outline" note in the Spec
+  tab. Persisted on the desktop YAML sidecar by mirroring `main_claim` in
+  `src-tauri/src/types.rs` (`TestSuiteEntry` + `PersistedTestEntry` + conversions).
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors; `npm test` (629
+pass, incl. new `segment-helpers`, `ai-provider.segment`, `segment-state` suites);
+`npm run build` succeeds. The Rust mirror could not be `cargo check`'d in this
+environment (missing GTK system libs — `gdk-3.0`); it is a mechanical mirror of
+the existing `main_claim` optional field. Manual: on a heading-less draft, the dock
+`✦` opens Articulation first → walk top-down → accept inserts valid markdown at
+paragraph seams → "Continue to specs". Conservative on a partially-headed doc shows
+retitle/relevel/merge/split. Summaries mode populates the Spec tab's reverse-outline
+note.
+
+**Rollback.** `git revert`. New files are additive; the touched shared files
+(`types/index.ts`, prompt registry + its drift-guard test, `model-types`/`model-config`,
+`ai-provider` interface/impl, `state/index.ts`, `ui-state` OpWorkspace, `document-state`,
+`ModalLayer`, `Dock`, `App` palette, `SpecTab`, `PromptsGraphModal`, `src-tauri/types.rs`)
+each gained an additive entry that reverts cleanly. The spec sweep falls back to its prior
+behavior once `startSpecSweep` is reverted to `openInterpolate`.

@@ -21,6 +21,7 @@ type Scope = 'project' | 'global';
 // a literal string.
 const CATEGORY_ORDER: PromptCategory[] = [
   'spec-generation',
+  'segmentation',
   'diagnostics-coaching',
   'generation',
   'analysis-dialogue',
@@ -38,6 +39,11 @@ const CATEGORY_PRESENTATION: Record<
     title: 'Spec Generation',
     eyebrow: 'text-emerald-500/70 border-emerald-500/30',
     selected: 'bg-emerald-500/20 border-emerald-400 text-emerald-300',
+  },
+  segmentation: {
+    title: 'Articulation',
+    eyebrow: 'text-teal-500/70 border-teal-500/30',
+    selected: 'bg-teal-500/20 border-teal-400 text-teal-300',
   },
   'diagnostics-coaching': {
     title: 'Diagnostics & Coaching',
