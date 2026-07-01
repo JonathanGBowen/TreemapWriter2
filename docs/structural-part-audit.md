@@ -54,8 +54,11 @@ own prose up to its first *child* heading; `fullContent` is its whole subtree; `
 treemap's area) is counted over `fullContent`. The whole document is materialised as a
 *synthetic section* — `buildRootSection` sets `id: 'root'`, `fullContent = md`.
 
-**No part boundary in this app exists that is not a `#`.** Every persistent, keyed, visualised
-result hangs off a `Section.id` (plus the synthetic `'root'`): the `TestSuite` map, `SectionSpec`,
+**No unit the structural apparatus is *keyed to* has a boundary that is not a `#`.** (A finer
+paragraph grain does exist — `ParagraphBlock` from `segmentParagraphs`, and even persisted
+per-paragraph `ReverseOutlineDoc` bullets — but it carries prose distillation, not the
+specs/dependencies/diagnostics/topology.) Every persistent, keyed, visualised *structural* result
+hangs off a `Section.id` (plus the synthetic `'root'`): the `TestSuite` map, `SectionSpec`,
 `DiagnosticResult`, `Dependency[]`, gist segments, topo stations, spec-test alignment, sessions,
 snapshots. That single fact is inherited by everything below.
 
@@ -93,30 +96,41 @@ The genuine "and-sum" offenders are **narrow but real**:
   never from text. A double decomposition: text → per-section commitment declarations → edges
   matched between them.
 - The `content.slice(0, 800)` / `slice(0, 600)` previews in the L1/sub **spec** passes
-  (`ai-provider.specs.ts`) — the only char-prefix truncations fed to a model, and already
-  flagged in-code as an unresolved "part-not-piece" compromise pointing at
-  [`gestalt-design.md`](gestalt-design.md) item 7.
+  (`ai-provider.specs.ts`) — the only char-prefix truncations fed to a model, already flagged
+  in-code as an unresolved "part-not-piece" compromise pointing at
+  [`gestalt-design.md`](gestalt-design.md) item 7. This one is **more than narrow**: below the
+  whole-derived root spec, each chapter/subsection spec *mints* the `incomingContext` /
+  `outgoingCommitments` vocabulary that the mesh, `estimateDependencies`, the structural surround,
+  and spec-test all later consume — from a char prefix, un-surrounded. So the part-in-whole
+  apparatus rests, below the root, on a piece-derived substrate.
 
 (`runSpecTestWhole` and gist Stage-B are *assembled* from per-section role/analysis
 reconstructions rather than the raw whole — but deliberately, and Wertheimer-aware; `buildSkeleton`
 feeds role-reconstructions and the whole verdict is explicitly *"not a sum of per-section
 judgments."* These are defensible.)
 
-**So on Axis 1 the app is not naively piecemeal.** The user's first fear — that the analyses are
+**So on Axis 1 the app is not naively piecemeal** — the reader-facing diagnostic and analysis
+passes are whole-derived or whole-conditioned. The user's first fear — that the analyses are
 "built up out of the parts as delimited by the text" — is, at the level of *interpretation*,
-largely answered: the readings are whole-derived or whole-conditioned, with a short list of
-fixable exceptions.
+largely answered, with one caveat that is not merely a "fixable exception": the **spec substrate**
+on which the commitment-machinery runs is, below the root, piece-derived, so "largely
+whole-derived" sits at the generous end for the specs themselves.
 
 ### Axis 2 — Part ontology: are the *parts themselves* text-given?
 
 **Uniformly, foundationally, yes.** And this is where the tool fails Wertheimer.
 
-- Every analysable unit is a heading-delimited `Section.id`. The whole exists in only two
-  degenerate forms: `'root'` = the entire text as **one undifferentiated blob**, or an
-  **assembly** of heading-parts. There is no third form — *the whole grasped as a configuration
-  of its own structural parts.* Even the whole-derived root analysis, having read everything,
-  can only deposit its result as a `SectionAnalysis` keyed to the synthetic `'root'`: it reads
-  the whole but never **articulates it into parts** other than the headings already there.
+- Every **addressable, persisted, visualised, cross-relatable** unit is a heading-delimited
+  `Section.id` (plus the synthetic `'root'`). Sub-section *argument*-units are **not absent** —
+  the tool does analyse them: `requiredMoves` are diagnosed **individually** (`MoveResult`:
+  present/partial/missing, productive/recapitulative, with a text *location*), and
+  `SectionAnalysis.argument` articulates premises, implicit premises, objections, and key
+  concepts. But these live **trapped**: nested inside a section-keyed container, addressed by no
+  stable id, anchored to no span, never persisted as first-class parts, and never crossing a
+  section. So the heading-section remains the sole unit of **address and relation**. Even the
+  whole-derived root analysis, having read everything, can only deposit its articulation as inert
+  argument-*strings* keyed to `'root'` — a real articulation *in words*, given no organ: nothing
+  you can point at, move, re-anchor, or share between two wholes.
 - The dependency graph, the radix/centering engine (`topo-derive.ts`, `topo-centering.ts`), and
   the deterministic commitment-mesh (`checkCommitmentMesh`, matching a section's `incomingContext`
   against parent/sibling `outgoingCommitments` by token overlap) are all **section-to-section**.
@@ -143,8 +157,10 @@ objections:
 1. The whole, once perceived, **can only be re-expressed through headings.** The tool can grasp
    the whole (root analysis reads everything) but has no organ to *speak* the whole's structure
    except in the vocabulary of headings.
-2. Any structural-functional part that **spans** two headings, **subdivides** one, or **belongs
-   to two wholes at once** (*On Truth*) is **inexpressible.**
+2. Any structural-functional part that **spans** two headings or **belongs to two wholes at
+   once** (*On Truth*) is **inexpressible** — and while an argument-unit *within* a section is
+   analysed (its moves, its premises), it is never a first-class, addressable, span-anchored
+   part, so it cannot be pointed at, re-anchored, related, or shared.
 
 So the section↔structural-part mapping the theory essay anticipated (§IV.4, "Sharing") isn't done
 *badly* — it is **foreclosed**, because "structural part" is not a first-class object distinct
@@ -182,11 +198,12 @@ Grouped by how each site treats the part. Rubric: **Unit** (text-given?) · **In
 - **G4 · The sole joint-finder** — Articulation (`ai-provider.segment.ts`; `SegmentEdit` in
   `src/types/index.ts`). A **legitimate header tool — keep it.** The crux is not its output but
   its *solitude*: structural-part discovery has no separate home.
-- **G5 · Sub-section units, quarantined** — `ParagraphBlock` (`paragraph-helpers.ts`), reverse
-  outline (`generate-reverse-outline.md`), gist segments (which *are* sections,
-  `flattenGistSegments` in `gist-helpers.ts`), `RequiredMove` (within-section only). *A finer
-  grain exists — but it carries prose distillation/rewrite, never structural analysis, and is
-  always scoped inside a section.*
+- **G5 · Sub-section units, quarantined** — `ParagraphBlock` (`paragraph-helpers.ts`) and reverse
+  outline (`generate-reverse-outline.md`) carry genuine prose *distillation/rewrite*;
+  `RequiredMove`/`MoveResult` and `GistSegmentAnalysis` (move/force/weight) carry genuine
+  *structural analysis*. *A finer grain therefore exists and is sometimes analysed structurally —
+  but it is always scoped inside a section, addressed by no stable id, and anchored to no span, so
+  it never becomes a first-class, relatable part.*
 - **Reassembly points** — `flattenTree` (treemap), `deriveTopo` (graph nodes = sections),
   `buildSkeleton` (whole verdict), `alignByTitle` (version alignment by heading title),
   `joinSpans` (gist prose), strain propagation up `parentId`.
@@ -201,8 +218,9 @@ what already works.
    *decoupled from `Section`*, addressing text through the codebase's existing **verbatim-anchor**
    pattern — the same "literal-match-or-orphan" mechanism already used by `SegmentEdit`,
    `GistSegment`, and `ProvenanceMark` (reuse `anchorFor` in `paragraph-helpers.ts`) — over
-   arbitrary spans. It must be able to (a) span multiple sections, (b) subdivide one, and (c)
-   belong to more than one whole.
+   arbitrary spans. It must be able to (a) span multiple sections, (b) subdivide one *as a
+   first-class, addressable part* (today `requiredMoves` subdivide, but trapped inside a
+   section-keyed array), and (c) belong to more than one whole.
 2. **A many-to-many map** between structural parts and text-spans/sections, so the heading tree
    and the structural configuration become **two views to reconcile** rather than one welded
    pair. The **treemap** — the app's one *simultaneous* surface
