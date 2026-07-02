@@ -575,6 +575,7 @@ export const App = () => {
       const depsMap = await aiProvider.estimateDependencies({
         sections,
         testSuite,
+        structuralParts: useStore.getState().structuralParts,
         config: promptsConfig,
       });
       

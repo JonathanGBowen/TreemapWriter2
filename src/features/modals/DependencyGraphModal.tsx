@@ -31,7 +31,7 @@ import { useReducedMotion } from './topo/useReducedMotion';
 import { TK } from './topo/tk';
 import { AtlasGlyph, CloseGlyph, NetworkGlyph, PartsGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
 import { useStructuralPartsActions } from '../structure/use-structural-parts-actions';
-import { recomputeStructuralStale } from '../../lib/structural-part-helpers';
+import { computeLiveDivergences, recomputeStructuralStale, resolvePart } from '../../lib/structural-part-helpers';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -337,7 +337,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   // trigger stays self-contained — no new ModalLayer/App wiring).
   const structuralParts = useStore((s) => s.structuralParts);
   const markdown = useStore((s) => s.markdown);
-  const { runDiscoverStructuralParts } = useStructuralPartsActions();
+  const { runDiscoverStructuralParts, reanchorPart } = useStructuralPartsActions();
   const reduced = useReducedMotion();
 
   const model = useMemo(() => deriveTopo(sections, testSuite), [sections, testSuite]);
@@ -346,6 +346,12 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   // Opened-on-demand surface, so no ephemeral slice/debounce is needed.
   const { staleIds, orphanIds } = useMemo(
     () => recomputeStructuralStale(structuralParts, markdown, sections),
+    [structuralParts, markdown, sections],
+  );
+  // Live divergences (spans / subdivides / shared) for the selected part's inspector —
+  // re-resolved against the current text so the flags don't drift after edits.
+  const divergences = useMemo(
+    () => computeLiveDivergences(structuralParts, markdown, sections),
     [structuralParts, markdown, sections],
   );
   // the structural centre, read off the direction of the arcs (rides the same memo)
@@ -492,6 +498,11 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const station = selectedStationId ? model.stationById[selectedStationId] ?? null : null;
   const arc = selectedDepId ? model.arcs.find((a) => a.id === selectedDepId) ?? null : null;
   const linkTarget = linkMode && station ? station.sym : '';
+  // In the PARTS projection a selected node may be a part (its id lives in the
+  // bipartite parts model, not `model.stationById`) — resolve it for the inspector.
+  const selectedPart =
+    mode === 'parts' && selectedStationId ? structuralParts.find((p) => p.id === selectedStationId) ?? null : null;
+  const selectedPartSectionIds = selectedPart ? resolvePart(selectedPart, markdown, sections).sectionIds : [];
 
   return (
     <div
@@ -651,6 +662,12 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
             onSelectStation={onSelectStationFromInspector}
             onToggleDep={onToggleDep}
             onRemoveDep={onRemoveDep}
+            part={selectedPart}
+            partDivergence={selectedPart ? divergences[selectedPart.id] ?? null : null}
+            partSectionIds={selectedPartSectionIds}
+            partStale={selectedPart ? staleIds.includes(selectedPart.id) : false}
+            partOrphan={selectedPart ? orphanIds.includes(selectedPart.id) : false}
+            onReanchor={reanchorPart}
           />
         </div>
       </div>

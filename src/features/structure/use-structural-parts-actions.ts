@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
-import { resolvePart } from '../../lib/structural-part-helpers';
+import { reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { computeHash } from '../../lib/utils';
 import { normalizeForHash } from '../../lib/gist-helpers';
@@ -104,5 +104,31 @@ export const useStructuralPartsActions = () => {
     }
   }, [setIsProcessing, setStructuralParts, saveCurrentState]);
 
-  return { runDiscoverStructuralParts };
+  /**
+   * Per-part repair — Mode 1 (pure re-anchor, NO AI). Re-stamp a stale part's
+   * anchors + sourceHash + sectionIds from its current span so it reads fresh, then
+   * persist. Orphans can't be re-anchored (no span to relocate), mirroring gist
+   * hiding its refresh button for orphans; the RE-ANCHOR button is only shown for
+   * `stale && !orphan`, so the orphan branch here is defensive.
+   */
+  const reanchorPart = useCallback(
+    async (id: string) => {
+      const { markdown, sections, structuralParts } = useStore.getState();
+      const part = structuralParts.find((p) => p.id === id);
+      if (!part) return;
+      const fixed = reanchoredPart(part, markdown, sections);
+      if (!fixed) {
+        notifyAiError(
+          new Error('orphan'),
+          'This part can no longer be located in the text — re-run Discover parts.',
+        );
+        return;
+      }
+      setStructuralParts(structuralParts.map((p) => (p.id === id ? fixed : p)));
+      await saveCurrentState();
+    },
+    [setStructuralParts, saveCurrentState],
+  );
+
+  return { runDiscoverStructuralParts, reanchorPart };
 };

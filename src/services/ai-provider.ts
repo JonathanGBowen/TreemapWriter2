@@ -366,6 +366,8 @@ export interface RunDiagnosticInput {
 export interface EstimateDependenciesInput {
   sections: Section[];
   testSuite: TestSuite;
+  /** Optional discovered parts — an advisory cross-section-coupling block. Omitted → today's behavior. */
+  structuralParts?: StructuralPart[];
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;
@@ -376,6 +378,8 @@ export interface CoachAdviceInput {
   markdown: string;
   sections: Section[];
   testSuite: TestSuite;
+  /** Optional discovered parts — a compact configuration summary augments the prompt. Omitted → today's behavior. */
+  structuralParts?: StructuralPart[];
   config: PromptsConfig;
   modelId?: string;
   modelChoice?: ModelChoice;

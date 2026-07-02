@@ -70,11 +70,20 @@ button). **Tier 2** shipped 2026-07-02 (see
 template — bare array + Rust opaque-`Value` mirror; discovery calls `saveCurrentState`)
 and **honest** (a `sourceHash` stamped at discovery drives
 `recomputeStructuralStale` → the PARTS nodes tint **mauve = orphan** /
-**slate = stale**, mirroring `GistProse`; annotate, never rewrite). *Deferred
-(named):* **Tier 3** consumption (letting `estimateDependencies`/coach/spec-test
-operate over parts; individual-part repair/re-anchor; stable part IDs across
-re-discovery; wiring `computeDivergences` into the view; treemap reconciliation,
-still gated on the killed-heatmap accessibility verdict + stable section IDs).
+**slate = stale**, mirroring `GistProse`; annotate, never rewrite). **Tier 3**
+shipped 2026-07-02 (see [`docs/migration-log.md`](docs/migration-log.md)) —
+*completing* the feature and beginning consumption: **stable content-based part
+IDs** (survive re-discovery — no selection-shuffle); a **`PartInspector`** (claim,
+kind, mapped sections, live divergences, and a no-AI **RE-ANCHOR** for stale parts —
+`reanchoredPart`); `computeDivergences` **wired into the view** (`computeLiveDivergences`
+→ the inspector + a `WITHIN` legend row); and **coach + dependencies consumption**
+(a compact `summarizeParts` block augments `buildCoachPrompt`; an advisory
+cross-section-coupling block augments `estimateDependencies` — both omit when there
+are no parts). *Deferred (named):* **spec-test consumption** (parts are anchored to
+the live doc, not the A/B snapshot operands — feeding it could mislead); **Mode-2 AI
+single-part re-discovery**; and **treemap reconciliation** — closed-out in favor of
+the topo PARTS projection (the treemap can't express many-to-many and stays gated on
+the killed-heatmap accessibility verdict).
 
 The **Quiet center column** shipped 2026-06-28 (see
 [`docs/migration-log.md`](docs/migration-log.md)) — the decided form of a Claude Design

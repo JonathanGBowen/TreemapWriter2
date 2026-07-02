@@ -5109,3 +5109,53 @@ edit a part's prose → that node reads slate (stale); delete its span → mauve
 `.twriter/structural-parts.json` (the loader tolerates its absence — `?? []`).
 Reverting the TS + Rust together is clean; serde silently ignores the field if only
 one side is rolled back.
+
+---
+
+## 2026-07-02 — StructuralPart Tier 3 (complete the feature + consumption)
+
+**What changed.** Completed the `StructuralPart` feature and began the audit's
+(`docs/structural-part-audit.md` §V.3–V.5) consumption remediation. All TypeScript
+(no Rust). Articulation and `SegmentEdit` untouched.
+
+- **Stable content-based part IDs** — `normalizeStructuralParts`
+  (`ai-provider.structural-parts.ts`) now ids a part by
+  `computeHash(startAnchor + endAnchor + claim)` with an in-batch collision suffix
+  (the `parseMarkdown` pattern), so a part keeps its id across re-discovery. Fixes the
+  latent selection-shuffle; nothing external keyed off the old positional id.
+- **`PartInspector`** (`topo/Inspector.tsx`) — selecting a part node (whose id lives in
+  the bipartite parts model, not `model.stationById`, so it previously fell to
+  `EmptyInspector`) now shows its claim, kind, the sections it maps onto (live), its
+  divergences, and — when merely stale — a no-AI **RE-ANCHOR** button. Wired through
+  `DependencyGraphModal` (`selectedPart` + a `computeLiveDivergences` memo).
+- **Per-part repair, Mode 1 (no AI)** — `reanchoredPart` (`lib/structural-part-helpers.ts`)
+  re-stamps a stale part's anchors + `sourceHash` + `sectionIds` from its current span;
+  `reanchorPart` in `use-structural-parts-actions.ts` persists via `saveCurrentState`.
+  Orphans (no span to relocate) are a no-op, mirroring gist hiding its refresh for orphans.
+- **Divergence surfacing** — `computeDivergences` (built in Tier 1, previously unused) is
+  now consumed via `computeLiveDivergences` (re-resolves `sectionIds` against the live
+  text) into the `PartInspector`; a `WITHIN` row was added to the parts DIVERGENCE legend
+  (`topo/LegendKey.tsx`, joining SPANS + SHARED).
+- **Consumption (augment-only, omit when no parts)** — a compact `summarizeParts` block
+  augments `buildCoachPrompt` (fixes both `getCoachAdvice` + `streamCoachAdvice` at one
+  assembly point; `CoachModal` passes parts + folds them into its cache hash); an advisory
+  cross-section-coupling block augments `estimateDependencies` (output stays section-keyed
+  — zero consumer change; `App.tsx` passes parts). No new `AICallKind` / model-config /
+  prompt-registry entry.
+- **Deferred (named):** spec-test consumption (live-parts vs. A/B snapshot-operand
+  mismatch could mislead); Mode-2 AI single-part re-discovery; treemap reconciliation
+  (closed-out in favor of the topo PARTS projection — the treemap can't express
+  many-to-many and stays gated on the killed-heatmap verdict).
+
+**Verify.** `npm run typecheck` clean; `npm test` 653 pass (new cases: stable-id +
+collision, `reanchoredPart`, `computeLiveDivergences`, `summarizeParts`); `npm run lint`
+0 errors (only pre-existing `warn`-level max-lines/complexity); `npm run build` succeeds.
+Manual: in the Argument Topology modal → PARTS, select a part → the inspector shows its
+claim/kind/sections/divergences; a spanning part reads "Spans N sections"; edit a part's
+prose → the node reads stale → RE-ANCHOR clears it; re-discover → ids + selection persist;
+open Coach with parts present → the STRUCTURAL PARTS summary appears (and nothing when
+empty); Estimate Dependencies with parts → the advisory block is included.
+
+**Rollback.** `git revert` (pure TS; no schema/persistence change this tier). The
+consumption blocks and the inspector are additive and inert when `structuralParts` is
+empty, so a partial revert degrades cleanly to Tier-2 behavior.

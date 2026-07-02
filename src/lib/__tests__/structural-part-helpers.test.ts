@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePart, computeDivergences, recomputeStructuralStale } from '../structural-part-helpers';
+import {
+  resolvePart,
+  computeDivergences,
+  recomputeStructuralStale,
+  reanchoredPart,
+  computeLiveDivergences,
+  summarizeParts,
+} from '../structural-part-helpers';
 import { computeHash, parseMarkdown } from '../utils';
 import { anchorFor } from '../paragraph-helpers';
 import { normalizeForHash } from '../gist-helpers';
@@ -140,5 +147,55 @@ describe('computeDivergences', () => {
     const stale = makePart('x', 'y', { id: 'stale', sectionIds: ['gone-1', 'gone-2'] });
     const div = computeDivergences([stale], sections);
     expect(div.stale).toEqual({ spansMultiple: false, subdivides: false, shared: [] });
+  });
+});
+
+describe('reanchoredPart (Mode 1 repair, no AI)', () => {
+  const freshPart = () =>
+    stamp(makePart('Alpha preamble paragraph.', 'Body of A two.', { id: 'p1' }), md, sections);
+
+  it('re-stamps a stale part so it reads fresh again', () => {
+    const edited = md.replace('Body of A one.', 'Body of A one, rewritten.');
+    const editedSections = parseMarkdown(edited);
+    const stale = freshPart();
+    expect(recomputeStructuralStale([stale], edited, editedSections).staleIds).toEqual(['p1']);
+    const fixed = reanchoredPart(stale, edited, editedSections);
+    expect(fixed).not.toBeNull();
+    if (!fixed) throw new Error('expected a re-anchored part');
+    expect(recomputeStructuralStale([fixed], edited, editedSections)).toEqual({ staleIds: [], orphanIds: [] });
+  });
+
+  it('returns null for an orphan (nothing to relocate)', () => {
+    const edited = md.replace('Alpha preamble paragraph.', 'Zeta preamble paragraph.');
+    expect(reanchoredPart(freshPart(), edited, parseMarkdown(edited))).toBeNull();
+  });
+});
+
+describe('computeLiveDivergences', () => {
+  it('re-resolves sectionIds from the live markdown before flagging (stored ids ignored)', () => {
+    // stored sectionIds deliberately empty — live resolution must find the spanning span
+    const spanning = makePart('Body of A one.', 'Body of A two.', { id: 'spanning', sectionIds: [] });
+    const div = computeLiveDivergences([spanning], md, sections);
+    expect(div.spanning.spansMultiple).toBe(true);
+    expect(div.spanning.subdivides).toBe(false);
+  });
+});
+
+describe('summarizeParts', () => {
+  it('returns an empty string when there are no parts', () => {
+    expect(summarizeParts([], sections)).toBe('');
+  });
+
+  it('summarizes count, kinds, and the spanning/shared divergences', () => {
+    const a1 = idOf('A.1');
+    const a2 = idOf('A.2');
+    const inner = makePart('Body of A one.', 'Body of A one.', { id: 'inner', kind: 'motivation', sectionIds: [a1] });
+    const spanning = makePart('Body of A one.', 'Body of A two.', { id: 'spanning', kind: 'objection', sectionIds: [a1, a2] });
+    const s = summarizeParts([inner, spanning], sections);
+    expect(s).toContain('2 discovered structural parts');
+    expect(s).toContain('motivation');
+    expect(s).toContain('objection');
+    expect(s).toContain('1 span multiple sections');
+    expect(s).toContain('2 shared across sections'); // a1 is claimed by both parts
   });
 });

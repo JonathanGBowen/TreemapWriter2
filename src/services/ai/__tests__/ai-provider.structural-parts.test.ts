@@ -88,6 +88,23 @@ describe('normalizeStructuralParts', () => {
     expect(normalizeStructuralParts({ parts: 'nope' }, blocks)).toEqual([]);
     expect(normalizeStructuralParts({}, blocks)).toEqual([]);
   });
+
+  it('assigns content-stable ids (deterministic; content-based; suffixed on duplicates)', () => {
+    const one = { parts: [{ startBlock: 0, endBlock: 1, kind: 'motivation', claim: 'It motivates.', confidence: 1, rationale: 'r' }] };
+    const a = normalizeStructuralParts(one, blocks);
+    const b = normalizeStructuralParts(one, blocks);
+    expect(a[0].id).toBe(b[0].id); // deterministic across runs (survives re-discovery)
+
+    // content-based: a different claim yields a different id (not positional)
+    const diff = normalizeStructuralParts({ parts: [{ ...one.parts[0], claim: 'A wholly different claim.' }] }, blocks);
+    expect(diff[0].id).not.toBe(a[0].id);
+
+    // two identical parts in one batch → the second is suffixed, never collides
+    const parts = normalizeStructuralParts({ parts: [one.parts[0], one.parts[0]] }, blocks);
+    expect(parts).toHaveLength(2);
+    expect(parts[0].id).not.toBe(parts[1].id);
+    expect(parts[1].id).toBe(`${parts[0].id}-1`);
+  });
 });
 
 describe('discoverStructuralParts', () => {

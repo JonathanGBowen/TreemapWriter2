@@ -3,7 +3,8 @@
    Ported from the prototype topo-modal.jsx; reads the real derived model. */
 
 import React, { useMemo } from 'react';
-import type { ReadinessLevel } from '../../../types';
+import type { ReadinessLevel, StructuralPart } from '../../../types';
+import type { PartDivergence } from '../../../lib/structural-part-helpers';
 import type { TopoModel, Station, Arc } from './topo-derive';
 import {
   statusMeta,
@@ -30,6 +31,13 @@ export interface InspectorProps {
   onSelectStation: (id: string) => void;
   onToggleDep: (arcId: string) => void;
   onRemoveDep: (arcId: string) => void;
+  /** PARTS projection: the selected structural part (else null) + its live view. */
+  part?: StructuralPart | null;
+  partDivergence?: PartDivergence | null;
+  partSectionIds?: string[];
+  partStale?: boolean;
+  partOrphan?: boolean;
+  onReanchor?: (id: string) => void;
 }
 
 // the centering line in a station's header — its place in the source-of-arrows order
@@ -415,6 +423,89 @@ const DepInspector: React.FC<{
   );
 };
 
+// The PARTS projection's inspector: a selected StructuralPart's claim, kind, the
+// sections it maps onto (live), the divergences the heading grid cannot express,
+// and — when merely stale — a no-AI RE-ANCHOR button. Orphan/stale reuse the
+// dependency health palette (magenta = broken/orphan, yellow = weak/stale).
+const PartInspector: React.FC<{
+  model: TopoModel;
+  part: StructuralPart;
+  divergence: PartDivergence | null;
+  sectionIds: string[];
+  stale: boolean;
+  orphan: boolean;
+  onReanchor: (id: string) => void;
+  onOpen: (id: string) => void;
+}> = ({ model, part, divergence, sectionIds, stale, orphan, onReanchor, onOpen }) => {
+  const statusColor = orphan ? TK.magenta : stale ? TK.yellow : TK.purple;
+  const statusLabel = orphan ? 'ORPHAN · anchors lost' : stale ? 'STALE · source changed' : 'ANCHORED';
+  const live = sectionIds.map((sid) => model.stationById[sid]).filter((s): s is Station => !!s);
+  return (
+    <>
+      <div style={{ padding: '16px 16px 14px', borderBottom: `1px solid ${TK.border}`, position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: TK.purple, boxShadow: `0 0 6px ${TK.purple}` }} />
+        <div style={{ fontFamily: mono, fontSize: 8, color: TK.purple, letterSpacing: '0.18em', fontWeight: 700, marginBottom: 10 }}>
+          STRUCTURAL PART · {(part.kind || 'move').toUpperCase()}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: TK.textHi, lineHeight: 1.4, fontStyle: 'italic' }}>{part.claim}</div>
+        {part.rationale && (
+          <div style={{ marginTop: 8, fontSize: 10.5, lineHeight: 1.55, color: TK.muted }}>{part.rationale}</div>
+        )}
+        <div style={{ marginTop: 11, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: mono, fontSize: 7.5, fontWeight: 800, letterSpacing: '0.1em', color: statusColor, border: `1px solid ${statusColor}`, padding: '2px 6px' }}>
+            {statusLabel}
+          </span>
+          {stale && !orphan && (
+            <button
+              onClick={() => onReanchor(part.id)}
+              title="Re-anchor this part to its current text (no AI)"
+              style={{ padding: '3px 9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.accent}`, color: TK.accent, fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em' }}
+            >
+              ⟲ RE-ANCHOR
+            </button>
+          )}
+        </div>
+      </div>
+
+      <Block index="01" title="MAPS ONTO" color={TK.accent} count={`${live.length}`}>
+        {live.length === 0 ? (
+          <div style={{ fontFamily: mono, fontSize: 8, color: TK.dim, letterSpacing: '0.1em', padding: '4px 2px' }}>
+            {orphan ? 'Unanchored — no live section.' : 'Maps onto no section.'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {live.map((st) => (
+              <div
+                key={st.id}
+                onClick={() => onOpen(st.id)}
+                style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', padding: '5px 7px', border: `1px solid ${TK.border}`, background: TK.bgDeep }}
+              >
+                <span style={{ fontFamily: mono, fontSize: 8.5, fontWeight: 700, color: TK.text, width: 44, flexShrink: 0 }}>{st.sym}</span>
+                <span style={{ flex: 1, fontSize: 10, color: TK.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.short}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Block>
+
+      <Block index="02" title="DIVERGENCE" color={TK.purple}>
+        <div style={{ fontSize: 11, lineHeight: 1.6, color: TK.text }}>
+          {divergence?.spansMultiple
+            ? `Spans ${live.length} sections — one move across a heading boundary.`
+            : divergence?.subdivides
+              ? 'Within a single section — a sub-part the heading grid does not name.'
+              : 'Not mapped onto the section grid.'}
+          {divergence && divergence.shared.length > 0 && (
+            <div style={{ marginTop: 6, color: TK.yellow }}>
+              Shares {divergence.shared.length} section{divergence.shared.length === 1 ? '' : 's'} with another part — a whole claimed twice.
+            </div>
+          )}
+        </div>
+      </Block>
+    </>
+  );
+};
+
 export const Inspector: React.FC<InspectorProps> = ({
   model,
   centering,
@@ -427,6 +518,12 @@ export const Inspector: React.FC<InspectorProps> = ({
   onSelectStation,
   onToggleDep,
   onRemoveDep,
+  part,
+  partDivergence,
+  partSectionIds,
+  partStale,
+  partOrphan,
+  onReanchor,
 }) => {
   const lineColor = useLineColor(model);
   return (
@@ -443,7 +540,18 @@ export const Inspector: React.FC<InspectorProps> = ({
         zIndex: 9,
       }}
     >
-      {arc ? (
+      {part ? (
+        <PartInspector
+          model={model}
+          part={part}
+          divergence={partDivergence ?? null}
+          sectionIds={partSectionIds ?? []}
+          stale={!!partStale}
+          orphan={!!partOrphan}
+          onReanchor={onReanchor ?? (() => undefined)}
+          onOpen={onOpen}
+        />
+      ) : arc ? (
         <DepInspector model={model} arc={arc} lineColor={lineColor} onSelect={onSelectStation} onToggle={onToggleDep} onRemove={onRemoveDep} />
       ) : station ? (
         <StationInspector

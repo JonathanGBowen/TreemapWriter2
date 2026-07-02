@@ -16,7 +16,7 @@
 // maps to exactly the sections whose own text it actually touches.
 
 import type { Section, StructuralPart } from '../types';
-import { findBlockByAnchor, segmentParagraphs } from './paragraph-helpers';
+import { anchorFor, findBlockByAnchor, segmentParagraphs } from './paragraph-helpers';
 import { computeHash } from './utils';
 import { normalizeForHash } from './gist-helpers';
 
@@ -72,6 +72,32 @@ export function resolvePart(part: StructuralPart, markdown: string, sections: Se
     .filter((s) => overlaps(startOffset, endOffset, s.start, s.end))
     .map((s) => s.id);
   return { startOffset, endOffset, sectionIds, orphan: false };
+}
+
+/**
+ * Re-anchor a merely-stale part against the live document (Mode 1 repair — NO AI):
+ * re-stamp its anchors + `sourceHash` + `sectionIds` from the current span so the
+ * annotation reads fresh again. Returns `null` for an ORPHAN (no span to relocate),
+ * mirroring gist hiding its refresh button for orphans. Pure; the caller persists.
+ */
+export function reanchoredPart(
+  part: StructuralPart,
+  markdown: string,
+  sections: Section[],
+): StructuralPart | null {
+  const { startOffset, endOffset, sectionIds, orphan } = resolvePart(part, markdown, sections);
+  if (orphan) return null;
+  const blocks = segmentParagraphs(markdown);
+  const startBlock = findBlockByAnchor(blocks, part.startAnchor);
+  const endBlock = findBlockByAnchor(blocks, part.endAnchor);
+  if (!startBlock || !endBlock) return null;
+  return {
+    ...part,
+    startAnchor: anchorFor(startBlock.text),
+    endAnchor: anchorFor(endBlock.text),
+    sectionIds,
+    sourceHash: computeHash(normalizeForHash(markdown.slice(startOffset, endOffset))),
+  };
 }
 
 export interface StructuralStaleResult {
@@ -151,4 +177,35 @@ export function computeDivergences(
     };
   }
   return out;
+}
+
+/**
+ * `computeDivergences` against LIVE section mappings: re-resolve each part's
+ * `sectionIds` from the current markdown first (the stored ids drift as prose is
+ * edited) so the flags describe the document as it is now.
+ */
+export function computeLiveDivergences(
+  parts: StructuralPart[],
+  markdown: string,
+  sections: Section[],
+): Record<string, PartDivergence> {
+  const live = parts.map((p) => ({ ...p, sectionIds: resolvePart(p, markdown, sections).sectionIds }));
+  return computeDivergences(live, sections);
+}
+
+/**
+ * A compact one-line summary of the discovered configuration for the consuming
+ * passes (coach, dependencies) — the cross-section facts the per-section table
+ * structurally cannot carry. Empty string when there are no parts, so a caller
+ * appends nothing and degrades to its prior behavior.
+ */
+export function summarizeParts(parts: StructuralPart[], sections: Section[]): string {
+  if (parts.length === 0) return '';
+  const divergences = computeDivergences(parts, sections);
+  const kinds = Array.from(new Set(parts.map((p) => p.kind).filter(Boolean)));
+  const spanning = parts.filter((p) => divergences[p.id]?.spansMultiple).length;
+  const shared = parts.filter((p) => (divergences[p.id]?.shared.length ?? 0) > 0).length;
+  const kindList = kinds.length ? ` — kinds: ${kinds.join(', ')}` : '';
+  const plural = parts.length === 1 ? '' : 's';
+  return `${parts.length} discovered structural part${plural}${kindList}; ${spanning} span multiple sections; ${shared} shared across sections.`;
 }

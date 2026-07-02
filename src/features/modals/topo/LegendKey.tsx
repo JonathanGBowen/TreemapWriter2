@@ -18,7 +18,7 @@ const Row: React.FC<{ svg: React.ReactNode; label: string }> = ({ svg, label }) 
 
 // A tiny bipartite glyph: 'span' = one part fanning to two sections; 'share' =
 // two parts converging on one section (the two divergences the heading grid can't show).
-const PartsFan: React.FC<{ kind: 'span' | 'share' }> = ({ kind }) => (
+const PartsFan: React.FC<{ kind: 'span' | 'share' | 'subdivide' }> = ({ kind }) => (
   <svg width="22" height="12">
     {kind === 'span' ? (
       <>
@@ -28,13 +28,19 @@ const PartsFan: React.FC<{ kind: 'span' | 'share' }> = ({ kind }) => (
         <circle cx="19" cy="3" r="1.6" fill={TK.green} />
         <circle cx="19" cy="9" r="1.6" fill={TK.yellow} />
       </>
-    ) : (
+    ) : kind === 'share' ? (
       <>
         <circle cx="3" cy="3" r="1.8" fill={TK.purple} />
         <circle cx="3" cy="9" r="1.8" fill={TK.purple} />
         <path d="M5 3 L17 6" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
         <path d="M5 9 L17 6" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
         <circle cx="19" cy="6" r="1.6" fill={TK.accent} />
+      </>
+    ) : (
+      <>
+        <circle cx="3" cy="6" r="1.8" fill={TK.purple} />
+        <path d="M5 6 L17 6" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
+        <circle cx="19" cy="6" r="1.6" fill={TK.green} />
       </>
     )}
   </svg>
@@ -80,6 +86,7 @@ export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' | 'parts' }
         <div style={{ height: 1, background: TK.border, margin: '1px 0' }} />
         <div style={head}>DIVERGENCE</div>
         <Row svg={<PartsFan kind="span" />} label="SPANS · one part → many sections" />
+        <Row svg={<PartsFan kind="subdivide" />} label="WITHIN · one part inside one section" />
         <Row svg={<PartsFan kind="share" />} label="SHARED · one section ← many parts" />
       </div>
     );
