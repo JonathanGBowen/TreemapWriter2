@@ -16,25 +16,77 @@ const Row: React.FC<{ svg: React.ReactNode; label: string }> = ({ svg, label }) 
   </div>
 );
 
-export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' }> = ({ mode }) => {
-  const atlas = mode !== 'spine'; // ATLAS and RADIX share the land/route marks
+// A tiny bipartite glyph: 'span' = one part fanning to two sections; 'share' =
+// two parts converging on one section (the two divergences the heading grid can't show).
+const PartsFan: React.FC<{ kind: 'span' | 'share' }> = ({ kind }) => (
+  <svg width="22" height="12">
+    {kind === 'span' ? (
+      <>
+        <circle cx="3" cy="6" r="1.8" fill={TK.purple} />
+        <path d="M5 6 L17 3" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
+        <path d="M5 6 L17 9" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
+        <circle cx="19" cy="3" r="1.6" fill={TK.green} />
+        <circle cx="19" cy="9" r="1.6" fill={TK.yellow} />
+      </>
+    ) : (
+      <>
+        <circle cx="3" cy="3" r="1.8" fill={TK.purple} />
+        <circle cx="3" cy="9" r="1.8" fill={TK.purple} />
+        <path d="M5 3 L17 6" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
+        <path d="M5 9 L17 6" stroke={TK.accent} strokeWidth="1" strokeDasharray="3 2" />
+        <circle cx="19" cy="6" r="1.6" fill={TK.accent} />
+      </>
+    )}
+  </svg>
+);
+
+export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' | 'parts' }> = ({ mode }) => {
+  const atlas = mode === 'atlas' || mode === 'radix'; // ATLAS and RADIX share the land/route marks
   const head = { fontFamily: mono, fontSize: 6.5, color: TK.muted, letterSpacing: '0.18em', fontWeight: 700 } as React.CSSProperties;
+  const frame: React.CSSProperties = {
+    position: 'absolute',
+    left: 12,
+    top: 12,
+    background: TK.surface,
+    border: `1px solid ${TK.border}`,
+    padding: '8px 11px',
+    zIndex: 4,
+    opacity: 0.95,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  };
+
+  // PARTS is a bipartite membership map, not the section/dependency picture — its
+  // own legend (part-nodes, section-nodes, membership edges, the divergences).
+  if (mode === 'parts') {
+    return (
+      <div style={frame}>
+        <div style={head}>STRUCTURAL PARTS</div>
+        <Row svg={<Dot c={TK.purple} />} label="PART · a move the argument makes" />
+        <Row
+          svg={<span style={{ display: 'inline-flex', gap: 4 }}><Dot c={TK.green} /><Dot c={TK.accent} /><Dot c={TK.yellow} /></span>}
+          label="SECTION · coloured by continent"
+        />
+        <Row
+          svg={
+            <svg width="22" height="8">
+              <path d="M1 4 L17 4" stroke={TK.accent} strokeWidth="2.2" strokeDasharray="4 3" />
+              <path d="M21 4 L15 1.5 L15 6.5 Z" fill={TK.accent} />
+            </svg>
+          }
+          label="MAPS ONTO · part → section"
+        />
+        <div style={{ height: 1, background: TK.border, margin: '1px 0' }} />
+        <div style={head}>DIVERGENCE</div>
+        <Row svg={<PartsFan kind="span" />} label="SPANS · one part → many sections" />
+        <Row svg={<PartsFan kind="share" />} label="SHARED · one section ← many parts" />
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 12,
-        top: 12,
-        background: TK.surface,
-        border: `1px solid ${TK.border}`,
-        padding: '8px 11px',
-        zIndex: 4,
-        opacity: 0.95,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-      }}
-    >
+    <div style={frame}>
       <div style={head}>{atlas ? 'ROUTE' : 'DEPENDENCY'}</div>
       <Row
         svg={

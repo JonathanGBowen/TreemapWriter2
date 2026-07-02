@@ -25,6 +25,7 @@ import type {
   GistAnalysis,
   GistComposition,
   GistSpan,
+  StructuralPart,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
 import {
@@ -71,6 +72,7 @@ import type {
   GenerateSpecLevelInput,
   DevelopSpecLevelInput,
   SegmentSpanInput,
+  DiscoverStructuralPartsInput,
   ReconstructWholeInput,
   RecenterInput,
   RunAgentInput,
@@ -98,6 +100,7 @@ import type { QuotaAnnotatedError } from './model-types';
 import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { segmentSpan, type SegmentSpanResult } from './ai-provider.segment';
+import { discoverStructuralParts } from './ai-provider.structural-parts';
 import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
@@ -426,6 +429,16 @@ export class MultiProviderAIProvider implements AIProvider {
       genre: input.genre,
       config: input.config,
     });
+  }
+
+  async discoverStructuralParts(input: DiscoverStructuralPartsInput): Promise<StructuralPart[]> {
+    const choice = this.choose('discoverStructuralParts', input);
+    return discoverStructuralParts(
+      this.dispatch(choice, 'discoverStructuralParts'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
   }
 
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {

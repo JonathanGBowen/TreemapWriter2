@@ -50,6 +50,8 @@ const HISTORICAL_KEYS = [
   'segmentLevelTask',
   'segmentCritiqueTask',
   'segmentSummaryTask',
+  // StructuralPart discovery (2026-07-01) — the whole-document sibling of Articulation.
+  'discoverStructuralPartsPrompt',
   'rootTaskInstruction',
   'subTaskInstruction',
   'suggestContentPrompt',

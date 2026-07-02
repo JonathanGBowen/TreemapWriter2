@@ -49,6 +49,27 @@ exegetical `mainClaim`), shown in the Spec tab and persisted via the YAML sideca
 inherit the app's title-based section-id caveat; the desktop `reverse_summary` sidecar
 mirror was added by inspection but not `cargo check`'d here (no GTK libs in CI).
 
+**Structural parts — Tier 1** shipped 2026-07-01 (see
+[`docs/migration-log.md`](docs/migration-log.md); audit
+[`docs/structural-part-audit.md`](docs/structural-part-audit.md) §V). A first-class
+`StructuralPart` (the fifth domain layer) decoupled from the heading-`Section` grid:
+anchored to arbitrary text spans and mapped **many-to-many** onto sections, so a
+part that *spans* sections, *subdivides* one, or *belongs to two wholes* is finally
+expressible. Discovered by a new AI faculty **added alongside Articulation** (which
+stays the heading tool) — `discoverStructuralParts`, one whole-document pass modeled
+on `analyzeGist` (tolerant block-index→anchor parse, `[]` on junk). The vertical
+slice: the type + faculty + prompt + call kind, a pure
+`lib/structural-part-helpers.ts` (`resolvePart` anchor→span→`sectionIds` by
+own-content overlap; `computeDivergences` → `spansMultiple`/`subdivides`/`shared`),
+an in-memory `document-state` field + `use-structural-parts-actions` hook, and a 4th
+**PARTS** projection in the Argument Topology modal (a bipartite parts↔sections map
+reusing the shared `Province`/`Route` marks, with a self-contained "Discover parts"
+button). **In-memory only by design.** *Deferred (named):* **Tier 2** persistence
+(the `provenanceMarks` template — `.twriter/structural-parts.json` sidecar + Rust
+opaque-`Value` mirror + `sourceHash` staleness) and **Tier 3** consumption (letting
+`estimateDependencies`/coach/spec-test operate over parts; treemap reconciliation,
+still gated on the killed-heatmap accessibility verdict + stable section IDs).
+
 The **Quiet center column** shipped 2026-06-28 (see
 [`docs/migration-log.md`](docs/migration-log.md)) — the decided form of a Claude Design
 "Tidy Center Column" exploration. The editor's two structure-as-prose chrome blocks were

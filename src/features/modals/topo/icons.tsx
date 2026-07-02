@@ -77,6 +77,18 @@ export const RadixGlyph: React.FC<{ c: string }> = ({ c }) => (
   </svg>
 );
 
+export const PartsGlyph: React.FC<{ c: string }> = ({ c }) => (
+  <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true">
+    {/* bipartite: two part-nodes on the left fanning to sections on the right */}
+    <circle cx="3" cy="4" r="1.5" fill="none" stroke={c} strokeWidth="1.1" />
+    <circle cx="3" cy="10" r="1.5" fill="none" stroke={c} strokeWidth="1.1" />
+    <circle cx="11" cy="3.5" r="1.3" fill={c} />
+    <circle cx="11" cy="7" r="1.3" fill={c} />
+    <circle cx="11" cy="10.5" r="1.3" fill={c} />
+    <path d="M4.4 4 L9.7 3.7 M4.4 4.4 L9.7 6.7 M4.4 9.6 L9.7 7.3 M4.4 10 L9.7 10.3" stroke={c} strokeWidth="0.7" opacity="0.8" />
+  </svg>
+);
+
 export const CloseGlyph: React.FC<{ size?: number }> = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
     <path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

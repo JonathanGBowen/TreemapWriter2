@@ -36,6 +36,7 @@ import type {
   GistBudgets,
   WholeFromPartResult,
   RecenteringsResult,
+  StructuralPart,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
@@ -163,6 +164,16 @@ export interface AIProvider {
    * (use-segment-actions), which recomputes the next level's spans after each accept.
    */
   segmentSpan(input: SegmentSpanInput): Promise<SegmentSpanResult>;
+  /**
+   * Discover the argument's structural-functional PARTS — the moves it makes —
+   * in ONE whole-document pass, INDEPENDENT of the heading grid (the sibling of
+   * Articulation, not its recursive heading descent). The model emits block
+   * ranges; the faculty derives verbatim start/end anchors and drops any part
+   * whose indices are out of range or whose anchor is empty. `sectionIds` is
+   * left empty here (mapped deterministically later by the caller). Returns `[]`
+   * on junk — never throws, never fabricates.
+   */
+  discoverStructuralParts(input: DiscoverStructuralPartsInput): Promise<StructuralPart[]>;
   /**
    * Gestalt — the "Beethoven test" (L3a). Reconstruct the WHOLE document's claim
    * from one section's prose ALONE, then compare to the actual claim. A drifted
@@ -310,6 +321,19 @@ export interface SegmentSpanInput {
   mode: SegmentMode;
   granularity: SegmentGranularity;
   genre: SegmentGenre;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+/** The whole document handed to the structural-part discovery pass, as numbered
+ *  paragraph blocks (full text — anchors are computed from it). The model emits
+ *  block ranges over these; the faculty resolves them to verbatim anchors. */
+export interface DiscoverStructuralPartsInput {
+  blocks: { index: number; text: string; kind: ParagraphKind }[];
+  /** The document title, for framing. */
+  documentTitle: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

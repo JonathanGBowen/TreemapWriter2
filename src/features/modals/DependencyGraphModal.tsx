@@ -23,12 +23,14 @@ import { computeCentering, type Centering } from './topo/topo-centering';
 import { TopoLand } from './topo/TopoLand';
 import { TopoMap } from './topo/TopoMap';
 import { TopoRadix } from './topo/TopoRadix';
+import { TopoParts } from './topo/TopoParts';
 import { Inspector } from './topo/Inspector';
 import { LegendKey } from './topo/LegendKey';
 import { StructuralReadout } from './topo/StructuralReadout';
 import { useReducedMotion } from './topo/useReducedMotion';
 import { TK } from './topo/tk';
-import { AtlasGlyph, CloseGlyph, NetworkGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
+import { AtlasGlyph, CloseGlyph, NetworkGlyph, PartsGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
+import { useStructuralPartsActions } from '../structure/use-structural-parts-actions';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -38,7 +40,7 @@ interface DependencyGraphModalProps {
 }
 
 const mono = 'JetBrains Mono, monospace';
-type Projection = 'atlas' | 'spine' | 'radix';
+type Projection = 'atlas' | 'spine' | 'radix' | 'parts';
 
 // ── header ──────────────────────────────────────────────────────────
 const ProjectionToggle: React.FC<{ mode: Projection; setMode: (m: Projection) => void }> = ({ mode, setMode }) => {
@@ -72,7 +74,8 @@ const ProjectionToggle: React.FC<{ mode: Projection; setMode: (m: Projection) =>
     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${TK.border}`, marginRight: 2 }}>
       {opt('atlas', 'ATLAS', <AtlasGlyph c={mode === 'atlas' ? TK.accent : TK.muted} />, 'Sections as land, dependencies as routes', true)}
       {opt('radix', 'RADIX', <RadixGlyph c={mode === 'radix' ? TK.accent : TK.muted} />, 'Sections by structural rank — radix (source) at top, telos (sink) at bottom', true)}
-      {opt('spine', 'SPINE', <SpineGlyph c={mode === 'spine' ? TK.accent : TK.muted} />, 'Parts as lines, dependencies as arcs', false)}
+      {opt('spine', 'SPINE', <SpineGlyph c={mode === 'spine' ? TK.accent : TK.muted} />, 'Parts as lines, dependencies as arcs', true)}
+      {opt('parts', 'PARTS', <PartsGlyph c={mode === 'parts' ? TK.accent : TK.muted} />, 'Structural-functional parts mapped onto the sections they span, subdivide, or share', false)}
     </div>
   );
 };
@@ -156,12 +159,14 @@ const Header: React.FC<{
         title={
           mode === 'atlas'
             ? 'Optimise the landscape against the dependency graph'
-            : mode === 'radix'
-              ? 'Fit the rank layout to view'
-              : 'Re-run auto layout'
+            : mode === 'spine'
+              ? 'Re-run auto layout'
+              : mode === 'radix'
+                ? 'Fit the rank layout to view'
+                : 'Fit the parts layout to view'
         }
       >
-        {mode === 'atlas' ? 'OPTIMISE' : mode === 'radix' ? 'FIT' : 'ORGANISE'} <RefreshGlyph c={TK.accent} />
+        {mode === 'atlas' ? 'OPTIMISE' : mode === 'spine' ? 'ORGANISE' : 'FIT'} <RefreshGlyph c={TK.accent} />
       </button>
       <button
         onClick={onClose}
@@ -212,8 +217,8 @@ const FilterBar: React.FC<{
   centering: Centering;
 }> = ({ mode, lines, filter, setFilter, land, ghost, setGhost, centering }) => {
   const atlas = mode === 'atlas';
-  const dotChip = mode !== 'spine'; // ATLAS + RADIX use round Part chips; SPINE uses a track
-  const heading = mode === 'atlas' ? 'CONTINENTS' : mode === 'radix' ? 'PARTS' : 'LINES';
+  const dotChip = mode !== 'spine'; // ATLAS + RADIX + PARTS use round Part chips; SPINE uses a track
+  const heading = mode === 'atlas' ? 'CONTINENTS' : mode === 'radix' ? 'PARTS' : mode === 'parts' ? 'SECTIONS' : 'LINES';
   return (
     <div
       style={{
@@ -327,6 +332,10 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const setShow = useStore((s) => s.setShowGraphModal);
   const editorSelectedId = useStore((s) => s.selectedId);
   const setEditorSelectedId = useStore((s) => s.setSelectedId);
+  // The fifth domain layer, read straight from the store (the PARTS projection's
+  // trigger stays self-contained — no new ModalLayer/App wiring).
+  const structuralParts = useStore((s) => s.structuralParts);
+  const { runDiscoverStructuralParts } = useStructuralPartsActions();
   const reduced = useReducedMotion();
 
   const model = useMemo(() => deriveTopo(sections, testSuite), [sections, testSuite]);
@@ -343,6 +352,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const [land, setLand] = useState<Metrics>({ len: 0, cross: 0 });
   const [optimizing, setOptimizing] = useState(false);
   const [estimating, setEstimating] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [fitNonce, setFitNonce] = useState(0);
   const [organizeNonce, setOrganizeNonce] = useState(0);
 
@@ -440,7 +450,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
     if (mode === 'atlas') setOrganizeNonce((n) => n + 1);
     else {
       setFitNonce((n) => n + 1);
-      toast.success(mode === 'radix' ? 'Refit to rank layout.' : 'Graph Layout Optimized.');
+      toast.success(mode === 'radix' ? 'Refit to rank layout.' : mode === 'parts' ? 'Refit parts layout.' : 'Graph Layout Optimized.');
     }
   }, [mode]);
 
@@ -458,6 +468,15 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
       setEstimating(false);
     }
   }, [onEstimateDependencies]);
+
+  const onDiscover = useCallback(async () => {
+    setDiscovering(true);
+    try {
+      await runDiscoverStructuralParts();
+    } finally {
+      setDiscovering(false);
+    }
+  }, [runDiscoverStructuralParts]);
 
   if (!isOpen) return null;
 
@@ -505,7 +524,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
 
         <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
           <main style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-            {model.stations.length === 0 ? (
+            {model.stations.length === 0 && mode !== 'parts' ? (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TK.bgDeep, fontFamily: mono, fontSize: 11, letterSpacing: '0.14em', color: TK.muted }}>
                 NO SECTIONS YET — WRITE SOME HEADINGS TO MAP THE ARGUMENT.
               </div>
@@ -542,6 +561,24 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
                 onSelectDep={onSelectDep}
                 onHover={setHoveredId}
                 onOpen={onOpenInEditor}
+              />
+            ) : mode === 'parts' ? (
+              <TopoParts
+                model={model}
+                parts={structuralParts}
+                selectedId={selectedStationId}
+                hoveredId={hoveredId}
+                editorId={editorSelectedId}
+                filter={filterPartId}
+                selectedDepId={selectedDepId}
+                fitNonce={fitNonce}
+                reduced={reduced}
+                discovering={discovering}
+                onSelect={onSelect}
+                onSelectDep={onSelectDep}
+                onHover={setHoveredId}
+                onOpen={onOpenInEditor}
+                onDiscover={onDiscover}
               />
             ) : (
               <TopoMap

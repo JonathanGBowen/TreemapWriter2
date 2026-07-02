@@ -4963,3 +4963,89 @@ note.
 `ModalLayer`, `Dock`, `App` palette, `SpecTab`, `PromptsGraphModal`, `src-tauri/types.rs`)
 each gained an additive entry that reverts cleanly. The spec sweep falls back to its prior
 behavior once `startSpecSweep` is reverted to `openInterpolate`.
+
+---
+
+## 2026-07-01 — StructuralPart faculty (Tier 1: in-memory vertical slice)
+
+**What changed.** A first-class **`StructuralPart`** — the fifth domain layer —
+decoupled from the markdown-heading `Section` grid, remediating
+`docs/structural-part-audit.md` §V (the tool's "structural" analysis was welded to
+headings, so a functional part that *spans* sections, *subdivides* one, or *belongs
+to two wholes* was inexpressible). Tier 1 is a coherent end-to-end slice that
+discovers parts from the whole document, anchors them, maps them many-to-many onto
+sections, and visualises them. **In-memory only** — parts live in a regenerable
+domain field, not yet persisted (persistence + staleness is the named Tier-2 defer).
+
+- **Type** — `StructuralPart { id; kind; claim; startAnchor; endAnchor; sectionIds;
+  confidence; rationale; sourceHash? }` in `src/types/index.ts` (near `SegmentEdit`;
+  extend, not collapse). Anchored by the verbatim literal-match-or-orphan pattern
+  (`anchorFor`/`findBlockByAnchor`), never char offsets.
+- **AI faculty** — `discoverStructuralParts`: ONE whole-document pass (the sibling
+  of Articulation, NOT its recursive heading descent), modeled on `analyzeGist`.
+  New `src/services/ai/ai-provider.structural-parts.ts` (JSON schema +
+  `buildUserPrompt` over numbered blocks + one `generateText` + a tolerant
+  `normalizeStructuralParts`). The MODEL emits block ranges; the faculty derives
+  `startAnchor`/`endAnchor` via `anchorFor(block.text)` and DROPS any part whose
+  indices are out of range/reversed or whose anchor is empty (mirrors
+  `parseSegmentResponse`). Returns `[]` on junk — never throws, never fabricates;
+  `sectionIds` is left empty here.
+- **Provider seam** — `discoverStructuralParts` on the `AIProvider` interface +
+  `DiscoverStructuralPartsInput` (`src/services/ai-provider.ts`); a 3-line impl
+  (`ai-provider.impl.ts`) mirroring `segmentSpan`; a new `discoverStructuralParts`
+  call kind (`model-types.ts` union + `AI_CALL_KINDS` + `AI_CALL_KIND_LABELS`) +
+  a `DEFAULT_MODEL_CONFIG` heavy/thinking entry (whole-document reasoning).
+- **Prompt** — one editable `.md`, `discover-structural-parts.md`, under the
+  existing `'segmentation'` registry category (`key:
+  'discoverStructuralPartsPrompt'`, `flow: 'discoverStructuralParts'`); added to
+  `HISTORICAL_KEYS` in the registry drift-guard test.
+- **Pure helper** — new `src/lib/structural-part-helpers.ts`: `resolvePart(part,
+  markdown, sections)` relocates the anchors (`segmentParagraphs` +
+  `findBlockByAnchor`) to a `[startOffset,endOffset]` span and maps it onto the
+  sections whose OWN content extent it overlaps (`orphan` if unresolved);
+  `computeDivergences(parts, sections)` flags `spansMultiple` / `subdivides` /
+  `shared`. **Own-content extents, not subtree extents** — subtree ranges nest, so
+  a subtree mapping would map every part onto all its ancestors and make the flags
+  meaningless (a deliberate, documented deviation from the audit's wording).
+- **State** — `structuralParts: StructuralPart[]` + `setStructuralParts` on
+  `document-state.ts` (mirrors `provenanceMarks`); reset on project load/switch in
+  `project-state.ts` (all three reset sites). Not persisted in Tier 1.
+- **Actions hook** — new `src/features/structure/use-structural-parts-actions.ts`:
+  `runDiscoverStructuralParts()` mirrors `use-gestalt-actions.ts` (module
+  single-flight guard + global `isProcessing`, `segmentParagraphs(markdown)` →
+  blocks, `resolveModelChoice` + `guardContextFit`, `beginOp`/`endOp`, the faculty
+  call, then per-part `resolvePart` to fill `sectionIds`, `setStructuralParts`,
+  `notifyAiError` on empty/null).
+- **View** — a 4th **PARTS** projection in the Argument Topology modal
+  (`DependencyGraphModal.tsx`): new `topo-parts.ts` (`derivePartsModel` →
+  part-nodes + `Arc`-shaped membership edges, reusing the derived section
+  Stations), new `topo-layout-parts.ts` (a deterministic bipartite grid emitting
+  `SimNode`, mirroring `topo-layout-radix.ts`), and `TopoParts.tsx` reusing the
+  shared `Province`/`Route` marks — so the many-to-many mapping (a part fanning to
+  two sections = SPANS; a section fed by two parts = SHARED) renders for free.
+  Self-contained **DISCOVER PARTS** button on the surface (no new Dock/palette/
+  ui-state wiring); a `'parts'` mode added to `LegendKey`. Parts read purple
+  (the centering hue) against the section continents.
+- **Tests** — new `ai-provider.structural-parts.test.ts` (prompt assembly, tolerant
+  parse, out-of-range/reversed/empty-anchor dropping, confidence clamp) and
+  `structural-part-helpers.test.ts` (anchor→span→sectionIds, divergence flags,
+  orphan, stale-id scoping).
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors (only pre-existing
+`warn`-level max-lines/complexity, incl. `TopoParts` matching its `TopoRadix`
+sibling); `npm test` 643 pass (incl. the two new suites + the registry gate);
+`npm run build` succeeds. Manual: Argument Topology modal → PARTS toggle →
+DISCOVER PARTS → parts render as purple nodes with dashed edges to the sections
+they map onto; click a part to light its sections; a shared section shows two
+incoming edges. (Live AI needs a key in `src-tauri/.env.local`; the provider test
+uses a mock.)
+
+**Rollback.** `git revert`. New files are additive; the touched shared files
+(`types/index.ts`, prompt registry + its drift-guard test, `ai-provider.specs`
+test's full-config literal, `model-types`/`model-config`, `ai-provider`
+interface/impl, `document-state`, `project-state`, `DependencyGraphModal`,
+`LegendKey`, topo `icons`) each gained an additive entry that reverts cleanly. No
+Rust, persistence, or repository changes (Tier 1 is in-memory). Deferred (named):
+**Tier 2** persistence (the `provenanceMarks` template — sidecar + Rust opaque
+`Value` mirror + staleness via `sourceHash`); **Tier 3** consumption (letting
+`estimateDependencies`/coach/spec-test operate over parts) + treemap reconciliation.

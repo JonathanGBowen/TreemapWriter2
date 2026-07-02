@@ -861,6 +861,43 @@ export type SegmentEdit =
 /** Review lifecycle of one proposed edit within a session (mirrors `ProposalStatus`). */
 export type SegmentEditStatus = 'pending' | 'accepted' | 'rejected';
 
+/**
+ * A structural-functional PART of the argument, decoupled from the markdown
+ * heading grid (`Section`). Where a `Section` is a heading and its subtree, a
+ * `StructuralPart` is a *move* the argument makes — a claim and the text that
+ * realises it — which may SPAN several sections, SUBDIVIDE one, or belong to
+ * two wholes at once (relations a heading-`Section` cannot express). It is the
+ * fifth domain layer: discovered by the `discoverStructuralParts` faculty (one
+ * whole-document pass — the sibling of Articulation, NOT its recursive heading
+ * descent), anchored to arbitrary text spans by the verbatim
+ * literal-match-or-orphan pattern (`anchorFor` / `findBlockByAnchor`, like
+ * `SegmentEdit` / `ProvenanceMark` / `GistSegment`) rather than fragile char
+ * offsets, and mapped many-to-many onto `Section`s by deterministic span
+ * overlap — `sectionIds` is computed by the app (`lib/structural-part-helpers`),
+ * never asked of the model. Tier 1 is in-memory only (regenerable domain data,
+ * not yet persisted).
+ */
+export interface StructuralPart {
+  /** Stable id assigned by the caller (the model never supplies one). */
+  id: string;
+  /** The move this part makes, in the model's own words (e.g. 'motivation', 'objection', 'synthesis'). */
+  kind: string;
+  /** A one-sentence reconstruction of what this part claims or does. */
+  claim: string;
+  /** Verbatim opening text of the block that OPENS the part (the start anchor). */
+  startAnchor: string;
+  /** Verbatim opening text of the block that CLOSES the part (the end anchor). */
+  endAnchor: string;
+  /** Sections this part maps onto, by deterministic span overlap. May be empty (an orphan/unresolved part). */
+  sectionIds: string[];
+  /** The model's confidence that this is one coherent part (0..1). */
+  confidence: number;
+  /** Why this is one part — names the joint/move (never fabricated). */
+  rationale: string;
+  /** Reserved for Tier-2 staleness: a hash of the source text at discovery time. */
+  sourceHash?: string;
+}
+
 // --- LEGACY COMPAT + COMBINED SUITE ---
 
 export interface TestResult {
