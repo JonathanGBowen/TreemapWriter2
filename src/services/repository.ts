@@ -12,6 +12,7 @@ import type {
   ResolveOutcome,
   ReverseOutlineDoc,
   StoredGist,
+  StructuralPart,
   SearchHit,
   SectionInput,
   SessionRecord,
@@ -68,6 +69,14 @@ export interface StoredProjectData {
    * Rust mirror (an opaque `Value`, like `gist`), so the TS layer owns the shape.
    */
   provenance?: ProvenanceDoc | null;
+  /**
+   * The document's discovered structural-functional parts — the moves the argument
+   * makes — mapped many-to-many onto sections (`.twriter/structural-parts.json` on
+   * desktop). Persisted as the BARE array (like `reverseOutlines`, not a wrapper);
+   * opaque to the Rust mirror (an opaque `Value`, like `gist`/`provenance`), so the
+   * TS layer owns the shape. Absent until the writer first runs "Discover parts".
+   */
+  structuralParts?: StructuralPart[];
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

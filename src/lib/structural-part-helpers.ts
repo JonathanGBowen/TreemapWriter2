@@ -17,6 +17,8 @@
 
 import type { Section, StructuralPart } from '../types';
 import { findBlockByAnchor, segmentParagraphs } from './paragraph-helpers';
+import { computeHash } from './utils';
+import { normalizeForHash } from './gist-helpers';
 
 export interface ResolvedPart {
   /** Char offset of the part's first block in the markdown, or -1 when unresolved. */
@@ -70,6 +72,41 @@ export function resolvePart(part: StructuralPart, markdown: string, sections: Se
     .filter((s) => overlaps(startOffset, endOffset, s.start, s.end))
     .map((s) => s.id);
   return { startOffset, endOffset, sectionIds, orphan: false };
+}
+
+export interface StructuralStaleResult {
+  /** Part ids whose source span text changed since discovery. */
+  staleIds: string[];
+  /** Part ids whose anchors can no longer be relocated (the part is unfindable). */
+  orphanIds: string[];
+}
+
+/**
+ * Recompute staleness + orphaning for the discovered parts against the live
+ * markdown + Section tree — the structural-part analogue of gist-helpers'
+ * `recomputeStale`. `resolvePart` relocates each part's anchors: unresolved →
+ * ORPHAN; else a changed normalized-hash of the span → STALE. Annotate only,
+ * never rewrite (P6). A re-discovery replaces the parts with fresh hashes and
+ * clears both flags.
+ */
+export function recomputeStructuralStale(
+  parts: StructuralPart[],
+  markdown: string,
+  sections: Section[],
+): StructuralStaleResult {
+  const staleIds: string[] = [];
+  const orphanIds: string[] = [];
+  for (const p of parts) {
+    const r = resolvePart(p, markdown, sections);
+    if (r.orphan) {
+      orphanIds.push(p.id);
+      continue;
+    }
+    if (computeHash(normalizeForHash(markdown.slice(r.startOffset, r.endOffset))) !== p.sourceHash) {
+      staleIds.push(p.id);
+    }
+  }
+  return { staleIds, orphanIds };
 }
 
 export interface PartDivergence {

@@ -894,7 +894,7 @@ export interface StructuralPart {
   confidence: number;
   /** Why this is one part — names the joint/move (never fabricated). */
   rationale: string;
-  /** Reserved for Tier-2 staleness: a hash of the source text at discovery time. */
+  /** Hash of the part's normalized span text at discovery time — the Tier-2 staleness anchor. */
   sourceHash?: string;
 }
 

@@ -64,10 +64,16 @@ own-content overlap; `computeDivergences` → `spansMultiple`/`subdivides`/`shar
 an in-memory `document-state` field + `use-structural-parts-actions` hook, and a 4th
 **PARTS** projection in the Argument Topology modal (a bipartite parts↔sections map
 reusing the shared `Province`/`Route` marks, with a self-contained "Discover parts"
-button). **In-memory only by design.** *Deferred (named):* **Tier 2** persistence
-(the `provenanceMarks` template — `.twriter/structural-parts.json` sidecar + Rust
-opaque-`Value` mirror + `sourceHash` staleness) and **Tier 3** consumption (letting
-`estimateDependencies`/coach/spec-test operate over parts; treemap reconciliation,
+button). **Tier 2** shipped 2026-07-02 (see
+[`docs/migration-log.md`](docs/migration-log.md)): parts are now **durable**
+(committed `.twriter/structural-parts.json` sidecar via the `provenanceMarks`
+template — bare array + Rust opaque-`Value` mirror; discovery calls `saveCurrentState`)
+and **honest** (a `sourceHash` stamped at discovery drives
+`recomputeStructuralStale` → the PARTS nodes tint **mauve = orphan** /
+**slate = stale**, mirroring `GistProse`; annotate, never rewrite). *Deferred
+(named):* **Tier 3** consumption (letting `estimateDependencies`/coach/spec-test
+operate over parts; individual-part repair/re-anchor; stable part IDs across
+re-discovery; wiring `computeDivergences` into the view; treemap reconciliation,
 still gated on the killed-heatmap accessibility verdict + stable section IDs).
 
 The **Quiet center column** shipped 2026-06-28 (see

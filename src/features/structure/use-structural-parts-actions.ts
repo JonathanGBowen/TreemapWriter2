@@ -4,6 +4,8 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
 import { resolvePart } from '../../lib/structural-part-helpers';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
+import { computeHash } from '../../lib/utils';
+import { normalizeForHash } from '../../lib/gist-helpers';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
 
@@ -23,12 +25,15 @@ const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API 
  * whole document, resolve the model + pre-flight its context window, call the
  * `discoverStructuralParts` faculty, then map each returned part onto the
  * sections it overlaps (deterministic — the model never supplies `sectionIds`).
- * Tier 1: the result is stored only in the regenerable `structuralParts` domain
- * array, not the sidecar, so there is no `saveCurrentState()` here.
+ * Tier 2: each part is stamped with a `sourceHash` of its span at discovery
+ * (the staleness anchor), stored in the `structuralParts` domain array, and
+ * persisted via `saveCurrentState()` to the committed `.twriter/structural-parts.json`
+ * sidecar (mirroring `use-gist-actions`).
  */
 export const useStructuralPartsActions = () => {
   const setIsProcessing = useStore((s) => s.setIsProcessing);
   const setStructuralParts = useStore((s) => s.setStructuralParts);
+  const saveCurrentState = useStore((s) => s.saveCurrentState);
 
   const runDiscoverStructuralParts = useCallback(async () => {
     const {
@@ -74,10 +79,22 @@ export const useStructuralPartsActions = () => {
         notifyAiError(new Error('empty response'), 'Structural-part discovery returned no usable parts.');
         return;
       }
-      // Map each part onto the sections it overlaps, against the LIVE section tree.
+      // Map each part onto the sections it overlaps, against the LIVE section tree,
+      // and stamp its span's hash so Tier-2 staleness has an anchor to compare against
+      // (mirrors gist `buildSegmentation`: computeHash∘normalizeForHash of the span).
       const sections = useStore.getState().sections;
-      const resolved = parts.map((p) => ({ ...p, sectionIds: resolvePart(p, markdown, sections).sectionIds }));
+      const resolved = parts.map((p) => {
+        const { sectionIds, orphan, startOffset, endOffset } = resolvePart(p, markdown, sections);
+        return {
+          ...p,
+          sectionIds,
+          // Unresolved at discovery keeps no hash (recompute re-flags it as orphan).
+          sourceHash: orphan ? p.sourceHash : computeHash(normalizeForHash(markdown.slice(startOffset, endOffset))),
+        };
+      });
       setStructuralParts(resolved);
+      // Persist the discovery to the committed sidecar (mirrors use-gist-actions).
+      await saveCurrentState();
     } catch (e) {
       notifyAiError(e, `Discover parts failed: ${errMessage(e)}`);
     } finally {
@@ -85,7 +102,7 @@ export const useStructuralPartsActions = () => {
       setIsProcessing(false);
       useStore.getState().endOp(opId);
     }
-  }, [setIsProcessing, setStructuralParts]);
+  }, [setIsProcessing, setStructuralParts, saveCurrentState]);
 
   return { runDiscoverStructuralParts };
 };

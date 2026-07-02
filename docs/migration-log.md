@@ -5049,3 +5049,63 @@ Rust, persistence, or repository changes (Tier 1 is in-memory). Deferred (named)
 **Tier 2** persistence (the `provenanceMarks` template — sidecar + Rust opaque
 `Value` mirror + staleness via `sourceHash`); **Tier 3** consumption (letting
 `estimateDependencies`/coach/spec-test operate over parts) + treemap reconciliation.
+
+---
+
+## 2026-07-02 — StructuralPart Tier 2: persistence + staleness/orphan annotation
+
+**What changed.** Made the discovered parts **durable** and **honest**, following
+the `provenanceMarks`/`gist` template exactly. No new AGENTS.md convention — this
+is the standard "new persisted field" recipe.
+
+- **2a Persistence (bare array, like `reverseOutlines`).**
+  - `services/repository.ts`: `StoredProjectData.structuralParts?: StructuralPart[]`
+    (after `provenance`).
+  - `state/project-state.ts`: `saveCurrentState` writes `structuralParts`;
+    `loadProject` **converts the Tier-1 hard-reset** `structuralParts: []` into
+    hydration `data.structuralParts ?? []` (create-demo / create-new stay `[]`).
+  - `features/structure/use-structural-parts-actions.ts`: after
+    `setStructuralParts`, `await saveCurrentState()` (mirrors `use-gist-actions`),
+    so a discovery is committed immediately rather than riding the 60 s autosave.
+  - **Rust trio** (opaque `Value`, per the 2026-06-24 no-strict-mirror lesson):
+    `project/layout.rs` → `structural_parts_json()` = `.twriter/structural-parts.json`;
+    `types.rs` → `structural_parts: Option<serde_json::Value>`; `commands/document.rs`
+    → `read_from` reads it + adds it to the named struct literal, `write_to` writes
+    when `Some`. Committed to git (the scaffold `.gitignore` ignores only the
+    sqlite cache + diagnostics + agent-output). Browser repo unchanged (whole-blob).
+- **2b Staleness / orphan annotation (mirrors gist `recomputeStale`; annotate,
+  never rewrite — P6).**
+  - `sourceHash` is now populated at discovery:
+    `computeHash(normalizeForHash(markdown.slice(span)))` per part (reuses
+    `lib/utils.computeHash` + `lib/gist-helpers.normalizeForHash`, so a
+    formatting-only edit doesn't trip staleness).
+  - New pure `lib/structural-part-helpers.ts` `recomputeStructuralStale(parts,
+    markdown, sections)` → `{ staleIds, orphanIds }`: `resolvePart` unresolved ⇒
+    orphan; else hash mismatch ⇒ stale.
+  - View: `DependencyGraphModal.tsx` computes the sets in a `useMemo` and passes
+    them to `TopoParts`, which tints the part `Province` nodes — **orphan = mauve**
+    ("Can't locate this part anymore"), **stale = slate** ("Source changed since
+    discovery") — mirroring `GistProse`'s vocabulary. `Province` gained two optional
+    additive props (`tint`, `title`); ATLAS/RADIX pass neither, so they're
+    unchanged. The live anchor-orphan set is folded into `derivePartsModel`'s
+    `hasOrphans`. No new ephemeral slice / debounce (the modal is opened on demand).
+- **Tests.** `structural-part-helpers.test.ts` gains a `recomputeStructuralStale`
+  suite (fresh = clean; content edit ⇒ stale; formatting-only ⇒ not stale; missing
+  anchor ⇒ orphan) whose `stamp` helper reproduces the discovery-time `sourceHash`
+  formula, pinning the population contract. New Rust
+  `structural_parts_round_trips_through_write_then_read` mirrors the provenance one.
+
+**Verify.** `npm run typecheck` clean; `npm test` 647 pass; `npm run lint` 0 errors
+(only pre-existing `warn`-level max-lines/complexity); `npm run build` succeeds.
+Rust `cargo test` could **not** build in this environment — the tauri crate needs
+GTK dev libs (`gdk-3.0` absent: "The system library `gdk-3.0` required by crate
+`gdk-sys` was not found"), unrelated to these edits; the round-trip test is an
+exact mirror of `provenance_round_trips_through_write_then_read` and must be run on
+a desktop toolchain. Manual: Discover parts → reload → parts persist and re-render;
+edit a part's prose → that node reads slate (stale); delete its span → mauve
+(orphan); re-run discovery → flags clear.
+
+**Rollback.** `git revert`. To drop only the on-disk data, delete
+`.twriter/structural-parts.json` (the loader tolerates its absence — `?? []`).
+Reverting the TS + Rust together is clean; serde silently ignores the field if only
+one side is rolled back.

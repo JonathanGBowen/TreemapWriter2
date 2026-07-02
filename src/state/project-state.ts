@@ -395,8 +395,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         reverseOutlines: data.reverseOutlines || [],
         gist: data.gist ?? null,
         provenanceMarks: data.provenance?.marks ?? [],
-        // Tier 1 is in-memory only (not persisted); a fresh load starts empty.
-        structuralParts: [],
+        structuralParts: data.structuralParts ?? [],
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
 
@@ -513,6 +512,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       reverseOutlines: state.reverseOutlines,
       gist: state.gist,
       provenance: { marks: state.provenanceMarks },
+      structuralParts: state.structuralParts,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
       lastModified: Date.now(),

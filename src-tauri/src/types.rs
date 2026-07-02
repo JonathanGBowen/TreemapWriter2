@@ -275,6 +275,12 @@ pub struct StoredProjectData {
     /// shape can never reject the whole save (the 2026-06-24 strict-mirror lesson).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub provenance: Option<serde_json::Value>,
+    /// The document's discovered structural-functional parts (`.twriter/structural-parts.json`).
+    /// Schema-agnostic on the Rust side — the TS layer owns the shape (a bare `StructuralPart[]`:
+    /// anchored move spans mapped many-to-many onto sections). Opaque `Value`, like `gist`/
+    /// `provenance`, so a sparse/evolving shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub structural_parts: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

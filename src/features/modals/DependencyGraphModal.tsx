@@ -31,6 +31,7 @@ import { useReducedMotion } from './topo/useReducedMotion';
 import { TK } from './topo/tk';
 import { AtlasGlyph, CloseGlyph, NetworkGlyph, PartsGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
 import { useStructuralPartsActions } from '../structure/use-structural-parts-actions';
+import { recomputeStructuralStale } from '../../lib/structural-part-helpers';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -335,10 +336,18 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   // The fifth domain layer, read straight from the store (the PARTS projection's
   // trigger stays self-contained — no new ModalLayer/App wiring).
   const structuralParts = useStore((s) => s.structuralParts);
+  const markdown = useStore((s) => s.markdown);
   const { runDiscoverStructuralParts } = useStructuralPartsActions();
   const reduced = useReducedMotion();
 
   const model = useMemo(() => deriveTopo(sections, testSuite), [sections, testSuite]);
+  // Staleness/orphan annotation for the PARTS projection (mirrors gist recompute):
+  // orphan = anchors no longer relocate; stale = span text changed since discovery.
+  // Opened-on-demand surface, so no ephemeral slice/debounce is needed.
+  const { staleIds, orphanIds } = useMemo(
+    () => recomputeStructuralStale(structuralParts, markdown, sections),
+    [structuralParts, markdown, sections],
+  );
   // the structural centre, read off the direction of the arcs (rides the same memo)
   const centering = useMemo(() => computeCentering(model), [model]);
 
@@ -566,6 +575,8 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
               <TopoParts
                 model={model}
                 parts={structuralParts}
+                staleIds={staleIds}
+                orphanIds={orphanIds}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}

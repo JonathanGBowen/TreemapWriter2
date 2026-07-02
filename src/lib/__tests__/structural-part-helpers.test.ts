@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePart, computeDivergences } from '../structural-part-helpers';
-import { parseMarkdown } from '../utils';
+import { resolvePart, computeDivergences, recomputeStructuralStale } from '../structural-part-helpers';
+import { computeHash, parseMarkdown } from '../utils';
 import { anchorFor } from '../paragraph-helpers';
+import { normalizeForHash } from '../gist-helpers';
 import type { Section, StructuralPart } from '../../types';
 
 const md = [
@@ -69,6 +70,49 @@ describe('resolvePart', () => {
     expect(r.orphan).toBe(true);
     expect(r.sectionIds).toEqual([]);
     expect(r.startOffset).toBe(-1);
+  });
+});
+
+/**
+ * Stamp a part's `sourceHash` exactly as discovery does in
+ * `use-structural-parts-actions` (resolvePart → computeHash∘normalizeForHash of the
+ * span). Reproducing it here pins the population contract: a part stamped this way
+ * must read fresh under `recomputeStructuralStale` on the same source.
+ */
+const stamp = (part: StructuralPart, source: string, secs: Section[]): StructuralPart => {
+  const { startOffset, endOffset, orphan } = resolvePart(part, source, secs);
+  return {
+    ...part,
+    sourceHash: orphan ? undefined : computeHash(normalizeForHash(source.slice(startOffset, endOffset))),
+  };
+};
+
+describe('recomputeStructuralStale', () => {
+  // A part spanning A's preamble through A.2, with interior prose (A.1's body) to edit.
+  const freshPart = () =>
+    stamp(makePart('Alpha preamble paragraph.', 'Body of A two.', { id: 'p1' }), md, sections);
+
+  it('a freshly-stamped part is neither stale nor orphan', () => {
+    expect(recomputeStructuralStale([freshPart()], md, sections)).toEqual({ staleIds: [], orphanIds: [] });
+  });
+
+  it('an edit to the span text marks exactly that part stale', () => {
+    const edited = md.replace('Body of A one.', 'Body of A one, rewritten.');
+    const { staleIds, orphanIds } = recomputeStructuralStale([freshPart()], edited, parseMarkdown(edited));
+    expect(staleIds).toEqual(['p1']);
+    expect(orphanIds).toEqual([]);
+  });
+
+  it('a formatting-only edit does NOT mark the part stale', () => {
+    const edited = md.replace('Body of A one.', 'Body of A *one*.');
+    expect(recomputeStructuralStale([freshPart()], edited, parseMarkdown(edited)).staleIds).toEqual([]);
+  });
+
+  it('a part whose start anchor is gone is orphaned, not stale', () => {
+    const edited = md.replace('Alpha preamble paragraph.', 'Zeta preamble paragraph.');
+    const { staleIds, orphanIds } = recomputeStructuralStale([freshPart()], edited, parseMarkdown(edited));
+    expect(orphanIds).toEqual(['p1']);
+    expect(staleIds).toEqual([]);
   });
 });
 

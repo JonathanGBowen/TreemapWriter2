@@ -21,9 +21,21 @@ import { TK } from './tk';
 
 const mono = 'JetBrains Mono, monospace';
 
+// Staleness vocabulary, mirrored from GistProse onto the part nodes. Off-palette
+// literals (SVG needs hex; the topo surface can't reach CSS var()): mauve = the
+// part's anchors can't be relocated (orphan); slate = its source changed (stale).
+// eslint-disable-next-line no-restricted-syntax
+const PART_ORPHAN_MAUVE = '#cf9fb0';
+// eslint-disable-next-line no-restricted-syntax
+const PART_STALE_SLATE = '#8aa6c4'; // = --color-hld-muted-text-2, GistProse's stale hue
+
 export interface TopoPartsProps {
   model: TopoModel;
   parts: StructuralPart[];
+  /** Part ids whose source span changed since discovery (tinted slate). */
+  staleIds: string[];
+  /** Part ids whose anchors can no longer be relocated (tinted mauve). */
+  orphanIds: string[];
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -80,6 +92,8 @@ const DiscoverButton: React.FC<{ label: string; discovering: boolean; onDiscover
 export const TopoParts: React.FC<TopoPartsProps> = ({
   model,
   parts,
+  staleIds,
+  orphanIds,
   selectedId,
   hoveredId,
   editorId,
@@ -94,7 +108,9 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
   onOpen,
   onDiscover,
 }) => {
-  const pm = useMemo(() => derivePartsModel(model, parts), [model, parts]);
+  const pm = useMemo(() => derivePartsModel(model, parts, orphanIds), [model, parts, orphanIds]);
+  const staleSet = useMemo(() => new Set(staleIds), [staleIds]);
+  const orphanSet = useMemo(() => new Set(orphanIds), [orphanIds]);
   const layout = useMemo(() => partsLayout(pm), [pm]);
   const lineColor = useMemo(() => {
     const mm: Record<string, string> = {};
@@ -210,22 +226,28 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
               );
             })}
 
-            {pm.partStations.map((s) => (
-              <Province
-                key={s.id}
-                s={s}
-                node={m[s.id]}
-                color={TK.purple}
-                selected={s.id === selectedId}
-                hovered={s.id === hoveredId}
-                dimmed={!inField(s.id)}
-                isHere={false}
-                reduced={reduced}
-                onSelect={onSelect}
-                onOpen={openIfSection}
-                onHover={onHover}
-              />
-            ))}
+            {pm.partStations.map((s) => {
+              const orphan = orphanSet.has(s.id);
+              const stale = !orphan && staleSet.has(s.id);
+              return (
+                <Province
+                  key={s.id}
+                  s={s}
+                  node={m[s.id]}
+                  color={TK.purple}
+                  tint={orphan ? PART_ORPHAN_MAUVE : stale ? PART_STALE_SLATE : null}
+                  title={orphan ? "Can't locate this part anymore" : stale ? 'Source changed since discovery' : undefined}
+                  selected={s.id === selectedId}
+                  hovered={s.id === hoveredId}
+                  dimmed={!inField(s.id)}
+                  isHere={false}
+                  reduced={reduced}
+                  onSelect={onSelect}
+                  onOpen={openIfSection}
+                  onHover={onHover}
+                />
+              );
+            })}
 
             {pm.sectionStations.map((s) => {
               const dimmed = (filter ? s.partId !== filter : false) || !inField(s.id);

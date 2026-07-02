@@ -61,16 +61,26 @@ function partStation(part: StructuralPart, i: number): Station {
  * column reuses the exact Stations (sym/status/title) the other projections show
  * rather than re-flattening the tree. Only sections a part actually maps onto are
  * included (a focused bipartite graph); stale section ids are skipped.
+ *
+ * `orphanIds` is the live anchor-orphan set (from `recomputeStructuralStale`): a
+ * part whose anchors no longer relocate. Folded into `hasOrphans` because a part
+ * can go anchor-orphan while its DISCOVERY-time `sectionIds` still point at live
+ * sections — the stored mapping alone would miss it.
  */
-export function derivePartsModel(model: TopoModel, parts: StructuralPart[]): PartsModel {
+export function derivePartsModel(
+  model: TopoModel,
+  parts: StructuralPart[],
+  orphanIds: string[] = [],
+): PartsModel {
   const partStations = parts.map((p, i) => partStation(p, i));
+  const orphanSet = new Set(orphanIds);
 
   const arcs: Arc[] = [];
   const usedSectionIds = new Set<string>();
   let hasOrphans = false;
   parts.forEach((p) => {
     const live = p.sectionIds.filter((sid) => !!model.stationById[sid]);
-    if (live.length === 0) hasOrphans = true;
+    if (live.length === 0 || orphanSet.has(p.id)) hasOrphans = true;
     live.forEach((sid) => {
       usedSectionIds.add(sid);
       arcs.push({ id: `${p.id}->${sid}`, source: p.id, target: sid, type: 'reference' });

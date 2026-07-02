@@ -112,14 +112,23 @@ export const Province: React.FC<{
   isHere: boolean;
   reduced: boolean;
   fieldRole?: FieldRole | null;
+  /**
+   * Optional annotation hue for the pip + symbol (PARTS staleness: mauve orphan /
+   * slate stale). When absent the pip keeps its status colour — ATLAS/RADIX never
+   * pass it, so their marks are unchanged.
+   */
+  tint?: string | null;
+  /** Native SVG tooltip (PARTS uses it for the stale/orphan explanation). */
+  title?: string;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onHover: (id: string | null) => void;
-}> = ({ s, node, color, selected, hovered, dimmed, isHere, reduced, fieldRole, onSelect, onOpen, onHover }) => {
+}> = ({ s, node, color, selected, hovered, dimmed, isHere, reduced, fieldRole, tint, title, onSelect, onOpen, onHover }) => {
   if (!node) return null;
   const meta = statusMeta(s.status);
   const active = selected || hovered;
   const ring = fieldRing(fieldRole);
+  const dot = tint ?? meta.c;
   return (
     <g
       transform={`translate(${node.x},${node.y})`}
@@ -135,6 +144,7 @@ export const Province: React.FC<{
       onPointerEnter={() => onHover(s.id)}
       onPointerLeave={() => onHover(null)}
     >
+      {title ? <title>{title}</title> : null}
       {ring && !selected && <circle r={node.r + 4} fill="none" stroke={ring} strokeWidth="1.4" opacity="0.7" />}
       {selected &&
         (reduced ? (
@@ -154,7 +164,7 @@ export const Province: React.FC<{
           </circle>
         ))}
       {s.fog && <circle r={node.r} fill="none" stroke={color} strokeWidth="1.4" strokeDasharray="4 4" opacity="0.55" />}
-      <circle r="5.5" fill={meta.c} stroke={TK.bg} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 5px ${meta.c})` }} />
+      <circle r="5.5" fill={dot} stroke={TK.bg} strokeWidth="1.2" style={{ filter: `drop-shadow(0 0 5px ${dot})` }} />
       <text
         x="0"
         y={-10}
@@ -163,7 +173,7 @@ export const Province: React.FC<{
         fontSize={11}
         fontWeight="800"
         letterSpacing="0.03em"
-        fill={selected ? TK.accent : TK.textHi}
+        fill={selected ? TK.accent : tint ?? TK.textHi}
         style={{ pointerEvents: 'none', paintOrder: 'stroke', stroke: SEA, strokeWidth: 3 }}
       >
         {s.sym}
