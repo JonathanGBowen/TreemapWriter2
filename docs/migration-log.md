@@ -4963,3 +4963,199 @@ note.
 `ModalLayer`, `Dock`, `App` palette, `SpecTab`, `PromptsGraphModal`, `src-tauri/types.rs`)
 each gained an additive entry that reverts cleanly. The spec sweep falls back to its prior
 behavior once `startSpecSweep` is reverted to `openInterpolate`.
+
+---
+
+## 2026-07-01 — StructuralPart faculty (Tier 1: in-memory vertical slice)
+
+**What changed.** A first-class **`StructuralPart`** — the fifth domain layer —
+decoupled from the markdown-heading `Section` grid, remediating
+`docs/structural-part-audit.md` §V (the tool's "structural" analysis was welded to
+headings, so a functional part that *spans* sections, *subdivides* one, or *belongs
+to two wholes* was inexpressible). Tier 1 is a coherent end-to-end slice that
+discovers parts from the whole document, anchors them, maps them many-to-many onto
+sections, and visualises them. **In-memory only** — parts live in a regenerable
+domain field, not yet persisted (persistence + staleness is the named Tier-2 defer).
+
+- **Type** — `StructuralPart { id; kind; claim; startAnchor; endAnchor; sectionIds;
+  confidence; rationale; sourceHash? }` in `src/types/index.ts` (near `SegmentEdit`;
+  extend, not collapse). Anchored by the verbatim literal-match-or-orphan pattern
+  (`anchorFor`/`findBlockByAnchor`), never char offsets.
+- **AI faculty** — `discoverStructuralParts`: ONE whole-document pass (the sibling
+  of Articulation, NOT its recursive heading descent), modeled on `analyzeGist`.
+  New `src/services/ai/ai-provider.structural-parts.ts` (JSON schema +
+  `buildUserPrompt` over numbered blocks + one `generateText` + a tolerant
+  `normalizeStructuralParts`). The MODEL emits block ranges; the faculty derives
+  `startAnchor`/`endAnchor` via `anchorFor(block.text)` and DROPS any part whose
+  indices are out of range/reversed or whose anchor is empty (mirrors
+  `parseSegmentResponse`). Returns `[]` on junk — never throws, never fabricates;
+  `sectionIds` is left empty here.
+- **Provider seam** — `discoverStructuralParts` on the `AIProvider` interface +
+  `DiscoverStructuralPartsInput` (`src/services/ai-provider.ts`); a 3-line impl
+  (`ai-provider.impl.ts`) mirroring `segmentSpan`; a new `discoverStructuralParts`
+  call kind (`model-types.ts` union + `AI_CALL_KINDS` + `AI_CALL_KIND_LABELS`) +
+  a `DEFAULT_MODEL_CONFIG` heavy/thinking entry (whole-document reasoning).
+- **Prompt** — one editable `.md`, `discover-structural-parts.md`, under the
+  existing `'segmentation'` registry category (`key:
+  'discoverStructuralPartsPrompt'`, `flow: 'discoverStructuralParts'`); added to
+  `HISTORICAL_KEYS` in the registry drift-guard test.
+- **Pure helper** — new `src/lib/structural-part-helpers.ts`: `resolvePart(part,
+  markdown, sections)` relocates the anchors (`segmentParagraphs` +
+  `findBlockByAnchor`) to a `[startOffset,endOffset]` span and maps it onto the
+  sections whose OWN content extent it overlaps (`orphan` if unresolved);
+  `computeDivergences(parts, sections)` flags `spansMultiple` / `subdivides` /
+  `shared`. **Own-content extents, not subtree extents** — subtree ranges nest, so
+  a subtree mapping would map every part onto all its ancestors and make the flags
+  meaningless (a deliberate, documented deviation from the audit's wording).
+- **State** — `structuralParts: StructuralPart[]` + `setStructuralParts` on
+  `document-state.ts` (mirrors `provenanceMarks`); reset on project load/switch in
+  `project-state.ts` (all three reset sites). Not persisted in Tier 1.
+- **Actions hook** — new `src/features/structure/use-structural-parts-actions.ts`:
+  `runDiscoverStructuralParts()` mirrors `use-gestalt-actions.ts` (module
+  single-flight guard + global `isProcessing`, `segmentParagraphs(markdown)` →
+  blocks, `resolveModelChoice` + `guardContextFit`, `beginOp`/`endOp`, the faculty
+  call, then per-part `resolvePart` to fill `sectionIds`, `setStructuralParts`,
+  `notifyAiError` on empty/null).
+- **View** — a 4th **PARTS** projection in the Argument Topology modal
+  (`DependencyGraphModal.tsx`): new `topo-parts.ts` (`derivePartsModel` →
+  part-nodes + `Arc`-shaped membership edges, reusing the derived section
+  Stations), new `topo-layout-parts.ts` (a deterministic bipartite grid emitting
+  `SimNode`, mirroring `topo-layout-radix.ts`), and `TopoParts.tsx` reusing the
+  shared `Province`/`Route` marks — so the many-to-many mapping (a part fanning to
+  two sections = SPANS; a section fed by two parts = SHARED) renders for free.
+  Self-contained **DISCOVER PARTS** button on the surface (no new Dock/palette/
+  ui-state wiring); a `'parts'` mode added to `LegendKey`. Parts read purple
+  (the centering hue) against the section continents.
+- **Tests** — new `ai-provider.structural-parts.test.ts` (prompt assembly, tolerant
+  parse, out-of-range/reversed/empty-anchor dropping, confidence clamp) and
+  `structural-part-helpers.test.ts` (anchor→span→sectionIds, divergence flags,
+  orphan, stale-id scoping).
+
+**Verify.** `npm run typecheck` clean; `npm run lint` 0 errors (only pre-existing
+`warn`-level max-lines/complexity, incl. `TopoParts` matching its `TopoRadix`
+sibling); `npm test` 643 pass (incl. the two new suites + the registry gate);
+`npm run build` succeeds. Manual: Argument Topology modal → PARTS toggle →
+DISCOVER PARTS → parts render as purple nodes with dashed edges to the sections
+they map onto; click a part to light its sections; a shared section shows two
+incoming edges. (Live AI needs a key in `src-tauri/.env.local`; the provider test
+uses a mock.)
+
+**Rollback.** `git revert`. New files are additive; the touched shared files
+(`types/index.ts`, prompt registry + its drift-guard test, `ai-provider.specs`
+test's full-config literal, `model-types`/`model-config`, `ai-provider`
+interface/impl, `document-state`, `project-state`, `DependencyGraphModal`,
+`LegendKey`, topo `icons`) each gained an additive entry that reverts cleanly. No
+Rust, persistence, or repository changes (Tier 1 is in-memory). Deferred (named):
+**Tier 2** persistence (the `provenanceMarks` template — sidecar + Rust opaque
+`Value` mirror + staleness via `sourceHash`); **Tier 3** consumption (letting
+`estimateDependencies`/coach/spec-test operate over parts) + treemap reconciliation.
+
+---
+
+## 2026-07-02 — StructuralPart Tier 2: persistence + staleness/orphan annotation
+
+**What changed.** Made the discovered parts **durable** and **honest**, following
+the `provenanceMarks`/`gist` template exactly. No new AGENTS.md convention — this
+is the standard "new persisted field" recipe.
+
+- **2a Persistence (bare array, like `reverseOutlines`).**
+  - `services/repository.ts`: `StoredProjectData.structuralParts?: StructuralPart[]`
+    (after `provenance`).
+  - `state/project-state.ts`: `saveCurrentState` writes `structuralParts`;
+    `loadProject` **converts the Tier-1 hard-reset** `structuralParts: []` into
+    hydration `data.structuralParts ?? []` (create-demo / create-new stay `[]`).
+  - `features/structure/use-structural-parts-actions.ts`: after
+    `setStructuralParts`, `await saveCurrentState()` (mirrors `use-gist-actions`),
+    so a discovery is committed immediately rather than riding the 60 s autosave.
+  - **Rust trio** (opaque `Value`, per the 2026-06-24 no-strict-mirror lesson):
+    `project/layout.rs` → `structural_parts_json()` = `.twriter/structural-parts.json`;
+    `types.rs` → `structural_parts: Option<serde_json::Value>`; `commands/document.rs`
+    → `read_from` reads it + adds it to the named struct literal, `write_to` writes
+    when `Some`. Committed to git (the scaffold `.gitignore` ignores only the
+    sqlite cache + diagnostics + agent-output). Browser repo unchanged (whole-blob).
+- **2b Staleness / orphan annotation (mirrors gist `recomputeStale`; annotate,
+  never rewrite — P6).**
+  - `sourceHash` is now populated at discovery:
+    `computeHash(normalizeForHash(markdown.slice(span)))` per part (reuses
+    `lib/utils.computeHash` + `lib/gist-helpers.normalizeForHash`, so a
+    formatting-only edit doesn't trip staleness).
+  - New pure `lib/structural-part-helpers.ts` `recomputeStructuralStale(parts,
+    markdown, sections)` → `{ staleIds, orphanIds }`: `resolvePart` unresolved ⇒
+    orphan; else hash mismatch ⇒ stale.
+  - View: `DependencyGraphModal.tsx` computes the sets in a `useMemo` and passes
+    them to `TopoParts`, which tints the part `Province` nodes — **orphan = mauve**
+    ("Can't locate this part anymore"), **stale = slate** ("Source changed since
+    discovery") — mirroring `GistProse`'s vocabulary. `Province` gained two optional
+    additive props (`tint`, `title`); ATLAS/RADIX pass neither, so they're
+    unchanged. The live anchor-orphan set is folded into `derivePartsModel`'s
+    `hasOrphans`. No new ephemeral slice / debounce (the modal is opened on demand).
+- **Tests.** `structural-part-helpers.test.ts` gains a `recomputeStructuralStale`
+  suite (fresh = clean; content edit ⇒ stale; formatting-only ⇒ not stale; missing
+  anchor ⇒ orphan) whose `stamp` helper reproduces the discovery-time `sourceHash`
+  formula, pinning the population contract. New Rust
+  `structural_parts_round_trips_through_write_then_read` mirrors the provenance one.
+
+**Verify.** `npm run typecheck` clean; `npm test` 647 pass; `npm run lint` 0 errors
+(only pre-existing `warn`-level max-lines/complexity); `npm run build` succeeds.
+Rust `cargo test` could **not** build in this environment — the tauri crate needs
+GTK dev libs (`gdk-3.0` absent: "The system library `gdk-3.0` required by crate
+`gdk-sys` was not found"), unrelated to these edits; the round-trip test is an
+exact mirror of `provenance_round_trips_through_write_then_read` and must be run on
+a desktop toolchain. Manual: Discover parts → reload → parts persist and re-render;
+edit a part's prose → that node reads slate (stale); delete its span → mauve
+(orphan); re-run discovery → flags clear.
+
+**Rollback.** `git revert`. To drop only the on-disk data, delete
+`.twriter/structural-parts.json` (the loader tolerates its absence — `?? []`).
+Reverting the TS + Rust together is clean; serde silently ignores the field if only
+one side is rolled back.
+
+---
+
+## 2026-07-02 — StructuralPart Tier 3 (complete the feature + consumption)
+
+**What changed.** Completed the `StructuralPart` feature and began the audit's
+(`docs/structural-part-audit.md` §V.3–V.5) consumption remediation. All TypeScript
+(no Rust). Articulation and `SegmentEdit` untouched.
+
+- **Stable content-based part IDs** — `normalizeStructuralParts`
+  (`ai-provider.structural-parts.ts`) now ids a part by
+  `computeHash(startAnchor + endAnchor + claim)` with an in-batch collision suffix
+  (the `parseMarkdown` pattern), so a part keeps its id across re-discovery. Fixes the
+  latent selection-shuffle; nothing external keyed off the old positional id.
+- **`PartInspector`** (`topo/Inspector.tsx`) — selecting a part node (whose id lives in
+  the bipartite parts model, not `model.stationById`, so it previously fell to
+  `EmptyInspector`) now shows its claim, kind, the sections it maps onto (live), its
+  divergences, and — when merely stale — a no-AI **RE-ANCHOR** button. Wired through
+  `DependencyGraphModal` (`selectedPart` + a `computeLiveDivergences` memo).
+- **Per-part repair, Mode 1 (no AI)** — `reanchoredPart` (`lib/structural-part-helpers.ts`)
+  re-stamps a stale part's anchors + `sourceHash` + `sectionIds` from its current span;
+  `reanchorPart` in `use-structural-parts-actions.ts` persists via `saveCurrentState`.
+  Orphans (no span to relocate) are a no-op, mirroring gist hiding its refresh for orphans.
+- **Divergence surfacing** — `computeDivergences` (built in Tier 1, previously unused) is
+  now consumed via `computeLiveDivergences` (re-resolves `sectionIds` against the live
+  text) into the `PartInspector`; a `WITHIN` row was added to the parts DIVERGENCE legend
+  (`topo/LegendKey.tsx`, joining SPANS + SHARED).
+- **Consumption (augment-only, omit when no parts)** — a compact `summarizeParts` block
+  augments `buildCoachPrompt` (fixes both `getCoachAdvice` + `streamCoachAdvice` at one
+  assembly point; `CoachModal` passes parts + folds them into its cache hash); an advisory
+  cross-section-coupling block augments `estimateDependencies` (output stays section-keyed
+  — zero consumer change; `App.tsx` passes parts). No new `AICallKind` / model-config /
+  prompt-registry entry.
+- **Deferred (named):** spec-test consumption (live-parts vs. A/B snapshot-operand
+  mismatch could mislead); Mode-2 AI single-part re-discovery; treemap reconciliation
+  (closed-out in favor of the topo PARTS projection — the treemap can't express
+  many-to-many and stays gated on the killed-heatmap verdict).
+
+**Verify.** `npm run typecheck` clean; `npm test` 653 pass (new cases: stable-id +
+collision, `reanchoredPart`, `computeLiveDivergences`, `summarizeParts`); `npm run lint`
+0 errors (only pre-existing `warn`-level max-lines/complexity); `npm run build` succeeds.
+Manual: in the Argument Topology modal → PARTS, select a part → the inspector shows its
+claim/kind/sections/divergences; a spanning part reads "Spans N sections"; edit a part's
+prose → the node reads stale → RE-ANCHOR clears it; re-discover → ids + selection persist;
+open Coach with parts present → the STRUCTURAL PARTS summary appears (and nothing when
+empty); Estimate Dependencies with parts → the advisory block is included.
+
+**Rollback.** `git revert` (pure TS; no schema/persistence change this tier). The
+consumption blocks and the inspector are additive and inert when `structuralParts` is
+empty, so a partial revert degrades cleanly to Tier-2 behavior.

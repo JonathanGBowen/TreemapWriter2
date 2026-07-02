@@ -151,6 +151,7 @@ mis-modeling new work:
 | Grimoire / Analysis | `SectionAnalysis`, `AnalysisSpell`, `AnalysisVersion`, `SectionAnalysisState`, `DialogueMessage` | structural analysis + Socratic dialogue (the Analysis/Dialogue tabs) |
 | Glass-Box revision | `RevisionProposal`, `RevisionType`, `RevisionMode`, `SourceDocument`, `DirectiveSuggestion` | the proposal-driven revision workspace |
 | Living Sprints | `SprintPlan`, `SprintMove`, `SprintMoveRole`, `ArgumentShape` | the timed, move-based writing session |
+| Structural parts | `StructuralPart` | the argument's functional parts (the *moves* it makes) as anchored text spans, decoupled from the heading `Section` grid and mapped many-to-many onto it (a part may span sections, subdivide one, or belong to two wholes). Discovered by `discoverStructuralParts`; Tier 1 is in-memory only |
 
 One naming trap: **`TestSuite` / `TestSuiteEntry` is a legacy umbrella name, not
 unit tests.** `TestSuite` is a `{ [sectionId]: TestSuiteEntry }` map; each entry

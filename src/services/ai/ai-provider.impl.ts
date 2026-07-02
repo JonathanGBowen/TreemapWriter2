@@ -25,6 +25,7 @@ import type {
   GistAnalysis,
   GistComposition,
   GistSpan,
+  StructuralPart,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
 import {
@@ -34,6 +35,7 @@ import {
   parseNextAction,
 } from '../../lib/diagnostic-helpers';
 import { safeJsonParse } from '../../lib/utils';
+import { computeDivergences, summarizeParts } from '../../lib/structural-part-helpers';
 import {
   buildAnalysisRequestText,
   buildRefactorRequestText,
@@ -71,6 +73,7 @@ import type {
   GenerateSpecLevelInput,
   DevelopSpecLevelInput,
   SegmentSpanInput,
+  DiscoverStructuralPartsInput,
   ReconstructWholeInput,
   RecenterInput,
   RunAgentInput,
@@ -98,6 +101,7 @@ import type { QuotaAnnotatedError } from './model-types';
 import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { segmentSpan, type SegmentSpanResult } from './ai-provider.segment';
+import { discoverStructuralParts } from './ai-provider.structural-parts';
 import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
@@ -138,7 +142,11 @@ function buildCoachPrompt(input: CoachAdviceInput): string {
         ) || [],
     };
   });
-  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n`;
+  const partsSummary = summarizeParts(input.structuralParts ?? [], input.sections);
+  const partsBlock = partsSummary
+    ? `\n\nSTRUCTURAL PARTS (the argument's discovered configuration — cross-section couplings the per-section table above cannot express):\n${partsSummary}\n`
+    : '';
+  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}`;
 }
 
 export interface ProviderClients {
@@ -428,6 +436,16 @@ export class MultiProviderAIProvider implements AIProvider {
     });
   }
 
+  async discoverStructuralParts(input: DiscoverStructuralPartsInput): Promise<StructuralPart[]> {
+    const choice = this.choose('discoverStructuralParts', input);
+    return discoverStructuralParts(
+      this.dispatch(choice, 'discoverStructuralParts'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {
     // Whole-document (root) evaluation reads the entire document, uncapped (the
     // caller has already verified it fits the model window).
@@ -531,7 +549,23 @@ export class MultiProviderAIProvider implements AIProvider {
       outgoingCommitments: input.testSuite[s.id].spec?.outgoingCommitments || [],
     }));
 
-    const prompt = `\n${input.config.dependenciesPrompt}\n\nSECTIONS DATA:\n${JSON.stringify(contextData, null, 2)}\n  `;
+    // Advisory only: name the cross-section couplings a single structural part makes,
+    // so the model can weigh links the per-section commitment strings can't express.
+    // Never authoritative — this pass is edge-sensitive.
+    const parts = input.structuralParts ?? [];
+    let partsBlock = '';
+    if (parts.length > 0) {
+      const div = computeDivergences(parts, flatSections);
+      const titleById = new Map(flatSections.map((s) => [s.id, s.title]));
+      const couplings = parts
+        .filter((p) => div[p.id]?.spansMultiple)
+        .map((p) => `- one "${p.kind}" move couples: ${p.sectionIds.map((id) => titleById.get(id) ?? id).join(' + ')}`);
+      if (couplings.length > 0) {
+        partsBlock = `\n\nSTRUCTURAL PARTS (advisory — a single argument move spans these sections; inform, do not force edges):\n${couplings.join('\n')}\n`;
+      }
+    }
+
+    const prompt = `\n${input.config.dependenciesPrompt}\n\nSECTIONS DATA:\n${JSON.stringify(contextData, null, 2)}\n${partsBlock}  `;
 
     const choice = this.choose('estimateDependencies', input);
     const text = await this.dispatch(choice, 'estimateDependencies').generateText({

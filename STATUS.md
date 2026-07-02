@@ -49,6 +49,42 @@ exegetical `mainClaim`), shown in the Spec tab and persisted via the YAML sideca
 inherit the app's title-based section-id caveat; the desktop `reverse_summary` sidecar
 mirror was added by inspection but not `cargo check`'d here (no GTK libs in CI).
 
+**Structural parts — Tier 1** shipped 2026-07-01 (see
+[`docs/migration-log.md`](docs/migration-log.md); audit
+[`docs/structural-part-audit.md`](docs/structural-part-audit.md) §V). A first-class
+`StructuralPart` (the fifth domain layer) decoupled from the heading-`Section` grid:
+anchored to arbitrary text spans and mapped **many-to-many** onto sections, so a
+part that *spans* sections, *subdivides* one, or *belongs to two wholes* is finally
+expressible. Discovered by a new AI faculty **added alongside Articulation** (which
+stays the heading tool) — `discoverStructuralParts`, one whole-document pass modeled
+on `analyzeGist` (tolerant block-index→anchor parse, `[]` on junk). The vertical
+slice: the type + faculty + prompt + call kind, a pure
+`lib/structural-part-helpers.ts` (`resolvePart` anchor→span→`sectionIds` by
+own-content overlap; `computeDivergences` → `spansMultiple`/`subdivides`/`shared`),
+an in-memory `document-state` field + `use-structural-parts-actions` hook, and a 4th
+**PARTS** projection in the Argument Topology modal (a bipartite parts↔sections map
+reusing the shared `Province`/`Route` marks, with a self-contained "Discover parts"
+button). **Tier 2** shipped 2026-07-02 (see
+[`docs/migration-log.md`](docs/migration-log.md)): parts are now **durable**
+(committed `.twriter/structural-parts.json` sidecar via the `provenanceMarks`
+template — bare array + Rust opaque-`Value` mirror; discovery calls `saveCurrentState`)
+and **honest** (a `sourceHash` stamped at discovery drives
+`recomputeStructuralStale` → the PARTS nodes tint **mauve = orphan** /
+**slate = stale**, mirroring `GistProse`; annotate, never rewrite). **Tier 3**
+shipped 2026-07-02 (see [`docs/migration-log.md`](docs/migration-log.md)) —
+*completing* the feature and beginning consumption: **stable content-based part
+IDs** (survive re-discovery — no selection-shuffle); a **`PartInspector`** (claim,
+kind, mapped sections, live divergences, and a no-AI **RE-ANCHOR** for stale parts —
+`reanchoredPart`); `computeDivergences` **wired into the view** (`computeLiveDivergences`
+→ the inspector + a `WITHIN` legend row); and **coach + dependencies consumption**
+(a compact `summarizeParts` block augments `buildCoachPrompt`; an advisory
+cross-section-coupling block augments `estimateDependencies` — both omit when there
+are no parts). *Deferred (named):* **spec-test consumption** (parts are anchored to
+the live doc, not the A/B snapshot operands — feeding it could mislead); **Mode-2 AI
+single-part re-discovery**; and **treemap reconciliation** — closed-out in favor of
+the topo PARTS projection (the treemap can't express many-to-many and stays gated on
+the killed-heatmap accessibility verdict).
+
 The **Quiet center column** shipped 2026-06-28 (see
 [`docs/migration-log.md`](docs/migration-log.md)) — the decided form of a Claude Design
 "Tidy Center Column" exploration. The editor's two structure-as-prose chrome blocks were

@@ -10,6 +10,7 @@ import type {
   SectionSpec,
   Snapshot,
   StoredGist,
+  StructuralPart,
   TestSuite,
   TestSuiteEntry,
   WholeFromPart,
@@ -80,6 +81,14 @@ export interface DocumentStateSlice {
    * the prose, never written into project.md. Empty until the first AI accept.
    */
   provenanceMarks: ProvenanceMark[];
+  /**
+   * The document's discovered structural-functional parts (the moves the argument
+   * makes), mapped many-to-many onto sections. Regenerable domain data — Tier 1 is
+   * in-memory only (NOT yet persisted to the sidecar), so it lives here beside the
+   * other per-document arrays and resets on project load/switch. Empty until the
+   * writer runs "Discover parts".
+   */
+  structuralParts: StructuralPart[];
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -96,6 +105,8 @@ export interface DocumentStateSlice {
   setProvenanceMarks: (marks: ProvenanceMark[]) => void;
   /** Record one AI span's provenance at accept-time. */
   addProvenanceMark: (mark: ProvenanceMark) => void;
+  /** Replace the document's discovered structural parts (the discovery result). */
+  setStructuralParts: (parts: StructuralPart[]) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -172,6 +183,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   reverseOutlines: [],
   gist: null,
   provenanceMarks: [],
+  structuralParts: [],
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -200,6 +212,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   setProvenanceMarks: (marks) => set({ provenanceMarks: marks }),
   addProvenanceMark: (mark) =>
     set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
+  setStructuralParts: (parts) => set({ structuralParts: parts }),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>

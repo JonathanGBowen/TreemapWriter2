@@ -51,6 +51,10 @@ impl Layout {
         self.twriter_dir().join("provenance.json")
     }
 
+    pub fn structural_parts_json(&self) -> PathBuf {
+        self.twriter_dir().join("structural-parts.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }
@@ -128,6 +132,10 @@ mod tests {
         assert_eq!(
             layout.reverse_outline_json(),
             Path::new("/projects/diss/.twriter/reverse-outline.json")
+        );
+        assert_eq!(
+            layout.structural_parts_json(),
+            Path::new("/projects/diss/.twriter/structural-parts.json")
         );
         assert_eq!(layout.cache_sqlite(), Path::new("/projects/diss/.twriter/index.sqlite"));
         assert_eq!(layout.gitignore(), Path::new("/projects/diss/.gitignore"));

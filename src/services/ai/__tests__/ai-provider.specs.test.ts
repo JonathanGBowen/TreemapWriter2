@@ -40,6 +40,7 @@ const config: PromptsConfig = {
   segmentLevelTask: '',
   segmentCritiqueTask: '',
   segmentSummaryTask: '',
+  discoverStructuralPartsPrompt: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */
