@@ -5159,3 +5159,39 @@ empty); Estimate Dependencies with parts → the advisory block is included.
 **Rollback.** `git revert` (pure TS; no schema/persistence change this tier). The
 consumption blocks and the inspector are additive and inert when `structuralParts` is
 empty, so a partial revert degrades cleanly to Tier-2 behavior.
+
+---
+
+## 2026-07-02 — Arpeggio integration: fidelity audit + phased roadmap (docs only)
+
+**What changed.** No code. Three new documents and the STATUS ritual:
+
+- **`docs/arpeggio-integration.md`** — the deliverable. §I: an adversarially-verified
+  audit of whether the app is *muddled* in its Gestalt implementation (verdict: yes —
+  in ontology and silences, not in its readings; four confirmed muddles, two charges
+  softened under verification, one high-severity absent frontier: the reader-side
+  mechanics of the 1923 grouping paper). §II: the conflict map between the donor
+  Arpeggio spec and this codebase (complements, not rivals; deep conflicts resolved;
+  rejected imports named with reasons). §III: the committed phases 0–9 with the four
+  user-fixed scope decisions of 2026-07-02.
+- **`docs/arpeggio-spec.md`** and **`docs/configuration-and-sequence.md`** — the two
+  user-provided source documents frozen as historical records (FOUNDING-style headers:
+  do not edit, do not implement from directly; the integration doc adjudicates).
+  Wertheimer's *On Truth* was read for the audit but is deliberately **not** committed
+  (third-party text).
+- **`STATUS.md`** — the roadmap added at the head of *Next (felt priorities)*; the
+  existing *Stable section IDs* item promoted from bug-triggered to Phase-1
+  load-bearing prerequisite.
+
+Produced by a 9-agent research pass (five code/doc exploration sweeps → fidelity
+adjudication + Arpeggio feature cartography → adversarial verification that
+spot-checked ~40 file citations and overturned/modified the weak ones → roadmap
+draft), then synthesized with the user's four recorded decisions.
+
+**Verify.** Docs-only: `npm test` / `npm run typecheck` / `npm run build` unaffected.
+Check internal links resolve (`arpeggio-integration.md` ↔ the two frozen sources ↔
+`gestalt-and-text-structure.md` / `structural-part-audit.md` / `STATUS.md`); check the
+STATUS entry's phase list matches `arpeggio-integration.md` §III.
+
+**Rollback.** `git revert` (pure docs). Nothing downstream consumes these files yet;
+Phase 0 is the first change that touches prompts/code and carries its own entry.

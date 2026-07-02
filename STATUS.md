@@ -304,6 +304,42 @@ streams keep their own inline indicators rather than the pill.
 
 ## Next (felt priorities)
 
+- **Arpeggio integration roadmap — planned 2026-07-02, phases 0–9 open.** An
+  adversarially-verified fidelity audit
+  ([`docs/arpeggio-integration.md`](docs/arpeggio-integration.md)) answered the
+  question *is the app muddled in its Gestalt implementation?* — yes, in ontology
+  and silences, not in its readings: (1) the heading-welded ontology
+  (`StructuralPart` is a node-set without an edge-set; every engine still
+  section-keyed); (2) the wrong order-norm (backward arcs measure *logical*
+  dependence where Wertheimer's precedence comes from the dynamics of grasping —
+  and order has no operation: no `move`, no admissibility); (3) the commitment
+  mesh scoped to textual adjacency; (4) no license for the honest heap; plus the
+  never-essayed reader-side frontier (grouping factors, Einstellung, adjacency
+  costs, IOUs, homotypy — the shipped staleness check is *inverted* relative to the
+  homotypy test). The same doc adjudicates the donor spec
+  ([`docs/arpeggio-spec.md`](docs/arpeggio-spec.md), theory in
+  [`docs/configuration-and-sequence.md`](docs/configuration-and-sequence.md)) —
+  complements, not rivals — and fixes the roadmap: **Phase 0** doctrine repairs
+  (fT receipts, heap license, order-verdict softening, one doc correction) →
+  **1** stable ULID section ids (subsumes the "Stable section IDs" item below —
+  now the load-bearing prerequisite) → **2** the W₁ graph layer (7 typed
+  part-to-part edges, authored germ parts with quarry bodies, function-tagged
+  realizations) → **3** ledger + declare/defer + capture inbox (+ distance-aware
+  mesh) → **4** the dedicated W₁ Canvas workspace (hand-placed persisted
+  positions; topo modal stays the derived lens) → **5** precedence engine +
+  admissibility/commutable runs (grasping-order, strategy-relative) → **6**
+  reorder-as-operation + homotypy candidates → **7** draft-mode Einstellung
+  surfaces (reader-holds, contract, available-material check, gestures, scaffold
+  lifecycle) → **8** adjacency diagnostics D1–D10, recentering-as-operation ("the
+  jolt, itemized"), reader simulation → **9** theory-currency migration of
+  progress surfaces. User-fixed constraints (2026-07-02): HLD stays canonical
+  (adopt only the semantic-color discipline + one reserved center-glow token);
+  theory currency primary with words demoted (treemap-area re-encoding stays
+  gated); the canvas is a new workspace, not a topo-modal extension; full roadmap,
+  one shippable phase per session/PR. Rejected imports (reasons in the doc):
+  one-file-per-block, audit-mode quarantine, the no-ghostwriting ban,
+  Anthropic-only assists, the paper/light theme, no-sync.
+
 - **Agentic-AI integration roadmap — WS1–WS4a shipped 2026-06-29.** A 2026-06-29 audit
   ([`docs/ai-integration-audit.md`](docs/ai-integration-audit.md)) found the gap is
   *integration*, not plumbing: ~30 typed call-kinds and two agentic substrates exist,
@@ -466,8 +502,10 @@ streams keep their own inline indicators rather than the pill.
   renames, and reordering. Move to opaque ULIDs assigned at section creation,
   stored as YAML frontmatter `id:` per section, with a one-time migration that
   walks existing sections. Open question: garbage-collect orphan IDs on delete,
-  or keep them so dependency edges survive an undo (default: keep). Trigger to
-  prioritize: any rename/reorder bug surfacing in real use.
+  or keep them so dependency edges survive an undo (default: keep). **Now Phase 1
+  of the Arpeggio integration roadmap above** — promoted from bug-triggered to
+  load-bearing prerequisite (realizations, reorder, homotypy, and per-section
+  maturity all key off stable ids).
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
