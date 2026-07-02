@@ -461,6 +461,12 @@ export interface SectionSpecTest {
   /** The Beethoven test, folded in: can the document's claim be read out of each
    *  side's prose? A part from which the whole cannot be recovered has drifted. */
   wholeSignature: { a: WholeSignatureAlignment; b: WholeSignatureAlignment };
+  /** Verbatim quotes grounding THIS section's `truth` + `wholeSignature` call — the
+   *  same receipts discipline the per-move deltas carry, extended to the whole-as-part
+   *  verdict (On Truth: whole-claims are the easiest to fake, so the tF/fT call must
+   *  show its work). Optional so a degraded/older result still parses; never
+   *  fabricated. */
+  wholeReceipts?: ComparisonReceipt[];
   summary: string;
   moveDeltas: MoveDelta[];
   /** Prose-level commitment breaks the revision introduced / healed for this part
@@ -498,6 +504,11 @@ export interface WholeVerdict {
   centerOfGravity: string;
   /** One paragraph: the whole-grounded read of B relative to A. */
   verdict: string;
+  /** Verbatim quotes from the CHANGED prose grounding the `truth` + center-of-gravity
+   *  read (the mesh delta is the hard evidence for severed joins; these ground what is
+   *  read out of the prose itself). An fT/tF verdict without a receipt is an assertion.
+   *  Optional so a degraded/older result still parses; never fabricated. */
+  receipts?: ComparisonReceipt[];
   /** The deterministic structural-join delta (the trustworthy spine). */
   meshDelta: MeshDelta;
   /** When the whole regressed (esp. tF), the recentering the structure now demands

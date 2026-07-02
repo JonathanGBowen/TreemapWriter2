@@ -165,6 +165,14 @@ const SECTION_JSON_SCHEMA = {
       properties: { a: { type: 'string', enum: SIGNATURES }, b: { type: 'string', enum: SIGNATURES } },
       required: ['a', 'b'],
     },
+    wholeReceipts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { quote: { type: 'string' }, side: { type: 'string', enum: ['a', 'b'] } },
+        required: ['quote', 'side'],
+      },
+    },
     commitmentDelta: {
       type: 'object',
       properties: {
@@ -225,6 +233,7 @@ function normalizeSection(raw: unknown, input: SpecTestSectionInput): SectionSpe
   const cd = rec.commitmentDelta && typeof rec.commitmentDelta === 'object' ? (rec.commitmentDelta as Record<string, unknown>) : {};
   const introduced = toFindings(cd.introduced);
   const healed = toFindings(cd.healed);
+  const wholeReceipts = toReceipts(rec.wholeReceipts);
 
   return {
     sectionTitle: input.sectionTitle,
@@ -234,6 +243,7 @@ function normalizeSection(raw: unknown, input: SpecTestSectionInput): SectionSpe
     truth: asTruth(rec.truth),
     direction: asDirection(rec.direction),
     wholeSignature: { a: asSignature(sig.a), b: asSignature(sig.b) },
+    ...(wholeReceipts.length ? { wholeReceipts } : {}),
     summary,
     moveDeltas,
     ...(introduced.length || healed.length ? { commitmentDelta: { introduced, healed } } : {}),
@@ -271,6 +281,14 @@ const WHOLE_JSON_SCHEMA = {
     direction: { type: 'string', enum: DIRECTIONS },
     centerOfGravity: { type: 'string' },
     verdict: { type: 'string' },
+    receipts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { quote: { type: 'string' }, side: { type: 'string', enum: ['a', 'b'] } },
+        required: ['quote', 'side'],
+      },
+    },
     recenteringVector: { type: 'string' },
   },
   required: ['truth', 'direction', 'centerOfGravity', 'verdict'],
@@ -305,11 +323,13 @@ function normalizeWhole(raw: unknown): Omit<WholeVerdict, 'meshDelta'> | null {
   const centerOfGravity = asTrimmed(rec.centerOfGravity);
   if (!verdict && !centerOfGravity) return null; // nothing usable → junk
   const recenteringVector = asTrimmed(rec.recenteringVector);
+  const receipts = toReceipts(rec.receipts);
   return {
     truth: asTruth(rec.truth),
     direction: asDirection(rec.direction),
     centerOfGravity,
     verdict,
+    ...(receipts.length ? { receipts } : {}),
     ...(recenteringVector ? { recenteringVector } : {}),
   };
 }

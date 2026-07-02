@@ -23,6 +23,8 @@ does this section depend on? Specify these so they INTERLOCK with the preceding 
 
 OUTGOING COMMITMENTS: What must this section establish that later sections will build on? Make each one something a later section's incoming context can actually receive — the commitments a section makes and the needs the next one brings are two halves of ONE mesh, not independent lists.
 
+THE HONEST-HEAP EXCEPTION: for a genuinely aggregate section — an inventory item, a glossary entry, a coordinate case with no argued throughline to its siblings — incoming/outgoing may honestly be empty. Do not manufacture interlocks the material does not have; a forced commitment is a worse fault than an admitted heap.
+
 CRITICAL: You MUST include a key-value pair for EVERY single section ID passed to you. Do not drop or skip any sections, even if they are short.
 
 Return a JSON object:

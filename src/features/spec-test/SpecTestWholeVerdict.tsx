@@ -1,6 +1,25 @@
 import { Pip } from '../shared/Pip';
 import { TRUTH_PIP, TRUTH_LABEL, DIR_LABEL } from './spec-test-config';
-import type { CommitmentFinding, SpecTestReport, WholeVerdict } from '../../types';
+import type { CommitmentFinding, ComparisonReceipt, SpecTestReport, WholeVerdict } from '../../types';
+
+function Receipts({ receipts }: { receipts: ComparisonReceipt[] }) {
+  if (!receipts.length) return null;
+  return (
+    <div className="mt-2">
+      <div className="font-mono text-[8px] uppercase tracking-[0.12em] text-hld-muted-text">receipts — what grounds the verdict</div>
+      <div className="mt-1 space-y-1">
+        {receipts.map((r, i) => (
+          <blockquote key={i} className="border-l-2 border-hld-border pl-2 text-[11px] text-hld-muted-text-2 italic">
+            <span className={`not-italic font-mono text-[8px] mr-1.5 ${r.side === 'a' ? 'text-hld-magenta' : 'text-hld-green'}`}>
+              [{r.side.toUpperCase()}]
+            </span>
+            {r.quote}
+          </blockquote>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function MeshFindings({ title, findings, color }: { title: string; findings: CommitmentFinding[]; color: string }) {
   if (!findings.length) return null;
@@ -46,6 +65,8 @@ export function WholeVerdictPanel({
         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-hld-muted-text">· {DIR_LABEL[whole.direction]} as a whole</span>
       </div>
       <p className="text-[13px] text-hld-text leading-relaxed">{whole.verdict}</p>
+
+      {whole.receipts && <Receipts receipts={whole.receipts} />}
 
       {whole.centerOfGravity && (
         <div className="mt-2">

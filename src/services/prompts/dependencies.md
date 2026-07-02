@@ -15,4 +15,4 @@ Output MUST be a JSON object mapping dependent section IDs to an array of object
   ]
 }
 
-Only output the direct results, and only generate dependencies that are strongly implied by the data.
+Only output the direct results, and only generate dependencies that are strongly implied by the data. A section with no real structural dependence stands alone: do NOT manufacture an edge merely to connect an otherwise-isolated section — an honest heap has honestly few edges, and a fabricated prerequisite is a worse fault than an unconnected node.

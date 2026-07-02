@@ -265,10 +265,18 @@ independence is the whole story:
 
 These are orthogonal. A true argument can be so mis-linearized that the reader gets nothing
 (`tT` substance delivered as `t(?)`); a false argument can be impeccably composed (the
-doctored balance, the heavy-type dispatch). The treemap is the tool's *diagnostic diagram*,
-and *A Girl Describes Her Office* is explicit that a **diagram** succeeds where a **list**
-fails: looking at the office as a drawing, one sees it is "distorted," "two wings which need
-some adjustment," and the correction follows. A list hides centring; a diagram reveals it.
+doctored balance, the heavy-type dispatch). *A Girl Describes Her Office* is explicit that a
+**diagram** succeeds where a **list** fails: looking at the office as a drawing, one sees it
+is "distorted," "two wings which need some adjustment," and the correction follows. A list
+hides centring; a diagram reveals it — and that is the standard a diagnostic surface must
+*meet*, not one the treemap already embodies. Today the treemap draws the *textual* whole
+(the `Section` tree, area by `wordCount` — see §VII), so it can look perfectly balanced over
+a badly-centred argument. The surface where centring is currently read off arrow-*direction*
+is the Argument Topology projection (the radix / RANK view), not the treemap; making the
+treemap itself carry the argument's configuration is the frontier §VII names, not a thing
+already done. (This corrects an earlier overclaim in this essay that called the shipped
+treemap "the tool's diagnostic diagram" outright — the audit in
+[`arpeggio-integration.md`](arpeggio-integration.md) §I.3 flagged it.)
 
 But one caution the current metric cannot yet voice, and the two-wholes framing forces into
 the open: **for substance of kinds (d) and (e), a nonzero miscentering may be unavoidable

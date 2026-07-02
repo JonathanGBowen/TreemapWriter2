@@ -100,6 +100,7 @@ export function SpecTestSectionCard({ section }: { section: SectionSpecTest }) {
             <div className="font-mono text-[8px] uppercase tracking-[0.12em] text-hld-muted-text">
               whole signature: {SIGNATURE_LABEL[section.wholeSignature.a]} → {SIGNATURE_LABEL[section.wholeSignature.b]}
             </div>
+            {section.wholeReceipts && <Receipts receipts={section.wholeReceipts} />}
             {section.commitmentDelta && (
               <>
                 <Findings title="introduced breaks" findings={section.commitmentDelta.introduced} color="text-hld-magenta" />

@@ -320,7 +320,8 @@ streams keep their own inline indicators rather than the pill.
   ([`docs/arpeggio-spec.md`](docs/arpeggio-spec.md), theory in
   [`docs/configuration-and-sequence.md`](docs/configuration-and-sequence.md)) —
   complements, not rivals — and fixes the roadmap: **Phase 0** doctrine repairs
-  (fT receipts, heap license, order-verdict softening, one doc correction) →
+  (fT receipts, heap license, order-verdict softening, one doc correction) —
+  **shipped 2026-07-02** (see [`docs/migration-log.md`](docs/migration-log.md)) →
   **1** stable ULID section ids (subsumes the "Stable section IDs" item below —
   now the load-bearing prerequisite) → **2** the W₁ graph layer (7 typed
   part-to-part edges, authored germ parts with quarry bodies, function-tagged

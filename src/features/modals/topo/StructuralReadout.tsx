@@ -6,7 +6,16 @@
    arrows: BACKWARD (prerequisites that sit after their dependents), RANK SPAN
    (the depth of the dependency order), and MISCENTER (how much of the field
    fights its own reading order). The cosmetic route metrics remain, dimmed and
-   secondary, and only where they mean something (ATLAS). */
+   secondary, and only where they mean something (ATLAS).
+
+   NOTE (interim, pending Phase 5 of the Arpeggio roadmap): a backward arc is NOT
+   coded as a violation. Presentation order is fixed by the dynamics of grasping,
+   which can legitimately invert logical dependence — a genetic or pedagogical order
+   (instance before rule; a conclusion offered first as a promissory gap). Until the
+   precedence engine can tell a covered/deliberate inversion from an uncovered one,
+   BACKWARD and MISCENTER are reported NEUTRALLY, as structural facts, not verdicts
+   (no warning hue); only a clean zero keeps the quiet green. See
+   docs/arpeggio-integration.md §I.2 and §III (Phase 0/5). */
 
 import React from 'react';
 import { TK } from './tk';
@@ -28,11 +37,11 @@ export const StructuralReadout: React.FC<{ centering: Centering; land: Metrics; 
   return (
     <div
       style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingRight: 2 }}
-      title="The structural centre, read off the direction of the arrows. BACKWARD = a prerequisite placed after its dependent (read-ahead). RANK SPAN = depth of the dependency order. MISCENTER = share of dependencies fighting reading order. Route metrics are cosmetic and secondary."
+      title="The structural centre, read off the direction of the arrows. BACKWARD = a prerequisite placed after its dependent (read-ahead). RANK SPAN = depth of the dependency order. MISCENTER = share of dependencies fighting reading order. These are structural facts, not verdicts: a backward arc may be a deliberate genetic or pedagogical order (instance before rule, or a conclusion offered first as a promissory gap), so they are shown neutrally, not as violations. Route metrics are cosmetic and secondary."
     >
-      <Cell label="BACKWARD" val={back} c={back > 0 ? TK.magenta : TK.green} />
+      <Cell label="BACKWARD" val={back} c={back > 0 ? TK.purple : TK.green} />
       <Cell label="RANK SPAN" val={centering.maxRank} c={TK.purple} />
-      <Cell label="MISCENTER" val={miscPct + '%'} c={miscPct > 0 ? TK.yellow : TK.green} />
+      <Cell label="MISCENTER" val={miscPct + '%'} c={miscPct > 0 ? TK.purple : TK.green} />
       {atlas && (
         <>
           <div style={{ width: 1, height: 16, background: TK.border }} />

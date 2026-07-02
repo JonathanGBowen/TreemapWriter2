@@ -5195,3 +5195,54 @@ STATUS entry's phase list matches `arpeggio-integration.md` §III.
 
 **Rollback.** `git revert` (pure docs). Nothing downstream consumes these files yet;
 Phase 0 is the first change that touches prompts/code and carries its own entry.
+
+---
+
+## 2026-07-02 — Arpeggio integration Phase 0: doctrine repairs (prompts + one render + one doc)
+
+**What changed.** The zero-data-risk first phase of the roadmap in
+[`arpeggio-integration.md`](arpeggio-integration.md) §III — prompt/doc/render text
+plus one additive, optional type field. No persistence, no schema migration.
+
+- **Whole-verdict receipts (repairs fidelity verdict 1 — the fT quadrant was the
+  cheapest to fake).** The spec test's *whole-as-part* judgments now carry the same
+  verbatim-receipt discipline the per-move deltas already had. `SectionSpecTest` gains
+  optional `wholeReceipts` and `WholeVerdict` gains optional `receipts`
+  (`src/types/index.ts`); the tolerant normalizer parses them via the existing
+  `toReceipts` (null-tolerant — a degraded/older response still parses, and receipts
+  are never fabricated) and both JSON schemas expose the field
+  (`src/services/ai/ai-provider.spec-test.ts`). `spec-test.md` and `spec-test-whole.md`
+  now require a tF/fT call to show its work and carry *On Truth*'s own caution ("many
+  propositions for which the claim is made that they are true in relation to the whole
+  are really false both in themselves and in relation to the whole"). The two verdict
+  components (`SpecTestWholeVerdict.tsx`, `SpecTestSectionCard.tsx`) render the
+  receipts.
+- **The honest-heap license (repairs verdict 4).** `root-task.md`, `l1-task.md`,
+  `diagnostic.md`, and `dependencies.md` gain *On Truth* line-60's exemption: where a
+  part's inner functional content approaches zero (an inventory/reference appendix,
+  coordinate case studies with no throughline), piecemeal arrangement is the *correct*
+  form — never manufacture a throughline, forced commitments, or a fabricated
+  dependency edge for and-summative material. The single-line-of-development default is
+  kept; the exemption is explicitly the exception.
+- **Order-verdict softening — interim (repairs verdict 2's diagnosis half, pending
+  Phase 5).** `StructuralReadout.tsx` no longer renders BACKWARD / MISCENTER in warning
+  hues (magenta/yellow) when nonzero; they render neutral (structural fact, not
+  verdict) with a "may be a deliberate genetic/pedagogical order" gloss, keeping only
+  the quiet green at a clean zero. A backward arc is not coded as pathology until the
+  precedence engine can classify covered vs. uncovered inversions.
+- **Doc honesty (repairs the one overclaim of verdict 8).**
+  [`gestalt-and-text-structure.md`](gestalt-and-text-structure.md) §V no longer calls
+  the shipped treemap "the tool's diagnostic diagram"; it now states plainly that the
+  treemap draws the *textual* whole (area = word count) and can look balanced over a
+  badly-centred argument, per the essay's own §VII.
+
+**Verify.** `npm run typecheck` clean; `npm test` 655 pass (2 new: whole/section
+receipts parse when present, and tolerate absence without fabricating); `npm run lint`
+0 errors; `npm run build` succeeds. Manual: run a spec test on the demo project — the
+whole verdict and each deep-read section now show a "receipts" block grounding the
+tF/fT call; open the Argument Topology modal — a nonzero BACKWARD/MISCENTER reads
+neutral, not red/yellow.
+
+**Rollback.** `git revert` (prompt/doc/render + two optional type fields; no
+persistence touched). A partial revert degrades cleanly: the receipts fields are
+optional, so dropping the TS while keeping the prompts (or vice versa) still parses.

@@ -284,10 +284,12 @@ STATUS ritual. Any phase that writes into `project.md` (1, 6, and the recenterin
 operation) is preceded by a `commitSnapshot` + a tag, with revert verified before
 shipping.
 
-### Phase 0 — Doctrine repairs *(zero data risk; highest fidelity-per-effort)*
+### Phase 0 — Doctrine repairs *(zero data risk; highest fidelity-per-effort)* — ✓ shipped 2026-07-02
 
 Repairs I.2.4, the fT exposure in I.1's spec-test, and the doc overclaim of I.3 —
-all in prompt/doc/render text, no schema change.
+all in prompt/doc/render text, plus two additive optional type fields (`wholeReceipts`
+on `SectionSpecTest`, `receipts` on `WholeVerdict`); no schema migration. See
+[`migration-log.md`](migration-log.md), 2026-07-02.
 
 1. **Whole-verdict receipts** — `spec-test.md` / `spec-test-whole.md`: require
    verbatim receipts on `truth` and `wholeSignature` (mirroring the existing
