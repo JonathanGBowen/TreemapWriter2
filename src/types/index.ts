@@ -13,7 +13,32 @@ export interface Section {
   children: Section[];
   parentId: string | null;
 }
- 
+
+/**
+ * One heading's stable-id binding in the section-id ledger
+ * (`.twriter/section-ids.json`, Phase 1). The ledger gives each section an id
+ * that survives rename, reorder, and duplicate titles — where the derived
+ * `title.slug + lineIndex` id did not — by binding the id to the heading via a
+ * verbatim body `anchor` (the same content-anchor discipline StructuralPart /
+ * gist / provenance use), NOT by writing a marker into `project.md` (which stays
+ * pristine). Resolution is layered: match by `anchor` first (survives rename),
+ * then by `title` + `level` nearest `ordinal` (survives rewording of an empty or
+ * renamed section), else mint a fresh opaque id. See `src/lib/section-ids.ts`.
+ */
+export interface SectionIdBinding {
+  /** The stable section id (a frozen legacy id, or a minted opaque `sec_…`). */
+  id: string;
+  /** Verbatim first ~64 chars of the section's OWN body (excluding the heading
+   *  line), via `anchorFor`. Empty for a germ heading with no body yet. */
+  anchor: string;
+  /** The heading title at last reconcile — the Pass-2 fallback key. */
+  title: string;
+  /** The heading level (1–6) — disambiguates same-titled headings. */
+  level: number;
+  /** Document-order index at last reconcile — the nearest-ordinal tie-break. */
+  ordinal: number;
+}
+
 // --- STRUCTURED SPEC SYSTEM ---
  
 /** 

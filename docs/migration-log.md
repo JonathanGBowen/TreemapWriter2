@@ -5246,3 +5246,66 @@ neutral, not red/yellow.
 **Rollback.** `git revert` (prompt/doc/render + two optional type fields; no
 persistence touched). A partial revert degrades cleanly: the receipts fields are
 optional, so dropping the TS while keeping the prompts (or vice versa) still parses.
+
+---
+
+## 2026-07-02 — Arpeggio integration Phase 1: stable section IDs (sidecar anchor-ledger)
+
+**What changed.** Section ids are no longer only `title.slug + lineIndex` reconciled by
+title-matching (fragile under rename, reorder, and duplicate titles — the
+`STATUS.md` "Stable section IDs" debt). A new persisted **section-id ledger** binds
+each stable id to its heading by verbatim BODY anchor and survives all three.
+
+- **Approach — sidecar, not inline markers.** Research (two exploration sweeps over
+  every id consumer and the full markdown/editor lifecycle) showed the roadmap's
+  original inline-`project.md`-marker plan would invade the writing surface: the marker
+  leaks into every AI prompt (`section.fullContent` is sent verbatim), inflates word
+  counts and treemap tile area, is copied into other apps on select-all (CodeMirror
+  copies from doc state, not the DOM — the codebase has no atomic-range machinery),
+  risks cursor jumps while typing a heading, and double-marks on `.md` export. The user
+  chose the **sidecar anchor-ledger** — idiomatic here (StructuralPart / gist /
+  provenance all bind to text by content anchor), keeping `project.md` completely
+  pristine.
+- **The pure engine** — `src/lib/section-ids.ts` (no React/store; 11 unit tests):
+  `sectionAnchor` (first 64 chars of the trimmed body, so a rename doesn't break it),
+  `newSectionId` (opaque `sec_` + crypto base36), and `reconcileSectionIds` — a 3-pass
+  resolve (anchor → title+level nearest-ordinal → seed-freeze/mint) that returns the
+  reassigned tree, the rebuilt ledger, and a `changed` flag.
+- **Migration = freeze, so ZERO remap.** On first load the ledger seeds with each
+  section's *current* id (the parse id the persisted `testSuite`, spec filenames, and
+  dependency refs are already keyed by), so nothing is renamed or re-keyed — existing
+  work stays attached by construction. Only genuinely new headings get opaque ids.
+  Reserved `'root'` is never touched.
+- **Persistence** (structural-parts sidecar template): `SectionIdBinding` type
+  (`src/types/index.ts`); `sectionIdLedger` on `StoredProjectData`
+  (`src/services/repository.ts`) and the document/project state slices; `.twriter/
+  section-ids.json` via `layout.rs` `section_ids_json()`, an opaque
+  `section_id_ledger: Option<serde_json::Value>` in `types.rs`, and read/write in
+  `commands/document.rs` (with a `section_id_ledger_round_trips_through_write_then_read`
+  test). Both repositories pass the whole `StoredProjectData` blob through, so no
+  per-field mapping changed.
+- **Integration** — the App.tsx debounced parse effect now runs `reconcileSectionIds`
+  after `parseMarkdown`, reading the ledger fresh via `useStore.getState()` (like
+  `pruneOrphanEntries`) and writing it back only when `changed`. The ledger persists on
+  the existing 60 s autosave. Nothing else in the effect chain moved.
+- **No migration snapshot** (deliberate deviation from the plan's belt-and-suspenders
+  note): the approach never rewrites `project.md` and the freeze performs no id remap,
+  so the pre/post prose and every spec are byte-identical — there is nothing to revert
+  to, and a git commit fired from the debounced typing hot-path would be a worse
+  surprise than the (nonexistent) risk. Rollback is simply deleting
+  `.twriter/section-ids.json`, which reseeds identically on next load.
+
+**Verify.** `npm run typecheck` clean; `npm test` 666 pass (11 new in
+`section-ids.test.ts`: seed-freeze, rename-keeps-id, reorder-moves-id,
+duplicate-title-distinct, new-heading-mints, duplicate-section-no-collision, tree
+integrity); `npm run build` succeeds. **Not run here (flagged):** `cargo test` (the
+crate needs GTK/GDK libs absent in this CI — the round-trip test mirrors the passing
+`structural_parts_round_trips…` exactly and must be run on a desktop toolchain). **Local
+manual checks (need a real project with specs — the browser demo has none):** open a
+project → `.twriter/section-ids.json` appears carrying the current ids; rename a heading
+→ its spec stays attached (previously orphaned); reorder two same-titled sections → their
+specs don't swap; `git diff` shows `project.md` unchanged, only the sidecar added.
+
+**Rollback.** `git revert` (the ledger is additive; on read `data.sectionIdLedger ?? []`
+tolerates its absence, and reconcile reseeds from current ids). To drop only the on-disk
+data, delete `.twriter/section-ids.json`.

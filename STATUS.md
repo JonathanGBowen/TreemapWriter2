@@ -322,8 +322,13 @@ streams keep their own inline indicators rather than the pill.
   complements, not rivals — and fixes the roadmap: **Phase 0** doctrine repairs
   (fT receipts, heap license, order-verdict softening, one doc correction) —
   **shipped 2026-07-02** (see [`docs/migration-log.md`](docs/migration-log.md)) →
-  **1** stable ULID section ids (subsumes the "Stable section IDs" item below —
-  now the load-bearing prerequisite) → **2** the W₁ graph layer (7 typed
+  **Phase 1** stable section ids — **shipped 2026-07-02** as a **sidecar
+  anchor-ledger** (`.twriter/section-ids.json`, `src/lib/section-ids.ts`), NOT the
+  originally-planned inline `project.md` markers: research showed markers would invade
+  the writing surface (leak into AI prompts, word counts, treemap area, the clipboard),
+  so the sidecar keeps `project.md` pristine and reuses the content-anchor idiom; a
+  migration "freeze" of current ids means zero remap of existing specs. Subsumes the
+  "Stable section IDs" lingering item below. → **2** the W₁ graph layer (7 typed
   part-to-part edges, authored germ parts with quarry bodies, function-tagged
   realizations) → **3** ledger + declare/defer + capture inbox (+ distance-aware
   mesh) → **4** the dedicated W₁ Canvas workspace (hand-placed persisted
@@ -498,15 +503,22 @@ streams keep their own inline indicators rather than the pill.
   `buildReinstatement(..., { extraFragments })` remains deferred (it's additive
   and read-only), as do in-editor phrase highlighting and `SectionMapModal`
   highlighting.
-- **Stable section IDs.** IDs are currently derived from `title.slug + index`
-  ([`src/lib/utils.ts`](src/lib/utils.ts)) — fragile under duplicate titles,
-  renames, and reordering. Move to opaque ULIDs assigned at section creation,
-  stored as YAML frontmatter `id:` per section, with a one-time migration that
-  walks existing sections. Open question: garbage-collect orphan IDs on delete,
-  or keep them so dependency edges survive an undo (default: keep). **Now Phase 1
-  of the Arpeggio integration roadmap above** — promoted from bug-triggered to
-  load-bearing prerequisite (realizations, reorder, homotypy, and per-section
-  maturity all key off stable ids).
+- ~~**Stable section IDs.**~~ **Shipped 2026-07-02** (Arpeggio Phase 1; see
+  [`docs/migration-log.md`](docs/migration-log.md)). The `title.slug + index` id
+  ([`src/lib/utils.ts`](src/lib/utils.ts)) — fragile under duplicate titles, renames,
+  and reordering — is now stabilized by a **sidecar anchor-ledger**
+  (`.twriter/section-ids.json`, `src/lib/section-ids.ts`): `reconcileSectionIds` binds
+  each id to its heading by verbatim body anchor and resolves it on every parse
+  (anchor → title+level → seed-freeze/mint), so ids survive all three operations.
+  Chosen over inline `project.md` markers (which would invade the writing surface) so
+  `project.md` stays pristine; the freeze of current ids means zero remap of existing
+  testSuite/spec/dependency keys. **Deferred follow-ons** (not blocking): the id is a
+  frozen legacy slug for pre-existing sections (only new headings get opaque `sec_…`)
+  — a cosmetic-only opaque-ify would need the full remap; a *reword+rename+move before
+  reload* triple can still miss its anchor (documented heuristic limit, degrades to
+  orphan not corruption); and Phase 6's reorder operation will maintain the ledger
+  atomically. The complete-orphan-reclaim variant of `pruneOrphanEntries` (below) is
+  now unblocked by stable ids.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 

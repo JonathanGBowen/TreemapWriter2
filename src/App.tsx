@@ -9,6 +9,7 @@ import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown, flattenSectionsForIndex } from "./lib/utils";
+import { reconcileSectionIds } from "./lib/section-ids";
 import { repository } from "./services/repository-registry";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -229,8 +230,18 @@ export const App = () => {
   // Sync sections with content
   useEffect(() => {
     const handler = setTimeout(() => {
-        const tree = parseMarkdown(localContent, sections);
-        
+        const parsed = parseMarkdown(localContent, sections);
+        // Resolve STABLE ids from the section-id ledger (Phase 1): survives
+        // rename / reorder / duplicate-title, minting opaque ids only for new
+        // headings. Read the ledger fresh via getState() (not the effect closure)
+        // and write it back only when it changed — mirrors pruneOrphanEntries.
+        // Persists on the 60s autosave (it rides saveCurrentState's payload).
+        const { sections: tree, ledger, changed } = reconcileSectionIds(
+          parsed,
+          useStore.getState().sectionIdLedger,
+        );
+        if (changed) useStore.getState().setSectionIdLedger(ledger);
+
         // Selection retention logic
         setSelectedId(prev => {
            if (prev) {

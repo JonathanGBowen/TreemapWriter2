@@ -7,6 +7,7 @@ import type {
   Recenterings,
   ReverseOutlineDoc,
   Section,
+  SectionIdBinding,
   SectionSpec,
   Snapshot,
   StoredGist,
@@ -89,6 +90,14 @@ export interface DocumentStateSlice {
    * writer runs "Discover parts".
    */
   structuralParts: StructuralPart[];
+  /**
+   * The section-id ledger (Phase 1) — stable ids bound to headings by verbatim
+   * body anchor, persisted to `.twriter/section-ids.json`. Rebuilt on every live
+   * parse by `reconcileSectionIds` (in App.tsx) and written back here when it
+   * changes; the freeze on first load keeps existing testSuite keys attached.
+   * Domain data — travels with the document — so it lives here beside `sections`.
+   */
+  sectionIdLedger: SectionIdBinding[];
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -107,6 +116,8 @@ export interface DocumentStateSlice {
   addProvenanceMark: (mark: ProvenanceMark) => void;
   /** Replace the document's discovered structural parts (the discovery result). */
   setStructuralParts: (parts: StructuralPart[]) => void;
+  /** Replace the section-id ledger (the reconcile result / the load path). */
+  setSectionIdLedger: (ledger: SectionIdBinding[]) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -184,6 +195,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   gist: null,
   provenanceMarks: [],
   structuralParts: [],
+  sectionIdLedger: [],
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -213,6 +225,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   addProvenanceMark: (mark) =>
     set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
   setStructuralParts: (parts) => set({ structuralParts: parts }),
+  setSectionIdLedger: (ledger) => set({ sectionIdLedger: ledger }),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>

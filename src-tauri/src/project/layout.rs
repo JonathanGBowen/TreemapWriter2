@@ -55,6 +55,10 @@ impl Layout {
         self.twriter_dir().join("structural-parts.json")
     }
 
+    pub fn section_ids_json(&self) -> PathBuf {
+        self.twriter_dir().join("section-ids.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }
@@ -136,6 +140,10 @@ mod tests {
         assert_eq!(
             layout.structural_parts_json(),
             Path::new("/projects/diss/.twriter/structural-parts.json")
+        );
+        assert_eq!(
+            layout.section_ids_json(),
+            Path::new("/projects/diss/.twriter/section-ids.json")
         );
         assert_eq!(layout.cache_sqlite(), Path::new("/projects/diss/.twriter/index.sqlite"));
         assert_eq!(layout.gitignore(), Path::new("/projects/diss/.gitignore"));

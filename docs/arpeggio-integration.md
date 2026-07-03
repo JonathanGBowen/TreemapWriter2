@@ -308,16 +308,20 @@ on `SectionSpecTest`, `receipts` on `WholeVerdict`); no schema migration. See
    [`gestalt-and-text-structure.md`](gestalt-and-text-structure.md) §V to match its
    own §VII admission.
 
-### Phase 1 — Stable section IDs *(the load-bearing foundation; highest data risk, so it goes alone)*
+### Phase 1 — Stable section IDs *(the load-bearing foundation)* — ✓ shipped 2026-07-02
 
-The ULID migration STATUS.md already plans. Opaque per-section id marker in
-`project.md` (`src/lib/utils.ts` `generateId` / `parseMarkdown`; must round-trip
-`markdownExport.ts`; hidden by a CodeMirror decoration). One-time migration in
-`project-state.ts` `loadProject`: **first** snapshot + `migration/ids/before` tag,
-then mint ULIDs, rename `.twriter/specs/*.spec.yaml` by old slug (orphans left on
-disk). Remap all id consumers at the parse layer. Verify on a *copy* of a real
-project; parse→export byte-stability; duplicate titles distinct; reorder preserves
-ids.
+**Shipped as a sidecar anchor-ledger, NOT the inline markers first planned.** Research
+(two exploration sweeps over every id consumer and the markdown/editor lifecycle) found
+that inline `project.md` markers would invade the writing surface — leaking into AI
+prompts, word counts, treemap area, and the clipboard, and needing new editor
+atomic-range machinery. Chosen instead: a persisted **`.twriter/section-ids.json`**
+ledger binding each stable id to its heading by verbatim body anchor (the content-anchor
+idiom StructuralPart / gist / provenance already use), so `project.md` stays pristine. The
+pure engine is `src/lib/section-ids.ts` (`reconcileSectionIds`: anchor → title+level →
+seed-freeze/mint); it runs in the App.tsx parse effect. **Migration = freeze** each
+section's current id, so zero remap of existing spec files, dependency refs, or
+gist/reverse-outline keys. Reserved `'root'` untouched. See
+[`migration-log.md`](migration-log.md), 2026-07-02.
 
 ### Phase 2 — The W₁ graph layer: typed edges, authored parts, realizations *(repairs muddle I.2.1)*
 

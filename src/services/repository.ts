@@ -11,6 +11,7 @@ import type {
   Resolution,
   ResolveOutcome,
   ReverseOutlineDoc,
+  SectionIdBinding,
   StoredGist,
   StructuralPart,
   SearchHit,
@@ -77,6 +78,15 @@ export interface StoredProjectData {
    * TS layer owns the shape. Absent until the writer first runs "Discover parts".
    */
   structuralParts?: StructuralPart[];
+  /**
+   * The section-id ledger — stable ids bound to headings by verbatim body anchor
+   * (`.twriter/section-ids.json` on desktop; Phase 1). Keeps `testSuite` keys,
+   * spec filenames, and dependency refs attached across rename / reorder /
+   * duplicate-title. Persisted as the BARE array; opaque to the Rust mirror (an
+   * opaque `Value`, like `structuralParts`), so the TS layer owns the shape.
+   * Absent on pre-Phase-1 projects — seeded from the current parse on first load.
+   */
+  sectionIdLedger?: SectionIdBinding[];
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;
