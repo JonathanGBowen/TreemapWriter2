@@ -33,6 +33,9 @@ import type { CommitTrailer, Repository, StoredProjectData } from './repository'
 /** Number of commits eagerly fetched into in-memory `revisions` on project open. */
 const REVISIONS_WINDOW = 20;
 
+/** Restore the colons a filename-safe id stem (`…THH-MM-SS`) dropped, → a parseable ISO. */
+const idStemToIso = (stem: string): string => stem.replace(/T(\d{2})-(\d{2})-(\d{2})/, 'T$1:$2:$3');
+
 /**
  * How far back `listSnapshotMeta` reaches by default. Generous because the walk
  * is blob-free (metadata only); the Version Compare picker groups these by day.
@@ -225,8 +228,10 @@ export const tauriRepository: Repository = {
   async listInbox(): Promise<InboxItem[]> {
     try {
       const rows = await invoke<{ id: string; text: string }[]>('inbox_list');
-      // The file has no stored createdAt; the id IS the hyphenated-ISO capture time.
-      return rows.map((r) => ({ id: r.id, text: r.text, createdAt: r.id }));
+      // The file has no stored createdAt; the id IS the capture time. The id stem uses
+      // hyphens in the TIME too (colon-free, for a filename), so restore the colons to
+      // make a Date.parse-able ISO — matching the browser/optimistic paths.
+      return rows.map((r) => ({ id: r.id, text: r.text, createdAt: idStemToIso(r.id) }));
     } catch (e) {
       console.warn('inbox_list failed:', e);
       return [];

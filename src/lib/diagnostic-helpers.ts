@@ -291,14 +291,6 @@ export interface MeshContext {
 }
 
 /**
- * Precompute a `MeshContext` from the live document + ledger. Pure. `declaredHeap`
- * marks every section whose self-or-ancestor carries an OPEN `declared-heap` entry;
- * the token maps are a suffix union (later incoming) and a prefix union (earlier
- * outgoing + claim) over the reading order; `paidCover` is the `owes` of paid IOUs.
- * `ledger` defaults to none, so a caller wanting only the distance-widening (e.g. a
- * snapshot audit with no live ledger) can omit it.
- */
-/**
  * Every section id under a DECLARED HEAP — one whose self or any ancestor carries an
  * OPEN `declared-heap` ledger entry. The mesh suppresses interlock pressure for these;
  * the diagnostic surround tells the model their interlocks may honestly be empty.
@@ -319,6 +311,14 @@ export function declaredHeapSet(sections: Section[], ledger: LedgerEntry[]): Set
   return out;
 }
 
+/**
+ * Precompute a `MeshContext` from the live document + ledger. Pure. `declaredHeap`
+ * marks every section whose self-or-ancestor carries an OPEN `declared-heap` entry;
+ * the token maps are a suffix union (later incoming) and a prefix union (earlier
+ * outgoing + claim) over the reading order; `paidCover` is the `owes` of paid IOUs.
+ * `ledger` defaults to none, so a caller wanting only the distance-widening (e.g. a
+ * snapshot audit with no live ledger) can omit it.
+ */
 export function buildMeshContext(
   sections: Section[],
   specs: Record<string, SectionSpec | undefined>,

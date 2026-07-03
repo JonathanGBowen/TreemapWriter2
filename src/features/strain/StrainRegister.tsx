@@ -85,7 +85,7 @@ function StrainRow({ s, selected, onSelect, onDismiss, onDefer, onDeclareHeap }:
           <button
             type="button"
             onClick={() => onDeclareHeap(s)}
-            title="Declare this section an honest heap — its interlocks may honestly be empty; suppress its (and its children's) tension"
+            title="Declare this section an honest heap — its interlocks may honestly be empty; suppresses its (and its children's) interlock pressure (a word-weight/ballast signal, a different axis, may remain)"
             className="font-mono text-[8px] tracking-[0.1em] uppercase text-hld-muted hover:text-hld-cyan transition-colors"
           >
             heap
