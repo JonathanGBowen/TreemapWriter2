@@ -386,6 +386,13 @@ export interface RunDiagnosticInput {
    * as a part functioning in the whole rather than as an isolated piece.
    */
   specs?: Record<string, SectionSpec | undefined>;
+  /**
+   * Section ids under a DECLARED HEAP (Phase 3) — the diagnostic surround tells the
+   * model their interlocks may honestly be empty, so it won't manufacture commitments
+   * for and-summative material. Absent → today's behavior. Computed by the caller from
+   * the ledger (`declaredHeapSet`).
+   */
+  declaredHeapSectionIds?: string[];
 }
 
 export interface EstimateDependenciesInput {

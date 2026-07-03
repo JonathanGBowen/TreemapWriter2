@@ -1330,6 +1330,51 @@ export interface SessionRecord {
   source: 'manual' | 'sprint';
 }
 
+// --- LEDGER + CAPTURE INBOX (Arpeggio Phase 3) ---
+// The Ledger is the app's honest memory of the writer's concessions: debts owed
+// (IOUs), heaps declared honest, deviations declared deliberate, diagnostics
+// deferred. Persisted PER-ENTRY on the sessions template (`.twriter/ledger/<id>.yaml`),
+// merge-friendly across machines — the TS layer owns the shape (Rust mirrors it as
+// an opaque Value). A `declared-heap` entry is keyed by the SECTION it exempts, so
+// the section-keyed commitment mesh consumes it directly (no part→section resolution).
+
+export type LedgerEntryKind =
+  | 'iou' // a commitment owed but not yet paid — deferred, not dropped
+  | 'declared-heap' // a section's children are honestly an aggregate; suppress interlock pressure
+  | 'declared-deviation' // a deliberate structural deviation the writer stands behind
+  | 'deferred-diagnostic'; // a finding acknowledged and parked
+
+export type LedgerEntryStatus = 'open' | 'paid' | 'waived';
+
+export interface LedgerEntry {
+  /** Hyphenated ISO timestamp id (the sessions template); doubles as the filename stem. */
+  id: string;
+  kind: LedgerEntryKind;
+  /** The section where the debt/declaration was opened (a `declared-heap` exempts this section + its children). */
+  openedAtSectionId: string;
+  /** What is owed / declared, in the writer's or the finding's words. */
+  owes: string;
+  /** The section where an IOU was paid (set when `status` → 'paid'). */
+  paidAtSectionId?: string;
+  status: LedgerEntryStatus;
+  /** Who opened it: the writer (a declaration) or the tool (a system-proposed IOU). */
+  createdBy: 'user' | 'system';
+  /** Which finding/constraint this converts, if any (provenance). */
+  reason?: string;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+/** A thought captured out of context (the ADHD capture inbox). Body is the persisted
+ *  file (`.twriter/inbox/<id>.md`); the meta is minimal. Consumed by appending to a
+ *  section or promoting to a germ `StructuralPart`. */
+export interface InboxItem {
+  /** Hyphenated ISO timestamp id; doubles as the filename stem. */
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 // --- PHASE 4 SYNC TYPES ---
 // Wire-format mirrors of src-tauri/src/types.rs. Rust enums are externally
 // tagged with `tag = "kind"`; TS discriminated unions match.

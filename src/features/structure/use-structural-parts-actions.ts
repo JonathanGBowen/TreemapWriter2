@@ -4,8 +4,10 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
 import { reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
 import { pruneEdges, seedRealizations } from '../../lib/structural-graph-helpers';
+import { newSectionId } from '../../lib/section-ids';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { computeHash } from '../../lib/utils';
+import type { StructuralPart } from '../../types';
 import { normalizeForHash } from '../../lib/gist-helpers';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
@@ -144,5 +146,37 @@ export const useStructuralPartsActions = () => {
     [setStructuralParts, saveCurrentState],
   );
 
-  return { runDiscoverStructuralParts, reanchorPart };
+  /**
+   * Promote a captured thought (an inbox item) to an AUTHORED GERM part (Arpeggio
+   * Phase 3): a W₁ node that exists pre-prose — empty anchors, no section mapping,
+   * `status: 'germ'` (content debt). Uses an OPAQUE id (`newSectionId`), never the
+   * content hash (which collapses on empty anchors), and `origin: 'authored'` so
+   * re-discovery never clobbers it and the germ-exemption keeps it off the orphan
+   * list. It surfaces immediately in the Argument Topology PARTS projection.
+   */
+  const promoteToGermPart = useCallback(
+    async (text: string) => {
+      const claim = text.trim();
+      if (!claim) return;
+      const parts = useStore.getState().structuralParts;
+      const id = newSectionId(new Set(parts.map((p) => p.id)));
+      const part: StructuralPart = {
+        id,
+        kind: 'germ',
+        claim,
+        startAnchor: '',
+        endAnchor: '',
+        sectionIds: [],
+        confidence: 1,
+        rationale: '',
+        origin: 'authored',
+        status: 'germ',
+      };
+      setStructuralParts([...parts, part]);
+      await saveCurrentState();
+    },
+    [setStructuralParts, saveCurrentState],
+  );
+
+  return { runDiscoverStructuralParts, reanchorPart, promoteToGermPart };
 };

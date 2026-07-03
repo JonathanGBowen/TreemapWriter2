@@ -357,7 +357,18 @@ lands proposals advisory-until-accepted; the four canvas/draft fields (`body`, `
 - Optional assist: a `discover-structural-edges` prompt + `AIProvider` method —
   proposed edges advisory until accepted.
 
-### Phase 3 — The Ledger, declare/defer, capture inbox *(highest value per effort; repairs muddle I.2.3)*
+### Phase 3 — The Ledger, declare/defer, capture inbox *(highest value per effort; repairs muddle I.2.3)* — ✓ shipped 2026-07-03
+
+**Shipped in full.** The commitment mesh is widened beyond textual adjacency (the muddle-I.2.3
+repair: a commitment paid anywhere later, established anywhere earlier, covered by a paid IOU,
+or under a declared heap no longer flags — `MeshContext`/`buildMeshContext`, monotone and
+back-compatible so the optional `ctx` never creates a new finding); the **Ledger** (IOUs /
+declared-heap / declared-deviation / deferred-diagnostic) persists per-entry on the sessions
+template and turns the strain register's dismissals into recorded concessions; **declared-heap
+is a LedgerEntry** the section-keyed mesh + diagnostic surround consume directly; a right-side
+**Ledger drawer** (pay/waive) + **capture inbox** (⌘/Ctrl+I → a section or a germ part) + a
+check-out ledger-currency line land the rest. OS-level global hotkey deferred (a new Rust
+plugin). See [`migration-log.md`](migration-log.md), 2026-07-03. Original plan below.
 
 - **`LedgerEntry`** `{ kind: iou | declared-heap | declared-deviation |
   deferred-diagnostic, openedAtSectionId, owes, paidAtSectionId?, status: open |

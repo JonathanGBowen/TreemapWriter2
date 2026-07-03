@@ -99,6 +99,25 @@ impl Layout {
         self.sessions_dir().join(format!("{id}.yaml"))
     }
 
+    /// The Ledger (Arpeggio Phase 3): one YAML file per entry (IOUs / declared-heap
+    /// / declared-deviation / deferred-diagnostic), merge-friendly like the sessions.
+    pub fn ledger_dir(&self) -> PathBuf {
+        self.twriter_dir().join("ledger")
+    }
+
+    pub fn ledger_yaml(&self, id: &str) -> PathBuf {
+        self.ledger_dir().join(format!("{id}.yaml"))
+    }
+
+    /// The capture inbox (Arpeggio Phase 3): one Markdown file per parked thought.
+    pub fn inbox_dir(&self) -> PathBuf {
+        self.twriter_dir().join("inbox")
+    }
+
+    pub fn inbox_md(&self, id: &str) -> PathBuf {
+        self.inbox_dir().join(format!("{id}.md"))
+    }
+
     pub fn cache_sqlite(&self) -> PathBuf {
         self.twriter_dir().join("index.sqlite")
     }
@@ -166,6 +185,16 @@ mod tests {
         assert_eq!(
             layout.agent_output_dir(),
             Path::new("/projects/diss/.twriter/agent-output")
+        );
+        assert_eq!(layout.ledger_dir(), Path::new("/projects/diss/.twriter/ledger"));
+        assert_eq!(
+            layout.ledger_yaml("2026-07-03T10-00-00"),
+            Path::new("/projects/diss/.twriter/ledger/2026-07-03T10-00-00.yaml")
+        );
+        assert_eq!(layout.inbox_dir(), Path::new("/projects/diss/.twriter/inbox"));
+        assert_eq!(
+            layout.inbox_md("2026-07-03T10-00-00"),
+            Path::new("/projects/diss/.twriter/inbox/2026-07-03T10-00-00.md")
         );
     }
 

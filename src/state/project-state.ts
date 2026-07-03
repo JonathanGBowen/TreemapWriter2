@@ -428,6 +428,16 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       // only the project slice is mounted (see project-switch tests).
       set({ activeSession: null, sessionLog: [] });
 
+      // The Ledger + inbox belong to one project too. Clear the previous
+      // project's projections, then load THIS project's EAGERLY (fire-and-forget):
+      // unlike the lazy session log, the ledger feeds the always-mounted strain
+      // register + commitment mesh, so it must be live as soon as the project opens.
+      // Optional-chained like `clearSearch` so loadProject stays usable when only
+      // the project slice is mounted.
+      set({ ledger: [], inbox: [] });
+      void get().loadLedger?.();
+      void get().loadInbox?.();
+
       // Clear any stale search highlight carried over from the previous
       // project. The new project's search index is (re)built in App.tsx once
       // its LIVE section tree is parsed — indexing there guarantees the indexed

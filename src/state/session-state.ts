@@ -171,11 +171,17 @@ export const createSessionSlice: StateCreator<AppState, [], [], SessionSlice> = 
     // Semantic end-commit (GMT "Check"): trailers are machine-parseable and the
     // subject becomes `Session goal: <wish>`. `Task:` is intentionally omitted
     // (no task system on nodes). Ordered per the brief.
+    const ledger = state.ledger;
+    const ledgerPaid = ledger.filter((e) => e.status === 'paid').length;
+    const ledgerDeclared = ledger.filter((e) => e.kind.startsWith('declared-')).length;
     const trailers: CommitTrailer[] = [
       { key: 'GMT-step', value: 'Check' },
       { key: 'Session', value: rec.id },
       ...(rec.goal.obstacle ? [{ key: 'WOOP-obstacle', value: rec.goal.obstacle }] : []),
       { key: 'Steps-completed', value: `${stepsCompleted}/${steps.length}` },
+      // The theory's currency (Phase 3), beside the word delta.
+      { key: 'Ledger-paid', value: `${ledgerPaid}` },
+      { key: 'Ledger-declared', value: `${ledgerDeclared}` },
       { key: 'Word-delta', value: `${wordDelta >= 0 ? '+' : ''}${wordDelta}` },
     ];
 

@@ -10,6 +10,8 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  InboxItem,
+  LedgerEntry,
   Realization,
   ReverseOutlineDoc,
   SectionIdBinding,
@@ -229,6 +231,27 @@ export interface Repository {
    * single YAML sidecar; the browser updates its IndexedDB session store.
    */
   saveSession(record: SessionRecord): Promise<void>;
+
+  /**
+   * The Ledger (Arpeggio Phase 3) — all recorded entries for the open project,
+   * newest first. Desktop reads `.twriter/ledger/*.yaml`; the browser reads its
+   * IndexedDB ledger store. Per-entry (merge-friendly), like the sessions.
+   */
+  listLedger(): Promise<LedgerEntry[]>;
+  /** Persist one ledger entry (create or overwrite by `id`). */
+  saveLedgerEntry(entry: LedgerEntry): Promise<void>;
+  /** Remove one ledger entry by `id` (waive is a status, deletion is rare). */
+  deleteLedgerEntry(id: string): Promise<void>;
+
+  /**
+   * The capture inbox (Arpeggio Phase 3) — parked thoughts, newest first. Desktop
+   * reads `.twriter/inbox/*.md`; the browser reads its IndexedDB inbox store.
+   */
+  listInbox(): Promise<InboxItem[]>;
+  /** Persist one inbox item (create or overwrite by `id`). */
+  saveInboxItem(item: InboxItem): Promise<void>;
+  /** Remove one inbox item by `id` (on promote/append/discard). */
+  deleteInboxItem(id: string): Promise<void>;
 
   /**
    * Blob-free listing of the open project's snapshot history, newest first.

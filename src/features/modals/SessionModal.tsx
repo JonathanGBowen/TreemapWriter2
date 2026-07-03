@@ -118,6 +118,7 @@ function CheckOut({ onClose }: { onClose: () => void }) {
   const localContent = useStore((s) => s.localContent);
   const startTotal = useStore((s) => s.sessionStartTotalWords);
   const startedAt = useStore((s) => s.sessionStartedAt);
+  const ledger = useStore((s) => s.ledger);
 
   const [done, setDone] = useState<Set<string>>(
     () => new Set((session?.steps ?? []).filter((st) => st.completed).map((st) => st.id)),
@@ -132,6 +133,10 @@ function CheckOut({ onClose }: { onClose: () => void }) {
   const wordDelta = countWords(localContent) - startTotal;
   const minutes = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 60000)) : 0;
   const incomplete = session.steps.filter((st) => !done.has(st.id));
+  // The theory's currency (user decision 2) leads; words are quiet secondary evidence.
+  const ledgerPaid = ledger.filter((e) => e.status === 'paid').length;
+  const ledgerOpen = ledger.filter((e) => e.status === 'open').length;
+  const ledgerDeclared = ledger.filter((e) => e.kind.startsWith('declared-')).length;
 
   const close = async () => {
     if (closing) return;
@@ -179,6 +184,18 @@ function CheckOut({ onClose }: { onClose: () => void }) {
       }
     >
       <div className="flex flex-col gap-4 font-mono text-[11px] text-hld-text">
+        {/* The ledger's currency leads — debts paid, debts open, declarations made. */}
+        <div className="flex gap-5 text-[11px] tracking-[0.08em] uppercase text-hld-muted-text">
+          <span>
+            <span className="text-hld-green">{ledgerPaid}</span> paid
+          </span>
+          <span>
+            <span className="text-hld-feat-confidence">{ledgerOpen}</span> open
+          </span>
+          <span>
+            <span className="text-hld-cyan">{ledgerDeclared}</span> declared
+          </span>
+        </div>
         {/* Observational stats — accumulated evidence, never a score. */}
         <div className="flex gap-5 text-[10px] tracking-[0.08em] uppercase text-hld-muted-text">
           <span>

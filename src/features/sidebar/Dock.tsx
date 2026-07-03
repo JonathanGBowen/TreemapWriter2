@@ -48,6 +48,8 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
   const openParallel = useStore((s) => s.openParallel);
   const openGist = useStore((s) => s.openGist);
+  const openLedger = useStore((s) => s.openLedger);
+  const openInbox = useStore((s) => s.openInbox);
   const sessionActive = useStore((s) => s.activeSession !== null);
 
   // Hold ⌥ to reveal the tool labels (recognition over recall — the dock is
@@ -96,6 +98,8 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
     { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
+    { g: '‡', name: 'Ledger — debts, declarations, deferrals', aria: 'Ledger', onClick: () => openLedger() },
+    { g: '⊞', name: 'Inbox — parked thoughts (⌘/Ctrl+I to capture)', aria: 'Inbox', onClick: () => openInbox() },
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
     { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
   ];

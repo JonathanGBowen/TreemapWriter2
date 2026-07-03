@@ -483,7 +483,12 @@ export class MultiProviderAIProvider implements AIProvider {
     const structuralSurround =
       !isWholeDocument && input.specs
         ? formatStructuralSurround(
-            buildStructuralSurround(input.section.id, input.sections, input.specs),
+            buildStructuralSurround(
+              input.section.id,
+              input.sections,
+              input.specs,
+              input.declaredHeapSectionIds ? new Set(input.declaredHeapSectionIds) : undefined,
+            ),
           )
         : '';
 

@@ -39,11 +39,13 @@ function BandMark({ band }: { band: 'medium' | 'high' }) {
   );
 }
 
-function StrainRow({ s, selected, onSelect, onDismiss }: {
+function StrainRow({ s, selected, onSelect, onDismiss, onDefer, onDeclareHeap }: {
   s: SectionStrain;
   selected: boolean;
   onSelect: (id: string) => void;
   onDismiss: (id: string) => void;
+  onDefer: (s: SectionStrain) => void;
+  onDeclareHeap: (s: SectionStrain) => void;
 }) {
   return (
     <li className="border-b border-hld-border/50 last:border-b-0">
@@ -70,15 +72,34 @@ function StrainRow({ s, selected, onSelect, onDismiss }: {
             ))}
           </ul>
         </button>
-        <button
-          type="button"
-          onClick={() => onDismiss(s.sectionId)}
-          aria-label={`Dismiss structural tension for ${s.title}`}
-          title="Dismiss (returns on reload)"
-          className="text-hld-muted hover:text-hld-magenta shrink-0 mt-[2px] transition-colors"
-        >
-          <X size={11} />
-        </button>
+        <div className="flex flex-col items-end gap-[4px] shrink-0 mt-[2px]">
+          {/* Recorded concessions (the ledger remembers) + the ephemeral dismiss. */}
+          <button
+            type="button"
+            onClick={() => onDefer(s)}
+            title="Defer to the ledger — record these as owed (an IOU) and stop flagging them"
+            className="font-mono text-[8px] tracking-[0.1em] uppercase text-hld-muted hover:text-hld-feat-confidence transition-colors"
+          >
+            defer
+          </button>
+          <button
+            type="button"
+            onClick={() => onDeclareHeap(s)}
+            title="Declare this section an honest heap — its interlocks may honestly be empty; suppress its (and its children's) tension"
+            className="font-mono text-[8px] tracking-[0.1em] uppercase text-hld-muted hover:text-hld-cyan transition-colors"
+          >
+            heap
+          </button>
+          <button
+            type="button"
+            onClick={() => onDismiss(s.sectionId)}
+            aria-label={`Dismiss structural tension for ${s.title}`}
+            title="Dismiss (returns on reload)"
+            className="text-hld-muted hover:text-hld-magenta transition-colors"
+          >
+            <X size={11} />
+          </button>
+        </div>
       </div>
     </li>
   );
@@ -96,12 +117,40 @@ export function StrainRegister({ onSelect }: { onSelect: (id: string) => void })
   const selectedId = useStore((s) => s.selectedId);
   const dismissedStrainIds = useStore((s) => s.dismissedStrainIds);
   const dismissStrain = useStore((s) => s.dismissStrain);
+  const ledger = useStore((s) => s.ledger);
+  const addLedgerEntry = useStore((s) => s.addLedgerEntry);
   const [open, setOpen] = useState(false);
 
   const strained = useMemo(() => {
-    const { strained } = computeAllStrain(sections, testSuite);
-    return strained.filter((s) => !dismissedStrainIds.includes(s.sectionId));
-  }, [sections, testSuite, dismissedStrainIds]);
+    // The mesh already consumes the ledger (declared-heap suppression, paid-IOU cover).
+    // Here we additionally hide a signal the writer has explicitly DEFERRED — an open
+    // deferred-diagnostic / IOU on this section whose `owes` is that finding's detail.
+    const deferred = new Set(
+      ledger
+        .filter((e) => (e.kind === 'deferred-diagnostic' || e.kind === 'iou') && e.status === 'open')
+        .map((e) => `${e.openedAtSectionId}\n${e.owes}`),
+    );
+    const { strained } = computeAllStrain(sections, testSuite, ledger);
+    return strained
+      .filter((s) => !dismissedStrainIds.includes(s.sectionId))
+      .map((s) => ({ ...s, signals: s.signals.filter((sig) => !deferred.has(`${s.sectionId}\n${sig.detail}`)) }))
+      .filter((s) => s.signals.length > 0);
+  }, [sections, testSuite, dismissedStrainIds, ledger]);
+
+  const onDefer = (s: SectionStrain) => {
+    // Each finding on the section becomes a recorded IOU (the "one-click candidate IOU").
+    for (const sig of s.signals) {
+      void addLedgerEntry({ kind: 'iou', openedAtSectionId: s.sectionId, owes: sig.detail, createdBy: 'user', reason: sig.kind });
+    }
+  };
+  const onDeclareHeap = (s: SectionStrain) => {
+    void addLedgerEntry({
+      kind: 'declared-heap',
+      openedAtSectionId: s.sectionId,
+      owes: `${s.title} is an honest heap — interlocks may be empty`,
+      createdBy: 'user',
+    });
+  };
 
   if (strained.length === 0) return null;
 
@@ -130,6 +179,8 @@ export function StrainRegister({ onSelect }: { onSelect: (id: string) => void })
               selected={s.sectionId === selectedId}
               onSelect={onSelect}
               onDismiss={dismissStrain}
+              onDefer={onDefer}
+              onDeclareHeap={onDeclareHeap}
             />
           ))}
         </ul>

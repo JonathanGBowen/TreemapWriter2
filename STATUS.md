@@ -337,9 +337,17 @@ streams keep their own inline indicators rather than the pill.
   `src/lib/structural-graph-helpers.ts`, rendered in the topo PARTS projection with
   minimal Inspector authoring (the Phase-4 canvas is the richer authoring home); the
   four canvas/draft part-fields ship dormant (see
-  [`docs/migration-log.md`](docs/migration-log.md)). → **3** ledger + declare/defer +
-  capture inbox (+ distance-aware
-  mesh) → **4** the dedicated W₁ Canvas workspace (hand-placed persisted
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 3** ledger +
+  declare/defer + capture inbox + the **distance-widened commitment mesh** (the
+  muddle-#3 repair: a commitment paid anywhere later / established anywhere earlier /
+  paid-IOU-covered / under a declared heap no longer flags — a monotone, back-compatible
+  `MeshContext`, absent-ctx byte-identical) — **shipped 2026-07-03** as per-entry-file
+  sidecars (`.twriter/ledger/*.yaml` + `.twriter/inbox/*.md`) on the sessions template, a
+  right-side Ledger drawer + capture inbox (⌘/Ctrl+I → a section or a germ part),
+  declared-heap as a LedgerEntry the mesh + heap-license prompts consume, and a check-out
+  ledger-currency line; OS-global hotkey deferred (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **4** the dedicated W₁ Canvas
+  workspace (hand-placed persisted
   positions; topo modal stays the derived lens) → **5** precedence engine +
   admissibility/commutable runs (grasping-order, strategy-relative) → **6**
   reorder-as-operation + homotypy candidates → **7** draft-mode Einstellung

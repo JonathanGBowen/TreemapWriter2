@@ -34,8 +34,10 @@ const fmtDay = (day: string | null) =>
 export function DashboardReport() {
   const sessions = useStore((s) => s.sessionLog);
   const sections = useStore((s) => s.sections);
+  const ledger = useStore((s) => s.ledger);
   const titles = useMemo(() => titleMap(sections), [sections]);
 
+  const ledgerPaid = ledger.filter((e) => e.status === 'paid').length;
   const totals = useMemo(() => accumulatedTotals(sessions), [sessions]);
   const nodes = useMemo(() => perNodeProgress(sessions).slice(0, 12), [sessions]);
   const series = useMemo(() => wordsOverTime(sessions), [sessions]);
@@ -57,9 +59,9 @@ export function DashboardReport() {
           )}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Stat label="Words (all time)" value={fmtWords(totals.totalWordDelta)} />
-          <Stat label="Words (30 days)" value={fmtWords(totals.last30WordDelta)} />
+          <Stat label="Debts paid" value={ledgerPaid.toLocaleString()} />
           <Stat label="Sessions" value={totals.sessionCount.toLocaleString()} />
+          <Stat label="Words (all time)" value={fmtWords(totals.totalWordDelta)} />
           <Stat label="Hours" value={totals.totalHours.toFixed(1)} />
         </div>
       </section>

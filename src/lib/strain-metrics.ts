@@ -6,8 +6,8 @@
 // user is false-alarm-sensitive, so blocked and spec-less sections are always neutral and
 // AI-alone caps at "medium". No React / Plotly / state imports → unit-testable.
 
-import type { Section, SectionSpec, TestSuite } from '../types';
-import { checkCommitmentMesh } from './diagnostic-helpers';
+import type { LedgerEntry, Section, SectionSpec, TestSuite } from '../types';
+import { buildMeshContext, checkCommitmentMesh, type MeshContext } from './diagnostic-helpers';
 import { CHAPTER_WORDS } from './magnitude';
 
 export type StrainBand = 'none' | 'medium' | 'high';
@@ -119,6 +119,7 @@ export function computeStrain(
   byId: Map<string, Section>,
   specs: SpecMap,
   testSuite: TestSuite,
+  ctx?: MeshContext,
 ): SectionStrain {
   const title = byId.get(sectionId)?.title ?? sectionId;
   const blank: SectionStrain = { sectionId, title, band: 'none', signals: [] };
@@ -126,7 +127,7 @@ export function computeStrain(
   if (!specs[sectionId]) return blank; // spec-less → neutral (an unfilled spec is never strain)
   if (isBlocked(sectionId, byId, testSuite)) return blank; // blocked already says "cannot act here yet"
 
-  const deterministic: StrainSignal[] = checkCommitmentMesh(sectionId, sections, specs).map((f) => ({
+  const deterministic: StrainSignal[] = checkCommitmentMesh(sectionId, sections, specs, ctx).map((f) => ({
     kind: f.kind,
     detail: f.detail,
     relatedTitle: f.relatedSectionTitle,
@@ -159,6 +160,7 @@ export function buildSpecMap(testSuite: TestSuite): SpecMap {
 export function computeAllStrain(
   sections: Section[],
   testSuite: TestSuite,
+  ledger: LedgerEntry[] = [],
 ): { strained: SectionStrain[]; count: number } {
   const byId = new Map<string, Section>();
   const order: string[] = [];
@@ -171,8 +173,12 @@ export function computeAllStrain(
   walk(sections);
 
   const specs = buildSpecMap(testSuite);
+  // The distance-widened, ledger-aware mesh context (Phase 3) — built once, threaded into
+  // every per-section check. A commitment consumed anywhere later, established anywhere
+  // earlier, covered by a paid IOU, or under a declared heap no longer flags a false break.
+  const ctx = buildMeshContext(sections, specs, ledger);
   const strained = order
-    .map((id) => computeStrain(id, sections, byId, specs, testSuite))
+    .map((id) => computeStrain(id, sections, byId, specs, testSuite, ctx))
     .filter((s) => s.band !== 'none');
 
   return { strained, count: strained.length };

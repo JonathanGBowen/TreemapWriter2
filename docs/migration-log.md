@@ -5419,3 +5419,87 @@ reload → edges/realizations/tags survive; re-run Discover parts → authored d
 `data.realizations ?? []` tolerate absence, and realizations reseed from part overlap on
 next open). To drop only the on-disk data, delete `.twriter/structural-edges.json` and
 `.twriter/realizations.json`.
+
+---
+
+## 2026-07-03 — Arpeggio integration Phase 3: the Ledger, declare/defer, capture inbox
+
+**What changed.** Two things at once. (1) The **commitment mesh is widened beyond textual
+adjacency** — the muddle-I.2.3 repair: `checkCommitmentMesh` only ever compared a section's
+interlocks against its tree-adjacent neighbours (parent + prev/next sibling), so a commitment
+paid three sections downstream was falsely flagged as dangling. (2) A **Ledger** (IOUs /
+declared-heap / declared-deviation / deferred-diagnostic) turns the strain register's
+dismissals into *recorded* concessions the tool remembers, and a **capture inbox** gives the
+ADHD "park a stray thought in <30 s" motive a home.
+
+- **The mesh-widening** (`src/lib/diagnostic-helpers.ts`). `checkCommitmentMesh(sectionId,
+  sections, specs, ctx?)` takes an optional **`MeshContext`** (`buildMeshContext(sections,
+  specs, ledger)`): precomputed prefix/suffix token unions (every earlier section's outgoing +
+  claim; every later section's incoming), the `paidCover` phrases of paid IOUs, and the set of
+  sections under a **declared heap**. The two helpers *append* these to their existing
+  adjacency pool, reusing `itemMetBy`/`significantTokens` unchanged — so a commitment consumed
+  anywhere later, established anywhere earlier, covered by a paid IOU, or under a declared heap
+  is now silent. **Monotone + back-compat:** absent `ctx` → byte-identical to before (guards
+  every un-updated caller, incl. spec-test's `meshFindingsFor`); present `ctx` only ever
+  *silences* a would-be finding, never creates one. `computeAllStrain` builds the ctx once from
+  the store ledger and threads it into every per-section check. (Spec-test's mesh stays
+  adjacency-scoped by design — a snapshot-internal A/B check, not the live register.)
+- **`LedgerEntry` / `InboxItem` types** (`src/types/index.ts`). `declared-heap` is a
+  `LedgerEntry` keyed by `openedAtSectionId` (NOT a `StructuralPart` flag) — the section-keyed
+  mesh + surround consume it with no part→section resolution. It exempts that section AND its
+  descendants (`declaredHeapSet`), and the diagnostic surround gains a "DECLARED HEAP" line so
+  the Phase-0 heap-license prompt clauses fire deterministically.
+- **Persistence — the SESSIONS per-entry-file template** (not the `StoredProjectData` blob).
+  `.twriter/ledger/<id>.yaml` + `.twriter/inbox/<id>.md`, one file per entry (merge-friendly):
+  Rust `layout.rs` paths (+ assertions), `commands/ledger.rs` + `commands/inbox.rs` (opaque
+  `serde_json::Value` per the serde lesson, sorted by filename stem, tolerant dir-walk;
+  round-trip tests), registered in `commands/mod.rs` + `lib.rs`; the `Repository`
+  list/save/delete triples (tauri thin-`invoke` wrappers + browser array-per-project); new
+  `src/state/ledger-state.ts` + `inbox-state.ts` slices (load/create/save-through-repo, the
+  sessions idiom, NO git ceremony), loaded EAGERLY in `project-state.ts loadProject` (the
+  always-mounted strain register needs the ledger live).
+- **Declare/defer from the strain register** (`StrainRegister.tsx`). Beside the ephemeral
+  dismiss (still "returns on reload"), each row gains **defer** (each finding → a recorded IOU
+  — Arpeggio's one-click candidate IOU) and **declare heap** (a `declared-heap` entry). The
+  register hides a signal already covered by an open deferred/IOU entry (section + owes match).
+- **Ledger drawer** (`src/features/ledger/LedgerDrawer.tsx`) — the app's FIRST right-side
+  drawer (`fixed inset-y-0 right-0`), self-gating on `ledgerOpen` (the `gist-state` workspace
+  pattern). Literal rows (kind · section · owes · age · status) with **pay** (strike-through,
+  the one juicy motion) + **waive**. Dock glyph `‡` + ⌘K. HLD tokens only (owed=amber,
+  paid=green, declared=cyan — no new pigment).
+- **Capture inbox** (`src/features/inbox/`). `Cmd/Ctrl+I` from anywhere opens a quick capture
+  field (`InboxCapture`, Enter parks it); the `InboxTray` drawer routes each item to a section
+  (**append** via the existing `handleSaveContent`, whose `content` includes the heading line)
+  or **promotes it to a germ part** (`promoteToGermPart` mints an authored germ
+  `StructuralPart` with an OPAQUE `newSectionId` — not the content hash, which collapses on
+  empty anchors). Dock glyph `⊞` + ⌘K. **OS-level global hotkey deferred** (it needs a new
+  `tauri-plugin-global-shortcut` Rust dependency + capability; the in-app chord already
+  satisfies "park it from anywhere in the app").
+- **Ledger currency at check-out** (user decision 2 — theory currency primary). `SessionModal`
+  check-out leads with "N paid · M open · K declared" above the demoted word stats;
+  `endSession` adds `Ledger-paid`/`Ledger-declared` commit trailers; the Progress Dashboard
+  leads its stat grid with "Debts paid".
+
+**Verify.** `npm run typecheck` clean; `npm test` **711 pass** (+16: 6 mesh — adjacency
+byte-identical without ctx, distance-silencing later/earlier, paid-IOU cover, declared-heap
+self+descendants, waived-not-exempt; 10 ledger/inbox slice); `npm run build` + `npm run lint`
+(0 errors) green. **Not run here (flagged):** `cargo test` — no GTK/GDK libs in CI; the
+`ledger`/`inbox` round-trip + `layout` path tests mirror the passing session pattern and must
+run on a desktop toolchain. **Local manual checks (need a real project with specs):** a
+commitment paid three sections later no longer flags in the strain register (was a false
+break); declare-heap on a parent silences its children *and* shows in the Ledger drawer + is
+read by the diagnostic prompt; defer a finding → it leaves the register as an open IOU; pay it
+→ strike-through; ⌘/Ctrl+I → capture → tray → append to a section (`git diff` shows only that
+section) or promote to a germ part (appears in Argument Topology → PARTS); check-out leads with
+the ledger currency; reload → `.twriter/ledger/*.yaml` + `.twriter/inbox/*.md` survive.
+
+**Deliberate limits (documented, not blocking).** Spec-test's mesh keeps adjacency scope (it
+audits a snapshot's internal consistency, not the live document). The OS-global capture hotkey
+is deferred (new Rust dependency). Append-to-section reads the section's `content` from the
+store's last parse; a heading edited in the sub-second before appending could revert in that
+narrow window (the inbox is a deliberate navigation away from typing — low risk).
+
+**Rollback.** `git revert` (the ledger + inbox are additive per-file sidecars;
+`data`-independent — the slices tolerate an empty list, and the mesh `ctx` is optional so the
+widening + declared-heap simply don't apply). To drop only the on-disk data, delete
+`.twriter/ledger/` and `.twriter/inbox/`.

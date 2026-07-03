@@ -13,6 +13,8 @@ import { invoke } from '@tauri-apps/api/core';
 import type {
   AgentFileEntry,
   DiskSignature,
+  InboxItem,
+  LedgerEntry,
   MarkdownDelta,
   ProjectMeta,
   PullOutcome,
@@ -201,6 +203,42 @@ export const tauriRepository: Repository = {
 
   async saveSession(record: SessionRecord): Promise<void> {
     await invoke('session_save', { record });
+  },
+
+  async listLedger(): Promise<LedgerEntry[]> {
+    try {
+      return await invoke<LedgerEntry[]>('ledger_list');
+    } catch (e) {
+      console.warn('ledger_list failed:', e);
+      return [];
+    }
+  },
+
+  async saveLedgerEntry(entry: LedgerEntry): Promise<void> {
+    await invoke('ledger_save', { id: entry.id, entry });
+  },
+
+  async deleteLedgerEntry(id: string): Promise<void> {
+    await invoke('ledger_delete', { id });
+  },
+
+  async listInbox(): Promise<InboxItem[]> {
+    try {
+      const rows = await invoke<{ id: string; text: string }[]>('inbox_list');
+      // The file has no stored createdAt; the id IS the hyphenated-ISO capture time.
+      return rows.map((r) => ({ id: r.id, text: r.text, createdAt: r.id }));
+    } catch (e) {
+      console.warn('inbox_list failed:', e);
+      return [];
+    }
+  },
+
+  async saveInboxItem(item: InboxItem): Promise<void> {
+    await invoke('inbox_save', { id: item.id, text: item.text });
+  },
+
+  async deleteInboxItem(id: string): Promise<void> {
+    await invoke('inbox_delete', { id });
   },
 
   async listSnapshotMeta(limit?: number): Promise<SnapshotMeta[]> {

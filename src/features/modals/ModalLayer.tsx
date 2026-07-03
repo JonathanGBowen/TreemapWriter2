@@ -38,6 +38,9 @@ import { ParallelSettingsModal } from "./ParallelSettingsModal";
 import { GistWorkspace } from "../gist/GistWorkspace";
 import { GistSettingsModal } from "./GistSettingsModal";
 import { SessionModal } from "./SessionModal";
+import { LedgerDrawer } from "../ledger/LedgerDrawer";
+import { InboxTray } from "../inbox/InboxTray";
+import { InboxCapture } from "../inbox/InboxCapture";
 import { CommandPaletteModal, type Command } from "./CommandPaletteModal";
 
 /**
@@ -285,6 +288,12 @@ export const ModalLayer = ({
       <GistSettingsModal />
 
       <SessionModal />
+
+      <LedgerDrawer />
+
+      <InboxTray onSaveContent={handleSaveContent} />
+
+      <InboxCapture />
 
       <CommandPaletteModal commands={paletteCommands} />
     </>

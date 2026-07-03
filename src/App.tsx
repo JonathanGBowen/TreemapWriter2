@@ -28,7 +28,7 @@ import { guardContextFit } from './features/shared/context-guard';
 import { useAutosave } from './features/shared/useAutosave';
 import { notifyAiError } from './features/shared/ai-error';
 import { AiActivityIndicator } from './features/shared/AiActivityIndicator';
-import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
+import { declaredHeapSet, diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { isTauri } from './services/tauri-environment';
 import { useStore } from './store';
@@ -216,6 +216,10 @@ export const App = () => {
       } else if (key === 's') {
         e.preventDefault();
         if (s.activeProjectId) void s.createSnapshot('manual');
+      } else if (key === 'i') {
+        // Capture is sacred: park a stray thought from anywhere, in under 30 s.
+        e.preventDefault();
+        s.openCapture();
       } else if (key === 'enter') {
         e.preventDefault();
         s.setShowRunModal(true);
@@ -517,6 +521,9 @@ export const App = () => {
     // Spec map (sectionId → spec, incl. 'root') so the diagnostic can judge this
     // section as a part inside its live structural surround, not as an isolated piece.
     const specs = selectSpecMap(testSuite);
+    // Sections the writer has declared honest heaps (Phase 3) — the diagnostic won't
+    // manufacture commitments for their and-summative material.
+    const heapIds = [...declaredHeapSet(sections, useStore.getState().ledger)];
 
     const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,
@@ -530,6 +537,7 @@ export const App = () => {
       config: promptsConfig,
       findSection,
       specs,
+      declaredHeapSectionIds: heapIds,
       mode,
     });
    
@@ -684,6 +692,9 @@ export const App = () => {
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
+    { id: 'ledger', label: 'Ledger', hint: 'Debts, declarations, deferrals', glyph: '‡', run: () => useStore.getState().openLedger() },
+    { id: 'inbox', label: 'Inbox', hint: 'Parked thoughts', glyph: '⊞', run: () => useStore.getState().openInbox() },
+    { id: 'capture', label: 'Capture a thought', hint: 'Park it in the inbox', glyph: '⊹', shortcut: '⌘I', run: () => useStore.getState().openCapture() },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
     { id: 'prompts', label: 'Prompts', hint: 'AI routing', glyph: '❝', run: () => useStore.getState().setShowPromptsGraphModal(true) },
     { id: 'raw-data', label: 'Raw data', hint: 'JSON editor', glyph: '{}', run: () => useStore.getState().setShowProjectFileModal(true) },
