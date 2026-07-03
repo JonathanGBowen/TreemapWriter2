@@ -81,6 +81,10 @@ export const useStructuralGraphActions = () => {
   const addEdge = useCallback(
     async (fromPartId: string, toPartId: string, kind: StructuralEdgeKind) => {
       if (fromPartId === toPartId) return;
+      // Never author an edge to a part that no longer exists (e.g. an armed edge
+      // whose source was deleted mid-draft) — that would persist a dangling edge.
+      const parts = useStore.getState().structuralParts;
+      if (!parts.some((p) => p.id === fromPartId) || !parts.some((p) => p.id === toPartId)) return;
       const id = edgeId(kind, fromPartId, toPartId);
       const edges = useStore.getState().structuralEdges;
       const existing = edges.find((e) => e.id === id);

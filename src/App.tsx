@@ -690,6 +690,7 @@ export const App = () => {
     { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
     { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },
+    { id: 'canvas', label: 'Canvas', hint: "The argument's spatial home (W₁)", glyph: '⬡', run: () => useStore.getState().openCanvas() },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'ledger', label: 'Ledger', hint: 'Debts, declarations, deferrals', glyph: '‡', run: () => useStore.getState().openLedger() },

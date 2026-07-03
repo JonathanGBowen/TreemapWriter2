@@ -346,9 +346,16 @@ streams keep their own inline indicators rather than the pill.
   right-side Ledger drawer + capture inbox (⌘/Ctrl+I → a section or a germ part),
   declared-heap as a LedgerEntry the mesh + heap-license prompts consume, and a check-out
   ledger-currency line; OS-global hotkey deferred (see
-  [`docs/migration-log.md`](docs/migration-log.md)). → **4** the dedicated W₁ Canvas
-  workspace (hand-placed persisted
-  positions; topo modal stays the derived lens) → **5** precedence engine +
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 4** the dedicated W₁
+  Canvas workspace — the authored spatial home of W₁ (hand-placed persisted positions,
+  N/E/C keyboard authoring, a per-node quarry `body`, the typed-edge layer + legend,
+  undoable suggest-layout, inbox drag-to-canvas, list-view/SR parity, and a topo
+  "open in canvas" deep-link) — **shipped 2026-07-03** as an
+  HTML-card-overlay-over-SVG-edges workspace on a fresh world-px `useCanvasPanZoom`,
+  one new `--color-hld-feat-glow` token, with positions + `body` riding the existing
+  `.twriter/structural-parts.json` sidecar (no new sidecar, no Rust change); the topo
+  modal stays the derived-analysis lens (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **5** precedence engine +
   admissibility/commutable runs (grasping-order, strategy-relative) → **6**
   reorder-as-operation + homotypy candidates → **7** draft-mode Einstellung
   surfaces (reader-holds, contract, available-material check, gestures, scaffold

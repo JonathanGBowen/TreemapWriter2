@@ -5503,3 +5503,91 @@ narrow window (the inbox is a deliberate navigation away from typing — low ris
 `data`-independent — the slices tolerate an empty list, and the mesh `ctx` is optional so the
 widening + declared-heap simply don't apply). To drop only the on-disk data, delete
 `.twriter/ledger/` and `.twriter/inbox/`.
+
+## 2026-07-03 — Arpeggio integration Phase 4: the W₁ Canvas workspace
+
+**What changed.** The topo modal's PARTS projection is a *derived-analysis lens* (a computed
+parts↔sections reconciliation). Arpeggio §2.1 wants W₁ as a **co-edited layer**, and §4.8 makes
+the writer's spatial placement *sacred* — external memory. Phase 4 builds that: a new
+full-screen, pan/zoom **W₁ Canvas** (`src/features/canvas/`) where the argument's parts live as
+hand-placed cards and the typed edges as lines, all **authored directly**. It is where Phase 3's
+inbox germ parts get laid out and where the `StructuralPart.position` / `body` fields (shipped
+*dormant* in Phase 2) finally have a consumer. Scope (user-approved): the *full* canvas.
+**No Rust changes, no new sidecar** — positions and the quarry `body` ride the existing
+`.twriter/structural-parts.json` sidecar (already round-trip-tested).
+
+- **Rendering decision** (from the reuse survey): an **HTML card overlay over an SVG edge
+  layer, both inside ONE world-coordinate container** transformed by a single
+  `transform: translate(tx,ty) scale(k)`. Node cards need an editable claim + a quarry `body`
+  `<textarea>` + status rings + drag — trivial in HTML, painful in SVG (`foreignObject` is used
+  nowhere and blurs text at zoom). A **fresh, small `useCanvasPanZoom`** (world-px) drives the
+  camera, NOT the SVG-viewBox-coupled `topo/usePanZoom` (whose 1100-unit space fights an HTML
+  overlay); it gives a clean `screenToWorld` for create-at-cursor + drag + drop. Node-drag
+  `pointerdown` stops propagation so the background pan never also fires (the `topo-marks`
+  precedent); the edge layer does the same so an edge click selects without panning.
+- **The one new pigment** — `--color-hld-feat-glow` (a quiet warm amber) in the `feat-*`
+  namespace, carried ONLY by a `declaredCenter` node as a CSS ring + `box-shadow`. CSS-only (the
+  glow is a DOM card, not SVG), so no `tk.ts` literal-hex mirror; the hex lives in `index.css`,
+  which the `.ts/.tsx`-only `no-restricted-syntax` hex-guard does not cover.
+- **State** — a new EPHEMERAL `src/state/canvas-state.ts` slice (registered in `state/index.ts`):
+  `canvasOpen`, the focus-on-open target (`canvasFocusPartId`, consumed once — the topo
+  deep-link), the selection, an in-progress edge draft (`canvasEdgeDraftFrom` +
+  `canvasEdgeDraftKind`), and the list-view toggle. All of it is lost on reload, by design — the
+  durable graph lives in `document-state` (`structuralParts` / `structuralEdges`).
+- **Pure, unit-tested core** — `canvas-geometry.ts` (world↔screen: `screenToWorld` /
+  `worldToScreen` / `zoomAt`-to-cursor / `fitView` / `centerOn`, node position = card *centre*);
+  `canvas-helpers.ts` (`makeGermPart`, `moveIn`, `patchIn`, `deletePartFrom` — the delete
+  cascade to incident edges + realizations — `seedPositions`, `positionSnapshot`); `canvas-keys.ts`
+  (`isEditableTarget` — the guard that keeps single-key authoring inert while typing, including
+  in a CodeMirror surface — and `KIND_BY_LETTER`).
+- **Mutations** — `use-canvas-actions.ts` follows the established idiom (build the next array via
+  a pure `canvas-helpers` transform → `setStructuralParts` / `setStructuralEdges` /
+  `setRealizations` → `await saveCurrentState()`). A live drag uses `movePartLive` (store-only, no
+  disk write, so edges follow the node) + `commit()` on drag-end — one write per gesture, not per
+  pointer move. Edge authoring + the declared-centre toggle reuse `use-structural-graph-actions`.
+- **Components** — `CanvasNode` (card at its world `position`, `translate(-50%,-50%)`, a status
+  ring encoding maturity, the centre-glow); `CanvasEdges` (SVG in world coords, reusing
+  `EDGE_DASH` / `SYMMETRIC_EDGE`: directed kinds get an arrowhead, symmetric `requires`/`opposes`
+  don't; proposed AI edges read amber/dashed; dangling edges hidden per the `pruneEdges` idiom);
+  `CanvasInspector` (a screen-space right panel — editable claim/kind, the status ladder, the ◎
+  declare-centre toggle, the deletable links list, and the **quarry `body`** where dictation dumps
+  and freewrites land as *material, never committed prose* per §6.1; auto-focuses the claim of a
+  freshly-created node); `CanvasListView` (an always-mounted `sr-only` outline mirroring the
+  treemap's sr-mirror pattern + a visible, keyboard-navigable panel — full accessibility parity);
+  `CanvasLegend` (the 7 kinds + their letters); `CanvasTopBar`; and the `CanvasWorkspace` shell.
+- **Keyboard authoring** (§6.1, guarded by `isEditableTarget`, inert under a chord): **N** germ
+  node at the cursor's world position (auto-focuses its claim); **E** arm an edge from the
+  selection, then a **kind letter** (`g/r/q/o/x/d/a`) + a click on the target draws it; **C**
+  toggle declared-centre; **1/2/3** set status germ/apprehended/articulated; **Delete** remove the
+  selected node (cascading) or edge; **Esc** blur a focused field, else cancel an armed edge, else
+  dismiss a layout preview, else close.
+- **Initial placement + suggest-layout** (spatial memory is sacred). On open, never-placed parts
+  get a deterministic grid via `seedPositions` and are **persisted once** (a placed part is *never*
+  moved); the camera then fits, or focuses the deep-link target. *Suggest layout* is explicit and
+  preview-only: synthesize `SimNode[]` + `Arc[]` from the placed parts and their edges → the pure
+  `optimizeTarget` (`topo-sim-atlas.ts`) → a **ghost preview** → **accept** stashes the prior
+  `{id→position}`, applies via `setPositions`, and fires an **undoable** sonner toast (the
+  `ai-error` action template; there is no shared undo helper) — never auto-applied.
+- **Wiring** — mounted unconditionally in `ModalLayer` beside `<GistWorkspace/>`; a Dock `⬡`
+  glyph + a ⌘K palette entry (`openCanvas()`); each `InboxRow` thought is **draggable onto the
+  canvas** (`dataTransfer` text + item id → `createPartAt(dropWorld, text)` + `removeInboxItem`);
+  and the topo `PartInspector` gains an **"open in canvas"** button (`onOpenInCanvas` threaded
+  like `onToggleCenter`) that closes the modal and focuses the part on the canvas.
+
+**Verify.** `npm run typecheck` clean; `npm test` **736 pass** (+25: 8 geometry round-trip /
+zoom-to-cursor / fit / centre, 9 helpers create-shape / delete-cascade / seed-fills-only-unplaced,
+8 canvas slice); `npm run build` + `npm run lint` (0 errors — the workspace/inspector carry only
+the same `max-lines-per-function` *warnings* every peer workspace does). **Manual (on a copy of a
+real project with discovered parts):** open the Canvas (⬡ / ⌘K) → parts appear as cards (placed
+once, stable on reload); drag a card → its `position` persists (`git diff` shows only
+`.twriter/structural-parts.json`); **N** → a germ node, type its claim; **E** + a kind letter + a
+click → a typed edge (per-kind treatment + legend); **C** → the centre-glow lights; edit a node's
+quarry `body`; **suggest layout** → ghost → accept → **Undo** restores the prior placement; drag an
+inbox item onto the canvas → a germ node at the drop; from the topo PARTS Inspector, **open in
+canvas** focuses that part; toggle **list view** → the same graph as a keyboard/SR outline; reload
+→ positions + bodies + edges survive.
+
+**Rollback.** `git revert` the commit. Purely additive: no new sidecar, no Rust/schema change,
+no migration — `position` / `body` are optional `StructuralPart` fields shipped dormant in Phase
+2, and the new slice tolerates an empty graph. Reverting the UI leaves any already-saved positions
+harmlessly in the parts sidecar (ignored by every other consumer).

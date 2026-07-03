@@ -45,7 +45,20 @@ function InboxRow({
   return (
     <li className="border-b border-hld-border/50 px-[14px] py-[10px]">
       <div className="flex items-start gap-[8px]">
-        <p className="flex-1 text-[12px] leading-snug text-hld-text whitespace-pre-wrap break-words">{item.text}</p>
+        <p
+          draggable
+          onDragStart={(e) => {
+            // Drag a parked thought straight onto the W₁ canvas → a germ node at the
+            // drop (the canvas reads both, mints the part, and consumes the item).
+            e.dataTransfer.setData('text/plain', item.text);
+            e.dataTransfer.setData('application/x-inbox-id', item.id);
+            e.dataTransfer.effectAllowed = 'copy';
+          }}
+          title="Drag onto the canvas to make a germ node"
+          className="flex-1 text-[12px] leading-snug text-hld-text whitespace-pre-wrap break-words cursor-grab active:cursor-grabbing"
+        >
+          {item.text}
+        </p>
         <button
           type="button"
           onClick={onDiscard}

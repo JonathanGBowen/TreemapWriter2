@@ -389,10 +389,23 @@ plugin). See [`migration-log.md`](migration-log.md), 2026-07-03. Original plan b
   germ parts.
 - Session check-out leads with ledger currency ("N debts paid · M declared").
 
-### Phase 4 — The W₁ Canvas workspace *(user decision 3)*
+### Phase 4 — The W₁ Canvas workspace *(user decision 3)* — ✓ shipped 2026-07-03
 
-A new full-screen workspace (`src/features/canvas/`, dock glyph + ⌘K): the authored
-spatial home of W₁. The Topology modal remains the derived-analysis lens — its PARTS
+**Shipped in full.** A new full-screen, pan/zoom **W₁ Canvas** (`src/features/canvas/`, `⬡`
+dock glyph + ⌘K) — the authored spatial home of W₁, where the parts live as hand-placed cards
+and the typed edges as lines, all authored directly. Rendering is an **HTML card overlay over
+an SVG edge layer** in one world-coordinate container (a fresh world-px `useCanvasPanZoom`, not
+the SVG-viewBox topo camera); the one new `--color-hld-feat-glow` pigment marks a declared
+centre; positions + the quarry `body` persist through the **existing** parts sidecar (no new
+sidecar, no Rust change — the Phase-2 dormant fields finally have a consumer). Keyboard authoring
+(N/E+kind-letter/C/1-2-3/Delete, guarded by `isEditableTarget`); a per-node inspector with the
+quarry `body`; an always-available legend; **suggest-layout** as a ghost preview → undoable
+accept (spatial memory is sacred — seeding only fills never-placed nodes); **inbox drag-to-canvas**;
+full **list-view / SR parity**; and the topo `PartInspector`'s **"open in canvas"** deep-link
+(which focuses the camera on the part). The Topology modal remains the derived-analysis lens.
+See [`migration-log.md`](migration-log.md), 2026-07-03. Original plan below.
+
+The Topology modal remains the derived-analysis lens — its PARTS
 projection stays the parts↔sections reconciliation view, gains an "open in canvas"
 deep link; the canvas *shows* computed-radix divergence as a quiet indicator and
 never re-implements rank.

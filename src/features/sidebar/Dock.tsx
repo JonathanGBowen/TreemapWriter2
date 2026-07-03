@@ -48,6 +48,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const openRevisionWorkspace = useStore((s) => s.openRevisionWorkspace);
   const openParallel = useStore((s) => s.openParallel);
   const openGist = useStore((s) => s.openGist);
+  const openCanvas = useStore((s) => s.openCanvas);
   const openLedger = useStore((s) => s.openLedger);
   const openInbox = useStore((s) => s.openInbox);
   const sessionActive = useStore((s) => s.activeSession !== null);
@@ -91,6 +92,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '⟐', name: 'Revise — Glass Box revision workspace', aria: 'Revise', onClick: () => openRevisionWorkspace() },
     { g: '▥', name: 'Parallel — reverse-outline revision', aria: 'Parallel', onClick: () => openParallel(false) },
     { g: '◊', name: 'Gist — whole-at-once re-entry', aria: 'Gist', onClick: () => openGist() },
+    { g: '⬡', name: "Canvas — the argument's spatial home (W₁)", aria: 'Canvas', onClick: () => openCanvas() },
     { g: '▦', name: 'Goal map — section goal editor', aria: 'Goal map', onClick: () => setShowSectionMapModal(true) },
     // evaluate / inspect
     { g: '◈', name: 'Dependencies — section graph', aria: 'Dependencies', onClick: () => setShowGraphModal(true) },

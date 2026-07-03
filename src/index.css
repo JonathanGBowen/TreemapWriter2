@@ -25,6 +25,10 @@
      tone = the Tone-Adjustment chip + AI strain marker (was `indigo`). */
   --color-hld-feat-confidence: #ffcc00;
   --color-hld-feat-tone: #7c8bff;
+  /* glow = the reserved warm center-glow (Arpeggio Phase 4) — carried ONLY by a W₁
+     canvas node the writer has declared the argument's centre. A quiet warm amber,
+     used nowhere else, distinct from orange/confidence/yellow. */
+  --color-hld-feat-glow: #f0a86a;
 
   --color-hld-text: #c5d8e8;
   /* Decorative only — dividers, idle status squares, rules. ~2.6:1: NEVER as text

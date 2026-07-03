@@ -336,6 +336,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const setShow = useStore((s) => s.setShowGraphModal);
   const editorSelectedId = useStore((s) => s.selectedId);
   const setEditorSelectedId = useStore((s) => s.setSelectedId);
+  const openCanvas = useStore((s) => s.openCanvas);
   // The fifth domain layer, read straight from the store (the PARTS projection's
   // trigger stays self-contained — no new ModalLayer/App wiring).
   const structuralParts = useStore((s) => s.structuralParts);
@@ -479,6 +480,16 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
       onClose();
     },
     [setEditorSelectedId, onClose],
+  );
+
+  // Deep-link a part into its authored spatial home (the W₁ canvas), which centres
+  // the camera on it. The topo modal stays the derived-analysis lens.
+  const onOpenInCanvas = useCallback(
+    (id: string) => {
+      onClose();
+      openCanvas(id);
+    },
+    [onClose, openCanvas],
   );
 
   const onOrganize = useCallback(() => {
@@ -700,6 +711,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
             onAcceptEdge={acceptProposedEdge}
             onRejectEdge={rejectEdge}
             onToggleCenter={toggleDeclaredCenter}
+            onOpenInCanvas={onOpenInCanvas}
           />
         </div>
       </div>

@@ -58,6 +58,8 @@ export interface InspectorProps {
   onAcceptEdge?: (id: string) => void;
   onRejectEdge?: (id: string) => void;
   onToggleCenter?: (partId: string) => void;
+  /** Deep-link this part into the authored W₁ canvas (closes the modal, focuses it there). */
+  onOpenInCanvas?: (partId: string) => void;
 }
 
 // the centering line in a station's header — its place in the source-of-arrows order
@@ -480,6 +482,7 @@ const PartInspector: React.FC<{
   onAcceptEdge?: (id: string) => void;
   onRejectEdge?: (id: string) => void;
   onToggleCenter?: (partId: string) => void;
+  onOpenInCanvas?: (partId: string) => void;
 }> = ({
   model,
   part,
@@ -497,6 +500,7 @@ const PartInspector: React.FC<{
   onAcceptEdge,
   onRejectEdge,
   onToggleCenter,
+  onOpenInCanvas,
 }) => {
   const statusColor = orphan ? TK.magenta : stale ? TK.yellow : TK.purple;
   const statusLabel = orphan ? 'ORPHAN · anchors lost' : stale ? 'STALE · source changed' : 'ANCHORED';
@@ -550,6 +554,15 @@ const PartInspector: React.FC<{
               }}
             >
               ◎ {part.declaredCenter ? 'CENTRE ✓' : 'DECLARE CENTRE'}
+            </button>
+          )}
+          {onOpenInCanvas && (
+            <button
+              onClick={() => onOpenInCanvas(part.id)}
+              title="Open this part in the authored W₁ canvas — its spatial home"
+              style={{ padding: '3px 9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.purple}`, color: TK.purple, fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em' }}
+            >
+              ⬡ OPEN IN CANVAS
             </button>
           )}
         </div>
@@ -692,6 +705,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   onAcceptEdge,
   onRejectEdge,
   onToggleCenter,
+  onOpenInCanvas,
 }) => {
   const lineColor = useLineColor(model);
   return (
@@ -726,6 +740,7 @@ export const Inspector: React.FC<InspectorProps> = ({
           onAcceptEdge={onAcceptEdge}
           onRejectEdge={onRejectEdge}
           onToggleCenter={onToggleCenter}
+          onOpenInCanvas={onOpenInCanvas}
         />
       ) : arc ? (
         <DepInspector model={model} arc={arc} lineColor={lineColor} onSelect={onSelectStation} onToggle={onToggleDep} onRemove={onRemoveDep} />
