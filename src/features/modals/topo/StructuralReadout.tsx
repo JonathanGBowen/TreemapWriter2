@@ -21,6 +21,7 @@ import React from 'react';
 import { TK } from './tk';
 import type { Metrics } from './topo-sim-atlas';
 import type { Centering } from './topo-centering';
+import type { CenterDivergence } from '../../../lib/structural-graph-helpers';
 
 const mono = 'JetBrains Mono, monospace';
 
@@ -31,9 +32,10 @@ const Cell: React.FC<{ label: string; val: string | number; c: string; dim?: boo
   </div>
 );
 
-export const StructuralReadout: React.FC<{ centering: Centering; land: Metrics; atlas: boolean }> = ({ centering, land, atlas }) => {
+export const StructuralReadout: React.FC<{ centering: Centering; land: Metrics; atlas: boolean; divergence?: CenterDivergence }> = ({ centering, land, atlas, divergence }) => {
   const back = centering.backwardCount;
   const miscPct = Math.round(centering.miscentering * 100);
+  const showDecl = !!divergence && divergence.declaredIds.length > 0;
   return (
     <div
       style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingRight: 2 }}
@@ -42,6 +44,14 @@ export const StructuralReadout: React.FC<{ centering: Centering; land: Metrics; 
       <Cell label="BACKWARD" val={back} c={back > 0 ? TK.purple : TK.green} />
       <Cell label="RANK SPAN" val={centering.maxRank} c={TK.purple} />
       <Cell label="MISCENTER" val={miscPct + '%'} c={miscPct > 0 ? TK.purple : TK.green} />
+      {showDecl && (
+        <span
+          style={{ display: 'flex' }}
+          title="DECL≠COMP — how many parts the writer has DECLARED to be the centre that sit off the COMPUTED radix (the source of the arrows). A declared centre is a claim compared against the computation, not a verdict: the writer may be right and the arrows misarranged. Shown neutrally."
+        >
+          <Cell label="DECL≠COMP" val={divergence.divergentIds.length} c={divergence.diverges ? TK.purple : TK.green} />
+        </span>
+      )}
       {atlas && (
         <>
           <div style={{ width: 1, height: 16, background: TK.border }} />

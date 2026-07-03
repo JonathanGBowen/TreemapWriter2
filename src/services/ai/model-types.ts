@@ -47,6 +47,7 @@ export type AICallKind =
   | 'developSpecLevel'
   | 'segmentSpan'
   | 'discoverStructuralParts'
+  | 'discoverStructuralEdges'
   | 'reconstructWhole'
   | 'proposeRecenterings'
   | 'runAgent';
@@ -82,6 +83,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'developSpecLevel',
   'segmentSpan',
   'discoverStructuralParts',
+  'discoverStructuralEdges',
   'reconstructWhole',
   'proposeRecenterings',
   'runAgent',
@@ -118,6 +120,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   developSpecLevel: 'Develop spec (live)',
   segmentSpan: 'Articulate (segment)',
   discoverStructuralParts: 'Discover parts',
+  discoverStructuralEdges: 'Discover edges',
   reconstructWhole: 'Whole from part',
   proposeRecenterings: 'Recenter',
   runAgent: 'Local agent',

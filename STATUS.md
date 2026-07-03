@@ -328,9 +328,17 @@ streams keep their own inline indicators rather than the pill.
   the writing surface (leak into AI prompts, word counts, treemap area, the clipboard),
   so the sidecar keeps `project.md` pristine and reuses the content-anchor idiom; a
   migration "freeze" of current ids means zero remap of existing specs. Subsumes the
-  "Stable section IDs" lingering item below. → **2** the W₁ graph layer (7 typed
-  part-to-part edges, authored germ parts with quarry bodies, function-tagged
-  realizations) → **3** ledger + declare/defer + capture inbox (+ distance-aware
+  "Stable section IDs" lingering item below. → **Phase 2** the W₁ graph layer (7 typed
+  part-to-part edges alongside the advisory `Dependency`, function-tagged
+  part↔section realizations promoting the hardcoded membership arc, the extended
+  W₁-node fields, a declared-vs-computed-centre neutral finding, and an advisory AI
+  edge-discovery assist) — **shipped 2026-07-03** as two bare-array sidecars
+  (`.twriter/structural-edges.json` + `.twriter/realizations.json`) + the pure
+  `src/lib/structural-graph-helpers.ts`, rendered in the topo PARTS projection with
+  minimal Inspector authoring (the Phase-4 canvas is the richer authoring home); the
+  four canvas/draft part-fields ship dormant (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **3** ledger + declare/defer +
+  capture inbox (+ distance-aware
   mesh) → **4** the dedicated W₁ Canvas workspace (hand-placed persisted
   positions; topo modal stays the derived lens) → **5** precedence engine +
   admissibility/commutable runs (grasping-order, strategy-relative) → **6**

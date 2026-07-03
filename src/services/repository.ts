@@ -10,9 +10,11 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  Realization,
   ReverseOutlineDoc,
   SectionIdBinding,
   StoredGist,
+  StructuralEdge,
   StructuralPart,
   SearchHit,
   SectionInput,
@@ -78,6 +80,22 @@ export interface StoredProjectData {
    * TS layer owns the shape. Absent until the writer first runs "Discover parts".
    */
   structuralParts?: StructuralPart[];
+  /**
+   * The W₁ EDGE-SET — typed part-to-part functional relations (`.twriter/
+   * structural-edges.json` on desktop; Phase 2). Turns the discovered part
+   * node-set into a configuration. Persisted as the BARE array; opaque to the Rust
+   * mirror (an opaque `Value`, like `structuralParts`), so the TS layer owns the
+   * shape. Absent until the writer discovers or draws edges.
+   */
+  structuralEdges?: StructuralEdge[];
+  /**
+   * The part↔section REALIZATIONS — the function-tagged mapping between W₁ parts
+   * and W₂ sections (`.twriter/realizations.json` on desktop; Phase 2). Seeded
+   * deterministically from part↔section overlap, then tagged by the writer.
+   * Persisted as the BARE array; opaque to the Rust mirror, so the TS layer owns
+   * the shape. Absent until parts exist.
+   */
+  realizations?: Realization[];
   /**
    * The section-id ledger — stable ids bound to headings by verbatim body anchor
    * (`.twriter/section-ids.json` on desktop; Phase 1). Keeps `testSuite` keys,

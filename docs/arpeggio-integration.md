@@ -323,7 +323,18 @@ section's current id, so zero remap of existing spec files, dependency refs, or
 gist/reverse-outline keys. Reserved `'root'` untouched. See
 [`migration-log.md`](migration-log.md), 2026-07-02.
 
-### Phase 2 — The W₁ graph layer: typed edges, authored parts, realizations *(repairs muddle I.2.1)*
+### Phase 2 — The W₁ graph layer: typed edges, authored parts, realizations *(repairs muddle I.2.1)* — ✓ shipped 2026-07-03
+
+**Shipped the full graph layer** (data model + persistence + deterministic realization
+seeding + AI edge-discovery assist + minimal topo-Inspector authoring + the
+declared-vs-computed-centre finding), so the muddle is repaired *this phase*, before the
+Phase-4 canvas. New pure engine `src/lib/structural-graph-helpers.ts`; two bare-array
+sidecars `.twriter/structural-edges.json` + `.twriter/realizations.json`; the topo PARTS
+projection renders the edge-set (function-tagged membership arcs + line-treated part→part
+edges + legend) and the `DECL≠COMP` neutral cell; the `discoverStructuralEdges` faculty
+lands proposals advisory-until-accepted; the four canvas/draft fields (`body`, `keyTerms`,
+`canonicalNeighbor`, `position`) ship dormant so Phases 4/7/8 don't re-touch the type. See
+[`migration-log.md`](migration-log.md), 2026-07-03. Original plan below.
 
 - `src/types/index.ts` (extend, never collapse): `StructuralPart` gains `body` (the
   quarry: notes, dictation dumps — never committed prose), `keyTerms[]`,

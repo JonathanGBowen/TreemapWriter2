@@ -2,9 +2,17 @@
    a station selected (its board), or a dependency arc selected (arc editor).
    Ported from the prototype topo-modal.jsx; reads the real derived model. */
 
-import React, { useMemo } from 'react';
-import type { ReadinessLevel, StructuralPart } from '../../../types';
+import React, { useMemo, useState } from 'react';
+import type {
+  FunctionTag,
+  Realization,
+  ReadinessLevel,
+  StructuralEdge,
+  StructuralEdgeKind,
+  StructuralPart,
+} from '../../../types';
 import type { PartDivergence } from '../../../lib/structural-part-helpers';
+import { edgeArrow } from '../../../lib/structural-graph-helpers';
 import type { TopoModel, Station, Arc } from './topo-derive';
 import {
   statusMeta,
@@ -38,6 +46,18 @@ export interface InspectorProps {
   partStale?: boolean;
   partOrphan?: boolean;
   onReanchor?: (id: string) => void;
+  // --- PARTS authoring (Phase 2) ---
+  /** All parts (for the edge target picker + claim lookup). */
+  allParts?: StructuralPart[];
+  /** The full realization set (the part's rows are filtered inside). */
+  realizations?: Realization[];
+  /** The full edge-set (this part's edges are filtered inside). */
+  edges?: StructuralEdge[];
+  onTagRealization?: (realizationId: string, tag: FunctionTag | undefined) => void;
+  onAddEdge?: (fromPartId: string, toPartId: string, kind: StructuralEdgeKind) => void;
+  onAcceptEdge?: (id: string) => void;
+  onRejectEdge?: (id: string) => void;
+  onToggleCenter?: (partId: string) => void;
 }
 
 // the centering line in a station's header — its place in the source-of-arrows order
@@ -70,6 +90,22 @@ const iconBtn = (color?: string): React.CSSProperties => ({
   justifyContent: 'center',
   lineHeight: 1,
 });
+
+// The seven function tags a realization can carry, and the seven W₁ edge kinds.
+const FUNCTION_TAGS: FunctionTag[] = ['open-gap', 'introduce', 'develop', 'recur', 'answer', 'pay', 'summarize'];
+const EDGE_KINDS: StructuralEdgeKind[] = ['grounds', 'requires', 'qualifies', 'opposes', 'exemplifies', 'defines', 'answers'];
+
+const miniSelect: React.CSSProperties = {
+  background: TK.bgDeep,
+  border: `1px solid ${TK.border}`,
+  color: TK.text,
+  fontFamily: mono,
+  fontSize: 8.5,
+  fontWeight: 700,
+  letterSpacing: '0.04em',
+  padding: '2px 4px',
+  cursor: 'pointer',
+};
 
 const Block: React.FC<{ index: string; title: string; color: string; count?: string; children: React.ReactNode }> = ({
   index,
@@ -436,10 +472,43 @@ const PartInspector: React.FC<{
   orphan: boolean;
   onReanchor: (id: string) => void;
   onOpen: (id: string) => void;
-}> = ({ model, part, divergence, sectionIds, stale, orphan, onReanchor, onOpen }) => {
+  allParts: StructuralPart[];
+  realizations: Realization[];
+  edges: StructuralEdge[];
+  onTagRealization?: (realizationId: string, tag: FunctionTag | undefined) => void;
+  onAddEdge?: (fromPartId: string, toPartId: string, kind: StructuralEdgeKind) => void;
+  onAcceptEdge?: (id: string) => void;
+  onRejectEdge?: (id: string) => void;
+  onToggleCenter?: (partId: string) => void;
+}> = ({
+  model,
+  part,
+  divergence,
+  sectionIds,
+  stale,
+  orphan,
+  onReanchor,
+  onOpen,
+  allParts,
+  realizations,
+  edges,
+  onTagRealization,
+  onAddEdge,
+  onAcceptEdge,
+  onRejectEdge,
+  onToggleCenter,
+}) => {
   const statusColor = orphan ? TK.magenta : stale ? TK.yellow : TK.purple;
   const statusLabel = orphan ? 'ORPHAN · anchors lost' : stale ? 'STALE · source changed' : 'ANCHORED';
   const live = sectionIds.map((sid) => model.stationById[sid]).filter((s): s is Station => !!s);
+  // This part's realizations by section, its edges, and a claim lookup for edge endpoints.
+  const realizationFor = (sid: string) => realizations.find((r) => r.partId === part.id && r.sectionId === sid);
+  const partEdges = edges.filter((e) => e.fromPartId === part.id || e.toPartId === part.id);
+  const claimOf = (id: string) => allParts.find((p) => p.id === id)?.claim ?? id;
+  const otherParts = allParts.filter((p) => p.id !== part.id);
+  const [edgeTarget, setEdgeTarget] = useState('');
+  const [edgeKind, setEdgeKind] = useState<StructuralEdgeKind>('grounds');
+
   return (
     <>
       <div style={{ padding: '16px 16px 14px', borderBottom: `1px solid ${TK.border}`, position: 'relative' }}>
@@ -464,31 +533,122 @@ const PartInspector: React.FC<{
               ⟲ RE-ANCHOR
             </button>
           )}
+          {onToggleCenter && (
+            <button
+              onClick={() => onToggleCenter(part.id)}
+              title="Declare this part the argument's centre — a claim compared against the computed radix, never a replacement for it."
+              style={{
+                padding: '3px 9px',
+                cursor: 'pointer',
+                background: part.declaredCenter ? `rgba(170,0,255,0.14)` : 'transparent',
+                border: `1px solid ${TK.purple}`,
+                color: TK.purple,
+                fontFamily: mono,
+                fontSize: 8,
+                fontWeight: 700,
+                letterSpacing: '0.12em',
+              }}
+            >
+              ◎ {part.declaredCenter ? 'CENTRE ✓' : 'DECLARE CENTRE'}
+            </button>
+          )}
         </div>
       </div>
 
-      <Block index="01" title="MAPS ONTO" color={TK.accent} count={`${live.length}`}>
+      <Block index="01" title="REALIZES / FUNCTION" color={TK.accent} count={`${live.length}`}>
         {live.length === 0 ? (
           <div style={{ fontFamily: mono, fontSize: 8, color: TK.dim, letterSpacing: '0.1em', padding: '4px 2px' }}>
             {orphan ? 'Unanchored — no live section.' : 'Maps onto no section.'}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {live.map((st) => (
-              <div
-                key={st.id}
-                onClick={() => onOpen(st.id)}
-                style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', padding: '5px 7px', border: `1px solid ${TK.border}`, background: TK.bgDeep }}
-              >
-                <span style={{ fontFamily: mono, fontSize: 8.5, fontWeight: 700, color: TK.text, width: 44, flexShrink: 0 }}>{st.sym}</span>
-                <span style={{ flex: 1, fontSize: 10, color: TK.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.short}</span>
-              </div>
-            ))}
+            {live.map((st) => {
+              const r = realizationFor(st.id);
+              return (
+                <div
+                  key={st.id}
+                  style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '5px 7px', border: `1px solid ${TK.border}`, background: TK.bgDeep }}
+                >
+                  <span onClick={() => onOpen(st.id)} style={{ fontFamily: mono, fontSize: 8.5, fontWeight: 700, color: TK.text, width: 44, flexShrink: 0, cursor: 'pointer' }}>{st.sym}</span>
+                  <span onClick={() => onOpen(st.id)} style={{ flex: 1, fontSize: 10, color: TK.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{st.short}</span>
+                  {r && onTagRealization && (
+                    <select
+                      value={r.functionTag ?? ''}
+                      onChange={(e) => onTagRealization(r.id, (e.target.value || undefined) as FunctionTag | undefined)}
+                      title="The job this section does for the part"
+                      style={{ ...miniSelect, color: r.functionTag ? TK.text : TK.dim }}
+                    >
+                      <option value="">— tag —</option>
+                      {FUNCTION_TAGS.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Block>
 
-      <Block index="02" title="DIVERGENCE" color={TK.purple}>
+      <Block index="02" title="LINKS" color={TK.purple} count={`${partEdges.length}`}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {partEdges.map((e) => {
+            const outgoing = e.fromPartId === part.id;
+            const other = outgoing ? e.toPartId : e.fromPartId;
+            const proposed = e.status === 'proposed';
+            return (
+              <div key={e.id} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '5px 7px', border: `1px solid ${proposed ? TK.yellow : TK.border}`, background: TK.bgDeep }}>
+                <span style={{ fontFamily: mono, fontSize: 8, fontWeight: 800, letterSpacing: '0.06em', color: TK.purple, flexShrink: 0 }}>
+                  {outgoing ? '' : `${edgeArrow(e.kind)} `}{e.kind}{outgoing ? ` ${edgeArrow(e.kind)}` : ''}
+                </span>
+                <span style={{ flex: 1, fontSize: 9.5, color: TK.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={claimOf(other)}>
+                  {claimOf(other)}
+                </span>
+                {proposed && onAcceptEdge && (
+                  <button onClick={() => onAcceptEdge(e.id)} title="Accept this proposed edge" style={{ ...iconBtn(TK.green) }}>✓</button>
+                )}
+                {onRejectEdge && (
+                  <button onClick={() => onRejectEdge(e.id)} title={proposed ? 'Reject this proposal' : 'Remove this edge'} style={{ ...iconBtn(TK.magenta) }}>✕</button>
+                )}
+              </div>
+            );
+          })}
+          {partEdges.length === 0 && (
+            <div style={{ fontFamily: mono, fontSize: 8, color: TK.dim, letterSpacing: '0.1em', padding: '2px 2px' }}>No relations yet.</div>
+          )}
+          {onAddEdge && otherParts.length > 0 && (
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginTop: 3 }}>
+              <select value={edgeKind} onChange={(e) => setEdgeKind(e.target.value as StructuralEdgeKind)} style={miniSelect}>
+                {EDGE_KINDS.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+              <select value={edgeTarget} onChange={(e) => setEdgeTarget(e.target.value)} style={{ ...miniSelect, flex: 1, minWidth: 0 }}>
+                <option value="">— to part —</option>
+                {otherParts.map((p) => (
+                  <option key={p.id} value={p.id}>{p.claim.slice(0, 40)}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  if (edgeTarget) {
+                    onAddEdge(part.id, edgeTarget, edgeKind);
+                    setEdgeTarget('');
+                  }
+                }}
+                disabled={!edgeTarget}
+                title="Add this edge (authored)"
+                style={{ ...iconBtn(TK.purple), opacity: edgeTarget ? 1 : 0.4 }}
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+      </Block>
+
+      <Block index="03" title="DIVERGENCE" color={TK.purple}>
         <div style={{ fontSize: 11, lineHeight: 1.6, color: TK.text }}>
           {divergence?.spansMultiple
             ? `Spans ${live.length} sections — one move across a heading boundary.`
@@ -524,6 +684,14 @@ export const Inspector: React.FC<InspectorProps> = ({
   partStale,
   partOrphan,
   onReanchor,
+  allParts,
+  realizations,
+  edges,
+  onTagRealization,
+  onAddEdge,
+  onAcceptEdge,
+  onRejectEdge,
+  onToggleCenter,
 }) => {
   const lineColor = useLineColor(model);
   return (
@@ -550,6 +718,14 @@ export const Inspector: React.FC<InspectorProps> = ({
           orphan={!!partOrphan}
           onReanchor={onReanchor ?? (() => undefined)}
           onOpen={onOpen}
+          allParts={allParts ?? []}
+          realizations={realizations ?? []}
+          edges={edges ?? []}
+          onTagRealization={onTagRealization}
+          onAddEdge={onAddEdge}
+          onAcceptEdge={onAcceptEdge}
+          onRejectEdge={onRejectEdge}
+          onToggleCenter={onToggleCenter}
         />
       ) : arc ? (
         <DepInspector model={model} arc={arc} lineColor={lineColor} onSelect={onSelectStation} onToggle={onToggleDep} onRemove={onRemoveDep} />

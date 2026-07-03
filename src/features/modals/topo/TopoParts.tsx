@@ -10,16 +10,50 @@
    self-contained: a DISCOVER PARTS button lives on this surface. */
 
 import React, { useEffect, useMemo } from 'react';
-import type { StructuralPart } from '../../../types';
+import type { Realization, StructuralEdge, StructuralEdgeKind, StructuralPart } from '../../../types';
 import type { TopoModel } from './topo-derive';
 import { usePanZoom } from './usePanZoom';
 import { fitNodes, type SimNode, type Transform } from './topo-sim-atlas';
 import { derivePartsModel } from './topo-parts';
 import { partsLayout } from './topo-layout-parts';
-import { Province, Route } from './topo-marks';
+import { EDGE_DASH, Province, Route, SYMMETRIC_EDGE } from './topo-marks';
 import { TK } from './tk';
 
 const mono = 'JetBrains Mono, monospace';
+
+const EDGE_KINDS: StructuralEdgeKind[] = ['grounds', 'requires', 'qualifies', 'opposes', 'exemplifies', 'defines', 'answers'];
+
+// Always-available legend for the W₁ edge kinds — line treatment + directionality.
+const EdgeLegend: React.FC = () => (
+  <div
+    style={{
+      position: 'absolute',
+      left: 14,
+      bottom: 14,
+      zIndex: 6,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 3,
+      padding: '8px 10px',
+      background: 'rgba(10,10,14,0.72)',
+      border: `1px solid ${TK.border}`,
+      borderRadius: 2,
+      pointerEvents: 'none',
+    }}
+  >
+    <span style={{ fontFamily: mono, fontSize: 7, letterSpacing: '0.16em', color: TK.muted, fontWeight: 700, marginBottom: 2 }}>W₁ EDGES</span>
+    {EDGE_KINDS.map((k) => (
+      <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width={26} height={7} style={{ flexShrink: 0 }}>
+          <line x1={1} y1={3.5} x2={25} y2={3.5} stroke={TK.purple} strokeWidth={1.6} strokeDasharray={EDGE_DASH[k]} strokeLinecap="round" />
+        </svg>
+        <span style={{ fontFamily: mono, fontSize: 8, letterSpacing: '0.06em', color: TK.muted, fontWeight: 700 }}>
+          {k} {SYMMETRIC_EDGE(k) ? '↔' : '→'}
+        </span>
+      </div>
+    ))}
+  </div>
+);
 
 // Staleness vocabulary, mirrored from GistProse onto the part nodes. Off-palette
 // literals (SVG needs hex; the topo surface can't reach CSS var()): mauve = the
@@ -32,6 +66,10 @@ const PART_STALE_SLATE = '#8aa6c4'; // = --color-hld-muted-text-2, GistProse's s
 export interface TopoPartsProps {
   model: TopoModel;
   parts: StructuralPart[];
+  /** The function-tagged part↔section mapping (drives membership-arc tags). */
+  realizations: Realization[];
+  /** The W₁ edge-set (part→part), rendered as a same-column channel. */
+  edges: StructuralEdge[];
   /** Part ids whose source span changed since discovery (tinted slate). */
   staleIds: string[];
   /** Part ids whose anchors can no longer be relocated (tinted mauve). */
@@ -44,11 +82,13 @@ export interface TopoPartsProps {
   fitNonce: number;
   reduced: boolean;
   discovering: boolean;
+  discoveringEdges: boolean;
   onSelect: (id: string | null) => void;
   onSelectDep: (id: string | null) => void;
   onHover: (id: string | null) => void;
   onOpen: (id: string) => void;
   onDiscover: () => void;
+  onDiscoverEdges: () => void;
 }
 
 const PartsGrid: React.FC = () => (
@@ -92,6 +132,8 @@ const DiscoverButton: React.FC<{ label: string; discovering: boolean; onDiscover
 export const TopoParts: React.FC<TopoPartsProps> = ({
   model,
   parts,
+  realizations,
+  edges,
   staleIds,
   orphanIds,
   selectedId,
@@ -102,13 +144,18 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
   fitNonce,
   reduced,
   discovering,
+  discoveringEdges,
   onSelect,
   onSelectDep,
   onHover,
   onOpen,
   onDiscover,
+  onDiscoverEdges,
 }) => {
-  const pm = useMemo(() => derivePartsModel(model, parts, orphanIds), [model, parts, orphanIds]);
+  const pm = useMemo(
+    () => derivePartsModel(model, parts, realizations, edges, orphanIds),
+    [model, parts, realizations, edges, orphanIds],
+  );
   const staleSet = useMemo(() => new Set(staleIds), [staleIds]);
   const orphanSet = useMemo(() => new Set(orphanIds), [orphanIds]);
   const layout = useMemo(() => partsLayout(pm), [pm]);
@@ -123,10 +170,10 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
     return mm;
   }, [layout]);
 
-  // Adjacency over the membership edges, for click-to-light dimming.
+  // Adjacency over BOTH channels (membership + part→part), for click-to-light dimming.
   const adj = useMemo(() => {
     const mm: Record<string, Set<string>> = {};
-    pm.arcs.forEach((a) => {
+    [...pm.arcs, ...pm.partEdges].forEach((a) => {
       (mm[a.source] ||= new Set()).add(a.target);
       (mm[a.target] ||= new Set()).add(a.source);
     });
@@ -161,10 +208,13 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
     <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: TK.bgDeep, cursor: dragging ? 'grabbing' : 'grab' }}>
       <PartsGrid />
 
-      {/* Self-contained trigger (top-centre). */}
-      <div style={{ position: 'absolute', left: '50%', top: 14, transform: 'translateX(-50%)', zIndex: 6 }}>
+      {/* Self-contained triggers (top-centre): discover the parts, then their edges. */}
+      <div style={{ position: 'absolute', left: '50%', top: 14, transform: 'translateX(-50%)', zIndex: 6, display: 'flex', gap: 8 }}>
         <DiscoverButton label={empty ? 'DISCOVER PARTS' : 'RE-DISCOVER'} discovering={discovering} onDiscover={onDiscover} />
+        {!empty && <DiscoverButton label="DISCOVER EDGES" discovering={discoveringEdges} onDiscover={onDiscoverEdges} />}
       </div>
+
+      {pm.partEdges.length > 0 && <EdgeLegend />}
 
       {empty ? (
         <div
@@ -213,6 +263,22 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
               const dim =
                 (filter ? model.stationById[a.target]?.partId !== filter : false) ||
                 (selectedId ? !(a.source === selectedId || a.target === selectedId) : false);
+              return (
+                <Route
+                  key={a.id}
+                  arc={a}
+                  m={m}
+                  health="solid"
+                  dim={dim}
+                  selected={a.id === selectedDepId}
+                  onSelect={onSelectDep}
+                />
+              );
+            })}
+
+            {/* The W₁ edge-set (part→part), a same-column channel over the parts. */}
+            {pm.partEdges.map((a) => {
+              const dim = selectedId ? !(a.source === selectedId || a.target === selectedId) : false;
               return (
                 <Route
                   key={a.id}

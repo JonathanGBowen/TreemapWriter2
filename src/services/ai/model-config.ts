@@ -81,6 +81,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   // StructuralPart discovery: one whole-document pass reconstructing the moves
   // and their configuration — the heaviest whole-document reasoning.
   discoverStructuralParts: g(HEAVY, THINK),
+  // StructuralEdge discovery: typed relations among the discovered parts.
+  discoverStructuralEdges: g(HEAVY, THINK),
   // Gestalt whole/part ops — focused reasoning over one section.
   reconstructWhole: g(HEAVY, THINK),
   proposeRecenterings: g(HEAVY, THINK),

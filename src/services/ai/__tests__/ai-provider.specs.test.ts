@@ -41,6 +41,7 @@ const config: PromptsConfig = {
   segmentCritiqueTask: '',
   segmentSummaryTask: '',
   discoverStructuralPartsPrompt: '',
+  discoverStructuralEdgesPrompt: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */

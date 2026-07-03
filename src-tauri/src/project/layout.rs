@@ -55,6 +55,14 @@ impl Layout {
         self.twriter_dir().join("structural-parts.json")
     }
 
+    pub fn structural_edges_json(&self) -> PathBuf {
+        self.twriter_dir().join("structural-edges.json")
+    }
+
+    pub fn realizations_json(&self) -> PathBuf {
+        self.twriter_dir().join("realizations.json")
+    }
+
     pub fn section_ids_json(&self) -> PathBuf {
         self.twriter_dir().join("section-ids.json")
     }
@@ -140,6 +148,14 @@ mod tests {
         assert_eq!(
             layout.structural_parts_json(),
             Path::new("/projects/diss/.twriter/structural-parts.json")
+        );
+        assert_eq!(
+            layout.structural_edges_json(),
+            Path::new("/projects/diss/.twriter/structural-edges.json")
+        );
+        assert_eq!(
+            layout.realizations_json(),
+            Path::new("/projects/diss/.twriter/realizations.json")
         );
         assert_eq!(
             layout.section_ids_json(),

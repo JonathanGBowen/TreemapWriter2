@@ -121,6 +121,22 @@ describe('recomputeStructuralStale', () => {
     expect(orphanIds).toEqual(['p1']);
     expect(staleIds).toEqual([]);
   });
+
+  it('an authored germ part (no anchors yet) is neither stale nor orphan — content-debt (Phase 2)', () => {
+    const germ: StructuralPart = {
+      id: 'germ',
+      kind: 'claim',
+      claim: 'a thought not yet on the page',
+      startAnchor: '',
+      endAnchor: '',
+      sectionIds: [],
+      confidence: 1,
+      rationale: '',
+      origin: 'authored',
+      status: 'germ',
+    };
+    expect(recomputeStructuralStale([germ], md, sections)).toEqual({ staleIds: [], orphanIds: [] });
+  });
 });
 
 describe('computeDivergences', () => {

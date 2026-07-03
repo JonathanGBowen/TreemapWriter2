@@ -22,6 +22,7 @@ import segmentLevelTask from './segment-level-task.md?raw';
 import segmentCritiqueTask from './segment-critique-task.md?raw';
 import segmentSummaryTask from './segment-summary-task.md?raw';
 import discoverStructuralPartsPrompt from './discover-structural-parts.md?raw';
+import discoverStructuralEdgesPrompt from './discover-structural-edges.md?raw';
 import suggestContentPrompt from './suggest-content.md?raw';
 import coachPrompt from './coach.md?raw';
 import refineSpecPrompt from './refine-spec.md?raw';
@@ -233,6 +234,17 @@ export const PROMPT_REGISTRY = [
       "Discovers the argument's structural-functional parts (the moves it makes) as anchored text spans, independent of the heading grid — the whole-document sibling of Articulation. Returns block ranges + kind + one-sentence claim + confidence.",
     category: 'segmentation',
     flow: 'discoverStructuralParts',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'discoverStructuralEdgesPrompt',
+    defaultText: strip(discoverStructuralEdgesPrompt),
+    label: 'Structural Edges',
+    description:
+      "Discovers the typed functional relations AMONG the discovered parts (the W₁ edge-set: grounds, requires, qualifies, opposes, exemplifies, defines, answers) — the argument as a configuration, not a sequence. Proposals only; the writer accepts each. Returns part-index pairs + kind + confidence.",
+    category: 'segmentation',
+    flow: 'discoverStructuralEdges',
     editability: 'editable',
     variables: [],
   },

@@ -34,8 +34,10 @@ import type {
   GistSegmentAnalysis,
   GistSpan,
   GistBudgets,
+  Realization,
   WholeFromPartResult,
   RecenteringsResult,
+  StructuralEdge,
   StructuralPart,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
@@ -174,6 +176,16 @@ export interface AIProvider {
    * on junk — never throws, never fabricates.
    */
   discoverStructuralParts(input: DiscoverStructuralPartsInput): Promise<StructuralPart[]>;
+  /**
+   * The W₁ edge-set (Arpeggio Phase 2). Given the discovered PARTS, propose the
+   * typed functional relations AMONG them (the seven kinds: grounds / requires /
+   * qualifies / opposes / exemplifies / defines / answers). Advisory — every edge
+   * comes back `origin: 'discovered'`, `status: 'proposed'` and is accepted (or
+   * rejected) by the writer, never auto-committed. The model emits part indices; the
+   * faculty maps them to ids and drops any out-of-range / bad-kind / self edge.
+   * Returns `[]` on junk — never throws, never fabricates.
+   */
+  discoverStructuralEdges(input: DiscoverStructuralEdgesInput): Promise<StructuralEdge[]>;
   /**
    * Gestalt — the "Beethoven test" (L3a). Reconstruct the WHOLE document's claim
    * from one section's prose ALONE, then compare to the actual claim. A drifted
@@ -340,6 +352,19 @@ export interface DiscoverStructuralPartsInput {
   modelChoice?: ModelChoice;
 }
 
+/** The discovered parts handed to the edge-discovery pass, as a numbered list. The
+ *  model proposes typed relations AMONG them by index; the faculty maps indices to
+ *  ids. Only id/kind/claim are sent — the prose lives in the parts already. */
+export interface DiscoverStructuralEdgesInput {
+  parts: { id: string; kind: string; claim: string }[];
+  /** The document title, for framing. */
+  documentTitle: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
 export interface RunDiagnosticInput {
   section: Section;
   spec: SectionSpec;
@@ -368,6 +393,8 @@ export interface EstimateDependenciesInput {
   testSuite: TestSuite;
   /** Optional discovered parts — an advisory cross-section-coupling block. Omitted → today's behavior. */
   structuralParts?: StructuralPart[];
+  /** Optional W₁ edge-set — an advisory part-to-part relations block (Phase 2). Omitted → today's behavior. */
+  structuralEdges?: StructuralEdge[];
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;
@@ -380,6 +407,9 @@ export interface CoachAdviceInput {
   testSuite: TestSuite;
   /** Optional discovered parts — a compact configuration summary augments the prompt. Omitted → today's behavior. */
   structuralParts?: StructuralPart[];
+  /** Optional W₁ edge-set + realizations — the configuration summary (Phase 2). Omitted → today's behavior. */
+  structuralEdges?: StructuralEdge[];
+  realizations?: Realization[];
   config: PromptsConfig;
   modelId?: string;
   modelChoice?: ModelChoice;

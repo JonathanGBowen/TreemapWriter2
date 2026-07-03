@@ -587,6 +587,7 @@ export const App = () => {
         sections,
         testSuite,
         structuralParts: useStore.getState().structuralParts,
+        structuralEdges: useStore.getState().structuralEdges,
         config: promptsConfig,
       });
       

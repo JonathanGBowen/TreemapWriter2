@@ -932,6 +932,99 @@ export interface StructuralPart {
   rationale: string;
   /** Hash of the part's normalized span text at discovery time — the Tier-2 staleness anchor. */
   sourceHash?: string;
+  // --- W₁-node fields (Arpeggio Phase 2). All optional/additive; the discovery
+  // faculty never supplies them (they are AUTHORED), so `normalizeStructuralParts`
+  // is untouched and `reanchoredPart`'s spread preserves them across re-anchoring. ---
+  /** How this part came to exist. Absent reads as 'discovered' (the faculty's output);
+   *  'authored' parts are hand-made and must survive re-discovery unclobbered. */
+  origin?: 'authored' | 'discovered';
+  /** The part's maturity as a THOUGHT (germ → apprehended → articulated). A 'germ'
+   *  authored part may carry empty anchors + `sectionIds: []` (content debt) and is
+   *  then exempt from orphan-flagging (unrealized, not anchor-lost). */
+  status?: 'germ' | 'apprehended' | 'articulated';
+  /** The writer's DECLARATION that this part is the argument's center — a claim
+   *  compared against the computed radix center, never a replacement for it. */
+  declaredCenter?: boolean;
+  /** Quarry: notes, dictation dumps, freewrites — NEVER committed prose. Consumed by
+   *  the Phase 4 canvas body editor; dormant until then. */
+  body?: string;
+  /** Terms the available-material check watches for (Phase 7). Dormant until then. */
+  keyTerms?: string[];
+  /** The familiar schema this part's claim deviates from — powers D8 (Phase 8). Dormant. */
+  canonicalNeighbor?: string;
+  /** Hand-placed canvas position (Phase 4) — spatial memory is external memory. Dormant. */
+  position?: { x: number; y: number };
+}
+
+/**
+ * A typed functional relation between two W₁ `StructuralPart`s — the EDGE-SET that
+ * turns the discovered node-set into a *configuration* (Arpeggio Phase 2, repairing
+ * the "node-set without an edge-set" muddle). The seven kinds are adopted verbatim
+ * from the spec. Directionality is a property of the KIND, not stored separately
+ * (see `isDirected` in `lib/structural-graph-helpers`): grounds / qualifies /
+ * exemplifies / defines / answers are directed (from → to); requires / opposes are
+ * symmetric. Sits ALONGSIDE the section-level `Dependency` (which stays advisory),
+ * never collapsed into it. Persisted as a bare array to `.twriter/structural-edges.json`.
+ */
+export type StructuralEdgeKind =
+  | 'grounds' // a supports b (directed)
+  | 'requires' // mutual determination (symmetric — the web-maker)
+  | 'qualifies' // a qualifies b (directed)
+  | 'opposes' // deliberate tension (symmetric — a legitimate gap-tearing device)
+  | 'exemplifies' // example → principle (directed)
+  | 'defines' // definition → user of the term (directed)
+  | 'answers'; // reply → objection (directed)
+
+export interface StructuralEdge {
+  /** Content-stable id (`edgeId` = hash of kind + endpoints; symmetric kinds sort the pair). */
+  id: string;
+  kind: StructuralEdgeKind;
+  /** The `from` endpoint part id (for symmetric kinds, endpoint order is not meaningful). */
+  fromPartId: string;
+  /** The `to` endpoint part id. */
+  toPartId: string;
+  /** How the edge came to exist. 'discovered' = AI-proposed; 'authored' = hand-drawn. */
+  origin: 'authored' | 'discovered';
+  /** Review lifecycle. A 'discovered' edge lands 'proposed' (advisory) until accepted;
+   *  an 'authored' edge is 'accepted' by construction. Absent reads as 'accepted'. */
+  status?: 'proposed' | 'accepted';
+  /** Optional writer note. */
+  note?: string;
+  /** The AI's confidence that this relation holds (0..1), when discovered. */
+  confidence?: number;
+  /** Why this relation holds — names it, never fabricated (when discovered). */
+  rationale?: string;
+}
+
+/**
+ * The MAPPING between a W₁ part and a W₂ section — Arpeggio's `Realization`, which
+ * promotes the bare `StructuralPart.sectionIds` membership (a hardcoded 'reference'
+ * arc with no function) into a first-class, FUNCTION-TAGGED record. A part↔section
+ * overlap seeds one untagged realization (`seedRealizations`); the writer tags it
+ * with the job the section does for the part. A part may have many realizations
+ * (recurrence with changed function); a section may realize many parts. Persisted
+ * as a bare array to `.twriter/realizations.json`.
+ */
+export type FunctionTag =
+  | 'open-gap' // makes the reader feel a question/need
+  | 'introduce' // first presentation of the part
+  | 'develop' // works the part out
+  | 'recur' // returns to it (ideally doing a different job — else monotony)
+  | 'answer' // resolves an objection
+  | 'pay' // discharges an owed debt / IOU
+  | 'summarize'; // recapitulates it
+
+export interface Realization {
+  /** Content-stable id (`computeHash(partId|sectionId)`). */
+  id: string;
+  partId: string;
+  sectionId: string;
+  /** The job this section does for the part. Absent = seeded-but-untagged (the writer tags it). */
+  functionTag?: FunctionTag;
+  /** Optional writer note. */
+  note?: string;
+  /** 'seeded' = deterministic part↔section overlap; 'authored' = the writer tagged/kept it. */
+  origin: 'seeded' | 'authored';
 }
 
 // --- LEGACY COMPAT + COMBINED SUITE ---

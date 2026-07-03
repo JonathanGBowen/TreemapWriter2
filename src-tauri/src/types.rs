@@ -281,6 +281,17 @@ pub struct StoredProjectData {
     /// `provenance`, so a sparse/evolving shape can never reject the whole save.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub structural_parts: Option<serde_json::Value>,
+    /// The W₁ edge-set — typed part-to-part relations (`.twriter/structural-edges.json`,
+    /// Phase 2). Schema-agnostic on the Rust side — the TS layer owns the shape (a bare
+    /// `StructuralEdge[]`). Opaque `Value`, like `structural_parts`, so a sparse/evolving
+    /// shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub structural_edges: Option<serde_json::Value>,
+    /// The part↔section realizations — the function-tagged mapping (`.twriter/
+    /// realizations.json`, Phase 2). Schema-agnostic on the Rust side — the TS layer owns
+    /// the shape (a bare `Realization[]`). Opaque `Value`, like `structural_parts`.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub realizations: Option<serde_json::Value>,
     /// The section-id ledger (`.twriter/section-ids.json`, Phase 1). Schema-agnostic
     /// on the Rust side — the TS layer owns the shape (a bare `SectionIdBinding[]`:
     /// `{ id, anchor, title, level, ordinal }`). Opaque `Value`, like `structural_parts`,

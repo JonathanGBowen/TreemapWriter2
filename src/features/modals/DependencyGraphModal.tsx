@@ -31,7 +31,9 @@ import { useReducedMotion } from './topo/useReducedMotion';
 import { TK } from './topo/tk';
 import { AtlasGlyph, CloseGlyph, NetworkGlyph, PartsGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
 import { useStructuralPartsActions } from '../structure/use-structural-parts-actions';
+import { useStructuralGraphActions } from '../structure/use-structural-graph-actions';
 import { computeLiveDivergences, recomputeStructuralStale, resolvePart } from '../../lib/structural-part-helpers';
+import { computeCenterDivergence, seedRealizations, type CenterDivergence } from '../../lib/structural-graph-helpers';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -216,7 +218,8 @@ const FilterBar: React.FC<{
   ghost: boolean;
   setGhost: (v: boolean) => void;
   centering: Centering;
-}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost, centering }) => {
+  divergence: CenterDivergence;
+}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost, centering, divergence }) => {
   const atlas = mode === 'atlas';
   const dotChip = mode !== 'spine'; // ATLAS + RADIX + PARTS use round Part chips; SPINE uses a track
   const heading = mode === 'atlas' ? 'CONTINENTS' : mode === 'radix' ? 'PARTS' : mode === 'parts' ? 'SECTIONS' : 'LINES';
@@ -276,7 +279,7 @@ const FilterBar: React.FC<{
       </div>
       <div style={{ width: 1, height: 18, background: TK.border, flexShrink: 0 }} />
       {mode === 'spine' && <MiniToggle on={ghost} setOn={setGhost} label="GHOST" />}
-      <StructuralReadout centering={centering} land={land} atlas={atlas} />
+      <StructuralReadout centering={centering} land={land} atlas={atlas} divergence={divergence} />
     </div>
   );
 };
@@ -336,8 +339,12 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   // The fifth domain layer, read straight from the store (the PARTS projection's
   // trigger stays self-contained — no new ModalLayer/App wiring).
   const structuralParts = useStore((s) => s.structuralParts);
+  const structuralEdges = useStore((s) => s.structuralEdges);
+  const storedRealizations = useStore((s) => s.realizations);
   const markdown = useStore((s) => s.markdown);
   const { runDiscoverStructuralParts, reanchorPart } = useStructuralPartsActions();
+  const { discoverEdges, discoveringEdges, addEdge, acceptProposedEdge, rejectEdge, tag, toggleDeclaredCenter } =
+    useStructuralGraphActions();
   const reduced = useReducedMotion();
 
   const model = useMemo(() => deriveTopo(sections, testSuite), [sections, testSuite]);
@@ -356,6 +363,19 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   );
   // the structural centre, read off the direction of the arcs (rides the same memo)
   const centering = useMemo(() => computeCentering(model), [model]);
+  // The full realization set for DISPLAY — re-seeded from the parts' live section
+  // overlap each render (tags preserved, vanished overlaps dropped), so the
+  // membership arcs are always correct even after prose edits. The store's persisted
+  // set is the annotation carrier; this normalizes it against the current text.
+  const realizations = useMemo(
+    () => seedRealizations(structuralParts, sections, storedRealizations),
+    [structuralParts, sections, storedRealizations],
+  );
+  // Declared-vs-computed centre — a neutral structural fact for the readout.
+  const centerDivergence = useMemo(
+    () => computeCenterDivergence(structuralParts, centering),
+    [structuralParts, centering],
+  );
 
   const [mode, setMode] = useState<Projection>('atlas');
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
@@ -540,7 +560,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
           onClose={onClose}
         />
 
-        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} centering={centering} />
+        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} centering={centering} divergence={centerDivergence} />
 
         <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
           <main style={{ flex: 1, position: 'relative', minWidth: 0 }}>
@@ -586,6 +606,8 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
               <TopoParts
                 model={model}
                 parts={structuralParts}
+                realizations={realizations}
+                edges={structuralEdges}
                 staleIds={staleIds}
                 orphanIds={orphanIds}
                 selectedId={selectedStationId}
@@ -596,11 +618,13 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
                 fitNonce={fitNonce}
                 reduced={reduced}
                 discovering={discovering}
+                discoveringEdges={discoveringEdges}
                 onSelect={onSelect}
                 onSelectDep={onSelectDep}
                 onHover={setHoveredId}
                 onOpen={onOpenInEditor}
                 onDiscover={onDiscover}
+                onDiscoverEdges={discoverEdges}
               />
             ) : (
               <TopoMap
@@ -668,6 +692,14 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
             partStale={selectedPart ? staleIds.includes(selectedPart.id) : false}
             partOrphan={selectedPart ? orphanIds.includes(selectedPart.id) : false}
             onReanchor={reanchorPart}
+            allParts={structuralParts}
+            realizations={realizations}
+            edges={structuralEdges}
+            onTagRealization={tag}
+            onAddEdge={addEdge}
+            onAcceptEdge={acceptProposedEdge}
+            onRejectEdge={rejectEdge}
+            onToggleCenter={toggleDeclaredCenter}
           />
         </div>
       </div>

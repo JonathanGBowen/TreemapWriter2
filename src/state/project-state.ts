@@ -241,6 +241,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       gist: null,
       provenanceMarks: [],
       structuralParts: [],
+      structuralEdges: [],
+      realizations: [],
       sectionIdLedger: [],
       // Browser persists to IndexedDB; desktop shows the demo as an unsaved
       // preview until the user creates/opens a real folder-backed project.
@@ -292,6 +294,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       gist: null,
       provenanceMarks: [],
       structuralParts: [],
+      structuralEdges: [],
+      realizations: [],
       sectionIdLedger: [],
       hiddenSectionIds: [],
       activePersonaId: 'default',
@@ -398,6 +402,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         gist: data.gist ?? null,
         provenanceMarks: data.provenance?.marks ?? [],
         structuralParts: data.structuralParts ?? [],
+        structuralEdges: data.structuralEdges ?? [],
+        realizations: data.realizations ?? [],
         sectionIdLedger: data.sectionIdLedger ?? [],
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
@@ -516,6 +522,8 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       gist: state.gist,
       provenance: { marks: state.provenanceMarks },
       structuralParts: state.structuralParts,
+      structuralEdges: state.structuralEdges,
+      realizations: state.realizations,
       sectionIdLedger: state.sectionIdLedger,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,

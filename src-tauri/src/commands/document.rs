@@ -91,6 +91,10 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.provenance_json())?;
     let structural_parts: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.structural_parts_json())?;
+    let structural_edges: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.structural_edges_json())?;
+    let realizations: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.realizations_json())?;
     let section_id_ledger: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.section_ids_json())?;
     let hidden_section_ids: Option<Vec<String>> =
@@ -118,6 +122,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         gist,
         provenance,
         structural_parts,
+        structural_edges,
+        realizations,
         section_id_ledger,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
@@ -163,6 +169,12 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(sp) = &data.structural_parts {
         crate::fs_io::write_json(&layout.structural_parts_json(), sp)?;
+    }
+    if let Some(se) = &data.structural_edges {
+        crate::fs_io::write_json(&layout.structural_edges_json(), se)?;
+    }
+    if let Some(rz) = &data.realizations {
+        crate::fs_io::write_json(&layout.realizations_json(), rz)?;
     }
     if let Some(ledger) = &data.section_id_ledger {
         crate::fs_io::write_json(&layout.section_ids_json(), ledger)?;
@@ -472,5 +484,63 @@ mod tests {
         assert!(layout.section_ids_json().is_file());
         let back = read_from(&layout).unwrap();
         assert_eq!(back.section_id_ledger, Some(ledger));
+    }
+
+    #[test]
+    fn structural_edges_round_trip_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the StructuralEdge[] shape; Rust round-trips the BARE
+        // array as an opaque Value (persisted like structuralParts, not a wrapper).
+        let structural_edges = serde_json::json!([
+            {
+                "id": "edge_1",
+                "kind": "grounds",
+                "fromPartId": "part_1",
+                "toPartId": "part_2",
+                "origin": "discovered",
+                "status": "proposed",
+                "confidence": 0.8,
+                "rationale": "The motivation grounds the thesis."
+            }
+        ]);
+
+        let data = StoredProjectData {
+            markdown: Some("# Introduction\n\nBody.".to_string()),
+            structural_edges: Some(structural_edges.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        assert!(layout.structural_edges_json().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.structural_edges, Some(structural_edges));
+    }
+
+    #[test]
+    fn realizations_round_trip_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the Realization[] shape; Rust round-trips the BARE
+        // array as an opaque Value (persisted like structuralParts, not a wrapper).
+        let realizations = serde_json::json!([
+            { "id": "rz_1", "partId": "part_1", "sectionId": "intro-0", "functionTag": "introduce", "origin": "authored" },
+            { "id": "rz_2", "partId": "part_1", "sectionId": "method-1", "origin": "seeded" }
+        ]);
+
+        let data = StoredProjectData {
+            markdown: Some("# Introduction\n\nBody.".to_string()),
+            realizations: Some(realizations.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        assert!(layout.realizations_json().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.realizations, Some(realizations));
     }
 }

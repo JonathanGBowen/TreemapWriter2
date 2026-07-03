@@ -61,6 +61,10 @@ const overlaps = (aStart: number, aEnd: number, bStart: number, bEnd: number): b
  * orphan with an empty section mapping.
  */
 export function resolvePart(part: StructuralPart, markdown: string, sections: Section[]): ResolvedPart {
+  // An empty anchor cannot be relocated (findBlockByAnchor would match the first
+  // block on a '' prefix). An authored germ part with no prose yet is unresolved —
+  // orphan here, but exempted from orphan-FLAGGING in recomputeStructuralStale.
+  if (!part.startAnchor || !part.endAnchor) return { startOffset: -1, endOffset: -1, sectionIds: [], orphan: true };
   const blocks = segmentParagraphs(markdown);
   const startBlock = findBlockByAnchor(blocks, part.startAnchor);
   const endBlock = findBlockByAnchor(blocks, part.endAnchor);
@@ -123,6 +127,9 @@ export function recomputeStructuralStale(
   const staleIds: string[] = [];
   const orphanIds: string[] = [];
   for (const p of parts) {
+    // An authored germ part (no anchors yet) is CONTENT-DEBT — unrealized prose,
+    // not a lost anchor. It is neither stale nor orphan; skip it entirely (Phase 2).
+    if (p.origin === 'authored' && !p.startAnchor && !p.endAnchor) continue;
     const r = resolvePart(p, markdown, sections);
     if (r.orphan) {
       orphanIds.push(p.id);

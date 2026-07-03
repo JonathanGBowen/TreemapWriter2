@@ -4,6 +4,7 @@ import type {
   Dependency,
   DialogueMessage,
   ProvenanceMark,
+  Realization,
   Recenterings,
   ReverseOutlineDoc,
   Section,
@@ -11,6 +12,7 @@ import type {
   SectionSpec,
   Snapshot,
   StoredGist,
+  StructuralEdge,
   StructuralPart,
   TestSuite,
   TestSuiteEntry,
@@ -91,6 +93,18 @@ export interface DocumentStateSlice {
    */
   structuralParts: StructuralPart[];
   /**
+   * The W₁ edge-set (Phase 2) — typed part-to-part relations, persisted to
+   * `.twriter/structural-edges.json`. Domain data; travels with the document.
+   * Empty until the writer discovers or draws edges.
+   */
+  structuralEdges: StructuralEdge[];
+  /**
+   * The part↔section realizations (Phase 2) — the function-tagged mapping,
+   * persisted to `.twriter/realizations.json`. Seeded from part↔section overlap
+   * and tagged by the writer. Domain data; travels with the document.
+   */
+  realizations: Realization[];
+  /**
    * The section-id ledger (Phase 1) — stable ids bound to headings by verbatim
    * body anchor, persisted to `.twriter/section-ids.json`. Rebuilt on every live
    * parse by `reconcileSectionIds` (in App.tsx) and written back here when it
@@ -116,6 +130,10 @@ export interface DocumentStateSlice {
   addProvenanceMark: (mark: ProvenanceMark) => void;
   /** Replace the document's discovered structural parts (the discovery result). */
   setStructuralParts: (parts: StructuralPart[]) => void;
+  /** Replace the W₁ edge-set (discovery / merge / accept / the load path). */
+  setStructuralEdges: (edges: StructuralEdge[]) => void;
+  /** Replace the part↔section realizations (seeding / tagging / the load path). */
+  setRealizations: (realizations: Realization[]) => void;
   /** Replace the section-id ledger (the reconcile result / the load path). */
   setSectionIdLedger: (ledger: SectionIdBinding[]) => void;
   setLastAutoSave: (date: Date | null) => void;
@@ -195,6 +213,8 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   gist: null,
   provenanceMarks: [],
   structuralParts: [],
+  structuralEdges: [],
+  realizations: [],
   sectionIdLedger: [],
   lastAutoSave: null,
 
@@ -225,6 +245,8 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   addProvenanceMark: (mark) =>
     set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
   setStructuralParts: (parts) => set({ structuralParts: parts }),
+  setStructuralEdges: (edges) => set({ structuralEdges: edges }),
+  setRealizations: (realizations) => set({ realizations }),
   setSectionIdLedger: (ledger) => set({ sectionIdLedger: ledger }),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 

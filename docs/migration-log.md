@@ -5309,3 +5309,107 @@ specs don't swap; `git diff` shows `project.md` unchanged, only the sidecar adde
 **Rollback.** `git revert` (the ledger is additive; on read `data.sectionIdLedger ?? []`
 tolerates its absence, and reconcile reseeds from current ids). To drop only the on-disk
 data, delete `.twriter/section-ids.json`.
+
+---
+
+## 2026-07-03 — Arpeggio integration Phase 2: the W₁ graph layer (typed edges, function-tagged realizations)
+
+**What changed.** `StructuralPart` gave the app heading-independent *parts* (nodes) but
+was **a node-set without an edge-set** (the muddle
+[`arpeggio-integration.md`](arpeggio-integration.md) §I.2.1 names): parts bore no
+relations to each other, and the one part→section membership arc was hardcoded
+`type: 'reference'` with no function (`topo-parts.ts`). Phase 2 adds the **edge-set** (7
+typed part-to-part relations) and promotes the bare membership arc into a first-class,
+**function-tagged `Realization`**, so the discovered configuration is finally
+expressible, authorable, and inspectable. Scope (user-approved): the *full* graph layer —
+data model + persistence + deterministic realization seeding + an AI edge-discovery
+assist + minimal topo-Inspector authoring + the declared-vs-computed-center finding.
+
+- **Data model** (`src/types/index.ts`, extend-never-collapse). `StructuralPart` gains
+  the coherent W₁-node field set, all optional/additive (none model-supplied, so
+  `normalizeStructuralParts` is untouched and `reanchoredPart`'s spread preserves them):
+  `origin` (`authored | discovered`), `status` (`germ | apprehended | articulated`),
+  `declaredCenter`, plus `body` / `keyTerms` / `canonicalNeighbor` / `position` — the
+  last four **dormant**, added now so Phases 4/7/8 (canvas quarry, available-material
+  check, D8) don't re-touch the type. New **`StructuralEdge`** (`StructuralEdgeKind` =
+  grounds / requires / qualifies / opposes / exemplifies / defines / answers; directed
+  vs symmetric is a property of the kind) sits *alongside* the section-level `Dependency`
+  (still advisory), never collapsed into it. New **`Realization`**
+  `{ id, partId, sectionId, functionTag?, note?, origin }` with `FunctionTag` =
+  open-gap / introduce / develop / recur / answer / pay / summarize.
+- **The pure engine** — `src/lib/structural-graph-helpers.ts` (no React/store/SDK; 19
+  unit tests): `seedRealizations` (one untagged realization per live part↔section
+  overlap; carries tags forward by (partId, sectionId) key; drops vanished overlaps —
+  annotate-only, like part staleness), `edgeId` (content-stable; symmetric kinds sort
+  their endpoints so `a↔b == b↔a`; identical edges collide, which *is* the dedup),
+  `mergeDiscoveredEdges` (authored/accepted edges untouched; new proposals land
+  `proposed`), `acceptEdge`, `tagRealization`, `isDirected` / `edgeArrow` /
+  `describeEdge`, `computeCenterDivergence` (declared centre vs the computed radix — a
+  neutral fact, never a verdict), and `summarizeGraph` (empty-string on empty, like
+  `summarizeParts`). Plus a guard in `structural-part-helpers.ts`: an authored **germ**
+  part (empty anchors) is content-debt, exempt from orphan-flagging.
+- **Persistence** — two new bare-array sidecars **`.twriter/structural-edges.json`** and
+  **`.twriter/realizations.json`** via the proven structural-parts 8-touch template:
+  `StoredProjectData` (`repository.ts`); the document/project state slices (field +
+  setter + default + hydrate/save/reset across `createDemoProject` /
+  `createNewProject` / `loadProject` / `saveCurrentState`); Rust `layout.rs`
+  (`structural_edges_json()` / `realizations_json()` + path assertions), an opaque
+  `Option<serde_json::Value>` pair in `types.rs`, and read/write + two round-trip tests
+  in `commands/document.rs`. Both repositories pass the whole blob through — no per-field
+  mapping changed.
+- **The topo PARTS projection** now renders the graph. `derivePartsModel` builds
+  membership arcs from realizations (carrying the `functionTag` — retiring the hardcoded
+  `'reference'`) plus a new `partEdges` channel for part→part edges; `Arc` gains optional
+  `functionTag` / `edgeKind` (section projections leave both unset and render exactly as
+  before). The `Route` mark draws each edge kind with a distinct line treatment
+  (arrowhead suppressed for the symmetric kinds) in the W₁ purple, with an
+  always-available legend. `StructuralReadout` gains a neutral **`DECL≠COMP`** cell
+  (purple = a declared centre off the computed radix, green = aligned — the Phase-0
+  neutral idiom, no new pigment).
+- **Minimal Inspector authoring** (rich authoring is the Phase-4 canvas): a functionTag
+  picker per realized section, a LINKS block (part→part edges with accept/reject on
+  proposals + a hand-author add-edge form), and a **◎ declare-centre** toggle. All lands
+  through the new `use-structural-graph-actions.ts` hook (setX → `saveCurrentState()`,
+  module-level in-flight guard).
+- **The AI edge-discovery assist** — `discoverStructuralEdges`, the parts-faculty vertical
+  slice mirrored: interface method + input type (`ai-provider.ts`), the per-flow
+  `ai-provider.structural-edges.ts` (schema + tolerant `normalizeStructuralEdges`:
+  part-index → id, drops out-of-range / self / bad-kind / duplicate, `[]` on junk), the
+  impl dispatch, the `discoverStructuralEdges` call-kind (`model-types.ts` ×3 +
+  `model-config.ts`), the editable `discover-structural-edges.md` prompt + registry
+  entry. **Advisory by construction**: proposed edges arrive `status: 'proposed'` and are
+  accepted by the writer, never auto-committed.
+- **Discovery-merge groundwork** — `runDiscoverStructuralParts` now MERGES: authored
+  parts survive re-discovery unclobbered (only discovered ones refresh), and it re-seeds
+  realizations preserving tags. Forward-looking (no authored parts exist until the Phase-4
+  canvas) but correct now.
+- **Consumers** — `buildCoachPrompt` appends `summarizeGraph` beside `summarizeParts`;
+  `estimateDependencies` appends an advisory part-to-part-edges block. Both
+  graceful-empty and advisory only (the deterministic-first law).
+
+**Realization store model (worth knowing).** The persisted `realizations` set is the
+annotation carrier; the topo modal re-seeds it for DISPLAY each render
+(`seedRealizations(parts, sections, stored)`) so membership arcs are always correct even
+after prose edits, and tagging persists the freshly-seeded-and-tagged set. Tags survive
+re-discovery by (partId, sectionId) key because part ids are content-stable.
+
+**Verify.** `npm run typecheck` clean; `npm test` **693 pass** (+27: 19 in
+`structural-graph-helpers.test.ts` — seed idempotence/tag-preservation/drop-on-vanish,
+edge-id symmetric-collision/directed-distinct, merge keeps-authored/dedups/accept-flip,
+center-divergence, summary; the germ-exemption case; and the edge-faculty normalize
+tests); `npm run build` succeeds; `npm run lint` 0 errors. **Not run here (flagged):**
+`cargo test` — the crate needs GTK/GDK libs absent in this CI; the two round-trip tests
+(`structural_edges_round_trip…`, `realizations_round_trip…`) mirror the passing
+`structural_parts_round_trips…` exactly and must be run on a desktop toolchain. **Local
+manual checks (need a real project with discovered parts):** Argument Topology → PARTS →
+membership arcs show function-tags (not a bare 'reference'); **Discover edges** proposes
+typed part→part relations (line-treated + legend); accept one → it persists to
+`.twriter/structural-edges.json`; tag a realization → persists to
+`.twriter/realizations.json`; declare-centre on a non-radix part → the `DECL≠COMP` cell
+lights neutral purple; `git diff` shows `project.md` unchanged, only the two sidecars;
+reload → edges/realizations/tags survive; re-run Discover parts → authored data survives.
+
+**Rollback.** `git revert` (both sidecars are additive; `data.structuralEdges ?? []` /
+`data.realizations ?? []` tolerate absence, and realizations reseed from part overlap on
+next open). To drop only the on-disk data, delete `.twriter/structural-edges.json` and
+`.twriter/realizations.json`.
