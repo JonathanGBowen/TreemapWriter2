@@ -83,7 +83,15 @@ export const useStructuralGraphActions = () => {
       if (fromPartId === toPartId) return;
       const id = edgeId(kind, fromPartId, toPartId);
       const edges = useStore.getState().structuralEdges;
-      if (edges.some((e) => e.id === id)) return; // already present
+      const existing = edges.find((e) => e.id === id);
+      if (existing) {
+        // Same relation already exists: upgrade a lingering proposal to accepted; else no-op.
+        if (existing.status === 'proposed') {
+          setStructuralEdges(acceptEdge(edges, id));
+          await saveCurrentState();
+        }
+        return;
+      }
       setStructuralEdges([...edges, { id, kind, fromPartId, toPartId, origin: 'authored', status: 'accepted' }]);
       await saveCurrentState();
     },

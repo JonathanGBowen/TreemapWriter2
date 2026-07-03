@@ -37,7 +37,7 @@ import {
 } from '../../lib/diagnostic-helpers';
 import { safeJsonParse } from '../../lib/utils';
 import { computeDivergences, summarizeParts } from '../../lib/structural-part-helpers';
-import { describeEdge, summarizeGraph } from '../../lib/structural-graph-helpers';
+import { describeEdge, pruneEdges, summarizeGraph } from '../../lib/structural-graph-helpers';
 import {
   buildAnalysisRequestText,
   buildRefactorRequestText,
@@ -585,7 +585,8 @@ export class MultiProviderAIProvider implements AIProvider {
 
     // Advisory: the W₁ edge-set — the typed relations the writer/AI have drawn AMONG
     // the parts. Names the configuration the section-level dependency pass can't see.
-    const edges = input.structuralEdges ?? [];
+    // Prune dangling edges so a stale endpoint never renders as a raw hash id.
+    const edges = pruneEdges(input.structuralEdges ?? [], parts);
     let edgesBlock = '';
     if (edges.length > 0 && parts.length > 0) {
       const claimOf = (id: string) => parts.find((p) => p.id === id)?.claim ?? id;

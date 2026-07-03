@@ -79,6 +79,17 @@ export function acceptEdge(edges: StructuralEdge[], id: string): StructuralEdge[
   return edges.map((e) => (e.id === id ? { ...e, status: 'accepted' as const } : e));
 }
 
+/**
+ * Keep only edges whose BOTH endpoints are still live parts — dropping DANGLING
+ * edges (a part re-discovered under a new content-id leaves its old edges pointing
+ * at an id no part carries). The canvas already hides these; this keeps them out of
+ * the AI-prompt summaries and, run at re-discovery, out of the persisted sidecar too.
+ */
+export function pruneEdges(edges: StructuralEdge[], parts: { id: string }[]): StructuralEdge[] {
+  const ids = new Set(parts.map((p) => p.id));
+  return edges.filter((e) => ids.has(e.fromPartId) && ids.has(e.toPartId));
+}
+
 // --- Realizations ----------------------------------------------------------
 
 const realizationKey = (partId: string, sectionId: string): string => `${partId}\n${sectionId}`;
@@ -198,16 +209,17 @@ export function summarizeGraph(
   edges: StructuralEdge[],
   realizations: Realization[],
 ): string {
-  void parts;
+  // Only count edges whose endpoints are still live parts (drop dangling edges).
+  const liveEdges = pruneEdges(edges, parts);
   const tagged = realizations.filter((r) => !!r.functionTag).length;
-  if (edges.length === 0 && tagged === 0) return '';
+  if (liveEdges.length === 0 && tagged === 0) return '';
   const kindCounts = new Map<StructuralEdgeKind, number>();
-  for (const e of edges) kindCounts.set(e.kind, (kindCounts.get(e.kind) ?? 0) + 1);
+  for (const e of liveEdges) kindCounts.set(e.kind, (kindCounts.get(e.kind) ?? 0) + 1);
   const kindList = Array.from(kindCounts.entries())
     .map(([k, n]) => `${n} ${k}`)
     .join(', ');
-  const edgePhrase = edges.length
-    ? `${edges.length} part-to-part edge${plural(edges.length)}${kindList ? ` (${kindList})` : ''}`
+  const edgePhrase = liveEdges.length
+    ? `${liveEdges.length} part-to-part edge${plural(liveEdges.length)}${kindList ? ` (${kindList})` : ''}`
     : '';
   const tagPhrase = tagged ? `${tagged} function-tagged realization${plural(tagged)}` : '';
   const body = [edgePhrase, tagPhrase].filter(Boolean).join('; ');

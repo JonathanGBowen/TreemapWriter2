@@ -3,7 +3,7 @@ import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
 import { reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
-import { seedRealizations } from '../../lib/structural-graph-helpers';
+import { pruneEdges, seedRealizations } from '../../lib/structural-graph-helpers';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { computeHash } from '../../lib/utils';
 import { normalizeForHash } from '../../lib/gist-helpers';
@@ -34,6 +34,7 @@ const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API 
 export const useStructuralPartsActions = () => {
   const setIsProcessing = useStore((s) => s.setIsProcessing);
   const setStructuralParts = useStore((s) => s.setStructuralParts);
+  const setStructuralEdges = useStore((s) => s.setStructuralEdges);
   const setRealizations = useStore((s) => s.setRealizations);
   const saveCurrentState = useStore((s) => s.saveCurrentState);
 
@@ -103,6 +104,9 @@ export const useStructuralPartsActions = () => {
       // Seed the function-taggable realizations from the fresh part↔section overlap,
       // preserving any tags the writer already set (annotate-only).
       setRealizations(seedRealizations(merged, sections, useStore.getState().realizations));
+      // Drop edges left dangling by a part that re-discovered under a new content-id,
+      // so they don't linger in the sidecar or the AI-prompt summaries.
+      setStructuralEdges(pruneEdges(useStore.getState().structuralEdges, merged));
       // Persist the discovery to the committed sidecar (mirrors use-gist-actions).
       await saveCurrentState();
     } catch (e) {
@@ -112,7 +116,7 @@ export const useStructuralPartsActions = () => {
       setIsProcessing(false);
       useStore.getState().endOp(opId);
     }
-  }, [setIsProcessing, setStructuralParts, setRealizations, saveCurrentState]);
+  }, [setIsProcessing, setStructuralParts, setStructuralEdges, setRealizations, saveCurrentState]);
 
   /**
    * Per-part repair — Mode 1 (pure re-anchor, NO AI). Re-stamp a stale part's

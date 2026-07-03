@@ -6,6 +6,7 @@ import {
   edgeId,
   isDirected,
   mergeDiscoveredEdges,
+  pruneEdges,
   seedRealizations,
   summarizeGraph,
   tagRealization,
@@ -130,6 +131,15 @@ describe('mergeDiscoveredEdges', () => {
   });
 });
 
+describe('pruneEdges', () => {
+  it('drops edges whose endpoint is no longer a live part', () => {
+    const edges = [proposed('grounds', 'p1', 'p2'), proposed('requires', 'p2', 'gone')];
+    const kept = pruneEdges(edges, [{ id: 'p1' }, { id: 'p2' }]);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].id).toBe(edgeId('grounds', 'p1', 'p2'));
+  });
+});
+
 // --- seedRealizations / tagRealization -------------------------------------
 
 describe('seedRealizations', () => {
@@ -212,12 +222,21 @@ describe('summarizeGraph', () => {
   });
 
   it('names the edges and the tagged-realization count', () => {
+    const parts = [part('a', [idOf('A')]), part('b', [idOf('B')]), part('c', [idOf('C')])];
     const edges = [proposed('grounds', 'a', 'b'), proposed('requires', 'b', 'c')];
-    const seeded = seedRealizations([part('a', [idOf('A')])], sections, []);
+    const seeded = seedRealizations([parts[0]], sections, []);
     const tagged = tagRealization(seeded, seeded[0].id, 'introduce');
-    const s = summarizeGraph([], edges, tagged);
+    const s = summarizeGraph(parts, edges, tagged);
     expect(s).toContain('2 part-to-part edges');
     expect(s).toContain('grounds');
     expect(s).toContain('1 function-tagged realization');
+  });
+
+  it('excludes dangling edges (endpoint not a live part) from the count', () => {
+    const parts = [part('a', [idOf('A')]), part('b', [idOf('B')])];
+    const edges = [proposed('grounds', 'a', 'b'), proposed('requires', 'b', 'ghost')];
+    const s = summarizeGraph(parts, edges, []);
+    expect(s).toContain('1 part-to-part edge'); // ghost edge dropped
+    expect(s).not.toContain('requires');
   });
 });

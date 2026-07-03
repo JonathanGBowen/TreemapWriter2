@@ -90,7 +90,8 @@ export const Route: React.FC<{
       }}
     >
       <path d={path} fill="none" stroke="transparent" strokeWidth="18" />
-      {selected && <path d={path} fill="none" stroke={stroke} strokeWidth="7" opacity="0.28" style={{ filter: 'blur(3px)' }} />}
+      {/* Selected-glow: part edges glow purple; section arcs keep the prior cyan exactly. */}
+      {selected && <path d={path} fill="none" stroke={isPartEdge ? TK.purple : TK.accent} strokeWidth="7" opacity="0.28" style={{ filter: 'blur(3px)' }} />}
       <circle cx={sx} cy={sy} r="3.2" fill={TK.bg} stroke={stroke} strokeWidth="1.6" />
       <path
         d={path}

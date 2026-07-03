@@ -5391,7 +5391,13 @@ assist + minimal topo-Inspector authoring + the declared-vs-computed-center find
 annotation carrier; the topo modal re-seeds it for DISPLAY each render
 (`seedRealizations(parts, sections, stored)`) so membership arcs are always correct even
 after prose edits, and tagging persists the freshly-seeded-and-tagged set. Tags survive
-re-discovery by (partId, sectionId) key because part ids are content-stable.
+re-discovery by (partId, sectionId) key because part ids are content-stable. Edges have no
+self-healing seed, so a `pruneEdges(edges, parts)` pass drops any DANGLING edge (an
+endpoint part re-discovered under a new content-id) at re-discovery, in `summarizeGraph`,
+and in the dependencies block — the canvas already hides them (both endpoints filtered
+against the live part-set). (Post-review hardening from an adversarial pass: also a purple
+part-edge selected-glow that leaves the section-arc cyan glow byte-identical, and
+`addEdge` upgrading a lingering proposal instead of a silent no-op.)
 
 **Verify.** `npm run typecheck` clean; `npm test` **693 pass** (+27: 19 in
 `structural-graph-helpers.test.ts` — seed idempotence/tag-preservation/drop-on-vanish,
