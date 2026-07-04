@@ -142,7 +142,11 @@ export const OrderMarks: React.FC<OrderMarksProps> = ({
         cycles[openCycle] &&
         (() => {
           const cycle = cycles[openCycle];
-          const anchor = markPos(cycle.partIds[0], graspStationOf, pos);
+          // Anchor to the first POSITIONED member — partIds[0] may be positionless
+          // (a germ part with no realization), which would strand the menu even
+          // though a later, positioned member showed the clickable chip.
+          const anchorPart = cycle.partIds.find((id) => markPos(id, graspStationOf, pos));
+          const anchor = anchorPart ? markPos(anchorPart, graspStationOf, pos) : null;
           if (!anchor) return null;
           const w = 176;
           const rowH = 20;

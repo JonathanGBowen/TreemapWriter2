@@ -411,13 +411,14 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
     return (partId: string): ExpositionStrategy => byId.get(partId) ?? 'systematic';
   }, [structuralParts]);
 
-  // Derived constraints + writer overrides (suspend / convert-to-IOU) + authored constraints.
+  // Derived + authored constraints, with writer overrides (suspend / convert-to-IOU)
+  // applied UNIFORMLY by content-stable id — so a `declared-IOU` on a cycle made of
+  // authored constraints actually drops it from the active set (not just the derived).
   const constraints = useMemo(() => {
     const overrideBy = new Map(precedence.overrides.map((o) => [o.constraintId, o.status] as const));
-    const derived = deriveConstraints(structuralEdges, strategyOf).map((c) =>
+    return [...deriveConstraints(structuralEdges, strategyOf), ...precedence.authored].map((c) =>
       overrideBy.has(c.id) ? { ...c, status: overrideBy.get(c.id)! } : c,
     );
-    return [...derived, ...precedence.authored];
   }, [structuralEdges, strategyOf, precedence]);
 
   const grasp = useMemo(
@@ -496,7 +497,9 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   // the ledger entry; pointer records a declared-deviation.
   const onStrategy = useCallback(
     (cycle: PrecedenceCycle, choice: StrategyChoice) => {
-      const openedAt = grasp.graspStationOf.get(cycle.partIds[0]) ?? '';
+      // The first cycle member with a grasp station — partIds[0] may be positionless,
+      // which would file a ledger entry with an empty openedAtSectionId.
+      const openedAt = cycle.partIds.map((id) => grasp.graspStationOf.get(id)).find((s): s is string => !!s) ?? '';
       const label = cycle.partIds.map(claimOfPart).join(' · ');
       if (choice === 'spiral') {
         const cycleSet = new Set(cycle.partIds);
