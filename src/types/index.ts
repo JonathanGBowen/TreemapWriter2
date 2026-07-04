@@ -954,6 +954,13 @@ export interface StructuralPart {
   canonicalNeighbor?: string;
   /** Hand-placed canvas position (Phase 4) — spatial memory is external memory. Dormant. */
   position?: { x: number; y: number };
+  /**
+   * The exposition strategy governing the edges this part GROUNDS (Arpeggio Phase 5).
+   * Parameterizes precedence derivation: `systematic`/`spiral` keep ground-before-lean,
+   * `genetic`/`reference` leave grounds order-free. Absent reads as 'systematic'. An
+   * authored field the discovery faculty never supplies (rides the parts sidecar).
+   */
+  expositionStrategy?: ExpositionStrategy;
 }
 
 /**
@@ -1025,6 +1032,77 @@ export interface Realization {
   note?: string;
   /** 'seeded' = deterministic part↔section overlap; 'authored' = the writer tagged/kept it. */
   origin: 'seeded' | 'authored';
+}
+
+/**
+ * The PRECEDENCE layer (Arpeggio Phase 5) — grasping-dynamics ordering constraints
+ * over W₁ parts. These are the persisted/shared data-model types; the engine's
+ * computed results (grasp order, admissibility, cycles, the covered/uncovered
+ * verdict) live in `lib/precedence.ts`, which imports these. Kept here (not in the
+ * lib) so `precedence.ts` → `types` stays a one-way import (no cycle).
+ */
+export type ExpositionStrategy = 'systematic' | 'genetic' | 'spiral' | 'reference';
+
+/** Why one part must be grasped before another (Arpeggio §5). */
+export type PrecedenceReason =
+  | 'gap-before-filling'
+  | 'set-before-material'
+  | 'overthrow-before-recentering'
+  | 'debt-before-payment'
+  | 'ground-before-lean'
+  | 'definition-before-use'
+  | 'custom';
+
+/** A derived constraint's lifecycle. 'active' = in force; the writer may suspend it or convert it to an IOU. */
+export type PrecedenceStatus = 'active' | 'suspended' | 'converted-to-iou';
+
+/** Which derivation rule produced a derived constraint (transparency — every derived constraint shows its rule). */
+export type PrecedenceRule =
+  | 'defines→definition-before-use'
+  | 'answers→gap-before-filling'
+  | 'grounds/systematic→ground-before-lean'
+  | 'grounds/genetic→overthrow-before-recentering';
+
+export interface PrecedenceConstraint {
+  /** Content-stable: `computeHash(reason|before|after|edgeId?)`. */
+  id: string;
+  /** The part that must be grasped first. */
+  before: string;
+  /** The part grasped later. */
+  after: string;
+  reason: PrecedenceReason;
+  /** 'derived' = from a W₁ edge rule; 'authored' = the writer's own precedence. */
+  source: 'derived' | 'authored';
+  /** For a derived constraint: the rule + the edge it came from. */
+  derivedFrom?: { rule: PrecedenceRule; edgeId: string };
+  status: PrecedenceStatus;
+}
+
+/** A user-defined set of parts sharing an `expositionStrategy` (Arpeggio §5's Region). */
+export interface PrecedenceRegion {
+  id: string;
+  partIds: string[];
+  expositionStrategy: ExpositionStrategy;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+/** A writer override of a DERIVED constraint (keyed by its content-stable id): suspend it, or convert it to an IOU. */
+export interface PrecedenceOverride {
+  constraintId: string;
+  status: PrecedenceStatus; // 'suspended' | 'converted-to-iou' ('active' is the default, never stored)
+}
+
+/**
+ * The persisted precedence sidecar (`.twriter/precedence.json`). An opaque JSON
+ * object on the Rust side (like `gist`/`provenance`) — the TS layer owns the shape.
+ * Regions carry the strategy dimension; authored constraints + overrides carry the
+ * writer's manual precedence and the suspend/convert-to-IOU decisions.
+ */
+export interface PrecedenceData {
+  regions: PrecedenceRegion[];
+  authored: PrecedenceConstraint[];
+  overrides: PrecedenceOverride[];
 }
 
 // --- LEGACY COMPAT + COMBINED SUITE ---

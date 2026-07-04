@@ -292,6 +292,12 @@ pub struct StoredProjectData {
     /// the shape (a bare `Realization[]`). Opaque `Value`, like `structural_parts`.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub realizations: Option<serde_json::Value>,
+    /// The precedence sidecar — grasping-dynamics ordering (`.twriter/precedence.json`,
+    /// Phase 5). Schema-agnostic on the Rust side — the TS layer owns the shape (a
+    /// `PrecedenceData` object: `{ regions, authored, overrides }`). Opaque `Value`,
+    /// like `structural_parts`, so a sparse/evolving shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub precedence: Option<serde_json::Value>,
     /// The section-id ledger (`.twriter/section-ids.json`, Phase 1). Schema-agnostic
     /// on the Rust side — the TS layer owns the shape (a bare `SectionIdBinding[]`:
     /// `{ id, anchor, title, level, ordinal }`). Opaque `Value`, like `structural_parts`,

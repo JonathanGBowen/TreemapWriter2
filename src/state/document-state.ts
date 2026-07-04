@@ -3,6 +3,7 @@ import type {
   AnalysisVersion,
   Dependency,
   DialogueMessage,
+  PrecedenceData,
   ProvenanceMark,
   Realization,
   Recenterings,
@@ -105,6 +106,13 @@ export interface DocumentStateSlice {
    */
   realizations: Realization[];
   /**
+   * The precedence sidecar (Phase 5) — regions (the exposition-strategy dimension),
+   * authored constraints, and suspend/convert-to-IOU overrides, persisted to
+   * `.twriter/precedence.json`. The DERIVED constraints are recomputed on demand
+   * (never persisted); only the writer's authored/region/override state lives here.
+   */
+  precedence: PrecedenceData;
+  /**
    * The section-id ledger (Phase 1) — stable ids bound to headings by verbatim
    * body anchor, persisted to `.twriter/section-ids.json`. Rebuilt on every live
    * parse by `reconcileSectionIds` (in App.tsx) and written back here when it
@@ -134,6 +142,8 @@ export interface DocumentStateSlice {
   setStructuralEdges: (edges: StructuralEdge[]) => void;
   /** Replace the part↔section realizations (seeding / tagging / the load path). */
   setRealizations: (realizations: Realization[]) => void;
+  /** Replace the precedence sidecar (regions / authored constraints / overrides / the load path). */
+  setPrecedence: (precedence: PrecedenceData) => void;
   /** Replace the section-id ledger (the reconcile result / the load path). */
   setSectionIdLedger: (ledger: SectionIdBinding[]) => void;
   setLastAutoSave: (date: Date | null) => void;
@@ -215,6 +225,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   structuralParts: [],
   structuralEdges: [],
   realizations: [],
+  precedence: { regions: [], authored: [], overrides: [] },
   sectionIdLedger: [],
   lastAutoSave: null,
 
@@ -247,6 +258,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   setStructuralParts: (parts) => set({ structuralParts: parts }),
   setStructuralEdges: (edges) => set({ structuralEdges: edges }),
   setRealizations: (realizations) => set({ realizations }),
+  setPrecedence: (precedence) => set({ precedence }),
   setSectionIdLedger: (ledger) => set({ sectionIdLedger: ledger }),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 

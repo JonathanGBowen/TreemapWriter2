@@ -5591,3 +5591,95 @@ canvas** focuses that part; toggle **list view** → the same graph as a keyboar
 no migration — `position` / `body` are optional `StructuralPart` fields shipped dormant in Phase
 2, and the new slice tolerates an empty graph. Reverting the UI leaves any already-saved positions
 harmlessly in the parts sidecar (ignored by every other consumer).
+
+## 2026-07-04 — Arpeggio integration Phase 5: the precedence engine + order-space diagnosis
+
+**What changed.** The app's ONE shipped order-norm was `backwardArcSet` (`topo-centering.ts`): a
+section `Dependency` arc is "backward" iff `source.docIndex > target.docIndex` (a logical
+prerequisite placed *after* its dependent), and `miscentering = backwardCount / arcCount` — divergence
+from *logical* dependence, treated as pathology. But the precedence that binds composition is not
+entailment; it is the dynamics of a reader's GRASPING, which can legitimately invert logical order
+(an objection stated before its reply; an instance before its rule; a conclusion asserted first as a
+promissory gap). Phase 0 softened only the readout *text*; the arc glyph, the legend, and the
+AI-prompt evidence still coded backward as an unconditional violation. Phase 5 builds the precedence
+engine that tells a **covered** (deliberate) inversion from an **uncovered** one, completing that
+repair, and adds the order-diagnostics surface (admissibility, commutable runs, non-linearizable
+regions). This is the muddle-I.2.2 repair, *diagnosis half*; the reorder gesture is Phase 6.
+
+- **One engine, two projections (the low-risk core).** `computeCentering` is **unchanged** — its
+  `rank`/`radix`/`isRadix`/`isTelos` credit (consumed by `topo-layout-radix.ts`) and every existing
+  test are preserved. The reframe is additive and lives in a new pure module. **Err-toward-silence:**
+  with no W₁ edges drawn, `deriveConstraints → []`, `orderGraded === false`, every backward arc stays
+  NEUTRAL and `orderMiscentering === miscentering` — nothing changes until the writer draws structure.
+- **Pure engine** — new `src/lib/precedence.ts` (no React/store/SDK; sibling of
+  `structural-graph-helpers.ts`, content-stable `computeHash` ids, empty-degrade). `deriveConstraints`
+  (defines→definition-before-use; **answers→gap-before-filling with `before = toPartId`** — the
+  objection is the gap, the load-bearing inversion; grounds→ground-before-lean only under
+  systematic/spiral, order-free under genetic/reference; requires/qualifies/exemplifies/opposes →
+  nothing; proposed edges skipped), `buildGraspOrder` (a part's grasp = min `docIndex` over its
+  realizations, preferring the `introduce`/`open-gap`-tagged subset; germ/unrealized parts
+  positionless), `checkAdmissibility` (satisfied/violated/inapplicable; inapplicable on a positionless
+  endpoint or an equal grasp station), `commutableRuns` (maximal left-greedy antichain runs — "order
+  arbitrary here"), `nonLinearizableRegions` (SCC>1 over the `before→after` constraint graph),
+  `classifyBackwardArcs` (the covered/uncovered predicate: reference auto-covered · an endorsing
+  constraint · an inverting-reason constraint spanning the pair · an **open** IOU at the dependent · an
+  authored constraint), and `formatOrderEvidence` (neutral AI prose, empty-degrade).
+- **Shared SCC helpers** — `reachFrom`/`reachAll`/`sccGroups` lifted verbatim from `topo-centering.ts`
+  into a new pure **`src/lib/graph-scc.ts`**, imported by both the centering engine and the precedence
+  engine (one tested implementation; the extraction is behavior-preserving — the centering tests stay
+  green untouched).
+- **Strategy-relative derivation (zero-Rust)** — a new optional `StructuralPart.expositionStrategy`
+  (systematic/genetic/spiral/reference) rides the existing `structural-parts.json` sidecar (the
+  `declaredCenter`/`canonicalNeighbor` authored-field precedent — no Rust touch). `strategyOf` resolves
+  an edge by its ground/source part's strategy, defaulting to `systematic`, so the engine works with
+  nothing declared. A select in the canvas `CanvasInspector` sets a part's strategy.
+- **The verdict reframe (finishing Phase 0).** `DependencyGraphModal` composes `constraints` (derived +
+  `precedence.overrides` applied by content-stable id + `precedence.authored`), `grasp`, `admiss`,
+  `commutable`, `cycles`, and `orderVerdict`; it loads the ledger on open so **open** IOUs can cover a
+  backward arc. A single `orderGraded` boolean (any active constraint, or any open IOU) gates the
+  verdict: ungraded → every backward arc renders the neutral bridge (Phase-0 posture preserved); graded
+  → covered→neutral purple **bridge glyph**, uncovered→the magenta **read-ahead chevron**. The tri-state
+  `cover` prop drives `TopoMap` `DepArc` + `topo-marks` `Route` (one classification, three projections);
+  `StructuralReadout` shows UNCOVERED (magenta) / COVERED (neutral) / MISCENTER (from `orderMiscentering`)
+  when graded, else the neutral BACKWARD count; `LegendKey` splits its BACKWARD row; the interim
+  "pending Phase 5" NOTE is deleted; and `formatStructuralEvidence` softens its AI-prompt line.
+- **The SPINE order-diagnostics surface** — a new `topo-order-marks.tsx` (`OrderMarks`), rendered inside
+  `TopoMap`'s pan/zoom `<g>`: **admissibility ticks** (a red down-tick over a part grasped before a
+  precedence it must follow, reason on hover), **commutable brackets** (a gray connector through a run's
+  grasp stations + a click-to-"declare heap" glyph → `addLedgerEntry({kind:'declared-heap',…})`, reusing
+  the `StrainRegister` plumbing), and **non-linearizable chips** (a violet ∞ on each cycle member → an
+  SVG strategy menu: **spiral** tags each cycle part's earliest realization `introduce`; **declared-IOU**
+  adds an override converting one cycle constraint to an IOU — dropping it from the active set breaks the
+  cycle — and files the ledger IOU; **pointer beyond the medium** files a declared-deviation).
+- **Persistence — the `precedence.json` sidecar** (`PrecedenceData = { regions, authored, overrides }`),
+  via the proven ~9-touch template: `types/index.ts` (the data-model types — kept in `types`, not the
+  lib, so `precedence.ts → types` stays a one-way import) · `repository.ts` `StoredProjectData.precedence?`
+  · `document-state.ts` (field + `setPrecedence` + default + impl) · `project-state.ts` ×4 (two resets,
+  hydrate, save) · `layout.rs` `precedence_json()` + path assertion · `types.rs`
+  `precedence: Option<serde_json::Value>` (opaque, the 2026-06-24 sparse-serde lesson) · `document.rs`
+  read + write + a `precedence_round_trip_through_write_then_read` test. Browser repo: no touch (whole
+  blob → IndexedDB). Overrides are keyed by content-stable `constraint.id`, re-applied after each derive.
+- **Prompt** — `dependencies.md` now teaches the logical-survival vs grasping-dynamics distinction: a
+  late-placed prerequisite is not automatically an error (it may be a deliberate genetic/pedagogical
+  order); report the dependence neutrally, don't recommend reordering.
+
+**Verify.** `npm run typecheck` clean; `npm test` **769 pass** (+33: 28 precedence — the `answers`
+inversion, grounds strategy variance, grasp introduce-preference, admissibility, commutable antichains,
+cycle detection, the covered/uncovered predicate incl. open-IOU-covers-but-paid-does-not, the no-parts
+regression `orderMiscentering === miscentering`, and a `<50 ms` perf budget over ~500 parts / ~800 edges;
+5 graph-scc); `npm run build` + `npm run lint` (0 errors — the composer + `OrderMarks` carry only the
+same `max-lines-per-function` warnings every peer does). **Not run here (flagged, same as Phase 3):**
+`cargo test` / `cargo check` — this CI has no GTK/GDK system libs (`gdk-3.0` not found); the
+`precedence` round-trip + `layout` path assertion mirror the passing `structural_edges`/`realizations`
+tests byte-for-byte and must run on a desktop toolchain. **Manual (a copy of a real project with
+parts):** draw an `answers` edge whose objection sits after its reply → the backward arc renders the
+neutral bridge (covered), not the chevron; open an IOU at the early section → covered; set a part's
+strategy to genetic → its grounds edges stop generating precedence; the readout shows UNCOVERED/COVERED
++ `orderMiscentering`; SPINE shows admissibility ticks / commutable brackets (declare heap files a
+ledger entry) / non-linearizable chips (the strategy menu); reload → strategy + regions + overrides
+survive.
+
+**Rollback.** `git revert` the commit. Purely additive: `computeCentering` untouched; `precedence.json`
++ `expositionStrategy` are optional (absent ⇒ default systematic, empty overrides/regions); the graph-scc
+extraction is behavior-preserving. Reverting leaves any already-saved `precedence.json` harmlessly on
+disk (ignored by every other consumer). To drop only the on-disk data, delete `.twriter/precedence.json`.

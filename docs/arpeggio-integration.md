@@ -425,7 +425,25 @@ never re-implements rank.
 - List-view parity toggle (sr-accessible outline, per the treemap's sr-mirror
   pattern). Inbox items drag onto the canvas to become germ parts.
 
-### Phase 5 — The precedence engine and the order space *(repairs muddle I.2.2, diagnosis half)*
+### Phase 5 — The precedence engine and the order space *(repairs muddle I.2.2, diagnosis half)* — ✓ shipped 2026-07-04
+
+**Shipped in full.** A new pure `src/lib/precedence.ts` derives grasping-dynamics
+`PrecedenceConstraint`s from the Phase-2 W₁ edges (`defines`→definition-before-use;
+`answers`→gap-before-filling with `before = toPartId`, the load-bearing inversion; `grounds`
+strategy-relative via a per-part `expositionStrategy`; requires/qualifies/exemplifies/opposes
+generate none), computes a grasp order (parts by min realization `docIndex`, introduce-preferring),
+and runs `checkAdmissibility` / `commutableRuns` / `nonLinearizableRegions` over the constraint
+graph. `classifyBackwardArcs` completes the Phase-0 softening: a backward arc is COVERED (a
+reference; an endorsing or inverting-reason constraint; or an **open** IOU at the dependent → a
+neutral purple bridge glyph) vs UNCOVERED (a genuine read-ahead → the magenta chevron), and
+`orderMiscentering` reports uncovered/arcCount. `computeCentering` is untouched (the SCC helpers are
+lifted to `src/lib/graph-scc.ts`); with no W₁ structure drawn, `orderGraded` is false and every arc
+stays neutral (err-toward-silence — no regression for users without edges). The SPINE gains an
+`OrderMarks` layer (admissibility ticks, commutable "declare-heap" brackets, non-linearizable chips
+opening a spiral | declared-IOU | pointer strategy menu); regions + authored constraints + overrides
+persist in a `.twriter/precedence.json` sidecar; and `dependencies.md` learns the logical-survival
+vs grasping-dynamics distinction. Reorder-as-operation is deferred to Phase 6. See
+[`migration-log.md`](migration-log.md), 2026-07-04. Original plan below.
 
 - New pure `src/lib/precedence.ts` (no React, no store): **`PrecedenceConstraint`**
   with `reason: gap-before-filling | set-before-material |

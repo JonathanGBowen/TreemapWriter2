@@ -17,6 +17,7 @@
    it rides the modal's existing useMemo on [sections, testSuite]. */
 
 import type { TopoModel } from './topo-derive';
+import { reachAll, sccGroups } from '../../../lib/graph-scc';
 
 export interface StationCentering {
   id: string;
@@ -46,21 +47,6 @@ export interface Centering {
   miscentering: number; // backwardCount / arcs — 0..1, "how far the field is miscentred"
 }
 
-// Forward reachability from `start` over the dependent adjacency (source → target).
-// The result is `start`'s transitive dependents; it contains `start` itself iff
-// `start` lies on a cycle.
-function reachFrom(start: string, out: Map<string, string[]>): Set<string> {
-  const seen = new Set<string>();
-  const stack = [...(out.get(start) ?? [])];
-  while (stack.length) {
-    const n = stack.pop() as string;
-    if (seen.has(n)) continue;
-    seen.add(n);
-    for (const t of out.get(n) ?? []) stack.push(t);
-  }
-  return seen;
-}
-
 // Deduped forward adjacency (source → dependents); every station is a key so
 // isolated nodes are present. Self-edges are already dropped in topo-derive.
 function forwardAdj(model: TopoModel): Map<string, string[]> {
@@ -71,23 +57,6 @@ function forwardAdj(model: TopoModel): Map<string, string[]> {
     if (list && a.target !== a.source && !list.includes(a.target)) list.push(a.target);
   }
   return out;
-}
-
-// Strongly-connected components by mutual reachability (an equivalence relation;
-// O(V^2) is ample for one dissertation, and deterministic in document order).
-function sccGroups(ids: string[], reach: Map<string, Set<string>>) {
-  const compId = new Map<string, number>();
-  const compMembers = new Map<number, string[]>();
-  let next = 0;
-  for (const id of ids) {
-    if (compId.has(id)) continue;
-    const ri = reach.get(id) as Set<string>;
-    const members = [id, ...ids.filter((j) => j !== id && ri.has(j) && (reach.get(j) as Set<string>).has(id))];
-    for (const m of members) compId.set(m, next);
-    compMembers.set(next, members);
-    next++;
-  }
-  return { compId, compMembers };
 }
 
 // Longest-path rank over the SCC condensation (Kahn): a component is popped only
@@ -158,8 +127,7 @@ function backwardArcSet(model: TopoModel): Set<string> {
 export function computeCentering(model: TopoModel): Centering {
   const ids = model.stations.map((s) => s.id);
   const out = forwardAdj(model);
-  const reach = new Map<string, Set<string>>();
-  for (const id of ids) reach.set(id, reachFrom(id, out));
+  const reach = reachAll(ids, out);
   const { compId, compMembers } = sccGroups(ids, reach);
   const rankComp = condensationRanks(model, compId, compMembers);
 
@@ -248,7 +216,7 @@ export function formatStructuralEvidence(model: TopoModel, centering: Centering,
     const sp = centering.byId[widest.a.source]?.position ?? 0;
     const tp = centering.byId[widest.a.target]?.position ?? 0;
     lines.push(
-      `${backArcs.length} of its links run BACKWARD against reading order: a prerequisite that sits ${pct(sp)} through is needed at ${pct(tp)} (a span of ${pct(widest.span)} of the document).`,
+      `${backArcs.length} of its links run against reading order: a prerequisite that sits ${pct(sp)} through is needed at ${pct(tp)} (a span of ${pct(widest.span)} of the document). This may be a DELIBERATE inversion — a gap stated before its filling, an instance before its rule — not necessarily a fault; weigh it as grasping-order, not raw logical order.`,
     );
   }
   return lines.join('\n');

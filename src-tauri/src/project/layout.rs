@@ -63,6 +63,10 @@ impl Layout {
         self.twriter_dir().join("realizations.json")
     }
 
+    pub fn precedence_json(&self) -> PathBuf {
+        self.twriter_dir().join("precedence.json")
+    }
+
     pub fn section_ids_json(&self) -> PathBuf {
         self.twriter_dir().join("section-ids.json")
     }
@@ -175,6 +179,10 @@ mod tests {
         assert_eq!(
             layout.realizations_json(),
             Path::new("/projects/diss/.twriter/realizations.json")
+        );
+        assert_eq!(
+            layout.precedence_json(),
+            Path::new("/projects/diss/.twriter/precedence.json")
         );
         assert_eq!(
             layout.section_ids_json(),

@@ -52,9 +52,9 @@ export const Route: React.FC<{
   health: 'solid' | 'weak' | 'broken';
   dim: boolean;
   selected: boolean;
-  backward?: boolean;
+  cover?: 'covered' | 'uncovered';
   onSelect: (id: string) => void;
-}> = ({ arc, m, health, dim, selected, backward, onSelect }) => {
+}> = ({ arc, m, health, dim, selected, cover, onSelect }) => {
   const a = m[arc.source];
   const b = m[arc.target];
   if (!a || !b) return null;
@@ -117,11 +117,18 @@ export const Route: React.FC<{
           {arc.functionTag}
         </text>
       )}
-      {backward && (
-        // reading-order violation: a back-chevron near the midpoint, pointing the
-        // way the dependency actually flows (earlier in the document).
+      {cover === 'uncovered' && (
+        // an UNCOVERED read-ahead (Phase 5): a prerequisite placed after its
+        // dependent with nothing licensing it — a back-chevron near the midpoint.
         <g transform={`translate(${mx},${my}) rotate(${ang})`}>
           <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+        </g>
+      )}
+      {cover === 'covered' && (
+        // a COVERED inversion (a deliberate gap-before-filling, or an open IOU):
+        // the neutral purple bridge glyph — a span, not a violation.
+        <g transform={`translate(${mx},${my})`}>
+          <path d="M-8,3 Q0,-8 8,3" fill="none" stroke={TK.purple} strokeWidth="1.6" strokeLinecap="round" />
         </g>
       )}
       {health === 'broken' && (

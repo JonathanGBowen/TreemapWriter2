@@ -5,7 +5,7 @@
    stations, and a "YOU ARE HERE" marker on the section open in the editor.
    Ported from the prototype topo-map.jsx; positions come from layoutSpine. */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { TopoModel, Arc, Station as StationT } from './topo-derive';
 import { statusMeta } from './topo-derive';
 import { layoutSpine, lineTrackPath, depGeom, depMidpoint, type XY } from './topo-layout-spine';
@@ -13,7 +13,9 @@ import { usePanZoom } from './usePanZoom';
 import { clamp, type Transform } from './topo-sim-atlas';
 import { TK } from './tk';
 import { PoleGlyph } from './topo-marks';
+import { OrderMarks, type StrategyChoice } from './topo-order-marks';
 import { recenterField, type Centering, type FieldRole } from './topo-centering';
+import type { CommutableRun, PrecedenceCycle, PrecedenceViolation } from '../../../lib/precedence';
 
 const mono = 'JetBrains Mono, monospace';
 
@@ -24,6 +26,16 @@ const fieldRing = (role: FieldRole | null | undefined): string | null =>
 export interface TopoMapProps {
   model: TopoModel;
   centering: Centering;
+  /** Per-backward-arc order verdict (Phase 5): 'covered' → neutral bridge, 'uncovered' → warning chevron. */
+  orderCover: Map<string, 'covered' | 'uncovered'>;
+  /** SPINE order-diagnostics (Phase 5) — the part-level engine results + their actions. */
+  graspStationOf: Map<string, string>;
+  violations: PrecedenceViolation[];
+  commutable: CommutableRun[];
+  cycles: PrecedenceCycle[];
+  claimOf: (partId: string) => string;
+  onDeclareHeap: (sectionId: string, partIds: string[]) => void;
+  onStrategy: (cycle: PrecedenceCycle, choice: StrategyChoice) => void;
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -69,9 +81,9 @@ const DepArc: React.FC<{
   health: 'solid' | 'weak' | 'broken';
   dim: boolean;
   selected: boolean;
-  backward?: boolean;
+  cover?: 'covered' | 'uncovered';
   onSelect: (id: string) => void;
-}> = ({ arc, pos, health, dim, selected, backward, onSelect }) => {
+}> = ({ arc, pos, health, dim, selected, cover, onSelect }) => {
   const geom = depGeom(arc, pos);
   const mid = depMidpoint(arc, pos);
   if (!geom || !mid) return null;
@@ -111,9 +123,18 @@ const DepArc: React.FC<{
       <g transform={`translate(${geom.arrow.x},${geom.arrow.y}) rotate(${geom.arrow.angle})`}>
         <path d="M0,0 L-9,-5 L-9,5 Z" fill={base} />
       </g>
-      {backward && (
+      {cover === 'uncovered' && (
+        // an UNCOVERED read-ahead: the prerequisite sits after its dependent with
+        // nothing licensing the inversion — the genuine warning (magenta chevron).
         <g transform={`translate(${mid.x},${mid.y}) rotate(${geom.arrow.angle})`}>
           <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+        </g>
+      )}
+      {cover === 'covered' && (
+        // a COVERED inversion (a deliberate gap-before-filling, or an open IOU) —
+        // the neutral purple bridge glyph spanning the gap, not a violation.
+        <g transform={`translate(${mid.x},${mid.y})`}>
+          <path d="M-8,3 Q0,-8 8,3" fill="none" stroke={TK.purple} strokeWidth="1.6" strokeLinecap="round" />
         </g>
       )}
       {health === 'broken' && (
@@ -315,6 +336,14 @@ const ZoomHud: React.FC<{ t: Transform; setT: React.Dispatch<React.SetStateActio
 export const TopoMap: React.FC<TopoMapProps> = ({
   model,
   centering,
+  orderCover,
+  graspStationOf,
+  violations,
+  commutable,
+  cycles,
+  claimOf,
+  onDeclareHeap,
+  onStrategy,
   selectedId,
   hoveredId,
   editorId,
@@ -328,6 +357,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
   onHover,
   onOpen,
 }) => {
+  const [openCycle, setOpenCycle] = useState<number | null>(null);
   const layout = useMemo(() => layoutSpine(model), [model]);
   const pos = layout.pos;
   const lineColor = useMemo(() => {
@@ -346,6 +376,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
   const { containerRef, svgRef, box, t, setT, fit, dragging, handlers } = usePanZoom(computeFit, () => {
     onSelect(null);
     onSelectDep(null);
+    setOpenCycle(null);
   });
 
   // ORGANISE / projection-switch → refit
@@ -399,7 +430,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
                 health={model.health(a)}
                 dim={dim}
                 selected={a.id === selectedDepId}
-                backward={centering.backwardArcs.has(a.id)}
+                cover={orderCover.get(a.id)}
                 onSelect={onSelectDep}
               />
             );
@@ -434,6 +465,19 @@ export const TopoMap: React.FC<TopoMapProps> = ({
             if (!p) return null;
             return <PoleGlyph key={`pole-${id}`} x={p.x} y={p.y} r={13} kind={centering.byId[id].isRadix ? 'radix' : 'telos'} />;
           })}
+
+          <OrderMarks
+            pos={pos}
+            graspStationOf={graspStationOf}
+            violations={violations}
+            commutable={commutable}
+            cycles={cycles}
+            claimOf={claimOf}
+            openCycle={openCycle}
+            onToggleCycle={setOpenCycle}
+            onDeclareHeap={onDeclareHeap}
+            onStrategy={onStrategy}
+          />
 
           <YouMarker p={editorId ? pos[editorId] : undefined} reduced={reduced} />
         </g>

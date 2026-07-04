@@ -95,6 +95,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.structural_edges_json())?;
     let realizations: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.realizations_json())?;
+    let precedence: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.precedence_json())?;
     let section_id_ledger: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.section_ids_json())?;
     let hidden_section_ids: Option<Vec<String>> =
@@ -124,6 +126,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         structural_parts,
         structural_edges,
         realizations,
+        precedence,
         section_id_ledger,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
@@ -175,6 +178,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(rz) = &data.realizations {
         crate::fs_io::write_json(&layout.realizations_json(), rz)?;
+    }
+    if let Some(pr) = &data.precedence {
+        crate::fs_io::write_json(&layout.precedence_json(), pr)?;
     }
     if let Some(ledger) = &data.section_id_ledger {
         crate::fs_io::write_json(&layout.section_ids_json(), ledger)?;
@@ -542,5 +548,40 @@ mod tests {
         assert!(layout.realizations_json().is_file());
         let back = read_from(&layout).unwrap();
         assert_eq!(back.realizations, Some(realizations));
+    }
+
+    #[test]
+    fn precedence_round_trip_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the PrecedenceData shape ({ regions, authored, overrides });
+        // Rust round-trips it as an opaque Value (an object, not a bare array — the
+        // opaque-Value mirror is shape-agnostic).
+        let precedence = serde_json::json!({
+            "regions": [
+                { "id": "reg_1", "partIds": ["part_1", "part_2"], "expositionStrategy": "genetic",
+                  "createdAt": "2026-07-04T00:00:00Z", "modifiedAt": "2026-07-04T00:00:00Z" }
+            ],
+            "authored": [
+                { "id": "pc_1", "before": "part_1", "after": "part_2", "reason": "custom",
+                  "source": "authored", "status": "active" }
+            ],
+            "overrides": [
+                { "constraintId": "pc_9", "status": "converted-to-iou" }
+            ]
+        });
+
+        let data = StoredProjectData {
+            markdown: Some("# Introduction\n\nBody.".to_string()),
+            precedence: Some(precedence.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        assert!(layout.precedence_json().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.precedence, Some(precedence));
     }
 }

@@ -13,6 +13,7 @@ import { useCanvasActions } from './use-canvas-actions';
 import type { StructuralPart } from '../../types';
 
 const STATUSES: NonNullable<StructuralPart['status']>[] = ['germ', 'apprehended', 'articulated'];
+const STRATEGIES: NonNullable<StructuralPart['expositionStrategy']>[] = ['systematic', 'genetic', 'spiral', 'reference'];
 
 export function CanvasInspector({ part, onClose }: { part: StructuralPart; onClose: () => void }) {
   const parts = useStore((s) => s.structuralParts);
@@ -104,6 +105,21 @@ export function CanvasInspector({ part, onClose }: { part: StructuralPart; onClo
             ))}
           </div>
         </div>
+
+        <label className="flex flex-col gap-[4px]">
+          <span className="font-mono text-[8px] tracking-[0.14em] uppercase text-hld-muted" title="How the edges this part GROUNDS derive precedence: systematic/spiral keep ground-before-lean; genetic/reference leave grounds order-free (Arpeggio §5).">
+            Exposition strategy
+          </span>
+          <select
+            value={part.expositionStrategy ?? 'systematic'}
+            onChange={(e) => void updatePart(part.id, { expositionStrategy: e.target.value as NonNullable<StructuralPart['expositionStrategy']> })}
+            className="bg-hld-surface-3 border border-hld-border text-hld-text text-[11px] px-[8px] py-[5px] focus:outline-none focus:border-hld-cyan font-mono"
+          >
+            {STRATEGIES.map((st) => (
+              <option key={st} value={st}>{st}</option>
+            ))}
+          </select>
+        </label>
 
         {partEdges.length > 0 && (
           <div className="flex flex-col gap-[4px]">

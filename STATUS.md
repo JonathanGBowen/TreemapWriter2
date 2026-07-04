@@ -355,8 +355,21 @@ streams keep their own inline indicators rather than the pill.
   one new `--color-hld-feat-glow` token, with positions + `body` riding the existing
   `.twriter/structural-parts.json` sidecar (no new sidecar, no Rust change); the topo
   modal stays the derived-analysis lens (see
-  [`docs/migration-log.md`](docs/migration-log.md)). → **5** precedence engine +
-  admissibility/commutable runs (grasping-order, strategy-relative) → **6**
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 5** the precedence
+  engine + order-space diagnosis — the muddle-I.2.2 repair (diagnosis half): a new
+  pure `src/lib/precedence.ts` derives grasping-dynamics constraints from the W₁
+  edges (strategy-relative via a per-part `expositionStrategy`), checks admissibility
+  / commutable runs / non-linearizable regions, and reclassifies each "backward" arc
+  COVERED (a deliberate inversion, or an open IOU → neutral bridge) vs UNCOVERED (a
+  genuine read-ahead → warning), completing the Phase-0 softening on the arc glyph +
+  legend + readout + AI prompt; `computeCentering` stays untouched (SCC helpers lifted
+  to `src/lib/graph-scc.ts`), and with no structure drawn everything stays neutral
+  (err-toward-silence). SPINE gains admissibility ticks / commutable brackets
+  (declare-heap) / non-linearizable chips (spiral · declared-IOU · pointer). —
+  **shipped 2026-07-04** as the engine + the reframe + the SPINE `OrderMarks` + a
+  `.twriter/precedence.json` sidecar (regions / authored constraints / overrides) +
+  the `dependencies.md` prompt (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **6**
   reorder-as-operation + homotypy candidates → **7** draft-mode Einstellung
   surfaces (reader-holds, contract, available-material check, gestures, scaffold
   lifecycle) → **8** adjacency diagnostics D1–D10, recentering-as-operation ("the

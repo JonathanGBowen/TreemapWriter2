@@ -13,7 +13,7 @@
    live under ./topo. */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Section, TestSuite, Dependency } from '../../types';
+import { Section, TestSuite, Dependency, type ExpositionStrategy } from '../../types';
 import { toast } from 'sonner';
 import { useStore } from '../../store';
 
@@ -34,6 +34,18 @@ import { useStructuralPartsActions } from '../structure/use-structural-parts-act
 import { useStructuralGraphActions } from '../structure/use-structural-graph-actions';
 import { computeLiveDivergences, recomputeStructuralStale, resolvePart } from '../../lib/structural-part-helpers';
 import { computeCenterDivergence, seedRealizations, type CenterDivergence } from '../../lib/structural-graph-helpers';
+import {
+  buildGraspOrder,
+  checkAdmissibility,
+  classifyBackwardArcs,
+  commutableRuns,
+  deriveConstraints,
+  nonLinearizableRegions,
+  type OrderVerdict,
+  type PrecedenceCycle,
+} from '../../lib/precedence';
+import type { StrategyChoice } from './topo/topo-order-marks';
+import type { FunctionTag } from '../../types';
 
 interface DependencyGraphModalProps {
   sections: Section[];
@@ -219,7 +231,9 @@ const FilterBar: React.FC<{
   setGhost: (v: boolean) => void;
   centering: Centering;
   divergence: CenterDivergence;
-}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost, centering, divergence }) => {
+  orderVerdict: OrderVerdict;
+  orderGraded: boolean;
+}> = ({ mode, lines, filter, setFilter, land, ghost, setGhost, centering, divergence, orderVerdict, orderGraded }) => {
   const atlas = mode === 'atlas';
   const dotChip = mode !== 'spine'; // ATLAS + RADIX + PARTS use round Part chips; SPINE uses a track
   const heading = mode === 'atlas' ? 'CONTINENTS' : mode === 'radix' ? 'PARTS' : mode === 'parts' ? 'SECTIONS' : 'LINES';
@@ -279,7 +293,7 @@ const FilterBar: React.FC<{
       </div>
       <div style={{ width: 1, height: 18, background: TK.border, flexShrink: 0 }} />
       {mode === 'spine' && <MiniToggle on={ghost} setOn={setGhost} label="GHOST" />}
-      <StructuralReadout centering={centering} land={land} atlas={atlas} divergence={divergence} />
+      <StructuralReadout centering={centering} land={land} atlas={atlas} divergence={divergence} orderVerdict={orderVerdict} orderGraded={orderGraded} />
     </div>
   );
 };
@@ -342,6 +356,13 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const structuralParts = useStore((s) => s.structuralParts);
   const structuralEdges = useStore((s) => s.structuralEdges);
   const storedRealizations = useStore((s) => s.realizations);
+  const precedence = useStore((s) => s.precedence);
+  const ledger = useStore((s) => s.ledger);
+  const loadLedger = useStore((s) => s.loadLedger);
+  const addLedgerEntry = useStore((s) => s.addLedgerEntry);
+  const setPrecedence = useStore((s) => s.setPrecedence);
+  const setRealizationsStore = useStore((s) => s.setRealizations);
+  const saveCurrentState = useStore((s) => s.saveCurrentState);
   const markdown = useStore((s) => s.markdown);
   const { runDiscoverStructuralParts, reanchorPart } = useStructuralPartsActions();
   const { discoverEdges, discoveringEdges, addEdge, acceptProposedEdge, rejectEdge, tag, toggleDeclaredCenter } =
@@ -376,6 +397,143 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const centerDivergence = useMemo(
     () => computeCenterDivergence(structuralParts, centering),
     [structuralParts, centering],
+  );
+
+  // --- PRECEDENCE (Arpeggio Phase 5) — the order-space diagnosis. `computeCentering`
+  // stays untouched; this is an additive layer over the same model. The ledger is
+  // loaded on open so open IOUs can cover a backward arc.
+  useEffect(() => {
+    if (isOpen) void loadLedger();
+  }, [isOpen, loadLedger]);
+
+  const strategyOf = useMemo(() => {
+    const byId = new Map(structuralParts.map((p) => [p.id, p.expositionStrategy] as const));
+    return (partId: string): ExpositionStrategy => byId.get(partId) ?? 'systematic';
+  }, [structuralParts]);
+
+  // Derived constraints + writer overrides (suspend / convert-to-IOU) + authored constraints.
+  const constraints = useMemo(() => {
+    const overrideBy = new Map(precedence.overrides.map((o) => [o.constraintId, o.status] as const));
+    const derived = deriveConstraints(structuralEdges, strategyOf).map((c) =>
+      overrideBy.has(c.id) ? { ...c, status: overrideBy.get(c.id)! } : c,
+    );
+    return [...derived, ...precedence.authored];
+  }, [structuralEdges, strategyOf, precedence]);
+
+  const grasp = useMemo(
+    () => buildGraspOrder(realizations, (sid) => model.stationById[sid]?.docIndex),
+    [realizations, model],
+  );
+  const admiss = useMemo(() => checkAdmissibility(grasp, constraints), [grasp, constraints]);
+  const commutable = useMemo(() => commutableRuns(grasp, constraints), [grasp, constraints]);
+  const cycles = useMemo(() => nonLinearizableRegions(constraints), [constraints]);
+
+  // Section id → the parts realized there (for projecting arcs onto part constraints).
+  const partsBySection = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const r of realizations) {
+      const set = m.get(r.sectionId) ?? new Set<string>();
+      set.add(r.partId);
+      m.set(r.sectionId, set);
+    }
+    return m;
+  }, [realizations]);
+
+  const orderVerdict = useMemo(() => {
+    const arcMap = new Map(model.arcs.map((a) => [a.id, a] as const));
+    return classifyBackwardArcs({
+      backwardArcs: centering.backwardArcs,
+      arcById: (id) => {
+        const a = arcMap.get(id);
+        return a ? { source: a.source, target: a.target, type: a.type } : undefined;
+      },
+      arcCount: model.arcs.length,
+      partsOfSection: (sid) => partsBySection.get(sid) ?? new Set<string>(),
+      constraints,
+      ledger,
+    });
+  }, [centering.backwardArcs, model, partsBySection, constraints, ledger]);
+
+  // The engine is "graded" only when the writer has drawn W₁ structure (or engaged
+  // the ledger). Until then, backward arcs stay NEUTRAL (the Phase-0 posture — no
+  // premature verdict). Covered → neutral bridge; uncovered → the read-ahead warning.
+  const orderGraded = useMemo(
+    () => constraints.some((c) => c.status === 'active') || ledger.some((e) => e.kind === 'iou' && e.status === 'open'),
+    [constraints, ledger],
+  );
+  const orderCover = useMemo(() => {
+    const m = new Map<string, 'covered' | 'uncovered'>();
+    for (const id of centering.backwardArcs) {
+      m.set(id, orderGraded ? orderVerdict.coverByArc.get(id) ?? 'uncovered' : 'covered');
+    }
+    return m;
+  }, [centering.backwardArcs, orderVerdict, orderGraded]);
+
+  const claimOfPart = useCallback(
+    (partId: string) => structuralParts.find((p) => p.id === partId)?.claim ?? partId,
+    [structuralParts],
+  );
+
+  // "Declare heap" on a commutable run — files a declared-heap ledger entry (the
+  // StrainRegister plumbing), recording that the run's order is intentionally free.
+  const onDeclareHeap = useCallback(
+    (sectionId: string, partIds: string[]) => {
+      void addLedgerEntry({
+        kind: 'declared-heap',
+        openedAtSectionId: sectionId,
+        owes: `Order arbitrary here: ${partIds.map(claimOfPart).join(' · ')}`,
+        createdBy: 'user',
+      });
+      toast.success('Declared an honest heap — order left intentionally free.');
+    },
+    [addLedgerEntry, claimOfPart],
+  );
+
+  // The non-linearizable strategy prompt (spiral | declared-IOU | pointer). Each
+  // writes real state: spiral tags each cycle part's earliest realization
+  // `introduce` (a provisional early appearance); declared-IOU converts one cycle
+  // constraint to an IOU (dropping it from the active set breaks the cycle) + files
+  // the ledger entry; pointer records a declared-deviation.
+  const onStrategy = useCallback(
+    (cycle: PrecedenceCycle, choice: StrategyChoice) => {
+      const openedAt = grasp.graspStationOf.get(cycle.partIds[0]) ?? '';
+      const label = cycle.partIds.map(claimOfPart).join(' · ');
+      if (choice === 'spiral') {
+        const cycleSet = new Set(cycle.partIds);
+        const earliest = new Map<string, string>(); // partId → realization id of its earliest section
+        for (const r of realizations) {
+          if (!cycleSet.has(r.partId)) continue;
+          const di = model.stationById[r.sectionId]?.docIndex ?? Infinity;
+          const cur = earliest.get(r.partId);
+          const curDi = cur ? realizations.find((x) => x.id === cur) : undefined;
+          const curIdx = curDi ? model.stationById[curDi.sectionId]?.docIndex ?? Infinity : Infinity;
+          if (di < curIdx) earliest.set(r.partId, r.id);
+        }
+        const tagged = new Set(earliest.values());
+        setRealizationsStore(
+          realizations.map((r) => (tagged.has(r.id) ? { ...r, functionTag: 'introduce' as FunctionTag, origin: 'authored' as const } : r)),
+        );
+        void saveCurrentState();
+        toast.success('Spiral — each part in the region is now introduced early.');
+        return;
+      }
+      if (choice === 'declared-iou') {
+        const cid = cycle.constraintIds[0];
+        if (!cid) return;
+        setPrecedence({
+          ...precedence,
+          overrides: [...precedence.overrides.filter((o) => o.constraintId !== cid), { constraintId: cid, status: 'converted-to-iou' }],
+        });
+        void addLedgerEntry({ kind: 'iou', openedAtSectionId: openedAt, owes: `Deferred a cycle link among: ${label}`, createdBy: 'system', reason: cid });
+        void saveCurrentState();
+        toast.success('Declared an IOU — a cycle link deferred to the ledger.');
+        return;
+      }
+      // pointer beyond the medium
+      void addLedgerEntry({ kind: 'declared-deviation', openedAtSectionId: openedAt, owes: `Pointer beyond the medium: ${label}`, createdBy: 'user' });
+      toast.success('Recorded a pointer beyond the medium.');
+    },
+    [grasp, claimOfPart, realizations, model, setRealizationsStore, saveCurrentState, precedence, setPrecedence, addLedgerEntry],
   );
 
   const [mode, setMode] = useState<Projection>('atlas');
@@ -571,7 +729,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
           onClose={onClose}
         />
 
-        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} centering={centering} divergence={centerDivergence} />
+        <FilterBar mode={mode} lines={model.lines} filter={filterPartId} setFilter={setFilterPartId} land={land} ghost={ghostUnderlay} setGhost={setGhostUnderlay} centering={centering} divergence={centerDivergence} orderVerdict={orderVerdict} orderGraded={orderGraded} />
 
         <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
           <main style={{ flex: 1, position: 'relative', minWidth: 0 }}>
@@ -583,6 +741,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
               <TopoLand
                 model={model}
                 centering={centering}
+                orderCover={orderCover}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}
@@ -601,6 +760,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
               <TopoRadix
                 model={model}
                 centering={centering}
+                orderCover={orderCover}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}
@@ -641,6 +801,14 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
               <TopoMap
                 model={model}
                 centering={centering}
+                orderCover={orderCover}
+                graspStationOf={grasp.graspStationOf}
+                violations={admiss.violations}
+                commutable={commutable}
+                cycles={cycles}
+                claimOf={claimOfPart}
+                onDeclareHeap={onDeclareHeap}
+                onStrategy={onStrategy}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}

@@ -12,6 +12,7 @@ import type {
   ResolveOutcome,
   InboxItem,
   LedgerEntry,
+  PrecedenceData,
   Realization,
   ReverseOutlineDoc,
   SectionIdBinding,
@@ -98,6 +99,13 @@ export interface StoredProjectData {
    * the shape. Absent until parts exist.
    */
   realizations?: Realization[];
+  /**
+   * The PRECEDENCE sidecar (`.twriter/precedence.json`; Arpeggio Phase 5) — regions
+   * (the strategy dimension), authored constraints, and suspend/convert-to-IOU
+   * overrides. Persisted as an opaque JSON object (like `gist`) — the TS layer owns
+   * the shape. Absent until the writer declares a region or authors a constraint.
+   */
+  precedence?: PrecedenceData;
   /**
    * The section-id ledger — stable ids bound to headings by verbatim body anchor
    * (`.twriter/section-ids.json` on desktop; Phase 1). Keeps `testSuite` keys,
