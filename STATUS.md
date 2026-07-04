@@ -369,8 +369,23 @@ streams keep their own inline indicators rather than the pill.
   **shipped 2026-07-04** as the engine + the reframe + the SPINE `OrderMarks` + a
   `.twriter/precedence.json` sidecar (regions / authored constraints / overrides) +
   the `dependencies.md` prompt (see
-  [`docs/migration-log.md`](docs/migration-log.md)). → **6**
-  reorder-as-operation + homotypy candidates → **7** draft-mode Einstellung
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 6**
+  reorder-as-operation + the homotypy inversion — the muddle-I.2.2 repair
+  (operation half) + the muddle-I.4 repair: a **move** relocates a heading and its
+  whole subtree within `project.md` (the first feature to structurally rewrite the
+  single source of truth) via a pure, line-space, never-throw
+  `applyMove`/`MoveSpec` in `segment-helpers.ts` (a `joinBlocks` seam primitive →
+  byte-stability outside the touched seams), a Pass-0 id force-bind in
+  `reconcileSectionIds` (germ siblings keep their ids across an order swap), a
+  `moveSection` store slice (pre-move git snapshot + in-memory Undo, shared by
+  sidebar / palette / SPINE), Alt+↑/↓ + ⌘K reorder with the app's first
+  `aria-live` region, a SPINE station drag with live admissibility (dropping into a
+  violation is allowed — it files a finding), and **standing homotypy** — a
+  zero-Rust `surroundHash` (the inverse of `sourceHash`) whose `recomputeHomotypy`
+  flags parts whose text HELD while their surround MOVED (amber tint + a RE-READ
+  fix). — **shipped 2026-07-04** (no Rust touch — `surroundHash` rides the parts
+  sidecar; see [`docs/migration-log.md`](docs/migration-log.md)). → **7**
+  draft-mode Einstellung
   surfaces (reader-holds, contract, available-material check, gestures, scaffold
   lifecycle) → **8** adjacency diagnostics D1–D10, recentering-as-operation ("the
   jolt, itemized"), reader simulation → **9** theory-currency migration of

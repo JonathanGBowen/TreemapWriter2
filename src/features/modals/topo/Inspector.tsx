@@ -45,6 +45,7 @@ export interface InspectorProps {
   partSectionIds?: string[];
   partStale?: boolean;
   partOrphan?: boolean;
+  partHomotypy?: boolean;
   onReanchor?: (id: string) => void;
   // --- PARTS authoring (Phase 2) ---
   /** All parts (for the edge target picker + claim lookup). */
@@ -472,6 +473,7 @@ const PartInspector: React.FC<{
   sectionIds: string[];
   stale: boolean;
   orphan: boolean;
+  homotypy: boolean;
   onReanchor: (id: string) => void;
   onOpen: (id: string) => void;
   allParts: StructuralPart[];
@@ -490,6 +492,7 @@ const PartInspector: React.FC<{
   sectionIds,
   stale,
   orphan,
+  homotypy,
   onReanchor,
   onOpen,
   allParts,
@@ -502,8 +505,10 @@ const PartInspector: React.FC<{
   onToggleCenter,
   onOpenInCanvas,
 }) => {
-  const statusColor = orphan ? TK.magenta : stale ? TK.yellow : TK.purple;
-  const statusLabel = orphan ? 'ORPHAN · anchors lost' : stale ? 'STALE · source changed' : 'ANCHORED';
+  // eslint-disable-next-line no-restricted-syntax -- SVG/topo hex; matches the PARTS homotypy tint.
+  const HOMOTYPY_AMBER = '#d9a24a';
+  const statusColor = orphan ? TK.magenta : stale ? TK.yellow : homotypy ? HOMOTYPY_AMBER : TK.purple;
+  const statusLabel = orphan ? 'ORPHAN · anchors lost' : stale ? 'STALE · source changed' : homotypy ? 'HOMOTYPY · new surround' : 'ANCHORED';
   const live = sectionIds.map((sid) => model.stationById[sid]).filter((s): s is Station => !!s);
   // This part's realizations by section, its edges, and a claim lookup for edge endpoints.
   const realizationFor = (sid: string) => realizations.find((r) => r.partId === part.id && r.sectionId === sid);
@@ -535,6 +540,15 @@ const PartInspector: React.FC<{
               style={{ padding: '3px 9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.accent}`, color: TK.accent, fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em' }}
             >
               ⟲ RE-ANCHOR
+            </button>
+          )}
+          {homotypy && !stale && !orphan && (
+            <button
+              onClick={() => onReanchor(part.id)}
+              title="Same letters, new surround: re-read this part in its new place — re-stamps its surround so the flag clears (no AI)."
+              style={{ padding: '3px 9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${HOMOTYPY_AMBER}`, color: HOMOTYPY_AMBER, fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em' }}
+            >
+              ⟲ RE-READ
             </button>
           )}
           {onToggleCenter && (
@@ -696,6 +710,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   partSectionIds,
   partStale,
   partOrphan,
+  partHomotypy,
   onReanchor,
   allParts,
   realizations,
@@ -730,6 +745,7 @@ export const Inspector: React.FC<InspectorProps> = ({
           sectionIds={partSectionIds ?? []}
           stale={!!partStale}
           orphan={!!partOrphan}
+          homotypy={!!partHomotypy}
           onReanchor={onReanchor ?? (() => undefined)}
           onOpen={onOpen}
           allParts={allParts ?? []}

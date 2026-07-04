@@ -678,6 +678,17 @@ export const App = () => {
     activeLineIndexRef.current = index;
   }, []);
 
+  // Reorder the SELECTED section among its siblings (the palette path; Phase 6).
+  const moveSelectedSection = useCallback((dir: 'up' | 'down') => {
+    const st = useStore.getState();
+    const id = st.selectedId;
+    if (!id || id === 'root') { toast('Select a section to move.'); return; }
+    void st.moveSectionSibling(id, dir).then((r) => {
+      if (!r.moved) { toast(`Already the ${dir === 'up' ? 'first' : 'last'} section.`); return; }
+      toast(`Moved “${r.movedTitle}” ${dir}.`, { action: { label: 'Undo', onClick: () => void r.undo() }, duration: 8000 });
+    });
+  }, []);
+
   // Command palette entries — the named, searchable door to every primary action
   // (the consolidation of the Coach/Generate-specs/Revise glyphs). Built each
   // render so the App-level handlers stay current; store openers are reached via
@@ -691,6 +702,8 @@ export const App = () => {
     { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },
     { id: 'canvas', label: 'Canvas', hint: "The argument's spatial home (W₁)", glyph: '⬡', run: () => useStore.getState().openCanvas() },
+    { id: 'move-up', label: 'Move section up', hint: 'Reorder before the previous sibling', glyph: '↑', run: () => moveSelectedSection('up') },
+    { id: 'move-down', label: 'Move section down', hint: 'Reorder after the next sibling', glyph: '↓', run: () => moveSelectedSection('down') },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'ledger', label: 'Ledger', hint: 'Debts, declarations, deferrals', glyph: '‡', run: () => useStore.getState().openLedger() },

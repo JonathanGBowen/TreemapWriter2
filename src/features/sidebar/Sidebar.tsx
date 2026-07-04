@@ -78,8 +78,25 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   const markdown = useStore((s) => s.markdown);
   const searchMatchedIds = useStore((s) => s.searchMatchedIds);
   const matchedIds = useMemo(() => new Set(searchMatchedIds), [searchMatchedIds]);
+  const moveSectionSibling = useStore((s) => s.moveSectionSibling);
+  const [announce, setAnnounce] = useState('');
   // Synthetic top row: selecting it operates on the whole document (id 'root').
   const documentRow = sections.length > 0 ? buildRootSection(markdown, sections, 'Whole Document') : null;
+
+  // Alt+↑/↓ reorders a top-level section among its siblings. The moved row keeps its
+  // stable id, so React's keyed list preserves focus — repeated presses just work.
+  const onMove = async (id: string, dir: 'up' | 'down') => {
+    const title = sections.find((s) => s.id === id)?.title ?? 'Section';
+    const r = await moveSectionSibling(id, dir);
+    if (!r.moved) {
+      setAnnounce(`${title} is already the ${dir === 'up' ? 'first' : 'last'} section.`);
+      return;
+    }
+    const homotypy = r.homotypyIds.length ? `; ${r.homotypyIds.length} part${r.homotypyIds.length === 1 ? '' : 's'} may now read differently` : '';
+    setAnnounce(`Moved ${r.movedTitle} ${dir}${homotypy}.`);
+    toast(`Moved “${r.movedTitle}” ${dir}.`, { action: { label: 'Undo', onClick: () => void r.undo() }, duration: 8000 });
+  };
+
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
       <div className="h-px bg-hld-border" />
@@ -99,9 +116,11 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
           />
         )}
         {sections.map((sec) => (
-          <SectionRow key={sec.id} section={sec} selected={selectedId === sec.id} status={testSuite[sec.id]?.status || 'idle'} onSelect={onSelect} />
+          <SectionRow key={sec.id} section={sec} selected={selectedId === sec.id} status={testSuite[sec.id]?.status || 'idle'} onSelect={onSelect} onMove={onMove} />
         ))}
       </div>
+      {/* The app's first aria-live region — announces a keyboard reorder for screen readers. */}
+      <div aria-live="polite" className="sr-only">{announce}</div>
       <StrainRegister onSelect={onSelect} />
     </div>
   );

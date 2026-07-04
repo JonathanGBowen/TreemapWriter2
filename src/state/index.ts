@@ -17,6 +17,7 @@ import { createSessionSlice, type SessionSlice } from './session-state';
 import { createLedgerSlice, type LedgerSlice } from './ledger-state';
 import { createInboxSlice, type InboxSlice } from './inbox-state';
 import { createCanvasSlice, type CanvasSlice } from './canvas-state';
+import { createReorderSlice, type ReorderSlice } from './reorder-state';
 import {
   setModelConfigSource,
   setAgentTraceSink,
@@ -62,7 +63,8 @@ export type AppState =
   & SessionSlice
   & LedgerSlice
   & InboxSlice
-  & CanvasSlice;
+  & CanvasSlice
+  & ReorderSlice;
 
 export const useStore = create<AppState>()((...args) => ({
   ...createUIStateSlice(...args),
@@ -83,6 +85,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createLedgerSlice(...args),
   ...createInboxSlice(...args),
   ...createCanvasSlice(...args),
+  ...createReorderSlice(...args),
 }));
 
 // Wire model resolution to live state without the registry importing the store

@@ -5683,3 +5683,120 @@ survive.
 + `expositionStrategy` are optional (absent ⇒ default systematic, empty overrides/regions); the graph-scc
 extraction is behavior-preserving. Reverting leaves any already-saved `precedence.json` harmlessly on
 disk (ignored by every other consumer). To drop only the on-disk data, delete `.twriter/precedence.json`.
+
+---
+
+## 2026-07-04 — Arpeggio integration Phase 6: reorder-as-operation + the homotypy inversion
+
+**What changed.** Phase 5 shipped the *diagnosis* half of muddle I.2.2 — the app could *see* an
+out-of-order prerequisite but had no way to *move* a section (`SegmentEdit` had no `move`; no reorder
+gesture existed anywhere). Phase 6 ships the *operation* half: a **move** relocates a heading and its
+whole subtree within `project.md` — **the first feature that structurally rewrites the single source of
+truth.** And it repairs the shipped staleness *inversion* (muddle I.4): the staleness check flagged
+parts whose text CHANGED, but was silent on parts whose text HELD while their surround/order MOVED
+("after restructuring one cannot correctly even write the same letters"). Phase 6 adds the **homotypy**
+check — the exact inverse — as a *standing* diagnostic. Reorder-into-a-violation is **allowed** (the
+writer may know better); it files a finding, it does not block. **No Rust changes** — `surroundHash`
+rides the parts sidecar; `applyMove`/`MoveSpec` are pure TS.
+
+- **The pure applier is the crux.** New **`applyMove(source, spec: MoveSpec): string`** in
+  `src/lib/segment-helpers.ts` — a standalone pure function, *not* a sixth `SegmentEdit` kind (the five
+  existing kinds are single in-place splices through `resolveOne`→one `SpliceOp`; a move is a
+  cut+reinsert with hygiene at ≤3 seams, provably cleaner as its own function). Same
+  resolve-anchors-or-no-op, **never-throw** contract as `applySegmentEdits`. It works in **line space,
+  not char offsets**: a section's whole-subtree range is `[section.startLine, section.endLine + 1)`
+  (`parseMarkdown` already sets `endLine` to the last descendant line), so `split('\n')/join('\n')` is
+  an exact inverse (CRLF rides inside each line string) → **byte-stability outside the touched seams**,
+  no `endOffset`/length arithmetic. It re-`parseMarkdown`es `source` internally (never trusts a stale
+  passed tree); `locate()` resolves heading-line → `sectionAnchor` body-anchor → nearest-ordinal (the
+  three-tier discipline `reconcileSectionIds`/`findHeadingByAnchor` already use — deterministic for
+  duplicate + germ headings); and guards **self / into-own-subtree / no-op-current-slot / orphan-anchor**
+  (each → `=== source`). Reconstruction concatenates disjoint line slices through one **`joinBlocks(…)`**
+  hygiene primitive (trims each segment's blank ends, rejoins with exactly one blank line — subsumes the
+  insert-applier `lead` idiom + the merge-applier trailing-blank absorption; interior blanks preserved),
+  so no seam can produce `\n\n\n` or eat content. The document's **outermost** blank runs (leading blanks
+  + the trailing final newline) are not touched seams, so they ride through verbatim (captured from the
+  full source, so they survive even when the moved subtree was itself the first or last block) — a move
+  is byte-stable at the document ends, and an already-in-place drop reproduces `source` exactly so the
+  store's no-op fast-path re-engages.
+- **ID preservation — a Pass 0 in `reconcileSectionIds`** (`src/lib/section-ids.ts`). The body-anchor
+  reconcile re-binds a moved section's stable id *except* for empty-body **germ** headings (empty anchor
+  → the nearest-ordinal Pass 2 can *swap* ids between two same-title/level germ siblings whose order
+  changed → orphaned specs). A new optional `pinned?: Map<Section, string>` arg + a **Pass 0** force-binds
+  those nodes' ids first (consuming their bindings so later passes can't reassign). The move action
+  captures `movingIds` (the moved subtree's ids, pre-move), locates the subtree root in the fresh parse,
+  zips descendants → `pinned`. Deterministic, body-content-independent; non-moved sections reconcile
+  normally; the debounced App reconcile re-runs as a stable no-op. (A root that is *itself* a duplicate
+  germ heading is unaddressable in the fresh parse — the pin is skipped and it degrades to the ordinary
+  nearest-ordinal reconcile, exactly as a hand-edit of the same two germs would; the pipeline still
+  reaches a consistent id fixpoint, so this is a degradation of the belt-and-suspenders pin, not a new
+  swap the move introduces.)
+- **Standing homotypy — a zero-Rust `surroundHash`** (`src/lib/structural-part-helpers.ts` +
+  `types/index.ts`). The direct inverse of `sourceHash`:
+  `computeHash(normalizeForHash(blockBefore(startAnchor) + '␞' + blockAfter(endAnchor)))` via
+  `segmentParagraphs` + `findBlockByAnchor` (empty for an unresolvable anchor — never throws). It rides
+  the `structural-parts.json` sidecar like Phase-5 `expositionStrategy` (zero Rust) and is stamped beside
+  `sourceHash` at **both** sites: discovery (`use-structural-parts-actions.ts`) and re-anchor
+  (`reanchoredPart`). New **`recomputeHomotypy(parts, markdown, sections)`** mirrors
+  `recomputeStructuralStale` as its inverse: skip germ; skip orphan (staleness owns it); `src ===
+  sourceHash` (text HELD) **and** `computeSurroundHash !== surroundHash` (surround MOVED) → candidate.
+  Partitions cleanly with staleness (stale XOR homotypy XOR clean). Being standing (not move-scoped) it
+  also catches order changes from retitle/relevel/merge/split/manual edits.
+- **The `moveSection` action + ceremony** — a new `src/state/reorder-state.ts` store slice (chosen over a
+  hook so the sidebar, the ⌘K palette, and the SPINE drag all invoke it uniformly, like
+  `createSnapshot`/`endSession`). `moveSection(fromId, toId, position)`: flatten + find (bail on
+  missing/identical) → build `MoveSpec` (canonical heading + `sectionAnchor` + ordinal) →
+  `next = applyMove(localContent, spec)` → **no-op short-circuits before any disk churn** if
+  `next === localContent` → capture pre-move state (content/sections/ledger/realizations) + `movingIds`
+  → **PRE-MOVE SNAPSHOT** `createSnapshot('pre-ai-write','all')` (the first structural rewrite genuinely
+  warrants it; try/catch mirrors `acceptLevel` — applied in memory, disk error toasted) → acceptLevel-exact
+  write (`setMarkdown`+`setLocalContent` → `parseMarkdown(next, preSections)` → Pass-0
+  `reconcileSectionIds(parsed, preLedger, pinned)` → `setSections`/`setSectionIdLedger`) → durable
+  `setRealizations(seedRealizations(…))` → `await saveCurrentState()` → `recomputeHomotypy` → returns
+  `{moved, movedTitle, homotypyIds, undo}`. **Undo** captures the pre-move slices in memory (independent
+  of the snapshot guards) and restores them. `moveSectionSibling(id, dir)` finds the prev/next sibling
+  (same parentId + level) and delegates.
+- **The gestures — SPINE drag (primary) + accessible keyboard (parity).** The topo `Station` `<g>`
+  (`TopoMap.tsx`) gains `onPointerDown`/`Move`/`Up` mirroring `CanvasNode` (`stopPropagation` so
+  `usePanZoom`'s svg-pan never fires; 3px threshold; `setPointerCapture`); a **`livePos` override** lets
+  the dragged station follow the pointer while the track/arcs/ticks re-read it. **Live admissibility**
+  (pure, no store writes): a provisional `docIndexOf` (the dragged id at its drop row) feeds
+  `buildGraspOrder`→`checkAdmissibility` → `OrderMarks` red ticks update live; **dropping into a
+  violation persists** (the post-move finding offers fix/declare/defer). Commit →
+  `onMoveSection(fromId, targetId, before|after)`. **Accessible parity:** `SectionRow` gains
+  **Alt+↑/↓** → sibling-swap; two ⌘K palette entries (**Move section up/down**); and the app's **first
+  `aria-live="polite"`** region announces "Moved *Title* before/after *Sibling*". A stable-id keyed list
+  keeps focus on the moved row, so repeated Alt+↓ walks it down.
+- **The "jolt, itemized."** `DependencyGraphModal` recomputes the mesh + arc-cover + admissibility +
+  homotypy automatically from the new `sections`; the move surfaces the homotypy count in its toast (with
+  **Undo**), the PARTS projection gains an **amber** homotypy tint (`TopoParts.tsx`, alongside the
+  orphan-mauve / stale-slate vocabulary), and the `PartInspector` (`topo/Inspector.tsx`) gains a
+  homotypy status + a **RE-READ** button (re-anchors the surround, clearing the tint) — the existing
+  `onReanchor`/`onStrategy`/`addLedgerEntry` plumbing.
+
+**Verify.** `npm run typecheck` clean; `npm test` **796 pass** (+28 Phase-6: 18 `applyMove` cases —
+byte-stable move-then-move-back round-trip, CRLF fidelity, subtree-with-children, move-before-§0 / to-end,
+no-op-current-slot, into-own-subtree, orphan-anchor, duplicate-heading disambiguation, blank-line hygiene,
+legitimate reparent, germ, and document-end byte fidelity (trailing-newline preserved even when the last
+section is the mover, leading-blank run preserved, newline-terminated move-then-move-back exact, and an
+already-in-place drop reproduces `source` so the store's no-op fast-path re-engages); 3 Pass-0 id-pinning
+— two germ siblings keep their ids across an order swap *and* (unpinned) reproduce the swap, the
+regression guard; 7 homotypy — text-held+surround-moved → candidate, text-changed → not (stale owns it),
+orphan → not, no-`surroundHash` → not, germ exemption, `computeSurroundHash` stability across a
+non-adjacent rename); `npm run build` + `npm run lint` (0 errors
+— `applyMove` and the `moveSection` slice carry only the same `max-lines`/`complexity` warnings every peer
+does). **No Rust to run** — `surroundHash` rides the sidecar, `applyMove`/`MoveSpec` are pure TS (no
+`layout.rs`/`types.rs`/`document.rs` touch). **Manual (a copy of a real project with parts):** `Alt+↓` in
+the sidebar → the section moves after its next sibling, `aria-live` announces it; drag a SPINE station
+within its column → live red ticks on a violating provisional slot, drop → the block relocates and the
+arcs/ticks re-settle; a spec attached to the moved section stays attached (`git diff` shows `project.md`
++ `.twriter/section-ids.json` only); move a part's realizing surround → the unchanged part shows the amber
+homotypy tint, **RE-READ** clears it; **Undo** restores `project.md` + ids to the pre-move state.
+
+**Rollback.** `git revert` the commit. Purely additive: no `SegmentEdit` kind changed (the five existing
+appliers are untouched); `applyMove` is a net-new pure function; the Pass-0 `pinned` arg is optional
+(absent ⇒ the prior reconcile behavior, byte-for-byte); `surroundHash` is an optional field (absent ⇒ no
+homotypy candidate). Reverting leaves any already-stamped `surroundHash` harmlessly in the parts sidecar
+(ignored by every other consumer). A move already written to `project.md` is ordinary git history — revert
+the manuscript with the pre-move snapshot/tag the action created, or a plain `git revert` of the content
+commit.

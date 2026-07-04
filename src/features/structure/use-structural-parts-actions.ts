@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
-import { reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
+import { computeSurroundHash, reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
 import { pruneEdges, seedRealizations } from '../../lib/structural-graph-helpers';
 import { newSectionId } from '../../lib/section-ids';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
@@ -96,6 +96,8 @@ export const useStructuralPartsActions = () => {
           sectionIds,
           // Unresolved at discovery keeps no hash (recompute re-flags it as orphan).
           sourceHash: orphan ? p.sourceHash : computeHash(normalizeForHash(markdown.slice(startOffset, endOffset))),
+          // Stamp the surround too (the Phase-6 homotypy anchor); '' when unresolvable.
+          surroundHash: orphan ? p.surroundHash : computeSurroundHash(p, markdown),
         };
       });
       // MERGE, don't replace: hand-authored parts (Phase 4 canvas) survive re-discovery

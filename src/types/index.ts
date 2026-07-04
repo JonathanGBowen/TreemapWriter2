@@ -932,6 +932,13 @@ export interface StructuralPart {
   rationale: string;
   /** Hash of the part's normalized span text at discovery time — the Tier-2 staleness anchor. */
   sourceHash?: string;
+  /**
+   * Hash of the part's immediate document SURROUND (block-before + block-after) at
+   * stamp time — the Phase-6 homotypy anchor, the inverse of `sourceHash`. Flags a
+   * part whose own text HELD while its surround/order moved. Optional/additive; rides
+   * the parts sidecar (no Rust). Stamped beside `sourceHash` at discovery + re-anchor.
+   */
+  surroundHash?: string;
   // --- W₁-node fields (Arpeggio Phase 2). All optional/additive; the discovery
   // faculty never supplies them (they are AUTHORED), so `normalizeStructuralParts`
   // is untouched and `reanchoredPart`'s spread preserves them across re-anchoring. ---

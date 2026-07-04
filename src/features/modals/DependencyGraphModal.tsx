@@ -32,7 +32,7 @@ import { TK } from './topo/tk';
 import { AtlasGlyph, CloseGlyph, NetworkGlyph, PartsGlyph, RadixGlyph, RefreshGlyph, SpineGlyph, WandGlyph } from './topo/icons';
 import { useStructuralPartsActions } from '../structure/use-structural-parts-actions';
 import { useStructuralGraphActions } from '../structure/use-structural-graph-actions';
-import { computeLiveDivergences, recomputeStructuralStale, resolvePart } from '../../lib/structural-part-helpers';
+import { computeLiveDivergences, recomputeHomotypy, recomputeStructuralStale, resolvePart } from '../../lib/structural-part-helpers';
 import { computeCenterDivergence, seedRealizations, type CenterDivergence } from '../../lib/structural-graph-helpers';
 import {
   buildGraspOrder,
@@ -377,6 +377,12 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
     () => recomputeStructuralStale(structuralParts, markdown, sections),
     [structuralParts, markdown, sections],
   );
+  // Homotypy (Phase 6): parts whose text HELD while their surround moved (a reorder's
+  // "same letters, new function"). Partitions cleanly with stale/orphan.
+  const { homotypyIds } = useMemo(
+    () => recomputeHomotypy(structuralParts, markdown, sections),
+    [structuralParts, markdown, sections],
+  );
   // Live divergences (spans / subdivides / shared) for the selected part's inspector —
   // re-resolved against the current text so the flags don't drift after edits.
   const divergences = useMemo(
@@ -428,6 +434,33 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
   const admiss = useMemo(() => checkAdmissibility(grasp, constraints), [grasp, constraints]);
   const commutable = useMemo(() => commutableRuns(grasp, constraints), [grasp, constraints]);
   const cycles = useMemo(() => nonLinearizableRegions(constraints), [constraints]);
+
+  // Live admissibility during a SPINE drag (Phase 6): re-check against a provisional
+  // docIndex for the dragged station — pure, no store writes. Feeds the red ticks.
+  const [dragPreview, setDragPreview] = useState<{ id: string; docIndex: number } | null>(null);
+  const previewAdmiss = useMemo(
+    () =>
+      dragPreview
+        ? checkAdmissibility(
+            buildGraspOrder(realizations, (sid) => (sid === dragPreview.id ? dragPreview.docIndex : model.stationById[sid]?.docIndex)),
+            constraints,
+          )
+        : null,
+    [dragPreview, realizations, model, constraints],
+  );
+  const liveViolations = previewAdmiss?.violations ?? admiss.violations;
+
+  const moveSection = useStore((s) => s.moveSection);
+  const onMoveSection = useCallback(
+    (fromId: string, toId: string, position: 'before' | 'after') => {
+      void moveSection(fromId, toId, position).then((r) => {
+        if (!r.moved) return;
+        const homotypy = r.homotypyIds.length ? ` · ${r.homotypyIds.length} homotypy candidate${r.homotypyIds.length === 1 ? '' : 's'}` : '';
+        toast(`Moved “${r.movedTitle}”${homotypy}.`, { action: { label: 'Undo', onClick: () => void r.undo() }, duration: 8000 });
+      });
+    },
+    [moveSection],
+  );
 
   // Section id → the parts realized there (for projecting arcs onto part constraints).
   const partsBySection = useMemo(() => {
@@ -784,6 +817,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
                 edges={structuralEdges}
                 staleIds={staleIds}
                 orphanIds={orphanIds}
+                homotypyIds={homotypyIds}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}
@@ -806,12 +840,14 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
                 centering={centering}
                 orderCover={orderCover}
                 graspStationOf={grasp.graspStationOf}
-                violations={admiss.violations}
+                violations={liveViolations}
                 commutable={commutable}
                 cycles={cycles}
                 claimOf={claimOfPart}
                 onDeclareHeap={onDeclareHeap}
                 onStrategy={onStrategy}
+                onMoveSection={onMoveSection}
+                onDragPreview={setDragPreview}
                 selectedId={selectedStationId}
                 hoveredId={hoveredId}
                 editorId={editorSelectedId}
@@ -873,6 +909,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
             partSectionIds={selectedPartSectionIds}
             partStale={selectedPart ? staleIds.includes(selectedPart.id) : false}
             partOrphan={selectedPart ? orphanIds.includes(selectedPart.id) : false}
+            partHomotypy={selectedPart ? homotypyIds.includes(selectedPart.id) : false}
             onReanchor={reanchorPart}
             allParts={structuralParts}
             realizations={realizations}

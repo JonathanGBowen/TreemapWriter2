@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   resolvePart,
   computeDivergences,
+  computeSurroundHash,
+  recomputeHomotypy,
   recomputeStructuralStale,
   reanchoredPart,
   computeLiveDivergences,
@@ -213,5 +215,61 @@ describe('summarizeParts', () => {
     expect(s).toContain('objection');
     expect(s).toContain('1 span multiple sections');
     expect(s).toContain('2 shared across sections'); // a1 is claimed by both parts
+  });
+});
+
+describe('computeSurroundHash / recomputeHomotypy (Phase 6 — the staleness inversion)', () => {
+  // A part spanning START..END (with MIDDLE interior prose to edit), surrounded by
+  // 'Alpha para.' (before) and 'Beta para.' (after).
+  const docA = ['# X', '', 'Alpha para.', '', 'START anchor para.', '', 'MIDDLE interior para.', '', 'END anchor para.', '', 'Beta para.'].join('\n');
+  const secsA = parseMarkdown(docA);
+  const stampFull = (): StructuralPart => {
+    const p = makePart('START anchor para.', 'END anchor para.', { id: 'h' });
+    const { startOffset, endOffset } = resolvePart(p, docA, secsA);
+    return { ...p, sourceHash: computeHash(normalizeForHash(docA.slice(startOffset, endOffset))), surroundHash: computeSurroundHash(p, docA) };
+  };
+
+  it('surroundHash holds when neighbours are unchanged and moves when a neighbour changes', () => {
+    const p = stampFull();
+    expect(computeSurroundHash(p, docA)).toBe(p.surroundHash); // same surround
+    const moved = docA.replace('Alpha para.', 'Gamma para.'); // change the block BEFORE
+    expect(computeSurroundHash(p, moved)).not.toBe(p.surroundHash);
+  });
+
+  it('flags a part whose OWN text held but whose surround moved', () => {
+    const p = stampFull();
+    const moved = docA.replace('Alpha para.', 'Gamma para.'); // START..END text unchanged
+    expect(recomputeHomotypy([p], moved, parseMarkdown(moved)).homotypyIds).toEqual(['h']);
+  });
+
+  it('does NOT flag a part whose own text changed (that is staleness, not homotypy)', () => {
+    const p = stampFull();
+    const edited = docA.replace('MIDDLE interior para.', 'MIDDLE EDITED para.'); // interior span text changes
+    expect(recomputeHomotypy([p], edited, parseMarkdown(edited)).homotypyIds).toEqual([]);
+    // and it IS stale via the forward check
+    expect(recomputeStructuralStale([p], edited, parseMarkdown(edited)).staleIds).toEqual(['h']);
+  });
+
+  it('does NOT flag an orphan (the staleness path owns it) or a part with no stored surroundHash', () => {
+    const p = stampFull();
+    const orphaned = docA.replace('START anchor para.', 'Different opening entirely.');
+    expect(recomputeHomotypy([p], orphaned, parseMarkdown(orphaned)).homotypyIds).toEqual([]);
+    const noSurround = { ...stampFull(), surroundHash: undefined };
+    const moved = docA.replace('Alpha para.', 'Gamma para.');
+    expect(recomputeHomotypy([noSurround], moved, parseMarkdown(moved)).homotypyIds).toEqual([]);
+  });
+
+  it('exempts an authored germ part (empty anchors)', () => {
+    const germ: StructuralPart = { id: 'g', kind: 'germ', claim: 'c', startAnchor: '', endAnchor: '', sectionIds: [], confidence: 1, rationale: '', origin: 'authored' };
+    expect(recomputeHomotypy([germ], docA, secsA).homotypyIds).toEqual([]);
+  });
+
+  it('re-anchoring re-stamps surroundHash, clearing the homotypy flag', () => {
+    const p = stampFull();
+    const moved = docA.replace('Alpha para.', 'Gamma para.');
+    const movedSecs = parseMarkdown(moved);
+    expect(recomputeHomotypy([p], moved, movedSecs).homotypyIds).toEqual(['h']);
+    const re = reanchoredPart(p, moved, movedSecs)!;
+    expect(recomputeHomotypy([re], moved, movedSecs).homotypyIds).toEqual([]); // fixed
   });
 });

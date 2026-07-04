@@ -79,6 +79,10 @@ const titleLevelKey = (title: string, level: number): string => `${level}\n${tit
 /**
  * Resolve each section's stable id from the ledger and return the updated tree +
  * ledger. Layered matching, each ledger entry consumable once:
+ *   Pass 0 — PINNED (Phase 6 move): force-bind specific nodes to specific ids,
+ *            independent of body content, so a structural reorder can pin the moved
+ *            subtree's ids (defeating the empty-body germ nearest-ordinal swap that
+ *            would otherwise orphan a spec). Empty/absent for a normal parse.
  *   Pass 1 — exact BODY anchor (survives rename + reorder + duplicate-title).
  *   Pass 2 — title + level, nearest ordinal (survives rewording / germ headings).
  *   Pass 3 — SEED (empty ledger): adopt the section's CURRENT id verbatim (the
@@ -88,7 +92,11 @@ const titleLevelKey = (title: string, level: number): string => `${level}\n${tit
  * `'root'` never appears here (`parseMarkdown` returns root.children), and
  * top-level `parentId` stays `'root'`.
  */
-export function reconcileSectionIds(sections: Section[], ledger: SectionIdBinding[]): ReconcileResult {
+export function reconcileSectionIds(
+  sections: Section[],
+  ledger: SectionIdBinding[],
+  pinned?: Map<Section, string>,
+): ReconcileResult {
   const flat: Section[] = [];
   const walk = (nodes: Section[]) => {
     for (const n of nodes) {
@@ -125,6 +133,22 @@ export function reconcileSectionIds(sections: Section[], ledger: SectionIdBindin
     claimedIds.add(binding.id);
     assigned.set(node, binding.id);
   };
+
+  // Pass 0 — pinned ids (a structural move force-binds its moved subtree). Assign
+  // the pinned id and consume any ledger entry carrying it, so no later pass can
+  // reassign that id — deterministic and independent of the section's body.
+  if (pinned && pinned.size > 0) {
+    const bindingById = new Map<string, SectionIdBinding>();
+    for (const b of ledger) if (!bindingById.has(b.id)) bindingById.set(b.id, b);
+    for (const node of flat) {
+      const pid = pinned.get(node);
+      if (!pid || assigned.has(node) || claimedIds.has(pid)) continue;
+      const b = bindingById.get(pid);
+      if (b) consumed.add(b);
+      claimedIds.add(pid);
+      assigned.set(node, pid);
+    }
+  }
 
   // Pass 1 — exact body anchor.
   flat.forEach((node, i) => {

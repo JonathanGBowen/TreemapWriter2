@@ -62,6 +62,10 @@ const EdgeLegend: React.FC = () => (
 const PART_ORPHAN_MAUVE = '#cf9fb0';
 // eslint-disable-next-line no-restricted-syntax
 const PART_STALE_SLATE = '#8aa6c4'; // = --color-hld-muted-text-2, GistProse's stale hue
+// homotypy (Phase 6): text held, surround/order moved — a warm amber, distinct from
+// the slate/mauve of stale/orphan (which are text-side problems).
+// eslint-disable-next-line no-restricted-syntax
+const PART_HOMOTYPY_AMBER = '#d9a24a';
 
 export interface TopoPartsProps {
   model: TopoModel;
@@ -74,6 +78,8 @@ export interface TopoPartsProps {
   staleIds: string[];
   /** Part ids whose anchors can no longer be relocated (tinted mauve). */
   orphanIds: string[];
+  /** Part ids whose text held but whose surround moved — homotypy (tinted amber; Phase 6). */
+  homotypyIds: string[];
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -136,6 +142,7 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
   edges,
   staleIds,
   orphanIds,
+  homotypyIds,
   selectedId,
   hoveredId,
   editorId,
@@ -158,6 +165,7 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
   );
   const staleSet = useMemo(() => new Set(staleIds), [staleIds]);
   const orphanSet = useMemo(() => new Set(orphanIds), [orphanIds]);
+  const homotypySet = useMemo(() => new Set(homotypyIds), [homotypyIds]);
   const layout = useMemo(() => partsLayout(pm), [pm]);
   const lineColor = useMemo(() => {
     const mm: Record<string, string> = {};
@@ -295,14 +303,15 @@ export const TopoParts: React.FC<TopoPartsProps> = ({
             {pm.partStations.map((s) => {
               const orphan = orphanSet.has(s.id);
               const stale = !orphan && staleSet.has(s.id);
+              const homotypy = !orphan && !stale && homotypySet.has(s.id);
               return (
                 <Province
                   key={s.id}
                   s={s}
                   node={m[s.id]}
                   color={TK.purple}
-                  tint={orphan ? PART_ORPHAN_MAUVE : stale ? PART_STALE_SLATE : null}
-                  title={orphan ? "Can't locate this part anymore" : stale ? 'Source changed since discovery' : undefined}
+                  tint={orphan ? PART_ORPHAN_MAUVE : stale ? PART_STALE_SLATE : homotypy ? PART_HOMOTYPY_AMBER : null}
+                  title={orphan ? "Can't locate this part anymore" : stale ? 'Source changed since discovery' : homotypy ? 'Same letters, new surround — re-read it (homotypy)' : undefined}
                   selected={s.id === selectedId}
                   hovered={s.id === hoveredId}
                   dimmed={!inField(s.id)}

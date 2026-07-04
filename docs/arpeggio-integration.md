@@ -472,7 +472,28 @@ vs grasping-dynamics distinction. Reorder-as-operation is deferred to Phase 6. S
 - `dependencies.md` learns to distinguish logical-survival prerequisites from
   grasping-dynamics precedence.
 
-### Phase 6 — Reorder as operation + the homotypy inversion *(muddle I.2.2, operation half)*
+### Phase 6 — Reorder as operation + the homotypy inversion *(muddle I.2.2, operation half)* — ✓ shipped 2026-07-04
+
+**Shipped in full.** A **move** relocates a heading and its whole subtree within `project.md` — the
+first feature to structurally rewrite the single source of truth. The applier is a standalone pure
+`applyMove(source, spec: MoveSpec)` in `src/lib/segment-helpers.ts` (*not* a sixth `SegmentEdit`
+kind — the five existing kinds are single in-place splices; a move is a cut+reinsert with hygiene at
+≤3 seams, cleaner alone). It works in **line space** (`[startLine, endLine+1)`), so
+`split('\n')/join('\n')` is an exact inverse and bytes outside the touched seams are stable (CRLF
+rides inside line strings); it re-parses `source` internally, resolves M and T through the
+heading→`sectionAnchor`→nearest-ordinal three-tier discipline, guards self/into-own-subtree/no-op/orphan
+(each → `=== source`), and rejoins disjoint line slices through one `joinBlocks` seam primitive (no
+`\n\n\n`, no eaten content). A **Pass 0** in `reconcileSectionIds` force-binds the moved subtree's ids
+(defeating the germ-sibling nearest-ordinal swap that would orphan specs). A `moveSection` store slice
+(`src/state/reorder-state.ts`, shared by sidebar / palette / SPINE) takes a pre-move git snapshot,
+writes acceptLevel-exact, re-seeds realizations, and returns an in-memory **Undo**. The gestures:
+**Alt+↑/↓** in `SectionRow` + two ⌘K palette entries (the app's **first `aria-live` region** announces
+the move) and a **SPINE station drag** with live admissibility (`livePos` override → provisional
+`docIndexOf` → `checkAdmissibility` → live red ticks; dropping into a violation is *allowed* and files a
+finding). **Standing homotypy** repairs I.4's inversion: a zero-Rust `surroundHash` (the inverse of
+`sourceHash`, stamped at discovery + re-anchor) and `recomputeHomotypy` flag parts whose text HELD while
+their surround MOVED — surfaced as an amber PARTS tint + a `PartInspector` **RE-READ** fix. No Rust
+touch. See [`migration-log.md`](migration-log.md), 2026-07-04. Original plan below.
 
 - Add `move` to `SegmentEdit` + its applier in `segment-helpers.ts` (a move is a
   cut/reinsert of the heading block's range in `project.md` — the source of truth

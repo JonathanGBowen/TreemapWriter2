@@ -25,11 +25,14 @@ export function SectionRow({
   selected,
   status,
   onSelect,
+  onMove,
 }: {
   section: Section;
   selected: boolean;
   status: string;
   onSelect: (id: string) => void;
+  /** Move this section up/down among its siblings (Alt+↑/↓) — the accessible reorder path. */
+  onMove?: (id: string, dir: 'up' | 'down') => void;
 }) {
   const sq = STATUS_SQUARE[status] ?? { color: 'bg-hld-dim', live: '' };
   return (
@@ -42,6 +45,10 @@ export function SectionRow({
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onSelect(section.id);
+        } else if (onMove && e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+          // Alt+↑/↓ reorders among siblings (the keyboard/SR parity for the SPINE drag).
+          e.preventDefault();
+          onMove(section.id, e.key === 'ArrowUp' ? 'up' : 'down');
         }
       }}
       className={`flex items-center gap-0 p-[4px_12px] cursor-pointer transition-all relative select-none hover:bg-hld-surface-2 ${selected ? 'bg-[rgba(0,232,245,0.05)]' : ''}`}

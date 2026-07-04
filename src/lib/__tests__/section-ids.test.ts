@@ -40,6 +40,47 @@ describe('newSectionId', () => {
   });
 });
 
+describe('reconcileSectionIds — Pass 0 (pinned ids, the Phase-6 move)', () => {
+  it('force-binds a pinned node, overriding its body anchor', () => {
+    const md = '# A\n\nBody of A.\n\n# B\n\nBody of B.';
+    const { ledger } = seed(md);
+    const parsed = parseMarkdown(md);
+    const idA = ledger.find((b) => b.title === 'A')!.id;
+    const idB = ledger.find((b) => b.title === 'B')!.id;
+    // Pin A→idB and B→idA (a deliberate swap the anchors would otherwise undo).
+    const pinned = new Map<Section, string>([[parsed[0], idB], [parsed[1], idA]]);
+    const { sections: out } = reconcileSectionIds(parsed, ledger, pinned);
+    expect(idOf(out, 'A')).toBe(idB); // pinned wins over the anchor (which gives idA)
+    expect(idOf(out, 'B')).toBe(idA);
+  });
+
+  it('consumes the pinned id so a later pass cannot also claim it (germ-swap guard)', () => {
+    // Two same-title empty-body germ siblings — the nearest-ordinal swap case.
+    const md = '## G\n\n## G';
+    const { ledger } = seed(md); // two bindings, empty anchors, ordinals 0 & 1
+    const firstId = ledger[0].id;
+    const parsed = parseMarkdown(md);
+    const pinned = new Map<Section, string>([[parsed[1], firstId]]); // pin the 2nd node → 1st's id
+    const { sections: out } = reconcileSectionIds(parsed, ledger, pinned);
+    const ids = flat(out).map(([id]) => id);
+    expect(ids[1]).toBe(firstId); // the pinned node keeps it
+    expect(ids[0]).not.toBe(firstId); // the other cannot reuse the consumed id
+    expect(new Set(ids).size).toBe(2); // still unique
+  });
+
+  it('leaves non-pinned sections to reconcile normally', () => {
+    const md = '# A\n\nBody of A.\n\n# B\n\nBody of B.';
+    const { ledger } = seed(md);
+    const parsed = parseMarkdown(md);
+    const idA = ledger.find((b) => b.title === 'A')!.id;
+    const pinned = new Map<Section, string>([[parsed[0], idA]]); // pin only A (to itself)
+    const { sections: out, changed } = reconcileSectionIds(parsed, ledger, pinned);
+    expect(idOf(out, 'A')).toBe(idA);
+    expect(idOf(out, 'B')).toBe(ledger.find((b) => b.title === 'B')!.id); // B by anchor, unchanged
+    expect(changed).toBe(false);
+  });
+});
+
 describe('reconcileSectionIds — seeding (the migration freeze)', () => {
   const md = '# Doc\n\nBody.\n\n## Intro\n\nAlpha.\n\n## Method\n\nBeta.';
 
