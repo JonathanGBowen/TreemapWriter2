@@ -8,6 +8,7 @@ import {
   deriveConstraints,
   formatOrderEvidence,
   nonLinearizableRegions,
+  normalizePrecedenceData,
   type ExpositionStrategy,
   type PrecedenceConstraint,
 } from '../precedence';
@@ -292,6 +293,38 @@ describe('formatOrderEvidence', () => {
     const empty = classifyBackwardArcs({ backwardArcs: [], arcById: () => undefined, arcCount: 0, partsOfSection: () => new Set(), constraints: [], ledger: [] });
     const admiss = checkAdmissibility(buildGraspOrder([], docIndexer({})), []);
     expect(formatOrderEvidence(empty, admiss)).toBe('');
+  });
+});
+
+// --- backward-compat: normalizePrecedenceData ------------------------------
+
+describe('normalizePrecedenceData', () => {
+  it('defaults an absent precedence blob to three empty arrays', () => {
+    expect(normalizePrecedenceData(undefined)).toEqual({ regions: [], authored: [], overrides: [] });
+    expect(normalizePrecedenceData(null)).toEqual({ regions: [], authored: [], overrides: [] });
+  });
+
+  it('fills missing sub-arrays on a PARTIAL object (the crash the modal used to hit)', () => {
+    // An old sidecar written before `authored`/`overrides` existed: truthy, so the
+    // `?? {…}` default never fired and `precedence.overrides.map` threw.
+    const out = normalizePrecedenceData({ regions: [{ id: 'r1', partIds: [], expositionStrategy: 'systematic' }] });
+    expect(out.regions).toHaveLength(1);
+    expect(out.authored).toEqual([]);
+    expect(out.overrides).toEqual([]);
+  });
+
+  it('coerces non-array sub-fields (a garbage/legacy shape) to []', () => {
+    const out = normalizePrecedenceData({ regions: 'nope', authored: null, overrides: 42 });
+    expect(out).toEqual({ regions: [], authored: [], overrides: [] });
+  });
+
+  it('passes a fully-formed object through unchanged', () => {
+    const full = {
+      regions: [{ id: 'r1', partIds: ['p1'], expositionStrategy: 'genetic' }],
+      authored: [{ id: 'c1', before: 'a', after: 'b', reason: 'custom', source: 'authored', status: 'active' }],
+      overrides: [{ constraintId: 'c1', status: 'suspended' }],
+    };
+    expect(normalizePrecedenceData(full)).toEqual(full);
   });
 });
 

@@ -6,6 +6,7 @@ import {
   edgeId,
   isDirected,
   mergeDiscoveredEdges,
+  normalizeLoadedParts,
   pruneEdges,
   seedRealizations,
   summarizeGraph,
@@ -238,5 +239,54 @@ describe('summarizeGraph', () => {
     const s = summarizeGraph(parts, edges, []);
     expect(s).toContain('1 part-to-part edge'); // ghost edge dropped
     expect(s).not.toContain('requires');
+  });
+});
+
+describe('normalizeLoadedParts (backward-compat load boundary)', () => {
+  it('returns [] for a non-array (absent/garbage) blob', () => {
+    expect(normalizeLoadedParts(undefined)).toEqual([]);
+    expect(normalizeLoadedParts(null)).toEqual([]);
+    expect(normalizeLoadedParts({})).toEqual([]);
+  });
+
+  it('coerces a missing sectionIds to [] (defends the six unguarded iterators)', () => {
+    const raw = [{ id: 'p', kind: 'k', claim: 'c', startAnchor: 'x', endAnchor: 'x', confidence: 1, rationale: '' }];
+    const [out] = normalizeLoadedParts(raw);
+    expect(out.sectionIds).toEqual([]);
+    // and it doesn't crash a consumer that iterates it
+    expect(() => seedRealizations([out], sections, [])).not.toThrow();
+  });
+
+  it("defaults a missing origin to 'discovered' but preserves an explicit 'authored'", () => {
+    const raw = [
+      { id: 'a', kind: 'k', claim: 'c', startAnchor: 'x', endAnchor: 'x', sectionIds: [], confidence: 1, rationale: '' },
+      { id: 'b', kind: 'k', claim: 'c', startAnchor: 'x', endAnchor: 'x', sectionIds: [], confidence: 1, rationale: '', origin: 'authored' },
+    ];
+    const out = normalizeLoadedParts(raw);
+    expect(out[0].origin).toBe('discovered');
+    expect(out[1].origin).toBe('authored');
+  });
+
+  it('preserves every optional/additive field untouched and never fabricates a hash', () => {
+    const raw = [
+      {
+        id: 'p', kind: 'k', claim: 'c', startAnchor: 'x', endAnchor: 'x', sectionIds: ['s1'], confidence: 0.9, rationale: 'r',
+        status: 'articulated', position: { x: 3, y: 4 }, body: 'quarry', declaredCenter: true, expositionStrategy: 'genetic',
+      },
+    ];
+    const [out] = normalizeLoadedParts(raw);
+    expect(out.status).toBe('articulated');
+    expect(out.position).toEqual({ x: 3, y: 4 });
+    expect(out.body).toBe('quarry');
+    expect(out.declaredCenter).toBe(true);
+    expect(out.expositionStrategy).toBe('genetic');
+    expect(out.sourceHash).toBeUndefined(); // never fabricated at load time
+    expect(out.surroundHash).toBeUndefined();
+  });
+
+  it('drops non-object entries but keeps well-formed ones', () => {
+    const raw = [null, 'oops', part('keep', [idOf('A')])];
+    const out = normalizeLoadedParts(raw);
+    expect(out.map((p) => p.id)).toEqual(['keep']);
   });
 });

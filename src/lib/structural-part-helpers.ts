@@ -189,6 +189,11 @@ export function recomputeStructuralStale(
       orphanIds.push(p.id);
       continue;
     }
+    // A part with no stored `sourceHash` (pre-staleness discovery, or an older
+    // sidecar entry) has no baseline to diff against — it is "unknown", not stale.
+    // Skip it (mirrors the `recomputeHomotypy` `surroundHash` guard); the hash is
+    // stamped for real on the next re-anchor / re-discovery.
+    if (p.sourceHash === undefined) continue;
     if (computeHash(normalizeForHash(markdown.slice(r.startOffset, r.endOffset))) !== p.sourceHash) {
       staleIds.push(p.id);
     }

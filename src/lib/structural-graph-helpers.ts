@@ -107,6 +107,39 @@ function liveSectionIds(sections: Section[]): Set<string> {
 }
 
 /**
+ * Normalize a `StructuralPart[]` read from disk so old-shaped entries (written
+ * before a field existed) can't misbehave downstream. Applied ONCE in `loadProject`
+ * — distinct from the discovery-time `normalizeStructuralParts` in
+ * `ai-provider.structural-parts.ts` (which parses raw LLM JSON). It guarantees the
+ * invariant every consumer already assumes so the ~25 read sites keep their current
+ * shape: `sectionIds` is an array (six sites iterate it unguarded), `origin` is set
+ * (absent ⇒ `'discovered'` — the honest default: pre-Phase-4 there was no authoring
+ * UI, so an origin-less old part IS discovered; an authored part written by Phase 4+
+ * already carries `'authored'`, which `??` preserves), and `confidence`/`rationale`
+ * are present. Every optional/additive field — the content hashes (`sourceHash`,
+ * `surroundHash`), `status`, `position`, `body`, `declaredCenter`, `keyTerms`,
+ * `canonicalNeighbor`, `expositionStrategy` — passes through UNTOUCHED; we never
+ * fabricate a hash (a hash asserts a content baseline we cannot honestly supply at
+ * load time — it is stamped for real on the next re-anchor/re-discovery).
+ */
+export function normalizeLoadedParts(raw: unknown): StructuralPart[] {
+  if (!Array.isArray(raw)) return [];
+  const out: StructuralPart[] = [];
+  for (const p of raw) {
+    if (!p || typeof p !== 'object') continue;
+    const part = p as StructuralPart;
+    out.push({
+      ...part,
+      sectionIds: Array.isArray(part.sectionIds) ? part.sectionIds : [],
+      origin: part.origin ?? 'discovered',
+      confidence: typeof part.confidence === 'number' ? part.confidence : 0.5,
+      rationale: typeof part.rationale === 'string' ? part.rationale : '',
+    });
+  }
+  return out;
+}
+
+/**
  * Re-derive the realization set from the parts' live section mappings, one
  * untagged `Realization` per (part, live section) overlap. Any existing tag / note
  * / authored-origin is carried forward by (partId, sectionId) key; a realization

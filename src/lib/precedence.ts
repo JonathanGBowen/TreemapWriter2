@@ -23,6 +23,7 @@ import type {
   FunctionTag,
   LedgerEntry,
   PrecedenceConstraint,
+  PrecedenceData,
   PrecedenceReason,
   PrecedenceRule,
   Realization,
@@ -393,6 +394,27 @@ export function classifyBackwardArcs(input: ClassifyInput): OrderVerdict {
     coveredCount: covered,
     uncoveredCount: uncovered,
     orderMiscentering: uncovered / Math.max(1, input.arcCount),
+  };
+}
+
+// --- Backward-compat normalization (load boundary) -------------------------
+
+/**
+ * Normalize a possibly-partial `PrecedenceData` read from disk into the full
+ * three-array shape every consumer assumes. An older `precedence.json` written
+ * before `authored`/`overrides` existed is a truthy-but-partial object, so the
+ * `?? {…}` default in `loadProject` does NOT fire and the missing sub-array stays
+ * `undefined` — which then throws at `DependencyGraphModal`'s `precedence.overrides.map`
+ * / `...precedence.authored`, crashing the whole modal. Coerce each sub-field
+ * independently so absence, a partial object, or a non-array blob all degrade to `[]`.
+ */
+export function normalizePrecedenceData(raw: unknown): PrecedenceData {
+  const p = (raw ?? {}) as Partial<PrecedenceData>;
+  const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  return {
+    regions: arr(p.regions),
+    authored: arr(p.authored),
+    overrides: arr(p.overrides),
   };
 }
 

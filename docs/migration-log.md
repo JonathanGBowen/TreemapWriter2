@@ -5800,3 +5800,63 @@ homotypy candidate). Reverting leaves any already-stamped `surroundHash` harmles
 (ignored by every other consumer). A move already written to `project.md` is ordinary git history — revert
 the manuscript with the pre-move snapshot/tag the action created, or a plain `git revert` of the content
 commit.
+
+---
+
+## 2026-07-05 — Backward-compat hardening: safely opening pre-Phase-6 projects
+
+**What changed.** Phases 2–6 accreted new persisted artifacts and new fields on existing ones
+(`StructuralPart` gained `sourceHash`, `origin`, `status`, `declaredCenter`, `body`, `position`,
+`expositionStrategy`, `surroundHash`; the `precedence.json` sidecar carries `{regions, authored,
+overrides}`). A project written *before* a given field existed loads with that field absent. Three
+parallel exploration sweeps confirmed the load path is already tolerant of a wholly **missing** sidecar
+(Rust `fs_io::read_json` → `Ok(None)` on absence; opaque `Option<serde_json::Value>` never validates inner
+shape — the 2026-06-24 sparse-serde rule; TS `loadProject` defaults the whole array/object). The gaps were
+**partial shapes** and **old entries missing new fields** flowing through the whole-array default
+un-normalized into consumers. This change closes them at the single load boundary — no Rust, no
+schema-version gate, no data rewrite.
+
+- **Hard crash fixed — a partial `PrecedenceData`.** `precedence: data.precedence ?? {…}`
+  (`project-state.ts`) only fired when precedence was *entirely* absent; a truthy-but-partial
+  `{regions:[…]}` (written before `authored`/`overrides` existed) skipped the `??`, so
+  `DependencyGraphModal`'s `precedence.overrides.map(...)` / `...precedence.authored` threw and the whole
+  dependency/topo modal crashed on open. New **`normalizePrecedenceData(raw)`** (`src/lib/precedence.ts`)
+  coerces each sub-array independently → the full three-array shape.
+- **False "stale" fixed — a missing `sourceHash`.** `recomputeStructuralStale`
+  (`src/lib/structural-part-helpers.ts`) did `computeHash(...) !== p.sourceHash`; an old part with no
+  stamped hash always compared unequal → **flagged stale forever** (slate tint on every old part). Added
+  `if (p.sourceHash === undefined) continue;` — no baseline ⇒ "unknown", not stale — mirroring the
+  `recomputeHomotypy` `surroundHash` guard directly above it. The hash gets stamped for real on the next
+  re-anchor/re-discovery, so an old part reads neutral until then.
+- **Invariant restored — `normalizeLoadedParts(raw)`** (`src/lib/structural-graph-helpers.ts`, distinct
+  from the discovery-time `normalizeStructuralParts` that parses raw LLM JSON). Per entry: coerce
+  `sectionIds` to an array (six consumers iterate it unguarded — `structural-part-helpers`,
+  `structural-graph-helpers` `seedRealizations`, `topo-parts`, `ai-provider.impl`), default `origin` to
+  `'discovered'` (the honest default — pre-Phase-4 there was no authoring UI, and an explicit `'authored'`
+  is preserved so re-discovery's authored-part filter is undisturbed), default `confidence`/`rationale`,
+  and pass every optional/additive field (incl. the hashes) through **untouched** — it never fabricates a
+  hash (a hash asserts a content baseline the load boundary can't honestly supply; there is no parsed
+  section tree there — the live parse happens later in `App.tsx`).
+- **Wired into `loadProject`** (`src/state/project-state.ts`) beside the existing inline load-migrations
+  (`normalizeModelConfig`, the testSuite-deps upgrade): `normalizeLoadedParts(data.structuralParts)`,
+  `normalizePrecedenceData(data.precedence)`, and an `Array.isArray` guard on edges/realizations. One
+  boundary pass keeps the ~25 downstream readers on their current shape; the normalized form persists on
+  the next ordinary save. An **adversarial review** verified every disk→store path funnels through
+  `loadProject` — `restoreSnapshot` carries no structural sidecars, and the sync-policy reload / legacy
+  backup importer / clone all route back through `loadProject`; no path reaches a consumer raw.
+
+**Verify.** `npm run typecheck` clean; `npm test` **807 pass** (+11: 4 `normalizePrecedenceData` —
+undefined/partial/garbage/full; 1 stale guard — a no-`sourceHash` part resolves but is not stale; 5
+`normalizeLoadedParts` — non-array→[], missing `sectionIds`→[], `origin` default vs preserved-`authored`,
+optional fields preserved + no hash fabricated, non-object entries dropped; 1 `persistence` integration —
+a partial `precedence` + old-shape part hydrate normalized without throwing); `npm run build` +
+`npm run lint` (0 errors). **No Rust to run** — the fix is TS-only at the load boundary. **Manual (a copy
+of a real older project or a hand-made `.twriter/` fixture):** open it → the dependency/topo modal opens
+without throwing on a partial `precedence.json`; old discovered parts show a neutral (not slate-stale)
+tint until edited; `git diff` after the first save shows the sidecars rewritten in normalized full-shape
+form.
+
+**Rollback.** `git revert` the commit. Purely additive and read-time: the three helpers are net-new pure
+functions; `loadProject`'s prior `?? []` / `?? {…}` defaults are replaced by strictly-more-tolerant
+normalizers; the stale guard only *removes* false positives. No persisted shape changes until a project is
+re-saved (which writes the same normalized shape the app already produces). No Rust, no schema version.

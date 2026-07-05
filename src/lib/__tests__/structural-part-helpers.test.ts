@@ -139,6 +139,15 @@ describe('recomputeStructuralStale', () => {
     };
     expect(recomputeStructuralStale([germ], md, sections)).toEqual({ staleIds: [], orphanIds: [] });
   });
+
+  it('a part with no stored sourceHash (an older sidecar) resolves but is NOT stale', () => {
+    // Backward-compat: pre-staleness discovery never stamped a sourceHash. Such a
+    // part has no baseline to diff — it must read as "unknown" (neither stale nor
+    // orphan), not be flagged stale forever. `makePart` intentionally omits sourceHash.
+    const unstamped = makePart('Alpha preamble paragraph.', 'Body of A two.', { id: 'p1' });
+    expect(unstamped.sourceHash).toBeUndefined();
+    expect(recomputeStructuralStale([unstamped], md, sections)).toEqual({ staleIds: [], orphanIds: [] });
+  });
 });
 
 describe('computeDivergences', () => {

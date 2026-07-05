@@ -2,6 +2,8 @@ import type { StateCreator } from 'zustand';
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from '../lib/constants';
+import { normalizeLoadedParts } from '../lib/structural-graph-helpers';
+import { normalizePrecedenceData } from '../lib/precedence';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
 import { setSecret } from '../services/credentials';
@@ -403,10 +405,15 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         reverseOutlines: data.reverseOutlines || [],
         gist: data.gist ?? null,
         provenanceMarks: data.provenance?.marks ?? [],
-        structuralParts: data.structuralParts ?? [],
-        structuralEdges: data.structuralEdges ?? [],
-        realizations: data.realizations ?? [],
-        precedence: data.precedence ?? { regions: [], authored: [], overrides: [] },
+        // Normalize the W₁ sidecars at the load boundary so entries written by an
+        // OLDER app version (missing fields the later phases added, or a partial
+        // `precedence` object) can't crash a consumer or emit a spurious diagnostic.
+        // One boundary pass keeps the ~25 downstream readers on their current shape;
+        // the normalized form persists on the next ordinary save.
+        structuralParts: normalizeLoadedParts(data.structuralParts),
+        structuralEdges: Array.isArray(data.structuralEdges) ? data.structuralEdges : [],
+        realizations: Array.isArray(data.realizations) ? data.realizations : [],
+        precedence: normalizePrecedenceData(data.precedence),
         sectionIdLedger: data.sectionIdLedger ?? [],
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
