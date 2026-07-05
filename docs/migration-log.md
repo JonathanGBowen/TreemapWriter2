@@ -5918,3 +5918,47 @@ gist) still retries and keeps the prior gist on a second failure.
 **Rollback.** `git revert` the commit. Additive and read-time: `validateGist` gains a field and the helpers
 are net-new; omission is derived from the stored gist's own empty spans (nothing new persisted); the prompt
 change is text. No Rust, no schema version.
+
+---
+
+## 2026-07-05 — Fix `sync_resolve_merge` "missing required key theirCommit" (serde enum-field bug)
+
+**Symptom.** Resolving a git merge conflict on an old git-tracked project threw *"invalid args
+`theirCommit` for command `sync_resolve_merge`: command sync_resolve_merge missing required key
+theirCommit."*
+
+**Root cause — a serde enum quirk, not a caller typo.** The frontend was correct end-to-end: the resolve
+invoke (`src/services/tauri-repository.ts:296`) sends `{ theirCommit, baseHead, resolutions }` (camelCase,
+matching the Tauri command). The value arrived `undefined` one boundary earlier. `PullOutcome`
+(`src-tauri/src/types.rs`) is an externally-tagged enum with `#[serde(rename_all = "camelCase", tag =
+"kind")]`. **On an enum, `rename_all` renames only the variant tags — not the fields inside struct
+variants.** So `MergeRequired { their_commit, base_head, conflicts }` serialized those two fields as
+snake_case, while the TS type (`src/types/index.ts:1473`) and the whole conflict flow
+(`sync-policy.ts` latch → `ConflictResolutionModal.tsx` → resolve invoke) read `theirCommit`/`baseHead`
+→ `undefined` → Tauri drops the key and reports it missing. (`conflicts` rendered fine because
+`ConflictFile` is a standalone struct whose own `rename_all` *does* reach its fields.) It stayed latent
+because `MergeRequired` is produced only on a genuinely divergent `sync_pull` — an old project with a
+diverged remote — and no test asserted the *serialized JSON keys* (the existing `sync-policy.test.ts`
+mocks a hand-written camelCase payload).
+
+**Fix (Rust only — the TS contract was already camelCase).** Add `rename_all_fields = "camelCase"` to
+`PullOutcome` so `their_commit`/`base_head` serialize as `theirCommit`/`baseHead` (single-word fields like
+`commits`/`conflicts` are unchanged); `sync_pull` now emits the keys the frontend already expects, and the
+whole downstream chain carries real OIDs. The same attribute was added to the three sibling command-facing
+tagged enums — `Resolution`, `ResolveOutcome`, `PushOutcome` — as recurrence-proofing (a no-op on their
+current single-word fields; audit confirmed these four are the *only* enums with struct variants, and every
+other `rename_all` site is a standalone struct that already camelCases correctly). No frontend change and no
+band-aid (`?? their_commit` would mask the contract, not fix it).
+
+**Verify.** Frontend gate unaffected and green (no TS touched): typecheck clean, `npm test` **812 pass**,
+build ok. A new Rust `#[cfg(test)]` serde test (`types.rs` `mod tests`) serializes
+`PullOutcome::MergeRequired` and asserts the wire keys are `theirCommit`/`baseHead` (and `their_commit` is
+absent) + round-trips back — the guard the frontend mock cannot provide. **`cargo test` is not runnable in
+this CI** (no `gdk-3.0`/GTK system libs, the standing constraint) — the test is written to the file's
+established `serde_json` round-trip idiom and runs on a desktop toolchain. **Reaching users requires a
+desktop rebuild** (a Rust recompile); no data migration — the `their_commit` OID is still pinned alive under
+`refs/twriter/incoming`, so after rebuild + a re-pull, `sync_pull` re-detects the conflict, emits the
+correct keys, and *Resolve* completes.
+
+**Rollback.** `git revert` the commit (drops the `rename_all_fields` attribute + the test). Pure
+serialization change; no schema version, no persisted data affected.
