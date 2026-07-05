@@ -5860,3 +5860,61 @@ form.
 functions; `loadProject`'s prior `?? []` / `?? {…}` defaults are replaced by strictly-more-tolerant
 normalizers; the stale guard only *removes* false positives. No persisted shape changes until a project is
 re-saved (which writes the same normalized shape the app already produces). No Rust, no schema version.
+
+---
+
+## 2026-07-05 — Gist omission: un-block the coverage gate, read omission as signal
+
+**What changed.** The gist (a whole-at-once "scale model" of the document, in its own voice, for
+re-entry) enforced **total coverage**: `validateGist`/`checkCoverage` rejected any grain that left a
+section's span missing or empty, and that reason was OR-ed with the genuine fidelity checks (word caps,
+banned reporting frames, duplicate spans) into one `ok` boolean; a second validation failure *discarded*
+the newly-generated gist when a prior one existed. Compose-prompt rule 8 reinforced it ("a weight-1 survey
+gets a clause"), so omission was impossible by construction. **That is an anti-feature.** By the app's own
+thesis — *"a summary hands back the pieces in a sum; the two-wholes analysis asks for the opposite"*
+(`gestalt-and-text-structure.md`), *"Size ≠ structural weight,"* and the honest-heap license *"where inner
+functional content approaches zero, piecemeal composition is the correct form; never manufacture
+commitments"* (`arpeggio-integration.md`) — a section the whole-summary does not lean on is **information**:
+it is not carrying essential substance. Forcing a line for it is plausibility-forgery. This reframes
+omission as signal, not error (no Rust, no persisted-schema change).
+
+- **`validateGist` split (`src/lib/gist-helpers.ts`).** Missing/empty spans are pulled out of the blocking
+  `reasons` into a new `omitted: { coarse: string[]; fine: string[] }` field (informational, never folded
+  into `ok`); a **duplicate** span stays a fidelity `reason` (a genuinely malformed grain). New pure helpers
+  `spansOmitted(spans, expectedIds)` (present-but-empty OR absent) and `gistOmittedIds(gist)` (derives a
+  stored gist's uncarried sections from its own empty spans — never separately persisted, like staleness).
+- **Degeneracy floors** — so the honest-heap license can't accept a *useless* gist now that empty spans no
+  longer fail. An empty `g0` thesis (the irreducible core, never an omittable section) fails; and a grain in
+  which the whole joined text is blank ("every fine/coarse span is empty — the gist carries no section")
+  fails, so a truncated/refused compose that produced only `g0` still retries and keeps a good prior gist
+  rather than overwriting it with a blank map. Sparse omission stays valid; total omission does not.
+- **`generate` un-blocks (`src/features/gist/use-gist-actions.ts`).** No code change beyond the new return
+  shape — the retry/discard branch already keys on `check.ok`, which no longer folds in omission, so an
+  omission-only composition has `ok === true` and stores cleanly (with its omitted sections as empty spans).
+  The one corrective retry now carries fidelity-only reasons (never nags the model to fill an omission).
+- **Prompt license (`src/services/prompts/gist-composition.md`).** New rule 9 grants an explicit license to
+  leave a non-essential segment's span empty (grounded in the honest-heap "inner functional content ≈ 0"
+  language), with a guard to omit *sparingly* — only genuine non-contributors; when in doubt keep a
+  compressed token — so the gist stays navigable for re-entry.
+- **Light surface (`src/features/gist/StatusRow.tsx`).** A small muted note — `· N not carried` — rendered
+  only when the fine grain omits sections, with a `title` tooltip listing the omitted sections' heading
+  paths (from `gist.segmentation`). No Strain-Register kind, no ledger entry (the user-chosen "lighter"
+  scope). `gist-normalize.ts`'s `alignSpans` comment updated: an empty span is now a recorded omission, not
+  a flagged failure.
+
+**Verify.** `npm run typecheck` clean; `npm test` **812 pass** (+5 gist: omission no longer fails the gate
+(dropped + empty span) with the ids recorded in `omitted`; duplicate span / banned frame / over-budget /
+empty-g0 / total-omission still fail; `spansOmitted` + `gistOmittedIds` derive the uncarried set incl. a
+sparse gist staying valid); the unchanged `alignSpans`-inserts-empty-spans test stays green; `npm run
+build` + `npm run lint` (0 errors). **No Rust to run.** An **adversarial review** (focused on the split —
+that no genuine fidelity fault now slips through as "omission") found one real hole — a `g0`-present /
+all-spans-empty composition would pass and overwrite a good gist — fixed by the all-empty-grain floors
+above; plus two cheap hardenings (de-dupe the omitted list; `gist.segmentation?.` guard). **Manual (a copy
+of a real project):** generate a gist over a document with a genuinely peripheral section (citation dump /
+inventory) → the composer may leave its span empty, the gist is **kept** (not discarded), and the StatusRow
+shows `N not carried` with the titles on hover; a real fidelity fault (over-budget / banned frame / blank
+gist) still retries and keeps the prior gist on a second failure.
+
+**Rollback.** `git revert` the commit. Additive and read-time: `validateGist` gains a field and the helpers
+are net-new; omission is derived from the stored gist's own empty spans (nothing new persisted); the prompt
+change is text. No Rust, no schema version.

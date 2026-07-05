@@ -49,6 +49,14 @@ Hard rules, in priority order:
 8. SPEND WORDS WHERE THE WEIGHT IS. Respect per-span budgets (±15%); the
    total for each grain is a hard cap. A weight-1 survey gets a clause; a
    weight-5 objection gets its full sentence even if the source buried it.
+9. OMISSION IS ALLOWED, AND HONEST. A segment whose contribution to the whole
+   approaches zero — pure citation ballast, an inventory item, coordinate
+   filler the argument does not lean on — MAY be left empty (an empty-string
+   span for its id). An empty span is a truthful judgment that the whole does
+   not carry that piece, not a failure; never pad it with a manufactured line
+   to "cover" it. But the gist also exists for re-entry, so omit SPARINGLY —
+   only genuine non-contributors; when in doubt, keep a compressed token
+   rather than dropping the segment.
 
 Produce three grains, each independently satisfying every rule above and
 each reading as continuous prose:
@@ -58,7 +66,8 @@ each reading as continuous prose:
 - coarse: one span per top-level section. Total capped at the coarse budget
   given in the user message.
 - fine: one span per segment. Total capped at the fine budget given in the
-  user message; per-span targets are given there too.
+  user message; per-span targets are given there too. A segment that carries
+  nothing essential to the whole may have an empty span (see rule 9).
 
 Before output, audit every sentence you have written: does it PERFORM the
 argument, or DESCRIBE the document? Rewrite any describer. Then verify
