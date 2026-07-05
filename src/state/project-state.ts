@@ -2,6 +2,8 @@ import type { StateCreator } from 'zustand';
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import { DEFAULT_PROMPTS_CONFIG, resolvePromptsConfig, diffPromptsConfig } from '../lib/constants';
+import { normalizeLoadedParts } from '../lib/structural-graph-helpers';
+import { normalizePrecedenceData } from '../lib/precedence';
 import defaultProjectData from '../lib/defaultProject.json';
 import { repository as repo } from '../services/repository-registry';
 import { setSecret } from '../services/credentials';
@@ -241,6 +243,10 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       gist: null,
       provenanceMarks: [],
       structuralParts: [],
+      structuralEdges: [],
+      realizations: [],
+      precedence: { regions: [], authored: [], overrides: [] },
+      sectionIdLedger: [],
       // Browser persists to IndexedDB; desktop shows the demo as an unsaved
       // preview until the user creates/opens a real folder-backed project.
       hasOpenProject: !isTauri(),
@@ -291,6 +297,10 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       gist: null,
       provenanceMarks: [],
       structuralParts: [],
+      structuralEdges: [],
+      realizations: [],
+      precedence: { regions: [], authored: [], overrides: [] },
+      sectionIdLedger: [],
       hiddenSectionIds: [],
       activePersonaId: 'default',
       customPersonas: [],
@@ -395,7 +405,16 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         reverseOutlines: data.reverseOutlines || [],
         gist: data.gist ?? null,
         provenanceMarks: data.provenance?.marks ?? [],
-        structuralParts: data.structuralParts ?? [],
+        // Normalize the W₁ sidecars at the load boundary so entries written by an
+        // OLDER app version (missing fields the later phases added, or a partial
+        // `precedence` object) can't crash a consumer or emit a spurious diagnostic.
+        // One boundary pass keeps the ~25 downstream readers on their current shape;
+        // the normalized form persists on the next ordinary save.
+        structuralParts: normalizeLoadedParts(data.structuralParts),
+        structuralEdges: Array.isArray(data.structuralEdges) ? data.structuralEdges : [],
+        realizations: Array.isArray(data.realizations) ? data.realizations : [],
+        precedence: normalizePrecedenceData(data.precedence),
+        sectionIdLedger: data.sectionIdLedger ?? [],
         cachedCoachAdvice: data.cachedCoachAdvice || null,
       });
 
@@ -418,6 +437,16 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       // avoid a cross-slice action call here — keeping loadProject usable when
       // only the project slice is mounted (see project-switch tests).
       set({ activeSession: null, sessionLog: [] });
+
+      // The Ledger + inbox belong to one project too. Clear the previous
+      // project's projections, then load THIS project's EAGERLY (fire-and-forget):
+      // unlike the lazy session log, the ledger feeds the always-mounted strain
+      // register + commitment mesh, so it must be live as soon as the project opens.
+      // Optional-chained like `clearSearch` so loadProject stays usable when only
+      // the project slice is mounted.
+      set({ ledger: [], inbox: [] });
+      void get().loadLedger?.();
+      void get().loadInbox?.();
 
       // Clear any stale search highlight carried over from the previous
       // project. The new project's search index is (re)built in App.tsx once
@@ -513,6 +542,10 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       gist: state.gist,
       provenance: { marks: state.provenanceMarks },
       structuralParts: state.structuralParts,
+      structuralEdges: state.structuralEdges,
+      realizations: state.realizations,
+      precedence: state.precedence,
+      sectionIdLedger: state.sectionIdLedger,
       cachedCoachAdvice: state.cachedCoachAdvice,
       revisions: state.revisions,
       lastModified: Date.now(),

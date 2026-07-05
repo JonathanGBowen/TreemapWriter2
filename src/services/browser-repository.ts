@@ -2,6 +2,8 @@ import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import type {
   AgentFileEntry,
   DiskSignature,
+  InboxItem,
+  LedgerEntry,
   MarkdownDelta,
   ProjectMeta,
   PullOutcome,
@@ -17,6 +19,8 @@ import type { Repository, StoredProjectData } from './repository';
 
 const STORAGE_PREFIX = 'socratic_p_';
 const SESSIONS_PREFIX = 'socratic_sessions_';
+const LEDGER_PREFIX = 'socratic_ledger_';
+const INBOX_PREFIX = 'socratic_inbox_';
 const META_KEY = 'socratic_meta_v1';
 const VERY_OLD_LEGACY_KEY = 'socratic_project_v1';
 
@@ -178,6 +182,52 @@ export const browserRepository: Repository = {
     const next = list.filter((r) => r.id !== record.id);
     next.push(record);
     await idbSet(key, next);
+  },
+
+  async listLedger(): Promise<LedgerEntry[]> {
+    if (!lastOpenedId) return [];
+    const list = parseIfString<LedgerEntry[]>((await idbGet(LEDGER_PREFIX + lastOpenedId)) ?? []);
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => b.id.localeCompare(a.id));
+  },
+
+  async saveLedgerEntry(entry: LedgerEntry): Promise<void> {
+    if (!lastOpenedId) return;
+    const key = LEDGER_PREFIX + lastOpenedId;
+    const existing = parseIfString<LedgerEntry[]>((await idbGet(key)) ?? []);
+    const list = Array.isArray(existing) ? existing : [];
+    await idbSet(key, [...list.filter((r) => r.id !== entry.id), entry]);
+  },
+
+  async deleteLedgerEntry(id: string): Promise<void> {
+    if (!lastOpenedId) return;
+    const key = LEDGER_PREFIX + lastOpenedId;
+    const existing = parseIfString<LedgerEntry[]>((await idbGet(key)) ?? []);
+    const list = Array.isArray(existing) ? existing : [];
+    await idbSet(key, list.filter((r) => r.id !== id));
+  },
+
+  async listInbox(): Promise<InboxItem[]> {
+    if (!lastOpenedId) return [];
+    const list = parseIfString<InboxItem[]>((await idbGet(INBOX_PREFIX + lastOpenedId)) ?? []);
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => b.id.localeCompare(a.id));
+  },
+
+  async saveInboxItem(item: InboxItem): Promise<void> {
+    if (!lastOpenedId) return;
+    const key = INBOX_PREFIX + lastOpenedId;
+    const existing = parseIfString<InboxItem[]>((await idbGet(key)) ?? []);
+    const list = Array.isArray(existing) ? existing : [];
+    await idbSet(key, [...list.filter((r) => r.id !== item.id), item]);
+  },
+
+  async deleteInboxItem(id: string): Promise<void> {
+    if (!lastOpenedId) return;
+    const key = INBOX_PREFIX + lastOpenedId;
+    const existing = parseIfString<InboxItem[]>((await idbGet(key)) ?? []);
+    const list = Array.isArray(existing) ? existing : [];
+    await idbSet(key, list.filter((r) => r.id !== id));
   },
 
   async migrateVeryOldLegacy() {

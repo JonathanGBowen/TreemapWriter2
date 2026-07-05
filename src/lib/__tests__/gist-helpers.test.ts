@@ -6,11 +6,13 @@ import {
   computeBudgets,
   describeG0,
   flattenGistSegments,
+  gistOmittedIds,
   grainSegmentIds,
   normalizeForHash,
   perSegmentBudgets,
   recomputeStale,
   scanBannedFrames,
+  spansOmitted,
   synthesizeDescribeSpans,
   validateGist,
 } from '../gist-helpers';
@@ -126,14 +128,73 @@ describe('scanBannedFrames / validateGist', () => {
     fine: [{ id: 'f1', text: 'We fare forth, then something goes wrong.' }, { id: 'f2', text: 'The crate has changed.' }] as GistSpan[],
   };
 
-  it('passes a clean composition', () => {
-    expect(validateGist(clean, ids, budgets).ok).toBe(true);
+  it('passes a clean composition (no omissions)', () => {
+    const v = validateGist(clean, ids, budgets);
+    expect(v.ok).toBe(true);
+    expect(v.omitted).toEqual({ coarse: [], fine: [] });
   });
 
-  it('fails on a missing span, a banned frame, and an over-budget grain', () => {
-    expect(validateGist({ ...clean, fine: [clean.fine[0]] }, ids, budgets).ok).toBe(false);
+  it('an OMITTED section (dropped or empty span) does NOT fail the gate — it is recorded as omission', () => {
+    // Dropping f2 entirely: ok stays true, f2 is reported omitted (was: ok === false).
+    const dropped = validateGist({ ...clean, fine: [clean.fine[0]] }, ids, budgets);
+    expect(dropped.ok).toBe(true);
+    expect(dropped.omitted.fine).toEqual(['f2']);
+
+    // A present-but-empty span is the same: omission, not failure.
+    const emptied = validateGist({ ...clean, fine: [clean.fine[0], { id: 'f2', text: '' }] }, ids, budgets);
+    expect(emptied.ok).toBe(true);
+    expect(emptied.omitted.fine).toEqual(['f2']);
+  });
+
+  it('still fails on a banned frame and an over-budget grain (genuine fidelity faults)', () => {
     expect(validateGist({ ...clean, g0: 'This chapter discusses insight.' }, ids, budgets).ok).toBe(false);
     expect(validateGist(clean, ids, { ...budgets, fine: 3 }).ok).toBe(false);
+  });
+
+  it('fails on an empty g0 thesis, and on TOTAL omission even when g0 survives', () => {
+    // The g0 thesis is the irreducible core.
+    expect(validateGist({ ...clean, g0: '   ' }, ids, budgets).ok).toBe(false);
+
+    // The degenerate case the retry exists to catch: g0 present but EVERY span empty (a
+    // truncated/refused compose). Sparse omission is fine; total omission is not a gist.
+    const g0Only = {
+      g0: 'I want insight back, naturalized.',
+      coarse: [{ id: 'c1', text: '' }],
+      fine: [{ id: 'f1', text: '' }, { id: 'f2', text: '' }],
+    };
+    const v = validateGist(g0Only as never, ids, budgets);
+    expect(v.ok).toBe(false);
+    expect(v.reasons.some((r) => r.includes('carries no section'))).toBe(true);
+
+    // But a SPARSE gist (some sections carried, some omitted) stays valid.
+    const sparse = { ...clean, fine: [clean.fine[0], { id: 'f2', text: '' }] };
+    expect(validateGist(sparse, ids, budgets).ok).toBe(true);
+  });
+
+  it('still fails on a DUPLICATE span (a malformed grain, not an omission)', () => {
+    const dup = validateGist(
+      { ...clean, fine: [clean.fine[0], clean.fine[1], { id: 'f2', text: 'again' }] },
+      ids,
+      budgets,
+    );
+    expect(dup.ok).toBe(false);
+    expect(dup.reasons.some((r) => r.includes('duplicate'))).toBe(true);
+  });
+});
+
+describe('spansOmitted / gistOmittedIds', () => {
+  it('flags present-but-empty and absent expected ids', () => {
+    const spans: GistSpan[] = [{ id: 'a', text: 'carried' }, { id: 'b', text: '  ' }];
+    expect(spansOmitted(spans, ['a', 'b', 'c'])).toEqual(['b', 'c']); // b empty, c absent
+    expect(spansOmitted(spans, ['a'])).toEqual([]);
+  });
+
+  it('derives a stored gist\'s uncarried sections from its own empty spans', () => {
+    const gist = {
+      coarse: [{ id: 'c1', text: 'held' }],
+      fine: [{ id: 'f1', text: 'held' }, { id: 'f2', text: '' }],
+    } as unknown as StoredGist;
+    expect(gistOmittedIds(gist)).toEqual({ coarse: [], fine: ['f2'] });
   });
 });
 

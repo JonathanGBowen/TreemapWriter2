@@ -13,7 +13,32 @@ export interface Section {
   children: Section[];
   parentId: string | null;
 }
- 
+
+/**
+ * One heading's stable-id binding in the section-id ledger
+ * (`.twriter/section-ids.json`, Phase 1). The ledger gives each section an id
+ * that survives rename, reorder, and duplicate titles — where the derived
+ * `title.slug + lineIndex` id did not — by binding the id to the heading via a
+ * verbatim body `anchor` (the same content-anchor discipline StructuralPart /
+ * gist / provenance use), NOT by writing a marker into `project.md` (which stays
+ * pristine). Resolution is layered: match by `anchor` first (survives rename),
+ * then by `title` + `level` nearest `ordinal` (survives rewording of an empty or
+ * renamed section), else mint a fresh opaque id. See `src/lib/section-ids.ts`.
+ */
+export interface SectionIdBinding {
+  /** The stable section id (a frozen legacy id, or a minted opaque `sec_…`). */
+  id: string;
+  /** Verbatim first ~64 chars of the section's OWN body (excluding the heading
+   *  line), via `anchorFor`. Empty for a germ heading with no body yet. */
+  anchor: string;
+  /** The heading title at last reconcile — the Pass-2 fallback key. */
+  title: string;
+  /** The heading level (1–6) — disambiguates same-titled headings. */
+  level: number;
+  /** Document-order index at last reconcile — the nearest-ordinal tie-break. */
+  ordinal: number;
+}
+
 // --- STRUCTURED SPEC SYSTEM ---
  
 /** 
@@ -461,6 +486,12 @@ export interface SectionSpecTest {
   /** The Beethoven test, folded in: can the document's claim be read out of each
    *  side's prose? A part from which the whole cannot be recovered has drifted. */
   wholeSignature: { a: WholeSignatureAlignment; b: WholeSignatureAlignment };
+  /** Verbatim quotes grounding THIS section's `truth` + `wholeSignature` call — the
+   *  same receipts discipline the per-move deltas carry, extended to the whole-as-part
+   *  verdict (On Truth: whole-claims are the easiest to fake, so the tF/fT call must
+   *  show its work). Optional so a degraded/older result still parses; never
+   *  fabricated. */
+  wholeReceipts?: ComparisonReceipt[];
   summary: string;
   moveDeltas: MoveDelta[];
   /** Prose-level commitment breaks the revision introduced / healed for this part
@@ -498,6 +529,11 @@ export interface WholeVerdict {
   centerOfGravity: string;
   /** One paragraph: the whole-grounded read of B relative to A. */
   verdict: string;
+  /** Verbatim quotes from the CHANGED prose grounding the `truth` + center-of-gravity
+   *  read (the mesh delta is the hard evidence for severed joins; these ground what is
+   *  read out of the prose itself). An fT/tF verdict without a receipt is an assertion.
+   *  Optional so a degraded/older result still parses; never fabricated. */
+  receipts?: ComparisonReceipt[];
   /** The deterministic structural-join delta (the trustworthy spine). */
   meshDelta: MeshDelta;
   /** When the whole regressed (esp. tF), the recentering the structure now demands
@@ -896,6 +932,184 @@ export interface StructuralPart {
   rationale: string;
   /** Hash of the part's normalized span text at discovery time — the Tier-2 staleness anchor. */
   sourceHash?: string;
+  /**
+   * Hash of the part's immediate document SURROUND (block-before + block-after) at
+   * stamp time — the Phase-6 homotypy anchor, the inverse of `sourceHash`. Flags a
+   * part whose own text HELD while its surround/order moved. Optional/additive; rides
+   * the parts sidecar (no Rust). Stamped beside `sourceHash` at discovery + re-anchor.
+   */
+  surroundHash?: string;
+  // --- W₁-node fields (Arpeggio Phase 2). All optional/additive; the discovery
+  // faculty never supplies them (they are AUTHORED), so `normalizeStructuralParts`
+  // is untouched and `reanchoredPart`'s spread preserves them across re-anchoring. ---
+  /** How this part came to exist. Absent reads as 'discovered' (the faculty's output);
+   *  'authored' parts are hand-made and must survive re-discovery unclobbered. */
+  origin?: 'authored' | 'discovered';
+  /** The part's maturity as a THOUGHT (germ → apprehended → articulated). A 'germ'
+   *  authored part may carry empty anchors + `sectionIds: []` (content debt) and is
+   *  then exempt from orphan-flagging (unrealized, not anchor-lost). */
+  status?: 'germ' | 'apprehended' | 'articulated';
+  /** The writer's DECLARATION that this part is the argument's center — a claim
+   *  compared against the computed radix center, never a replacement for it. */
+  declaredCenter?: boolean;
+  /** Quarry: notes, dictation dumps, freewrites — NEVER committed prose. Consumed by
+   *  the Phase 4 canvas body editor; dormant until then. */
+  body?: string;
+  /** Terms the available-material check watches for (Phase 7). Dormant until then. */
+  keyTerms?: string[];
+  /** The familiar schema this part's claim deviates from — powers D8 (Phase 8). Dormant. */
+  canonicalNeighbor?: string;
+  /** Hand-placed canvas position (Phase 4) — spatial memory is external memory. Dormant. */
+  position?: { x: number; y: number };
+  /**
+   * The exposition strategy governing the edges this part GROUNDS (Arpeggio Phase 5).
+   * Parameterizes precedence derivation: `systematic`/`spiral` keep ground-before-lean,
+   * `genetic`/`reference` leave grounds order-free. Absent reads as 'systematic'. An
+   * authored field the discovery faculty never supplies (rides the parts sidecar).
+   */
+  expositionStrategy?: ExpositionStrategy;
+}
+
+/**
+ * A typed functional relation between two W₁ `StructuralPart`s — the EDGE-SET that
+ * turns the discovered node-set into a *configuration* (Arpeggio Phase 2, repairing
+ * the "node-set without an edge-set" muddle). The seven kinds are adopted verbatim
+ * from the spec. Directionality is a property of the KIND, not stored separately
+ * (see `isDirected` in `lib/structural-graph-helpers`): grounds / qualifies /
+ * exemplifies / defines / answers are directed (from → to); requires / opposes are
+ * symmetric. Sits ALONGSIDE the section-level `Dependency` (which stays advisory),
+ * never collapsed into it. Persisted as a bare array to `.twriter/structural-edges.json`.
+ */
+export type StructuralEdgeKind =
+  | 'grounds' // a supports b (directed)
+  | 'requires' // mutual determination (symmetric — the web-maker)
+  | 'qualifies' // a qualifies b (directed)
+  | 'opposes' // deliberate tension (symmetric — a legitimate gap-tearing device)
+  | 'exemplifies' // example → principle (directed)
+  | 'defines' // definition → user of the term (directed)
+  | 'answers'; // reply → objection (directed)
+
+export interface StructuralEdge {
+  /** Content-stable id (`edgeId` = hash of kind + endpoints; symmetric kinds sort the pair). */
+  id: string;
+  kind: StructuralEdgeKind;
+  /** The `from` endpoint part id (for symmetric kinds, endpoint order is not meaningful). */
+  fromPartId: string;
+  /** The `to` endpoint part id. */
+  toPartId: string;
+  /** How the edge came to exist. 'discovered' = AI-proposed; 'authored' = hand-drawn. */
+  origin: 'authored' | 'discovered';
+  /** Review lifecycle. A 'discovered' edge lands 'proposed' (advisory) until accepted;
+   *  an 'authored' edge is 'accepted' by construction. Absent reads as 'accepted'. */
+  status?: 'proposed' | 'accepted';
+  /** Optional writer note. */
+  note?: string;
+  /** The AI's confidence that this relation holds (0..1), when discovered. */
+  confidence?: number;
+  /** Why this relation holds — names it, never fabricated (when discovered). */
+  rationale?: string;
+}
+
+/**
+ * The MAPPING between a W₁ part and a W₂ section — Arpeggio's `Realization`, which
+ * promotes the bare `StructuralPart.sectionIds` membership (a hardcoded 'reference'
+ * arc with no function) into a first-class, FUNCTION-TAGGED record. A part↔section
+ * overlap seeds one untagged realization (`seedRealizations`); the writer tags it
+ * with the job the section does for the part. A part may have many realizations
+ * (recurrence with changed function); a section may realize many parts. Persisted
+ * as a bare array to `.twriter/realizations.json`.
+ */
+export type FunctionTag =
+  | 'open-gap' // makes the reader feel a question/need
+  | 'introduce' // first presentation of the part
+  | 'develop' // works the part out
+  | 'recur' // returns to it (ideally doing a different job — else monotony)
+  | 'answer' // resolves an objection
+  | 'pay' // discharges an owed debt / IOU
+  | 'summarize'; // recapitulates it
+
+export interface Realization {
+  /** Content-stable id (`computeHash(partId|sectionId)`). */
+  id: string;
+  partId: string;
+  sectionId: string;
+  /** The job this section does for the part. Absent = seeded-but-untagged (the writer tags it). */
+  functionTag?: FunctionTag;
+  /** Optional writer note. */
+  note?: string;
+  /** 'seeded' = deterministic part↔section overlap; 'authored' = the writer tagged/kept it. */
+  origin: 'seeded' | 'authored';
+}
+
+/**
+ * The PRECEDENCE layer (Arpeggio Phase 5) — grasping-dynamics ordering constraints
+ * over W₁ parts. These are the persisted/shared data-model types; the engine's
+ * computed results (grasp order, admissibility, cycles, the covered/uncovered
+ * verdict) live in `lib/precedence.ts`, which imports these. Kept here (not in the
+ * lib) so `precedence.ts` → `types` stays a one-way import (no cycle).
+ */
+export type ExpositionStrategy = 'systematic' | 'genetic' | 'spiral' | 'reference';
+
+/** Why one part must be grasped before another (Arpeggio §5). */
+export type PrecedenceReason =
+  | 'gap-before-filling'
+  | 'set-before-material'
+  | 'overthrow-before-recentering'
+  | 'debt-before-payment'
+  | 'ground-before-lean'
+  | 'definition-before-use'
+  | 'custom';
+
+/** A derived constraint's lifecycle. 'active' = in force; the writer may suspend it or convert it to an IOU. */
+export type PrecedenceStatus = 'active' | 'suspended' | 'converted-to-iou';
+
+/** Which derivation rule produced a derived constraint (transparency — every derived constraint shows its rule). */
+export type PrecedenceRule =
+  | 'defines→definition-before-use'
+  | 'answers→gap-before-filling'
+  | 'grounds/systematic→ground-before-lean'
+  | 'grounds/genetic→overthrow-before-recentering';
+
+export interface PrecedenceConstraint {
+  /** Content-stable: `computeHash(reason|before|after|edgeId?)`. */
+  id: string;
+  /** The part that must be grasped first. */
+  before: string;
+  /** The part grasped later. */
+  after: string;
+  reason: PrecedenceReason;
+  /** 'derived' = from a W₁ edge rule; 'authored' = the writer's own precedence. */
+  source: 'derived' | 'authored';
+  /** For a derived constraint: the rule + the edge it came from. */
+  derivedFrom?: { rule: PrecedenceRule; edgeId: string };
+  status: PrecedenceStatus;
+}
+
+/** A user-defined set of parts sharing an `expositionStrategy` (Arpeggio §5's Region). */
+export interface PrecedenceRegion {
+  id: string;
+  partIds: string[];
+  expositionStrategy: ExpositionStrategy;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+/** A writer override of a DERIVED constraint (keyed by its content-stable id): suspend it, or convert it to an IOU. */
+export interface PrecedenceOverride {
+  constraintId: string;
+  status: PrecedenceStatus; // 'suspended' | 'converted-to-iou' ('active' is the default, never stored)
+}
+
+/**
+ * The persisted precedence sidecar (`.twriter/precedence.json`). An opaque JSON
+ * object on the Rust side (like `gist`/`provenance`) — the TS layer owns the shape.
+ * Regions carry the strategy dimension; authored constraints + overrides carry the
+ * writer's manual precedence and the suspend/convert-to-IOU decisions.
+ */
+export interface PrecedenceData {
+  regions: PrecedenceRegion[];
+  authored: PrecedenceConstraint[];
+  overrides: PrecedenceOverride[];
 }
 
 // --- LEGACY COMPAT + COMBINED SUITE ---
@@ -1199,6 +1413,51 @@ export interface SessionRecord {
   durationMinutes: number;
   /** How the session was created. */
   source: 'manual' | 'sprint';
+}
+
+// --- LEDGER + CAPTURE INBOX (Arpeggio Phase 3) ---
+// The Ledger is the app's honest memory of the writer's concessions: debts owed
+// (IOUs), heaps declared honest, deviations declared deliberate, diagnostics
+// deferred. Persisted PER-ENTRY on the sessions template (`.twriter/ledger/<id>.yaml`),
+// merge-friendly across machines — the TS layer owns the shape (Rust mirrors it as
+// an opaque Value). A `declared-heap` entry is keyed by the SECTION it exempts, so
+// the section-keyed commitment mesh consumes it directly (no part→section resolution).
+
+export type LedgerEntryKind =
+  | 'iou' // a commitment owed but not yet paid — deferred, not dropped
+  | 'declared-heap' // a section's children are honestly an aggregate; suppress interlock pressure
+  | 'declared-deviation' // a deliberate structural deviation the writer stands behind
+  | 'deferred-diagnostic'; // a finding acknowledged and parked
+
+export type LedgerEntryStatus = 'open' | 'paid' | 'waived';
+
+export interface LedgerEntry {
+  /** Hyphenated ISO timestamp id (the sessions template); doubles as the filename stem. */
+  id: string;
+  kind: LedgerEntryKind;
+  /** The section where the debt/declaration was opened (a `declared-heap` exempts this section + its children). */
+  openedAtSectionId: string;
+  /** What is owed / declared, in the writer's or the finding's words. */
+  owes: string;
+  /** The section where an IOU was paid (set when `status` → 'paid'). */
+  paidAtSectionId?: string;
+  status: LedgerEntryStatus;
+  /** Who opened it: the writer (a declaration) or the tool (a system-proposed IOU). */
+  createdBy: 'user' | 'system';
+  /** Which finding/constraint this converts, if any (provenance). */
+  reason?: string;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+/** A thought captured out of context (the ADHD capture inbox). Body is the persisted
+ *  file (`.twriter/inbox/<id>.md`); the meta is minimal. Consumed by appending to a
+ *  section or promoting to a germ `StructuralPart`. */
+export interface InboxItem {
+  /** Hyphenated ISO timestamp id; doubles as the filename stem. */
+  id: string;
+  text: string;
+  createdAt: string;
 }
 
 // --- PHASE 4 SYNC TYPES ---

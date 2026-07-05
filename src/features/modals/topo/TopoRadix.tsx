@@ -21,6 +21,8 @@ const mono = 'JetBrains Mono, monospace';
 export interface TopoRadixProps {
   model: TopoModel;
   centering: Centering;
+  /** Per-backward-arc order verdict (Phase 5): 'covered' → neutral bridge, 'uncovered' → warning chevron. */
+  orderCover: Map<string, 'covered' | 'uncovered'>;
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -73,6 +75,7 @@ const ZoomHud: React.FC<{ t: Transform; setT: React.Dispatch<React.SetStateActio
 export const TopoRadix: React.FC<TopoRadixProps> = ({
   model,
   centering,
+  orderCover,
   selectedId,
   hoveredId,
   editorId,
@@ -154,7 +157,7 @@ export const TopoRadix: React.FC<TopoRadixProps> = ({
                 health={model.health(a)}
                 dim={dim}
                 selected={a.id === selectedDepId}
-                backward={centering.backwardArcs.has(a.id)}
+                cover={orderCover.get(a.id)}
                 onSelect={onSelectDep}
               />
             );

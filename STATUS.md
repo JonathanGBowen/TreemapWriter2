@@ -304,6 +304,99 @@ streams keep their own inline indicators rather than the pill.
 
 ## Next (felt priorities)
 
+- **Arpeggio integration roadmap — planned 2026-07-02, phases 0–9 open.** An
+  adversarially-verified fidelity audit
+  ([`docs/arpeggio-integration.md`](docs/arpeggio-integration.md)) answered the
+  question *is the app muddled in its Gestalt implementation?* — yes, in ontology
+  and silences, not in its readings: (1) the heading-welded ontology
+  (`StructuralPart` is a node-set without an edge-set; every engine still
+  section-keyed); (2) the wrong order-norm (backward arcs measure *logical*
+  dependence where Wertheimer's precedence comes from the dynamics of grasping —
+  and order has no operation: no `move`, no admissibility); (3) the commitment
+  mesh scoped to textual adjacency; (4) no license for the honest heap; plus the
+  never-essayed reader-side frontier (grouping factors, Einstellung, adjacency
+  costs, IOUs, homotypy — the shipped staleness check is *inverted* relative to the
+  homotypy test). The same doc adjudicates the donor spec
+  ([`docs/arpeggio-spec.md`](docs/arpeggio-spec.md), theory in
+  [`docs/configuration-and-sequence.md`](docs/configuration-and-sequence.md)) —
+  complements, not rivals — and fixes the roadmap: **Phase 0** doctrine repairs
+  (fT receipts, heap license, order-verdict softening, one doc correction) —
+  **shipped 2026-07-02** (see [`docs/migration-log.md`](docs/migration-log.md)) →
+  **Phase 1** stable section ids — **shipped 2026-07-02** as a **sidecar
+  anchor-ledger** (`.twriter/section-ids.json`, `src/lib/section-ids.ts`), NOT the
+  originally-planned inline `project.md` markers: research showed markers would invade
+  the writing surface (leak into AI prompts, word counts, treemap area, the clipboard),
+  so the sidecar keeps `project.md` pristine and reuses the content-anchor idiom; a
+  migration "freeze" of current ids means zero remap of existing specs. Subsumes the
+  "Stable section IDs" lingering item below. → **Phase 2** the W₁ graph layer (7 typed
+  part-to-part edges alongside the advisory `Dependency`, function-tagged
+  part↔section realizations promoting the hardcoded membership arc, the extended
+  W₁-node fields, a declared-vs-computed-centre neutral finding, and an advisory AI
+  edge-discovery assist) — **shipped 2026-07-03** as two bare-array sidecars
+  (`.twriter/structural-edges.json` + `.twriter/realizations.json`) + the pure
+  `src/lib/structural-graph-helpers.ts`, rendered in the topo PARTS projection with
+  minimal Inspector authoring (the Phase-4 canvas is the richer authoring home); the
+  four canvas/draft part-fields ship dormant (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 3** ledger +
+  declare/defer + capture inbox + the **distance-widened commitment mesh** (the
+  muddle-#3 repair: a commitment paid anywhere later / established anywhere earlier /
+  paid-IOU-covered / under a declared heap no longer flags — a monotone, back-compatible
+  `MeshContext`, absent-ctx byte-identical) — **shipped 2026-07-03** as per-entry-file
+  sidecars (`.twriter/ledger/*.yaml` + `.twriter/inbox/*.md`) on the sessions template, a
+  right-side Ledger drawer + capture inbox (⌘/Ctrl+I → a section or a germ part),
+  declared-heap as a LedgerEntry the mesh + heap-license prompts consume, and a check-out
+  ledger-currency line; OS-global hotkey deferred (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 4** the dedicated W₁
+  Canvas workspace — the authored spatial home of W₁ (hand-placed persisted positions,
+  N/E/C keyboard authoring, a per-node quarry `body`, the typed-edge layer + legend,
+  undoable suggest-layout, inbox drag-to-canvas, list-view/SR parity, and a topo
+  "open in canvas" deep-link) — **shipped 2026-07-03** as an
+  HTML-card-overlay-over-SVG-edges workspace on a fresh world-px `useCanvasPanZoom`,
+  one new `--color-hld-feat-glow` token, with positions + `body` riding the existing
+  `.twriter/structural-parts.json` sidecar (no new sidecar, no Rust change); the topo
+  modal stays the derived-analysis lens (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 5** the precedence
+  engine + order-space diagnosis — the muddle-I.2.2 repair (diagnosis half): a new
+  pure `src/lib/precedence.ts` derives grasping-dynamics constraints from the W₁
+  edges (strategy-relative via a per-part `expositionStrategy`), checks admissibility
+  / commutable runs / non-linearizable regions, and reclassifies each "backward" arc
+  COVERED (a deliberate inversion, or an open IOU → neutral bridge) vs UNCOVERED (a
+  genuine read-ahead → warning), completing the Phase-0 softening on the arc glyph +
+  legend + readout + AI prompt; `computeCentering` stays untouched (SCC helpers lifted
+  to `src/lib/graph-scc.ts`), and with no structure drawn everything stays neutral
+  (err-toward-silence). SPINE gains admissibility ticks / commutable brackets
+  (declare-heap) / non-linearizable chips (spiral · declared-IOU · pointer). —
+  **shipped 2026-07-04** as the engine + the reframe + the SPINE `OrderMarks` + a
+  `.twriter/precedence.json` sidecar (regions / authored constraints / overrides) +
+  the `dependencies.md` prompt (see
+  [`docs/migration-log.md`](docs/migration-log.md)). → **Phase 6**
+  reorder-as-operation + the homotypy inversion — the muddle-I.2.2 repair
+  (operation half) + the muddle-I.4 repair: a **move** relocates a heading and its
+  whole subtree within `project.md` (the first feature to structurally rewrite the
+  single source of truth) via a pure, line-space, never-throw
+  `applyMove`/`MoveSpec` in `segment-helpers.ts` (a `joinBlocks` seam primitive →
+  byte-stability outside the touched seams), a Pass-0 id force-bind in
+  `reconcileSectionIds` (germ siblings keep their ids across an order swap), a
+  `moveSection` store slice (pre-move git snapshot + in-memory Undo, shared by
+  sidebar / palette / SPINE), Alt+↑/↓ + ⌘K reorder with the app's first
+  `aria-live` region, a SPINE station drag with live admissibility (dropping into a
+  violation is allowed — it files a finding), and **standing homotypy** — a
+  zero-Rust `surroundHash` (the inverse of `sourceHash`) whose `recomputeHomotypy`
+  flags parts whose text HELD while their surround MOVED (amber tint + a RE-READ
+  fix). — **shipped 2026-07-04** (no Rust touch — `surroundHash` rides the parts
+  sidecar; see [`docs/migration-log.md`](docs/migration-log.md)). → **7**
+  draft-mode Einstellung
+  surfaces (reader-holds, contract, available-material check, gestures, scaffold
+  lifecycle) → **8** adjacency diagnostics D1–D10, recentering-as-operation ("the
+  jolt, itemized"), reader simulation → **9** theory-currency migration of
+  progress surfaces. User-fixed constraints (2026-07-02): HLD stays canonical
+  (adopt only the semantic-color discipline + one reserved center-glow token);
+  theory currency primary with words demoted (treemap-area re-encoding stays
+  gated); the canvas is a new workspace, not a topo-modal extension; full roadmap,
+  one shippable phase per session/PR. Rejected imports (reasons in the doc):
+  one-file-per-block, audit-mode quarantine, the no-ghostwriting ban,
+  Anthropic-only assists, the paper/light theme, no-sync.
+
 - **Agentic-AI integration roadmap — WS1–WS4a shipped 2026-06-29.** A 2026-06-29 audit
   ([`docs/ai-integration-audit.md`](docs/ai-integration-audit.md)) found the gap is
   *integration*, not plumbing: ~30 typed call-kinds and two agentic substrates exist,
@@ -461,13 +554,22 @@ streams keep their own inline indicators rather than the pill.
   `buildReinstatement(..., { extraFragments })` remains deferred (it's additive
   and read-only), as do in-editor phrase highlighting and `SectionMapModal`
   highlighting.
-- **Stable section IDs.** IDs are currently derived from `title.slug + index`
-  ([`src/lib/utils.ts`](src/lib/utils.ts)) — fragile under duplicate titles,
-  renames, and reordering. Move to opaque ULIDs assigned at section creation,
-  stored as YAML frontmatter `id:` per section, with a one-time migration that
-  walks existing sections. Open question: garbage-collect orphan IDs on delete,
-  or keep them so dependency edges survive an undo (default: keep). Trigger to
-  prioritize: any rename/reorder bug surfacing in real use.
+- ~~**Stable section IDs.**~~ **Shipped 2026-07-02** (Arpeggio Phase 1; see
+  [`docs/migration-log.md`](docs/migration-log.md)). The `title.slug + index` id
+  ([`src/lib/utils.ts`](src/lib/utils.ts)) — fragile under duplicate titles, renames,
+  and reordering — is now stabilized by a **sidecar anchor-ledger**
+  (`.twriter/section-ids.json`, `src/lib/section-ids.ts`): `reconcileSectionIds` binds
+  each id to its heading by verbatim body anchor and resolves it on every parse
+  (anchor → title+level → seed-freeze/mint), so ids survive all three operations.
+  Chosen over inline `project.md` markers (which would invade the writing surface) so
+  `project.md` stays pristine; the freeze of current ids means zero remap of existing
+  testSuite/spec/dependency keys. **Deferred follow-ons** (not blocking): the id is a
+  frozen legacy slug for pre-existing sections (only new headings get opaque `sec_…`)
+  — a cosmetic-only opaque-ify would need the full remap; a *reword+rename+move before
+  reload* triple can still miss its anchor (documented heuristic limit, degrades to
+  orphan not corruption); and Phase 6's reorder operation will maintain the ledger
+  atomically. The complete-orphan-reclaim variant of `pruneOrphanEntries` (below) is
+  now unblocked by stable ids.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 

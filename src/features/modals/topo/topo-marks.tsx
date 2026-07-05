@@ -12,6 +12,7 @@
    matter." */
 
 import React from 'react';
+import type { StructuralEdgeKind } from '../../../types';
 import type { Arc, Station as StationT } from './topo-derive';
 import { statusMeta } from './topo-derive';
 import { SEA, type SimNode } from './topo-sim-atlas';
@@ -19,6 +20,20 @@ import { TK } from './tk';
 import type { FieldRole } from './topo-centering';
 
 const mono = 'JetBrains Mono, monospace';
+
+// PARTS part→part edges (Phase 2): each of the seven W₁ relation kinds gets a
+// distinct stroke treatment; the always-visible legend names them. requires /
+// opposes are symmetric (no arrowhead).
+export const EDGE_DASH: Record<StructuralEdgeKind, string | undefined> = {
+  grounds: undefined, // solid — the load-bearing support
+  requires: '2 3', // tight bond — mutual determination
+  qualifies: '7 5', // dashed
+  opposes: '1 5', // dotted/barbed — deliberate tension
+  exemplifies: '2 6', // fine dotted
+  defines: '11 5', // long dash
+  answers: '9 4 2 4', // dash-dot
+};
+export const SYMMETRIC_EDGE = (k: StructuralEdgeKind): boolean => k === 'requires' || k === 'opposes';
 
 function trim(s: string, n: number) {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
@@ -37,14 +52,19 @@ export const Route: React.FC<{
   health: 'solid' | 'weak' | 'broken';
   dim: boolean;
   selected: boolean;
-  backward?: boolean;
+  cover?: 'covered' | 'uncovered';
   onSelect: (id: string) => void;
-}> = ({ arc, m, health, dim, selected, backward, onSelect }) => {
+}> = ({ arc, m, health, dim, selected, cover, onSelect }) => {
   const a = m[arc.source];
   const b = m[arc.target];
   if (!a || !b) return null;
   const ref = arc.type === 'reference';
+  const edgeKind = arc.edgeKind;
+  const isPartEdge = !!edgeKind;
+  const symmetric = isPartEdge && SYMMETRIC_EDGE(edgeKind);
   const base = health === 'broken' ? TK.magenta : health === 'weak' ? TK.yellow : TK.accent;
+  // Part→part edges read in the W₁ hue (purple); membership + section arcs keep `base`.
+  const stroke = isPartEdge ? TK.purple : base;
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const d = Math.hypot(dx, dy) || 1;
@@ -58,7 +78,7 @@ export const Route: React.FC<{
   const mx = (sx + ex) / 2 - ny * bow;
   const my = (sy + ey) / 2 + nx * bow;
   const path = `M${sx},${sy} Q ${mx},${my} ${ex},${ey}`;
-  const dash = ref ? '9 7' : health === 'weak' ? '3 7' : undefined;
+  const dash = isPartEdge ? EDGE_DASH[edgeKind] : ref ? '9 7' : health === 'weak' ? '3 7' : undefined;
   const ang = (Math.atan2(ey - my, ex - mx) * 180) / Math.PI;
   return (
     <g
@@ -70,25 +90,45 @@ export const Route: React.FC<{
       }}
     >
       <path d={path} fill="none" stroke="transparent" strokeWidth="18" />
-      {selected && <path d={path} fill="none" stroke={TK.accent} strokeWidth="7" opacity="0.28" style={{ filter: 'blur(3px)' }} />}
-      <circle cx={sx} cy={sy} r="3.2" fill={TK.bg} stroke={base} strokeWidth="1.6" />
+      {/* Selected-glow: part edges glow purple; section arcs keep the prior cyan exactly. */}
+      {selected && <path d={path} fill="none" stroke={isPartEdge ? TK.purple : TK.accent} strokeWidth="7" opacity="0.28" style={{ filter: 'blur(3px)' }} />}
+      <circle cx={sx} cy={sy} r="3.2" fill={TK.bg} stroke={stroke} strokeWidth="1.6" />
       <path
         d={path}
         fill="none"
-        stroke={base}
+        stroke={stroke}
         strokeWidth={selected ? 3 : 2.2}
         strokeLinecap="round"
         strokeDasharray={dash}
         strokeOpacity={health === 'broken' ? 0.92 : 1}
       />
-      <g transform={`translate(${ex},${ey}) rotate(${ang})`}>
-        <path d="M0,0 L-9,-5 L-9,5 Z" fill={base} />
-      </g>
-      {backward && (
-        // reading-order violation: a back-chevron near the midpoint, pointing the
-        // way the dependency actually flows (earlier in the document).
+      {!symmetric && (
+        <g transform={`translate(${ex},${ey}) rotate(${ang})`}>
+          <path d="M0,0 L-9,-5 L-9,5 Z" fill={stroke} />
+        </g>
+      )}
+      {isPartEdge && !dim && (
+        <text x={mx} y={my - 6} textAnchor="middle" fontFamily={mono} fontSize={7.5} fontWeight={700} fill={stroke} letterSpacing="0.06em" style={{ pointerEvents: 'none' }}>
+          {edgeKind}
+        </text>
+      )}
+      {arc.functionTag && !dim && (
+        <text x={mx} y={my - 5} textAnchor="middle" fontFamily={mono} fontSize={7} fontWeight={700} fill={TK.muted} letterSpacing="0.06em" style={{ pointerEvents: 'none' }}>
+          {arc.functionTag}
+        </text>
+      )}
+      {cover === 'uncovered' && (
+        // an UNCOVERED read-ahead (Phase 5): a prerequisite placed after its
+        // dependent with nothing licensing it — a back-chevron near the midpoint.
         <g transform={`translate(${mx},${my}) rotate(${ang})`}>
           <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+        </g>
+      )}
+      {cover === 'covered' && (
+        // a COVERED inversion (a deliberate gap-before-filling, or an open IOU):
+        // the neutral purple bridge glyph — a span, not a violation.
+        <g transform={`translate(${mx},${my})`}>
+          <path d="M-8,3 Q0,-8 8,3" fill="none" stroke={TK.purple} strokeWidth="1.6" strokeLinecap="round" />
         </g>
       )}
       {health === 'broken' && (

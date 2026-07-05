@@ -32,6 +32,8 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   const setShow = useStore(s => s.setShowCoachModal);
   const modelCatalog = useStore(s => s.modelCatalog);
   const structuralParts = useStore(s => s.structuralParts);
+  const structuralEdges = useStore(s => s.structuralEdges);
+  const realizations = useStore(s => s.realizations);
   const onClose = () => setShow(false);
   const [choice, setChoice] = useModelChoice('streamCoachAdvice', isOpen);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -51,7 +53,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
     };
   });
   
-  const currentInputHash = computeHash(`${markdown.length}|${JSON.stringify(structureData)}|${JSON.stringify(structuralParts)}`);
+  const currentInputHash = computeHash(`${markdown.length}|${JSON.stringify(structureData)}|${JSON.stringify(structuralParts)}|${JSON.stringify(structuralEdges)}|${JSON.stringify(realizations)}`);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,6 +97,8 @@ export const CoachModal: React.FC<CoachModalProps> = ({
         sections,
         testSuite,
         structuralParts,
+        structuralEdges,
+        realizations,
         config: promptsConfig,
         modelChoice: choice,
       })) {

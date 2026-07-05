@@ -9,6 +9,7 @@ import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
 import { parseMarkdown, flattenSectionsForIndex } from "./lib/utils";
+import { reconcileSectionIds } from "./lib/section-ids";
 import { repository } from "./services/repository-registry";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -27,7 +28,7 @@ import { guardContextFit } from './features/shared/context-guard';
 import { useAutosave } from './features/shared/useAutosave';
 import { notifyAiError } from './features/shared/ai-error';
 import { AiActivityIndicator } from './features/shared/AiActivityIndicator';
-import { diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
+import { declaredHeapSet, diagnosticToStatus, specFromLegacyGoals } from './lib/diagnostic-helpers';
 import { initSyncPolicy, teardownSyncPolicy } from './services/sync-policy';
 import { isTauri } from './services/tauri-environment';
 import { useStore } from './store';
@@ -215,6 +216,10 @@ export const App = () => {
       } else if (key === 's') {
         e.preventDefault();
         if (s.activeProjectId) void s.createSnapshot('manual');
+      } else if (key === 'i') {
+        // Capture is sacred: park a stray thought from anywhere, in under 30 s.
+        e.preventDefault();
+        s.openCapture();
       } else if (key === 'enter') {
         e.preventDefault();
         s.setShowRunModal(true);
@@ -229,8 +234,18 @@ export const App = () => {
   // Sync sections with content
   useEffect(() => {
     const handler = setTimeout(() => {
-        const tree = parseMarkdown(localContent, sections);
-        
+        const parsed = parseMarkdown(localContent, sections);
+        // Resolve STABLE ids from the section-id ledger (Phase 1): survives
+        // rename / reorder / duplicate-title, minting opaque ids only for new
+        // headings. Read the ledger fresh via getState() (not the effect closure)
+        // and write it back only when it changed — mirrors pruneOrphanEntries.
+        // Persists on the 60s autosave (it rides saveCurrentState's payload).
+        const { sections: tree, ledger, changed } = reconcileSectionIds(
+          parsed,
+          useStore.getState().sectionIdLedger,
+        );
+        if (changed) useStore.getState().setSectionIdLedger(ledger);
+
         // Selection retention logic
         setSelectedId(prev => {
            if (prev) {
@@ -506,6 +521,9 @@ export const App = () => {
     // Spec map (sectionId → spec, incl. 'root') so the diagnostic can judge this
     // section as a part inside its live structural surround, not as an isolated piece.
     const specs = selectSpecMap(testSuite);
+    // Sections the writer has declared honest heaps (Phase 3) — the diagnostic won't
+    // manufacture commitments for their and-summative material.
+    const heapIds = [...declaredHeapSet(sections, useStore.getState().ledger)];
 
     const diagnostic = await aiProvider.runDiagnostic({
       section: currentSection,
@@ -519,6 +537,7 @@ export const App = () => {
       config: promptsConfig,
       findSection,
       specs,
+      declaredHeapSectionIds: heapIds,
       mode,
     });
    
@@ -576,6 +595,7 @@ export const App = () => {
         sections,
         testSuite,
         structuralParts: useStore.getState().structuralParts,
+        structuralEdges: useStore.getState().structuralEdges,
         config: promptsConfig,
       });
       
@@ -658,6 +678,17 @@ export const App = () => {
     activeLineIndexRef.current = index;
   }, []);
 
+  // Reorder the SELECTED section among its siblings (the palette path; Phase 6).
+  const moveSelectedSection = useCallback((dir: 'up' | 'down') => {
+    const st = useStore.getState();
+    const id = st.selectedId;
+    if (!id || id === 'root') { toast('Select a section to move.'); return; }
+    void st.moveSectionSibling(id, dir).then((r) => {
+      if (!r.moved) { toast(`Already the ${dir === 'up' ? 'first' : 'last'} section.`); return; }
+      toast(`Moved “${r.movedTitle}” ${dir}.`, { action: { label: 'Undo', onClick: () => void r.undo() }, duration: 8000 });
+    });
+  }, []);
+
   // Command palette entries — the named, searchable door to every primary action
   // (the consolidation of the Coach/Generate-specs/Revise glyphs). Built each
   // render so the App-level handlers stay current; store openers are reached via
@@ -670,8 +701,14 @@ export const App = () => {
     { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
     { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },
+    { id: 'canvas', label: 'Canvas', hint: "The argument's spatial home (W₁)", glyph: '⬡', run: () => useStore.getState().openCanvas() },
+    { id: 'move-up', label: 'Move section up', hint: 'Reorder before the previous sibling', glyph: '↑', run: () => moveSelectedSection('up') },
+    { id: 'move-down', label: 'Move section down', hint: 'Reorder after the next sibling', glyph: '↓', run: () => moveSelectedSection('down') },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
+    { id: 'ledger', label: 'Ledger', hint: 'Debts, declarations, deferrals', glyph: '‡', run: () => useStore.getState().openLedger() },
+    { id: 'inbox', label: 'Inbox', hint: 'Parked thoughts', glyph: '⊞', run: () => useStore.getState().openInbox() },
+    { id: 'capture', label: 'Capture a thought', hint: 'Park it in the inbox', glyph: '⊹', shortcut: '⌘I', run: () => useStore.getState().openCapture() },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
     { id: 'prompts', label: 'Prompts', hint: 'AI routing', glyph: '❝', run: () => useStore.getState().setShowPromptsGraphModal(true) },
     { id: 'raw-data', label: 'Raw data', hint: 'JSON editor', glyph: '{}', run: () => useStore.getState().setShowProjectFileModal(true) },

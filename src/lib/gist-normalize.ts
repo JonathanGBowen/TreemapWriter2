@@ -124,8 +124,9 @@ const alignSpans = (raw: unknown, keys: string[], ids: string[]): GistSpan[] => 
 
 /**
  * Re-align the composition output to the coarse/fine id lists. A missing span comes
- * back as empty text, which the validation gate flags (so the one corrective retry
- * fires) rather than silently dropping a segment from the gist.
+ * back as empty text — recorded as an OMISSION (a section the whole-summary does not
+ * carry; see `validateGist`/`gistOmittedIds`), NOT a validation failure — rather than
+ * silently dropping the segment id from the gist.
  */
 export const normalizeGistComposition = (
   raw: unknown,

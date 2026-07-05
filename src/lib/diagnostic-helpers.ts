@@ -6,6 +6,7 @@
 import type {
   CommitmentFinding,
   DiagnosticResult,
+  LedgerEntry,
   NextAction,
   Section,
   SectionSpec,
@@ -103,6 +104,9 @@ export interface StructuralSurround {
   upstreamCommitments?: string[];
   /** Following sibling's incoming context (the downstream the part must supply). */
   downstreamNeeds?: string[];
+  /** This section (or an ancestor) is a DECLARED HEAP — its interlocks may honestly be
+   *  empty; the model must not manufacture commitments for and-summative material (Phase 3). */
+  declaredHeap?: boolean;
 }
 
 const cleanList = (arr?: string[]): string[] =>
@@ -143,12 +147,14 @@ export function buildStructuralSurround(
   sectionId: string,
   sections: Section[],
   specs: Record<string, SectionSpec | undefined>,
+  declaredHeapSectionIds?: Set<string>,
 ): StructuralSurround {
   const neighbours = findNeighbours(sectionId, sections);
   if (!neighbours) return {};
   const { parent, prev, next } = neighbours;
 
   const surround: StructuralSurround = {};
+  if (declaredHeapSectionIds?.has(sectionId)) surround.declaredHeap = true;
 
   const docClaim = specs['root']?.mainClaim?.trim();
   if (docClaim) surround.documentClaim = docClaim;
@@ -171,6 +177,10 @@ export function buildStructuralSurround(
 /** Render a StructuralSurround as a prompt block. Empty surround → empty string. */
 export function formatStructuralSurround(s: StructuralSurround): string {
   const lines: string[] = [];
+  if (s.declaredHeap)
+    lines.push(
+      'DECLARED HEAP: the writer has declared this section (or its parent) an HONEST HEAP — an aggregate whose inner functional content approaches zero (an inventory, coordinate cases). Its incoming/outgoing interlocks may honestly be empty; do NOT manufacture commitments or flag missing interlocks for and-summative material here.',
+    );
   if (s.documentClaim)
     lines.push(`DOCUMENT'S MAIN CLAIM (the whole this part serves): ${s.documentClaim}`);
   if (s.parentClaim)
@@ -251,6 +261,100 @@ function itemMetBy(item: string, pool: string[]): boolean {
   return false;
 }
 
+/** True when `item` shares a significant token with a PRECOMPUTED token set (the widened
+ *  later/earlier document pool). A missing/empty set means "no wider coverage here" →
+ *  false, so this only ever ADDS a way to be met — it never manufactures a new break. */
+function itemMetBySet(item: string, poolTokens: Set<string> | undefined): boolean {
+  if (!poolTokens || poolTokens.size === 0) return false;
+  for (const t of significantTokens(item)) if (poolTokens.has(t)) return true;
+  return false;
+}
+
+/**
+ * The document-wide context that WIDENS the mesh beyond textual adjacency (Arpeggio
+ * Phase 3, repairing muddle I.2.3). Optional on every mesh call: when absent the mesh
+ * behaves EXACTLY as before (adjacency only). When present it only ever silences a
+ * would-be break — a commitment consumed anywhere later, established anywhere earlier,
+ * covered by a paid IOU, or sitting under a declared heap is no longer flagged. Built
+ * once per document by `buildMeshContext` (the token pools are precomputed prefix/suffix
+ * unions, so the per-section check stays cheap).
+ */
+export interface MeshContext {
+  /** Section ids under a declared-heap (self or ancestor) — interlock pressure suppressed. */
+  declaredHeap: Set<string>;
+  /** sectionId → union of significant tokens of ALL later sections' `incomingContext`. */
+  laterIncomingTokens: Map<string, Set<string>>;
+  /** sectionId → union of significant tokens of ALL earlier sections' `outgoingCommitments` + claim. */
+  earlierOutgoingTokens: Map<string, Set<string>>;
+  /** `owes` phrases of paid IOUs — a commitment they cover is silent. */
+  paidCover: string[];
+}
+
+/**
+ * Every section id under a DECLARED HEAP — one whose self or any ancestor carries an
+ * OPEN `declared-heap` ledger entry. The mesh suppresses interlock pressure for these;
+ * the diagnostic surround tells the model their interlocks may honestly be empty.
+ */
+export function declaredHeapSet(sections: Section[], ledger: LedgerEntry[]): Set<string> {
+  const heapRoots = new Set(
+    ledger.filter((e) => e.kind === 'declared-heap' && e.status === 'open').map((e) => e.openedAtSectionId),
+  );
+  const out = new Set<string>();
+  if (heapRoots.size === 0) return out;
+  const mark = (nodes: Section[], under: boolean) =>
+    nodes.forEach((n) => {
+      const now = under || heapRoots.has(n.id);
+      if (now) out.add(n.id);
+      mark(n.children, now);
+    });
+  mark(sections, false);
+  return out;
+}
+
+/**
+ * Precompute a `MeshContext` from the live document + ledger. Pure. `declaredHeap`
+ * marks every section whose self-or-ancestor carries an OPEN `declared-heap` entry;
+ * the token maps are a suffix union (later incoming) and a prefix union (earlier
+ * outgoing + claim) over the reading order; `paidCover` is the `owes` of paid IOUs.
+ * `ledger` defaults to none, so a caller wanting only the distance-widening (e.g. a
+ * snapshot audit with no live ledger) can omit it.
+ */
+export function buildMeshContext(
+  sections: Section[],
+  specs: Record<string, SectionSpec | undefined>,
+  ledger: LedgerEntry[] = [],
+): MeshContext {
+  const order: Section[] = [];
+  const walk = (nodes: Section[]) => nodes.forEach((n) => { order.push(n); walk(n.children); });
+  walk(sections);
+
+  const declaredHeap = declaredHeapSet(sections, ledger);
+
+  // Suffix union of later sections' incoming tokens (snapshot BEFORE folding in self).
+  const laterIncomingTokens = new Map<string, Set<string>>();
+  const laterAcc = new Set<string>();
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    laterIncomingTokens.set(order[i].id, new Set(laterAcc));
+    for (const item of cleanList(specs[order[i].id]?.incomingContext))
+      for (const t of significantTokens(item)) laterAcc.add(t);
+  }
+
+  // Prefix union of earlier sections' outgoing + claim tokens.
+  const earlierOutgoingTokens = new Map<string, Set<string>>();
+  const earlierAcc = new Set<string>();
+  for (let i = 0; i < order.length; i += 1) {
+    earlierOutgoingTokens.set(order[i].id, new Set(earlierAcc));
+    const sp = specs[order[i].id];
+    for (const item of cleanList(sp?.outgoingCommitments)) for (const t of significantTokens(item)) earlierAcc.add(t);
+    const claim = sp?.mainClaim?.trim();
+    if (claim) for (const t of significantTokens(claim)) earlierAcc.add(t);
+  }
+
+  const paidCover = ledger.filter((e) => e.kind === 'iou' && e.status === 'paid').map((e) => e.owes);
+
+  return { declaredHeap, laterIncomingTokens, earlierOutgoingTokens, paidCover };
+}
+
 /**
  * Deterministic commitment-mesh check for one section. Returns the structural breaks it
  * is confident about, or `[]` (neutral) when it cannot judge. Pure: reads only specs +
@@ -270,8 +374,16 @@ function itemMetBy(item: string, pool: string[]): boolean {
 type Neighbours = NonNullable<ReturnType<typeof findNeighbours>>;
 
 /** Incoming-context items met by NOTHING upstream (preceding sibling / parent commitments
- *  or parent claim). Silent unless some upstream source actually declared content. */
-function unmetIncoming(spec: SectionSpec, n: Neighbours, specs: Record<string, SectionSpec | undefined>): MeshFinding[] {
+ *  or parent claim). Silent unless some upstream source actually declared content. With a
+ *  `ctx`, an item established anywhere EARLIER in the document, or covered by a paid IOU,
+ *  is also met — so only genuinely-unestablished context flags. */
+function unmetIncoming(
+  sectionId: string,
+  spec: SectionSpec,
+  n: Neighbours,
+  specs: Record<string, SectionSpec | undefined>,
+  ctx?: MeshContext,
+): MeshFinding[] {
   const incoming = cleanList(spec.incomingContext);
   if (!incoming.length) return [];
   const prevOut = n.prev ? cleanList(specs[n.prev.id]?.outgoingCommitments) : [];
@@ -279,21 +391,33 @@ function unmetIncoming(spec: SectionSpec, n: Neighbours, specs: Record<string, S
   const parentClaim = n.parent ? (specs[n.parent.id]?.mainClaim?.trim() ?? '') : '';
   const pool = [...prevOut, ...parentOut, ...(parentClaim ? [parentClaim] : [])];
   if (!pool.length) return [];
+  const wider = ctx?.earlierOutgoingTokens.get(sectionId);
+  const paid = ctx?.paidCover ?? [];
   const relatedSectionTitle = prevOut.length ? n.prev?.title : n.parent?.title;
   return incoming
-    .filter((item) => !itemMetBy(item, pool))
+    .filter((item) => !itemMetBy(item, pool) && !itemMetBySet(item, wider) && !itemMetBy(item, paid))
     .map((detail) => ({ kind: 'unmet-incoming', detail, relatedSectionTitle, direction: 'upstream' }));
 }
 
 /** Outgoing commitments consumed by NOTHING downstream (the following sibling's incoming).
- *  Silent unless that sibling has a spec with declared incoming context. */
-function danglingOutgoing(spec: SectionSpec, n: Neighbours, specs: Record<string, SectionSpec | undefined>): MeshFinding[] {
+ *  Silent unless that sibling has a spec with declared incoming context. With a `ctx`, a
+ *  commitment consumed anywhere LATER in the document, or covered by a paid IOU, is also
+ *  met — the muddle-#3 repair: a commitment paid three sections later no longer flags. */
+function danglingOutgoing(
+  sectionId: string,
+  spec: SectionSpec,
+  n: Neighbours,
+  specs: Record<string, SectionSpec | undefined>,
+  ctx?: MeshContext,
+): MeshFinding[] {
   const outgoing = cleanList(spec.outgoingCommitments);
   const nextSpec = n.next ? specs[n.next.id] : undefined;
   const downstreamIn = cleanList(nextSpec?.incomingContext);
   if (!outgoing.length || !nextSpec || !downstreamIn.length) return [];
+  const wider = ctx?.laterIncomingTokens.get(sectionId);
+  const paid = ctx?.paidCover ?? [];
   return outgoing
-    .filter((item) => !itemMetBy(item, downstreamIn))
+    .filter((item) => !itemMetBy(item, downstreamIn) && !itemMetBySet(item, wider) && !itemMetBy(item, paid))
     .map((detail) => ({ kind: 'dangling-outgoing', detail, relatedSectionTitle: n.next?.title, direction: 'downstream' }));
 }
 
@@ -301,9 +425,14 @@ export function checkCommitmentMesh(
   sectionId: string,
   sections: Section[],
   specs: Record<string, SectionSpec | undefined>,
+  ctx?: MeshContext,
 ): MeshFinding[] {
+  if (ctx?.declaredHeap.has(sectionId)) return []; // declared heap → interlock pressure suppressed
   const neighbours = findNeighbours(sectionId, sections);
   const spec = specs[sectionId];
   if (!neighbours || !spec) return []; // unresolved id or spec-less → neutral, never a false break
-  return [...unmetIncoming(spec, neighbours, specs), ...danglingOutgoing(spec, neighbours, specs)];
+  return [
+    ...unmetIncoming(sectionId, spec, neighbours, specs, ctx),
+    ...danglingOutgoing(sectionId, spec, neighbours, specs, ctx),
+  ];
 }

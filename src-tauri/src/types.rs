@@ -281,6 +281,29 @@ pub struct StoredProjectData {
     /// `provenance`, so a sparse/evolving shape can never reject the whole save.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub structural_parts: Option<serde_json::Value>,
+    /// The W₁ edge-set — typed part-to-part relations (`.twriter/structural-edges.json`,
+    /// Phase 2). Schema-agnostic on the Rust side — the TS layer owns the shape (a bare
+    /// `StructuralEdge[]`). Opaque `Value`, like `structural_parts`, so a sparse/evolving
+    /// shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub structural_edges: Option<serde_json::Value>,
+    /// The part↔section realizations — the function-tagged mapping (`.twriter/
+    /// realizations.json`, Phase 2). Schema-agnostic on the Rust side — the TS layer owns
+    /// the shape (a bare `Realization[]`). Opaque `Value`, like `structural_parts`.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub realizations: Option<serde_json::Value>,
+    /// The precedence sidecar — grasping-dynamics ordering (`.twriter/precedence.json`,
+    /// Phase 5). Schema-agnostic on the Rust side — the TS layer owns the shape (a
+    /// `PrecedenceData` object: `{ regions, authored, overrides }`). Opaque `Value`,
+    /// like `structural_parts`, so a sparse/evolving shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub precedence: Option<serde_json::Value>,
+    /// The section-id ledger (`.twriter/section-ids.json`, Phase 1). Schema-agnostic
+    /// on the Rust side — the TS layer owns the shape (a bare `SectionIdBinding[]`:
+    /// `{ id, anchor, title, level, ordinal }`). Opaque `Value`, like `structural_parts`,
+    /// so a sparse/evolving shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub section_id_ledger: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -372,8 +395,13 @@ fn default_session_source() -> String {
 // The user resolves out-of-band; we never run reset --hard or anything that
 // throws away history.
 
+// `rename_all` on an ENUM renames only the variant tags — NOT the fields inside
+// struct variants. Without `rename_all_fields`, `MergeRequired { their_commit,
+// base_head }` would serialize those two as snake_case while the TS side reads
+// `theirCommit`/`baseHead` → `undefined` → `sync_resolve_merge` fails with
+// "missing required key theirCommit". `rename_all_fields` fixes the field names too.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum PullOutcome {
     UpToDate,
     FastForwarded { commits: u32 },
@@ -424,8 +452,10 @@ pub struct ConflictFile {
 /// The user's choice for one conflicted path, sent to `sync_resolve_merge`.
 /// Externally tagged so binary files stay byte-exact (Ours/Theirs reference the
 /// blob OID rather than round-tripping through a string).
+// `rename_all_fields` guards against the enum struct-variant snake_case leak (see
+// PullOutcome) — a no-op on today's single-word fields, correct for any future one.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum Resolution {
     /// Resolved text (text files) — committed as the given UTF-8 bytes.
     Content { path: String, text: String },
@@ -438,7 +468,7 @@ pub enum Resolution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum ResolveOutcome {
     Resolved { commits: u32 },
     /// HEAD moved or the working tree went dirty between detect and resolve;
@@ -451,7 +481,7 @@ pub enum ResolveOutcome {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum PushOutcome {
     UpToDate,
     Pushed { commits: u32 },
@@ -616,5 +646,31 @@ mod tests {
 
         let back: Dependency = serde_json::from_str(&json).unwrap();
         assert_eq!(back.kind, "prerequisite");
+    }
+
+    #[test]
+    fn pull_outcome_merge_required_emits_camel_case_field_keys() {
+        // Regression for "missing required key theirCommit": `rename_all` on an ENUM
+        // does not rename struct-variant fields, so `their_commit`/`base_head` leaked
+        // snake_case; the TS side read them as `undefined` and `sync_resolve_merge`
+        // then failed. `rename_all_fields` keeps the wire keys camelCase.
+        let outcome = PullOutcome::MergeRequired {
+            their_commit: "abc".into(),
+            base_head: "def".into(),
+            conflicts: vec![],
+        };
+        let json = serde_json::to_string(&outcome).unwrap();
+        assert!(json.contains("\"kind\":\"mergeRequired\""));
+        assert!(json.contains("\"theirCommit\":\"abc\""));
+        assert!(json.contains("\"baseHead\":\"def\""));
+        assert!(!json.contains("their_commit"), "snake_case field key leaked: {json}");
+        assert!(!json.contains("base_head"), "snake_case field key leaked: {json}");
+
+        // And it still deserializes from that camelCase wire shape.
+        let back: PullOutcome = serde_json::from_str(&json).unwrap();
+        assert!(
+            matches!(back, PullOutcome::MergeRequired { their_commit, base_head, .. }
+                if their_commit == "abc" && base_head == "def"),
+        );
     }
 }

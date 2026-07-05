@@ -4,7 +4,7 @@
 // state is always inspectable.
 
 import { useStore } from '../../state';
-import { grainText } from '../../lib/gist-helpers';
+import { grainText, gistOmittedIds } from '../../lib/gist-helpers';
 import { countWords } from '../../lib/utils';
 import type { GistGrain } from '../../types';
 
@@ -33,6 +33,13 @@ export function StatusRow() {
   const words = gist ? countWords(grainText(gist, grain)) : 0;
   const over = words > budget;
 
+  // Sections the whole-summary leaves uncarried (empty spans) — information, not a fault:
+  // the honest-heap license made visible. Titles from the persisted segmentation.
+  const omitted = gist ? gistOmittedIds(gist).fine : [];
+  const omittedTitles = gist
+    ? omitted.map((id) => gist.segmentation?.find((seg) => seg.id === id)?.headingPath.join(' › ') ?? id)
+    : [];
+
   return (
     <div className="flex items-center gap-2.5" style={{ padding: '9px 18px', borderTop: '1px solid var(--color-hld-border)', background: 'var(--color-hld-surface)' }}>
       <span className="font-mono uppercase" style={{ fontSize: 8, letterSpacing: '0.1em', color: 'var(--color-hld-muted-text)' }}>
@@ -44,6 +51,15 @@ export function StatusRow() {
           <span className="font-mono" style={{ fontSize: 9, letterSpacing: '0.06em', color: over ? 'var(--color-hld-yellow)' : 'var(--color-hld-muted-text)' }}>
             {words} / {budget} w
           </span>
+          {omitted.length > 0 && (
+            <span
+              className="font-mono"
+              title={`Not carried by the summary — the whole does not lean on ${omitted.length === 1 ? 'this section' : 'these sections'}:\n${omittedTitles.join('\n')}`}
+              style={{ fontSize: 9, letterSpacing: '0.06em', color: 'var(--color-hld-muted-text)' }}
+            >
+              · {omitted.length} not carried
+            </span>
+          )}
           <span style={{ width: 1, height: 11, background: 'var(--color-hld-border-strong)' }} />
           <div className="flex items-center gap-1.5" title="Finest grain that fits the window">
             {TICKS.map(({ g, label }) => {

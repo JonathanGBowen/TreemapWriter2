@@ -27,6 +27,7 @@ vi.mock('../../services/repository-registry', () => ({
 }));
 
 import { createProjectStateSlice, type ProjectStateSlice } from '../project-state';
+import type { PrecedenceData, StructuralPart } from '../../types';
 
 const sliceCreator = createProjectStateSlice as unknown as StateCreator<ProjectStateSlice>;
 const makeStore = () => create<ProjectStateSlice>()(sliceCreator);
@@ -106,5 +107,37 @@ describe('desktop draft persistence (regression: autosave must persist the live 
 
     // No write happened — the empty buffer did not overwrite the saved doc.
     expect(h.lastSaved).toBe(sentinel);
+  });
+});
+
+describe('backward-compat: loading a project saved by an older app version', () => {
+  let store: ReturnType<typeof makeStore>;
+  beforeEach(() => {
+    h.lastSaved = null;
+    store = makeStore();
+  });
+
+  it('normalizes a PARTIAL precedence + an old-shape part at the load boundary', async () => {
+    // What an older `.twriter/` would return: a precedence.json written before
+    // `authored`/`overrides` existed, and a part missing sectionIds / origin / sourceHash.
+    h.lastSaved = {
+      markdown: '# A\n\nBody of A.',
+      precedence: { regions: [] }, // truthy-but-partial: the old `?? {…}` default never fired
+      structuralParts: [
+        { id: 'p1', kind: 'claim', claim: 'c', startAnchor: 'x', endAnchor: 'x', confidence: 1, rationale: '' },
+      ],
+    };
+    store.setState(seed({ markdown: '', localContent: '' }));
+
+    const ok = await store.getState().loadProject('p1');
+    expect(ok).toBe(true);
+
+    const s = store.getState() as unknown as { precedence: PrecedenceData; structuralParts: StructuralPart[] };
+    // The partial precedence is completed to the full three-array shape (the crash the
+    // DependencyGraphModal used to hit on `precedence.overrides.map` is gone).
+    expect(s.precedence).toEqual({ regions: [], authored: [], overrides: [] });
+    // The old part gains the invariant fields its consumers assume.
+    expect(s.structuralParts[0].sectionIds).toEqual([]);
+    expect(s.structuralParts[0].origin).toBe('discovered');
   });
 });

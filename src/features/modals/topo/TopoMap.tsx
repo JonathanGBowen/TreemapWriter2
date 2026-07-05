@@ -5,7 +5,7 @@
    stations, and a "YOU ARE HERE" marker on the section open in the editor.
    Ported from the prototype topo-map.jsx; positions come from layoutSpine. */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { TopoModel, Arc, Station as StationT } from './topo-derive';
 import { statusMeta } from './topo-derive';
 import { layoutSpine, lineTrackPath, depGeom, depMidpoint, type XY } from './topo-layout-spine';
@@ -13,7 +13,9 @@ import { usePanZoom } from './usePanZoom';
 import { clamp, type Transform } from './topo-sim-atlas';
 import { TK } from './tk';
 import { PoleGlyph } from './topo-marks';
+import { OrderMarks, type StrategyChoice } from './topo-order-marks';
 import { recenterField, type Centering, type FieldRole } from './topo-centering';
+import type { CommutableRun, PrecedenceCycle, PrecedenceViolation } from '../../../lib/precedence';
 
 const mono = 'JetBrains Mono, monospace';
 
@@ -24,6 +26,16 @@ const fieldRing = (role: FieldRole | null | undefined): string | null =>
 export interface TopoMapProps {
   model: TopoModel;
   centering: Centering;
+  /** Per-backward-arc order verdict (Phase 5): 'covered' → neutral bridge, 'uncovered' → warning chevron. */
+  orderCover: Map<string, 'covered' | 'uncovered'>;
+  /** SPINE order-diagnostics (Phase 5) — the part-level engine results + their actions. */
+  graspStationOf: Map<string, string>;
+  violations: PrecedenceViolation[];
+  commutable: CommutableRun[];
+  cycles: PrecedenceCycle[];
+  claimOf: (partId: string) => string;
+  onDeclareHeap: (sectionId: string, partIds: string[]) => void;
+  onStrategy: (cycle: PrecedenceCycle, choice: StrategyChoice) => void;
   selectedId: string | null;
   hoveredId: string | null;
   editorId: string | null;
@@ -32,6 +44,10 @@ export interface TopoMapProps {
   fitNonce: number;
   showGhost: boolean;
   reduced: boolean;
+  /** Commit a drag-reorder (Phase 6): move `fromId` before/after `toId`. */
+  onMoveSection: (fromId: string, toId: string, position: 'before' | 'after') => void;
+  /** Report the provisional dragged-station docIndex for live admissibility (null when idle). */
+  onDragPreview: (preview: { id: string; docIndex: number } | null) => void;
   onSelect: (id: string | null) => void;
   onSelectDep: (id: string | null) => void;
   onHover: (id: string | null) => void;
@@ -69,9 +85,9 @@ const DepArc: React.FC<{
   health: 'solid' | 'weak' | 'broken';
   dim: boolean;
   selected: boolean;
-  backward?: boolean;
+  cover?: 'covered' | 'uncovered';
   onSelect: (id: string) => void;
-}> = ({ arc, pos, health, dim, selected, backward, onSelect }) => {
+}> = ({ arc, pos, health, dim, selected, cover, onSelect }) => {
   const geom = depGeom(arc, pos);
   const mid = depMidpoint(arc, pos);
   if (!geom || !mid) return null;
@@ -111,9 +127,18 @@ const DepArc: React.FC<{
       <g transform={`translate(${geom.arrow.x},${geom.arrow.y}) rotate(${geom.arrow.angle})`}>
         <path d="M0,0 L-9,-5 L-9,5 Z" fill={base} />
       </g>
-      {backward && (
+      {cover === 'uncovered' && (
+        // an UNCOVERED read-ahead: the prerequisite sits after its dependent with
+        // nothing licensing the inversion — the genuine warning (magenta chevron).
         <g transform={`translate(${mid.x},${mid.y}) rotate(${geom.arrow.angle})`}>
           <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+        </g>
+      )}
+      {cover === 'covered' && (
+        // a COVERED inversion (a deliberate gap-before-filling, or an open IOU) —
+        // the neutral purple bridge glyph spanning the gap, not a violation.
+        <g transform={`translate(${mid.x},${mid.y})`}>
+          <path d="M-8,3 Q0,-8 8,3" fill="none" stroke={TK.purple} strokeWidth="1.6" strokeLinecap="round" />
         </g>
       )}
       {health === 'broken' && (
@@ -142,10 +167,14 @@ const Station: React.FC<{
   dimmed: boolean;
   reduced: boolean;
   fieldRole?: FieldRole | null;
+  beingDragged: boolean;
+  onDragDown: (id: string, e: React.PointerEvent) => void;
+  onDragMove: (e: React.PointerEvent) => void;
+  onDragUp: (e: React.PointerEvent) => boolean; // true if it was a real drag (moved)
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onHover: (id: string | null) => void;
-}> = ({ s, p, color, interchange, selected, hovered, dimmed, reduced, fieldRole, onSelect, onOpen, onHover }) => {
+}> = ({ s, p, color, interchange, selected, hovered, dimmed, reduced, fieldRole, beingDragged, onDragDown, onDragMove, onDragUp, onSelect, onOpen, onHover }) => {
   const meta = statusMeta(s.status);
   const r = 13;
   const ring = selected ? TK.accent : color;
@@ -155,10 +184,13 @@ const Station: React.FC<{
   return (
     <g
       transform={`translate(${p.x},${p.y})`}
-      style={{ cursor: 'pointer', opacity: dimmed ? 0.26 : 1, transition: 'opacity 0.4s' }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(s.id);
+      style={{ cursor: beingDragged ? 'grabbing' : 'grab', opacity: dimmed ? 0.26 : beingDragged ? 0.85 : 1, transition: beingDragged ? 'none' : 'opacity 0.4s' }}
+      // Drag to reorder (Phase 6); stopPropagation keeps the background pan from firing.
+      // A clean press (no move) selects; a real drag commits a move on release.
+      onPointerDown={(e) => onDragDown(s.id, e)}
+      onPointerMove={(e) => onDragMove(e)}
+      onPointerUp={(e) => {
+        if (!onDragUp(e)) onSelect(s.id);
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -315,6 +347,16 @@ const ZoomHud: React.FC<{ t: Transform; setT: React.Dispatch<React.SetStateActio
 export const TopoMap: React.FC<TopoMapProps> = ({
   model,
   centering,
+  orderCover,
+  graspStationOf,
+  violations,
+  commutable,
+  cycles,
+  claimOf,
+  onDeclareHeap,
+  onStrategy,
+  onMoveSection,
+  onDragPreview,
   selectedId,
   hoveredId,
   editorId,
@@ -328,6 +370,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
   onHover,
   onOpen,
 }) => {
+  const [openCycle, setOpenCycle] = useState<number | null>(null);
   const layout = useMemo(() => layoutSpine(model), [model]);
   const pos = layout.pos;
   const lineColor = useMemo(() => {
@@ -346,6 +389,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
   const { containerRef, svgRef, box, t, setT, fit, dragging, handlers } = usePanZoom(computeFit, () => {
     onSelect(null);
     onSelectDep(null);
+    setOpenCycle(null);
   });
 
   // ORGANISE / projection-switch → refit
@@ -359,6 +403,67 @@ export const TopoMap: React.FC<TopoMapProps> = ({
 
   const lineDim = (id: string) => (filter ? id !== filter : selPart ? id !== selPart : false);
   const lineFocus = (id: string) => (filter ? id === filter : selPart ? id === selPart : false);
+
+  // ── Drag-to-reorder (Phase 6) ─────────────────────────────────────
+  // A station drag re-slots it within its Part column; a provisional pos makes the
+  // track/arcs/ticks follow, and a provisional docIndex drives live admissibility.
+  const dragRef = useRef<{ id: string; startY: number; moved: boolean } | null>(null);
+  const [dragState, setDragState] = useState<{ id: string; worldY: number } | null>(null);
+
+  const worldYOf = (clientY: number): number => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect || rect.height === 0) return 0;
+    return (((clientY - rect.top) / rect.height) * box.h - t.y) / t.k;
+  };
+  /** The dragged station's drop target within its column, from a world-Y. */
+  const dropTargetFor = (id: string, worldY: number): { targetId: string; position: 'before' | 'after' } | null => {
+    const partId = model.stationById[id]?.partId;
+    const line = model.lines.find((l) => l.id === partId);
+    if (!line) return null;
+    const others = line.stationIds.filter((x) => x !== id);
+    if (others.length === 0) return null;
+    let idx = 0;
+    for (const oid of others) if ((pos[oid]?.y ?? 0) < worldY) idx += 1;
+    if (idx >= others.length) return { targetId: others[others.length - 1], position: 'after' };
+    return { targetId: others[idx], position: 'before' };
+  };
+  const previewFor = (id: string, worldY: number): { id: string; docIndex: number } | null => {
+    const drop = dropTargetFor(id, worldY);
+    if (!drop) return null;
+    const targetDoc = model.stationById[drop.targetId]?.docIndex ?? 0;
+    return { id, docIndex: drop.position === 'before' ? targetDoc - 0.5 : targetDoc + 0.5 };
+  };
+
+  const onDragDown = (id: string, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation(); // keep the background pan from firing
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    dragRef.current = { id, startY: e.clientY, moved: false };
+  };
+  const onDragMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    if (!d.moved && Math.abs(e.clientY - d.startY) < 4) return;
+    d.moved = true;
+    const worldY = worldYOf(e.clientY);
+    setDragState({ id: d.id, worldY });
+    onDragPreview(previewFor(d.id, worldY));
+  };
+  const onDragUp = (e: React.PointerEvent): boolean => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    (e.currentTarget as Element).releasePointerCapture?.(e.pointerId);
+    setDragState(null);
+    onDragPreview(null);
+    if (!d || !d.moved) return false;
+    const drop = dropTargetFor(d.id, worldYOf(e.clientY));
+    if (drop && drop.targetId !== d.id) onMoveSection(d.id, drop.targetId, drop.position);
+    return true;
+  };
+
+  // Provisional positions during a drag — the dragged station follows the pointer;
+  // the track / arcs / order-marks all re-read this map, so they follow live.
+  const livePos = dragState ? { ...pos, [dragState.id]: { x: pos[dragState.id]?.x ?? 0, y: dragState.worldY } } : pos;
 
   return (
     <div
@@ -382,7 +487,7 @@ export const TopoMap: React.FC<TopoMapProps> = ({
       >
         <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
           {model.lines.map((l) => (
-            <PartLine key={l.id} d={lineTrackPath(l.stationIds, pos)} color={l.color} dim={lineDim(l.id)} focus={lineFocus(l.id)} />
+            <PartLine key={l.id} d={lineTrackPath(l.stationIds, livePos)} color={l.color} dim={lineDim(l.id)} focus={lineFocus(l.id)} />
           ))}
 
           {model.arcs.map((a) => {
@@ -395,18 +500,18 @@ export const TopoMap: React.FC<TopoMapProps> = ({
               <DepArc
                 key={a.id}
                 arc={a}
-                pos={pos}
+                pos={livePos}
                 health={model.health(a)}
                 dim={dim}
                 selected={a.id === selectedDepId}
-                backward={centering.backwardArcs.has(a.id)}
+                cover={orderCover.get(a.id)}
                 onSelect={onSelectDep}
               />
             );
           })}
 
           {model.stations.map((s) => {
-            const p = pos[s.id];
+            const p = livePos[s.id];
             if (!p) return null;
             const role = field ? field.role(s.id) : null;
             const dimmed = filter ? s.partId !== filter : role === 'unrelated';
@@ -422,6 +527,10 @@ export const TopoMap: React.FC<TopoMapProps> = ({
                 dimmed={dimmed}
                 reduced={reduced}
                 fieldRole={role}
+                beingDragged={dragState?.id === s.id}
+                onDragDown={onDragDown}
+                onDragMove={onDragMove}
+                onDragUp={onDragUp}
                 onSelect={onSelect}
                 onOpen={onOpen}
                 onHover={onHover}
@@ -430,12 +539,25 @@ export const TopoMap: React.FC<TopoMapProps> = ({
           })}
 
           {[...centering.radix, ...centering.telos].map((id) => {
-            const p = pos[id];
+            const p = livePos[id];
             if (!p) return null;
             return <PoleGlyph key={`pole-${id}`} x={p.x} y={p.y} r={13} kind={centering.byId[id].isRadix ? 'radix' : 'telos'} />;
           })}
 
-          <YouMarker p={editorId ? pos[editorId] : undefined} reduced={reduced} />
+          <OrderMarks
+            pos={livePos}
+            graspStationOf={graspStationOf}
+            violations={violations}
+            commutable={commutable}
+            cycles={cycles}
+            claimOf={claimOf}
+            openCycle={openCycle}
+            onToggleCycle={setOpenCycle}
+            onDeclareHeap={onDeclareHeap}
+            onStrategy={onStrategy}
+          />
+
+          <YouMarker p={editorId ? livePos[editorId] : undefined} reduced={reduced} />
         </g>
       </svg>
       <ZoomHud t={t} setT={setT} onFit={fit} />

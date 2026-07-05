@@ -188,11 +188,20 @@ export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' | 'parts' }
       <Row
         svg={
           <svg width="22" height="11">
+            <path d="M3 5.5 L19 5.5" stroke={TK.purple} strokeWidth="1.1" opacity="0.5" />
+            <path d="M4 8.5 Q11 1 18 8.5" fill="none" stroke={TK.purple} strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        }
+        label="COVERED · deliberate inversion"
+      />
+      <Row
+        svg={
+          <svg width="22" height="11">
             <path d="M3 5.5 L19 5.5" stroke={TK.magenta} strokeWidth="1.4" />
             <path d="M11 5.5 L5 2.5 L5 8.5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.3" />
           </svg>
         }
-        label="BACKWARD · prereq read late"
+        label="UNCOVERED · prereq read late"
       />
     </div>
   );

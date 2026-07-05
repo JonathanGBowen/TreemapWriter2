@@ -25,6 +25,7 @@ import type {
   GistAnalysis,
   GistComposition,
   GistSpan,
+  StructuralEdge,
   StructuralPart,
 } from '../../types';
 import { buildDiagnosticPrompt } from '../../lib/constants';
@@ -36,6 +37,7 @@ import {
 } from '../../lib/diagnostic-helpers';
 import { safeJsonParse } from '../../lib/utils';
 import { computeDivergences, summarizeParts } from '../../lib/structural-part-helpers';
+import { describeEdge, pruneEdges, summarizeGraph } from '../../lib/structural-graph-helpers';
 import {
   buildAnalysisRequestText,
   buildRefactorRequestText,
@@ -74,6 +76,7 @@ import type {
   DevelopSpecLevelInput,
   SegmentSpanInput,
   DiscoverStructuralPartsInput,
+  DiscoverStructuralEdgesInput,
   ReconstructWholeInput,
   RecenterInput,
   RunAgentInput,
@@ -102,6 +105,7 @@ import { getPromptText } from '../prompts';
 import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provider.specs';
 import { segmentSpan, type SegmentSpanResult } from './ai-provider.segment';
 import { discoverStructuralParts } from './ai-provider.structural-parts';
+import { discoverStructuralEdges } from './ai-provider.structural-edges';
 import { generateRevisions } from './ai-provider.revisions';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
@@ -146,7 +150,11 @@ function buildCoachPrompt(input: CoachAdviceInput): string {
   const partsBlock = partsSummary
     ? `\n\nSTRUCTURAL PARTS (the argument's discovered configuration — cross-section couplings the per-section table above cannot express):\n${partsSummary}\n`
     : '';
-  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}`;
+  const graphSummary = summarizeGraph(input.structuralParts ?? [], input.structuralEdges ?? [], input.realizations ?? []);
+  const graphBlock = graphSummary
+    ? `\n\nW₁ CONFIGURATION (the typed relations among the parts — the argument as a web, not a sequence):\n${graphSummary}\n`
+    : '';
+  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}${graphBlock}`;
 }
 
 export interface ProviderClients {
@@ -446,6 +454,16 @@ export class MultiProviderAIProvider implements AIProvider {
     );
   }
 
+  async discoverStructuralEdges(input: DiscoverStructuralEdgesInput): Promise<StructuralEdge[]> {
+    const choice = this.choose('discoverStructuralEdges', input);
+    return discoverStructuralEdges(
+      this.dispatch(choice, 'discoverStructuralEdges'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
   async runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult> {
     // Whole-document (root) evaluation reads the entire document, uncapped (the
     // caller has already verified it fits the model window).
@@ -465,7 +483,12 @@ export class MultiProviderAIProvider implements AIProvider {
     const structuralSurround =
       !isWholeDocument && input.specs
         ? formatStructuralSurround(
-            buildStructuralSurround(input.section.id, input.sections, input.specs),
+            buildStructuralSurround(
+              input.section.id,
+              input.sections,
+              input.specs,
+              input.declaredHeapSectionIds ? new Set(input.declaredHeapSectionIds) : undefined,
+            ),
           )
         : '';
 
@@ -565,7 +588,18 @@ export class MultiProviderAIProvider implements AIProvider {
       }
     }
 
-    const prompt = `\n${input.config.dependenciesPrompt}\n\nSECTIONS DATA:\n${JSON.stringify(contextData, null, 2)}\n${partsBlock}  `;
+    // Advisory: the W₁ edge-set — the typed relations the writer/AI have drawn AMONG
+    // the parts. Names the configuration the section-level dependency pass can't see.
+    // Prune dangling edges so a stale endpoint never renders as a raw hash id.
+    const edges = pruneEdges(input.structuralEdges ?? [], parts);
+    let edgesBlock = '';
+    if (edges.length > 0 && parts.length > 0) {
+      const claimOf = (id: string) => parts.find((p) => p.id === id)?.claim ?? id;
+      const lines = edges.map((e) => `- ${describeEdge(e, claimOf)}`);
+      edgesBlock = `\n\nW₁ EDGES (advisory — typed relations among the argument's parts; inform, do not force section edges):\n${lines.join('\n')}\n`;
+    }
+
+    const prompt = `\n${input.config.dependenciesPrompt}\n\nSECTIONS DATA:\n${JSON.stringify(contextData, null, 2)}\n${partsBlock}${edgesBlock}  `;
 
     const choice = this.choose('estimateDependencies', input);
     const text = await this.dispatch(choice, 'estimateDependencies').generateText({

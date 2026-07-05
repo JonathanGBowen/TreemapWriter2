@@ -237,9 +237,30 @@ export const scanBannedFrames = (text: string): string[] => {
 
 export interface GistValidation {
   ok: boolean;
-  /** Human-readable failure reasons, appended to the one corrective retry prompt. */
+  /** Human-readable FIDELITY failure reasons, appended to the one corrective retry prompt. */
   reasons: string[];
+  /**
+   * Section ids the gist leaves UNCARRIED (a present-but-empty or absent span) per grain.
+   * NOT a failure — a section the whole-summary does not lean on is INFORMATION (its inner
+   * functional content approaches zero), the honest-heap license extended to the gist. Never
+   * blocks a swap; surfaced lightly to the writer. Distinct from a DUPLICATE span (a genuinely
+   * malformed grain, which stays a `reason`).
+   */
+  omitted: { coarse: string[]; fine: string[] };
 }
+
+/**
+ * The section ids a set of spans leaves UNCARRIED: present-but-empty text, or an expected id
+ * with no span at all. (`normalizeGistComposition`→`alignSpans` re-inserts omitted sections as
+ * empty spans, so in practice omission surfaces as the empty-text case.)
+ */
+export const spansOmitted = (spans: GistSpan[], expectedIds: string[]): string[] => {
+  const byId = new Map(spans.map((sp) => [sp.id, sp] as const));
+  return expectedIds.filter((id) => {
+    const sp = byId.get(id);
+    return !sp || !sp.text || !sp.text.trim();
+  });
+};
 
 const SPAN_TOLERANCE = 1.15; // per-span ±15%; the grain total is a hard cap
 
@@ -255,19 +276,34 @@ export const validateGist = (
 ): GistValidation => {
   const reasons: string[] = [];
 
-  const checkCoverage = (label: string, spans: GistSpan[], expected: string[]) => {
+  // A DUPLICATE span is a genuinely malformed grain (a section represented twice) — a fidelity
+  // failure. An empty/absent span is an OMISSION (see `spansOmitted`) — information, never a
+  // failure; collected separately and never folded into `ok`.
+  const checkDuplicates = (label: string, spans: GistSpan[]) => {
     const seen = new Set<string>();
     for (const sp of spans) {
-      if (!sp.text || !sp.text.trim()) reasons.push(`${label}: empty span for "${sp.id}".`);
       if (seen.has(sp.id)) reasons.push(`${label}: duplicate span for "${sp.id}".`);
       seen.add(sp.id);
     }
-    for (const id of expected) if (!seen.has(id)) reasons.push(`${label}: missing span for "${id}".`);
+  };
+  checkDuplicates('coarse', composition.coarse);
+  checkDuplicates('fine', composition.fine);
+
+  const omitted = {
+    coarse: spansOmitted(composition.coarse, ids.coarse),
+    fine: spansOmitted(composition.fine, ids.fine),
   };
 
-  checkCoverage('coarse', composition.coarse, ids.coarse);
-  checkCoverage('fine', composition.fine, ids.fine);
-
+  // Floors that keep a DEGENERATE composition from passing now that empty spans are omission,
+  // not failure. Sparse omission is fine; TOTAL omission is not a gist. (1) The g0 thesis is
+  // the irreducible core — never an omittable section. (2) A grain in which EVERY span is empty
+  // carries no section at all (e.g. a truncated/refused response that produced only g0); it must
+  // retry / keep the prior gist rather than overwrite it with a blank map.
+  if (!composition.g0 || !composition.g0.trim()) reasons.push('g0 (thesis) is empty.');
+  if (ids.fine.length && !joinSpans(composition.fine).trim())
+    reasons.push('every fine span is empty — the gist carries no section.');
+  if (ids.coarse.length && !joinSpans(composition.coarse).trim())
+    reasons.push('every coarse span is empty — the gist carries no section.');
   if (countWords(composition.g0) > budgets.g0) reasons.push(`g0 exceeds ${budgets.g0}-word cap.`);
   if (countWords(joinSpans(composition.coarse)) > budgets.coarse) reasons.push(`coarse exceeds ${budgets.coarse}-word cap.`);
   if (countWords(joinSpans(composition.fine)) > budgets.fine) reasons.push(`fine exceeds ${budgets.fine}-word cap.`);
@@ -276,7 +312,22 @@ export const validateGist = (
   const frames = scanBannedFrames(allText);
   if (frames.length) reasons.push(`banned reporting frames present: ${[...new Set(frames)].join(', ')}.`);
 
-  return { ok: reasons.length === 0, reasons };
+  return { ok: reasons.length === 0, reasons, omitted };
+};
+
+/**
+ * The section ids a STORED gist leaves uncarried, per grain — derived from its own empty spans
+ * (never separately persisted, like staleness). Feeds the light "N not carried" note; map an id
+ * to a title via `gist.segmentation` (its `headingPath`).
+ */
+export const gistOmittedIds = (gist: StoredGist): { coarse: string[]; fine: string[] } => {
+  // De-dupe the self-derived id lists so a (malformed) duplicate span id isn't reported twice.
+  const coarseIds = [...new Set(gist.coarse.map((sp) => sp.id))];
+  const fineIds = [...new Set(gist.fine.map((sp) => sp.id))];
+  return {
+    coarse: spansOmitted(gist.coarse, coarseIds),
+    fine: spansOmitted(gist.fine, fineIds),
+  };
 };
 
 /** Per-span budget overrun (advisory, ±15%) — used by the re-fit decision, not the gate. */

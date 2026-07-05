@@ -52,6 +52,7 @@ const validSection = JSON.stringify({
     },
   ],
   wholeSignature: { a: 'partial', b: 'aligned' },
+  wholeReceipts: [{ quote: 'Beta text.', side: 'b' }],
   truth: 'whole-true',
   direction: 'improved',
   summary: 'B now states the claim.',
@@ -76,6 +77,22 @@ describe('runSpecTestSection', () => {
     expect(result?.moveDeltas[0].delta).toBe('gained');
     expect(result?.truth).toBe('whole-true');
     expect(result?.wholeSignature).toEqual({ a: 'partial', b: 'aligned' });
+    // The whole-as-part verdict now carries its own receipts (the tF/fT discipline).
+    expect(result?.wholeReceipts).toEqual([{ quote: 'Beta text.', side: 'b' }]);
+  });
+
+  it('tolerates a section response that omits wholeReceipts (never fabricates)', async () => {
+    const reqs: LLMRequest[] = [];
+    const noReceipts = JSON.stringify({
+      moveDeltas: [{ moveId: 'move-0', statusA: 'missing', statusB: 'present', receipts: [] }],
+      wholeSignature: { a: 'partial', b: 'aligned' },
+      truth: 'tF',
+      direction: 'improved',
+      summary: 'ungrounded whole call',
+    });
+    const result = await runSpecTestSection(mockClient([noReceipts], reqs), 'model', 0, sectionInput());
+    expect(result?.truth).toBe('tF');
+    expect(result?.wholeReceipts).toBeUndefined();
   });
 
   it('omits the draft overlay in final mode', async () => {
@@ -106,6 +123,7 @@ const validWhole = JSON.stringify({
   direction: 'regressed',
   centerOfGravity: 'The weight shifted off the thesis.',
   verdict: 'Each part read better; the whole paid for it.',
+  receipts: [{ quote: 'now the method leads', side: 'b' }],
   recenteringVector: 'Restore the join to chapter 4.',
 });
 
@@ -122,6 +140,21 @@ describe('runSpecTestWhole', () => {
 
     expect(result?.truth).toBe('tF');
     expect(result?.recenteringVector).toBe('Restore the join to chapter 4.');
+    // The whole verdict now grounds itself in receipts from the changed prose.
+    expect(result?.receipts).toEqual([{ quote: 'now the method leads', side: 'b' }]);
+  });
+
+  it('tolerates a whole response that omits receipts (structure-only revision)', async () => {
+    const reqs: LLMRequest[] = [];
+    const noReceipts = JSON.stringify({
+      truth: 'lateral',
+      direction: 'lateral',
+      centerOfGravity: 'held',
+      verdict: 'structure-only; the mesh carries the read',
+    });
+    const result = await runSpecTestWhole(mockClient([noReceipts], reqs), 'model', 0, wholeInput());
+    expect(result?.verdict).toContain('structure-only');
+    expect(result?.receipts).toBeUndefined();
   });
 
   it('returns null when the response has no verdict', async () => {

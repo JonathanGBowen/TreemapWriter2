@@ -55,6 +55,22 @@ impl Layout {
         self.twriter_dir().join("structural-parts.json")
     }
 
+    pub fn structural_edges_json(&self) -> PathBuf {
+        self.twriter_dir().join("structural-edges.json")
+    }
+
+    pub fn realizations_json(&self) -> PathBuf {
+        self.twriter_dir().join("realizations.json")
+    }
+
+    pub fn precedence_json(&self) -> PathBuf {
+        self.twriter_dir().join("precedence.json")
+    }
+
+    pub fn section_ids_json(&self) -> PathBuf {
+        self.twriter_dir().join("section-ids.json")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }
@@ -85,6 +101,25 @@ impl Layout {
 
     pub fn session_yaml(&self, id: &str) -> PathBuf {
         self.sessions_dir().join(format!("{id}.yaml"))
+    }
+
+    /// The Ledger (Arpeggio Phase 3): one YAML file per entry (IOUs / declared-heap
+    /// / declared-deviation / deferred-diagnostic), merge-friendly like the sessions.
+    pub fn ledger_dir(&self) -> PathBuf {
+        self.twriter_dir().join("ledger")
+    }
+
+    pub fn ledger_yaml(&self, id: &str) -> PathBuf {
+        self.ledger_dir().join(format!("{id}.yaml"))
+    }
+
+    /// The capture inbox (Arpeggio Phase 3): one Markdown file per parked thought.
+    pub fn inbox_dir(&self) -> PathBuf {
+        self.twriter_dir().join("inbox")
+    }
+
+    pub fn inbox_md(&self, id: &str) -> PathBuf {
+        self.inbox_dir().join(format!("{id}.md"))
     }
 
     pub fn cache_sqlite(&self) -> PathBuf {
@@ -137,11 +172,37 @@ mod tests {
             layout.structural_parts_json(),
             Path::new("/projects/diss/.twriter/structural-parts.json")
         );
+        assert_eq!(
+            layout.structural_edges_json(),
+            Path::new("/projects/diss/.twriter/structural-edges.json")
+        );
+        assert_eq!(
+            layout.realizations_json(),
+            Path::new("/projects/diss/.twriter/realizations.json")
+        );
+        assert_eq!(
+            layout.precedence_json(),
+            Path::new("/projects/diss/.twriter/precedence.json")
+        );
+        assert_eq!(
+            layout.section_ids_json(),
+            Path::new("/projects/diss/.twriter/section-ids.json")
+        );
         assert_eq!(layout.cache_sqlite(), Path::new("/projects/diss/.twriter/index.sqlite"));
         assert_eq!(layout.gitignore(), Path::new("/projects/diss/.gitignore"));
         assert_eq!(
             layout.agent_output_dir(),
             Path::new("/projects/diss/.twriter/agent-output")
+        );
+        assert_eq!(layout.ledger_dir(), Path::new("/projects/diss/.twriter/ledger"));
+        assert_eq!(
+            layout.ledger_yaml("2026-07-03T10-00-00"),
+            Path::new("/projects/diss/.twriter/ledger/2026-07-03T10-00-00.yaml")
+        );
+        assert_eq!(layout.inbox_dir(), Path::new("/projects/diss/.twriter/inbox"));
+        assert_eq!(
+            layout.inbox_md("2026-07-03T10-00-00"),
+            Path::new("/projects/diss/.twriter/inbox/2026-07-03T10-00-00.md")
         );
     }
 

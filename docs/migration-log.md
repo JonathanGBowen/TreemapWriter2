@@ -5159,3 +5159,806 @@ empty); Estimate Dependencies with parts → the advisory block is included.
 **Rollback.** `git revert` (pure TS; no schema/persistence change this tier). The
 consumption blocks and the inspector are additive and inert when `structuralParts` is
 empty, so a partial revert degrades cleanly to Tier-2 behavior.
+
+---
+
+## 2026-07-02 — Arpeggio integration: fidelity audit + phased roadmap (docs only)
+
+**What changed.** No code. Three new documents and the STATUS ritual:
+
+- **`docs/arpeggio-integration.md`** — the deliverable. §I: an adversarially-verified
+  audit of whether the app is *muddled* in its Gestalt implementation (verdict: yes —
+  in ontology and silences, not in its readings; four confirmed muddles, two charges
+  softened under verification, one high-severity absent frontier: the reader-side
+  mechanics of the 1923 grouping paper). §II: the conflict map between the donor
+  Arpeggio spec and this codebase (complements, not rivals; deep conflicts resolved;
+  rejected imports named with reasons). §III: the committed phases 0–9 with the four
+  user-fixed scope decisions of 2026-07-02.
+- **`docs/arpeggio-spec.md`** and **`docs/configuration-and-sequence.md`** — the two
+  user-provided source documents frozen as historical records (FOUNDING-style headers:
+  do not edit, do not implement from directly; the integration doc adjudicates).
+  Wertheimer's *On Truth* was read for the audit but is deliberately **not** committed
+  (third-party text).
+- **`STATUS.md`** — the roadmap added at the head of *Next (felt priorities)*; the
+  existing *Stable section IDs* item promoted from bug-triggered to Phase-1
+  load-bearing prerequisite.
+
+Produced by a 9-agent research pass (five code/doc exploration sweeps → fidelity
+adjudication + Arpeggio feature cartography → adversarial verification that
+spot-checked ~40 file citations and overturned/modified the weak ones → roadmap
+draft), then synthesized with the user's four recorded decisions.
+
+**Verify.** Docs-only: `npm test` / `npm run typecheck` / `npm run build` unaffected.
+Check internal links resolve (`arpeggio-integration.md` ↔ the two frozen sources ↔
+`gestalt-and-text-structure.md` / `structural-part-audit.md` / `STATUS.md`); check the
+STATUS entry's phase list matches `arpeggio-integration.md` §III.
+
+**Rollback.** `git revert` (pure docs). Nothing downstream consumes these files yet;
+Phase 0 is the first change that touches prompts/code and carries its own entry.
+
+---
+
+## 2026-07-02 — Arpeggio integration Phase 0: doctrine repairs (prompts + one render + one doc)
+
+**What changed.** The zero-data-risk first phase of the roadmap in
+[`arpeggio-integration.md`](arpeggio-integration.md) §III — prompt/doc/render text
+plus one additive, optional type field. No persistence, no schema migration.
+
+- **Whole-verdict receipts (repairs fidelity verdict 1 — the fT quadrant was the
+  cheapest to fake).** The spec test's *whole-as-part* judgments now carry the same
+  verbatim-receipt discipline the per-move deltas already had. `SectionSpecTest` gains
+  optional `wholeReceipts` and `WholeVerdict` gains optional `receipts`
+  (`src/types/index.ts`); the tolerant normalizer parses them via the existing
+  `toReceipts` (null-tolerant — a degraded/older response still parses, and receipts
+  are never fabricated) and both JSON schemas expose the field
+  (`src/services/ai/ai-provider.spec-test.ts`). `spec-test.md` and `spec-test-whole.md`
+  now require a tF/fT call to show its work and carry *On Truth*'s own caution ("many
+  propositions for which the claim is made that they are true in relation to the whole
+  are really false both in themselves and in relation to the whole"). The two verdict
+  components (`SpecTestWholeVerdict.tsx`, `SpecTestSectionCard.tsx`) render the
+  receipts.
+- **The honest-heap license (repairs verdict 4).** `root-task.md`, `l1-task.md`,
+  `diagnostic.md`, and `dependencies.md` gain *On Truth* line-60's exemption: where a
+  part's inner functional content approaches zero (an inventory/reference appendix,
+  coordinate case studies with no throughline), piecemeal arrangement is the *correct*
+  form — never manufacture a throughline, forced commitments, or a fabricated
+  dependency edge for and-summative material. The single-line-of-development default is
+  kept; the exemption is explicitly the exception.
+- **Order-verdict softening — interim (repairs verdict 2's diagnosis half, pending
+  Phase 5).** `StructuralReadout.tsx` no longer renders BACKWARD / MISCENTER in warning
+  hues (magenta/yellow) when nonzero; they render neutral (structural fact, not
+  verdict) with a "may be a deliberate genetic/pedagogical order" gloss, keeping only
+  the quiet green at a clean zero. A backward arc is not coded as pathology until the
+  precedence engine can classify covered vs. uncovered inversions.
+- **Doc honesty (repairs the one overclaim of verdict 8).**
+  [`gestalt-and-text-structure.md`](gestalt-and-text-structure.md) §V no longer calls
+  the shipped treemap "the tool's diagnostic diagram"; it now states plainly that the
+  treemap draws the *textual* whole (area = word count) and can look balanced over a
+  badly-centred argument, per the essay's own §VII.
+
+**Verify.** `npm run typecheck` clean; `npm test` 655 pass (2 new: whole/section
+receipts parse when present, and tolerate absence without fabricating); `npm run lint`
+0 errors; `npm run build` succeeds. Manual: run a spec test on the demo project — the
+whole verdict and each deep-read section now show a "receipts" block grounding the
+tF/fT call; open the Argument Topology modal — a nonzero BACKWARD/MISCENTER reads
+neutral, not red/yellow.
+
+**Rollback.** `git revert` (prompt/doc/render + two optional type fields; no
+persistence touched). A partial revert degrades cleanly: the receipts fields are
+optional, so dropping the TS while keeping the prompts (or vice versa) still parses.
+
+---
+
+## 2026-07-02 — Arpeggio integration Phase 1: stable section IDs (sidecar anchor-ledger)
+
+**What changed.** Section ids are no longer only `title.slug + lineIndex` reconciled by
+title-matching (fragile under rename, reorder, and duplicate titles — the
+`STATUS.md` "Stable section IDs" debt). A new persisted **section-id ledger** binds
+each stable id to its heading by verbatim BODY anchor and survives all three.
+
+- **Approach — sidecar, not inline markers.** Research (two exploration sweeps over
+  every id consumer and the full markdown/editor lifecycle) showed the roadmap's
+  original inline-`project.md`-marker plan would invade the writing surface: the marker
+  leaks into every AI prompt (`section.fullContent` is sent verbatim), inflates word
+  counts and treemap tile area, is copied into other apps on select-all (CodeMirror
+  copies from doc state, not the DOM — the codebase has no atomic-range machinery),
+  risks cursor jumps while typing a heading, and double-marks on `.md` export. The user
+  chose the **sidecar anchor-ledger** — idiomatic here (StructuralPart / gist /
+  provenance all bind to text by content anchor), keeping `project.md` completely
+  pristine.
+- **The pure engine** — `src/lib/section-ids.ts` (no React/store; 11 unit tests):
+  `sectionAnchor` (first 64 chars of the trimmed body, so a rename doesn't break it),
+  `newSectionId` (opaque `sec_` + crypto base36), and `reconcileSectionIds` — a 3-pass
+  resolve (anchor → title+level nearest-ordinal → seed-freeze/mint) that returns the
+  reassigned tree, the rebuilt ledger, and a `changed` flag.
+- **Migration = freeze, so ZERO remap.** On first load the ledger seeds with each
+  section's *current* id (the parse id the persisted `testSuite`, spec filenames, and
+  dependency refs are already keyed by), so nothing is renamed or re-keyed — existing
+  work stays attached by construction. Only genuinely new headings get opaque ids.
+  Reserved `'root'` is never touched.
+- **Persistence** (structural-parts sidecar template): `SectionIdBinding` type
+  (`src/types/index.ts`); `sectionIdLedger` on `StoredProjectData`
+  (`src/services/repository.ts`) and the document/project state slices; `.twriter/
+  section-ids.json` via `layout.rs` `section_ids_json()`, an opaque
+  `section_id_ledger: Option<serde_json::Value>` in `types.rs`, and read/write in
+  `commands/document.rs` (with a `section_id_ledger_round_trips_through_write_then_read`
+  test). Both repositories pass the whole `StoredProjectData` blob through, so no
+  per-field mapping changed.
+- **Integration** — the App.tsx debounced parse effect now runs `reconcileSectionIds`
+  after `parseMarkdown`, reading the ledger fresh via `useStore.getState()` (like
+  `pruneOrphanEntries`) and writing it back only when `changed`. The ledger persists on
+  the existing 60 s autosave. Nothing else in the effect chain moved.
+- **No migration snapshot** (deliberate deviation from the plan's belt-and-suspenders
+  note): the approach never rewrites `project.md` and the freeze performs no id remap,
+  so the pre/post prose and every spec are byte-identical — there is nothing to revert
+  to, and a git commit fired from the debounced typing hot-path would be a worse
+  surprise than the (nonexistent) risk. Rollback is simply deleting
+  `.twriter/section-ids.json`, which reseeds identically on next load.
+
+**Verify.** `npm run typecheck` clean; `npm test` 666 pass (11 new in
+`section-ids.test.ts`: seed-freeze, rename-keeps-id, reorder-moves-id,
+duplicate-title-distinct, new-heading-mints, duplicate-section-no-collision, tree
+integrity); `npm run build` succeeds. **Not run here (flagged):** `cargo test` (the
+crate needs GTK/GDK libs absent in this CI — the round-trip test mirrors the passing
+`structural_parts_round_trips…` exactly and must be run on a desktop toolchain). **Local
+manual checks (need a real project with specs — the browser demo has none):** open a
+project → `.twriter/section-ids.json` appears carrying the current ids; rename a heading
+→ its spec stays attached (previously orphaned); reorder two same-titled sections → their
+specs don't swap; `git diff` shows `project.md` unchanged, only the sidecar added.
+
+**Rollback.** `git revert` (the ledger is additive; on read `data.sectionIdLedger ?? []`
+tolerates its absence, and reconcile reseeds from current ids). To drop only the on-disk
+data, delete `.twriter/section-ids.json`.
+
+---
+
+## 2026-07-03 — Arpeggio integration Phase 2: the W₁ graph layer (typed edges, function-tagged realizations)
+
+**What changed.** `StructuralPart` gave the app heading-independent *parts* (nodes) but
+was **a node-set without an edge-set** (the muddle
+[`arpeggio-integration.md`](arpeggio-integration.md) §I.2.1 names): parts bore no
+relations to each other, and the one part→section membership arc was hardcoded
+`type: 'reference'` with no function (`topo-parts.ts`). Phase 2 adds the **edge-set** (7
+typed part-to-part relations) and promotes the bare membership arc into a first-class,
+**function-tagged `Realization`**, so the discovered configuration is finally
+expressible, authorable, and inspectable. Scope (user-approved): the *full* graph layer —
+data model + persistence + deterministic realization seeding + an AI edge-discovery
+assist + minimal topo-Inspector authoring + the declared-vs-computed-center finding.
+
+- **Data model** (`src/types/index.ts`, extend-never-collapse). `StructuralPart` gains
+  the coherent W₁-node field set, all optional/additive (none model-supplied, so
+  `normalizeStructuralParts` is untouched and `reanchoredPart`'s spread preserves them):
+  `origin` (`authored | discovered`), `status` (`germ | apprehended | articulated`),
+  `declaredCenter`, plus `body` / `keyTerms` / `canonicalNeighbor` / `position` — the
+  last four **dormant**, added now so Phases 4/7/8 (canvas quarry, available-material
+  check, D8) don't re-touch the type. New **`StructuralEdge`** (`StructuralEdgeKind` =
+  grounds / requires / qualifies / opposes / exemplifies / defines / answers; directed
+  vs symmetric is a property of the kind) sits *alongside* the section-level `Dependency`
+  (still advisory), never collapsed into it. New **`Realization`**
+  `{ id, partId, sectionId, functionTag?, note?, origin }` with `FunctionTag` =
+  open-gap / introduce / develop / recur / answer / pay / summarize.
+- **The pure engine** — `src/lib/structural-graph-helpers.ts` (no React/store/SDK; 19
+  unit tests): `seedRealizations` (one untagged realization per live part↔section
+  overlap; carries tags forward by (partId, sectionId) key; drops vanished overlaps —
+  annotate-only, like part staleness), `edgeId` (content-stable; symmetric kinds sort
+  their endpoints so `a↔b == b↔a`; identical edges collide, which *is* the dedup),
+  `mergeDiscoveredEdges` (authored/accepted edges untouched; new proposals land
+  `proposed`), `acceptEdge`, `tagRealization`, `isDirected` / `edgeArrow` /
+  `describeEdge`, `computeCenterDivergence` (declared centre vs the computed radix — a
+  neutral fact, never a verdict), and `summarizeGraph` (empty-string on empty, like
+  `summarizeParts`). Plus a guard in `structural-part-helpers.ts`: an authored **germ**
+  part (empty anchors) is content-debt, exempt from orphan-flagging.
+- **Persistence** — two new bare-array sidecars **`.twriter/structural-edges.json`** and
+  **`.twriter/realizations.json`** via the proven structural-parts 8-touch template:
+  `StoredProjectData` (`repository.ts`); the document/project state slices (field +
+  setter + default + hydrate/save/reset across `createDemoProject` /
+  `createNewProject` / `loadProject` / `saveCurrentState`); Rust `layout.rs`
+  (`structural_edges_json()` / `realizations_json()` + path assertions), an opaque
+  `Option<serde_json::Value>` pair in `types.rs`, and read/write + two round-trip tests
+  in `commands/document.rs`. Both repositories pass the whole blob through — no per-field
+  mapping changed.
+- **The topo PARTS projection** now renders the graph. `derivePartsModel` builds
+  membership arcs from realizations (carrying the `functionTag` — retiring the hardcoded
+  `'reference'`) plus a new `partEdges` channel for part→part edges; `Arc` gains optional
+  `functionTag` / `edgeKind` (section projections leave both unset and render exactly as
+  before). The `Route` mark draws each edge kind with a distinct line treatment
+  (arrowhead suppressed for the symmetric kinds) in the W₁ purple, with an
+  always-available legend. `StructuralReadout` gains a neutral **`DECL≠COMP`** cell
+  (purple = a declared centre off the computed radix, green = aligned — the Phase-0
+  neutral idiom, no new pigment).
+- **Minimal Inspector authoring** (rich authoring is the Phase-4 canvas): a functionTag
+  picker per realized section, a LINKS block (part→part edges with accept/reject on
+  proposals + a hand-author add-edge form), and a **◎ declare-centre** toggle. All lands
+  through the new `use-structural-graph-actions.ts` hook (setX → `saveCurrentState()`,
+  module-level in-flight guard).
+- **The AI edge-discovery assist** — `discoverStructuralEdges`, the parts-faculty vertical
+  slice mirrored: interface method + input type (`ai-provider.ts`), the per-flow
+  `ai-provider.structural-edges.ts` (schema + tolerant `normalizeStructuralEdges`:
+  part-index → id, drops out-of-range / self / bad-kind / duplicate, `[]` on junk), the
+  impl dispatch, the `discoverStructuralEdges` call-kind (`model-types.ts` ×3 +
+  `model-config.ts`), the editable `discover-structural-edges.md` prompt + registry
+  entry. **Advisory by construction**: proposed edges arrive `status: 'proposed'` and are
+  accepted by the writer, never auto-committed.
+- **Discovery-merge groundwork** — `runDiscoverStructuralParts` now MERGES: authored
+  parts survive re-discovery unclobbered (only discovered ones refresh), and it re-seeds
+  realizations preserving tags. Forward-looking (no authored parts exist until the Phase-4
+  canvas) but correct now.
+- **Consumers** — `buildCoachPrompt` appends `summarizeGraph` beside `summarizeParts`;
+  `estimateDependencies` appends an advisory part-to-part-edges block. Both
+  graceful-empty and advisory only (the deterministic-first law).
+
+**Realization store model (worth knowing).** The persisted `realizations` set is the
+annotation carrier; the topo modal re-seeds it for DISPLAY each render
+(`seedRealizations(parts, sections, stored)`) so membership arcs are always correct even
+after prose edits, and tagging persists the freshly-seeded-and-tagged set. Tags survive
+re-discovery by (partId, sectionId) key because part ids are content-stable. Edges have no
+self-healing seed, so a `pruneEdges(edges, parts)` pass drops any DANGLING edge (an
+endpoint part re-discovered under a new content-id) at re-discovery, in `summarizeGraph`,
+and in the dependencies block — the canvas already hides them (both endpoints filtered
+against the live part-set). (Post-review hardening from an adversarial pass: also a purple
+part-edge selected-glow that leaves the section-arc cyan glow byte-identical, and
+`addEdge` upgrading a lingering proposal instead of a silent no-op.)
+
+**Verify.** `npm run typecheck` clean; `npm test` **693 pass** (+27: 19 in
+`structural-graph-helpers.test.ts` — seed idempotence/tag-preservation/drop-on-vanish,
+edge-id symmetric-collision/directed-distinct, merge keeps-authored/dedups/accept-flip,
+center-divergence, summary; the germ-exemption case; and the edge-faculty normalize
+tests); `npm run build` succeeds; `npm run lint` 0 errors. **Not run here (flagged):**
+`cargo test` — the crate needs GTK/GDK libs absent in this CI; the two round-trip tests
+(`structural_edges_round_trip…`, `realizations_round_trip…`) mirror the passing
+`structural_parts_round_trips…` exactly and must be run on a desktop toolchain. **Local
+manual checks (need a real project with discovered parts):** Argument Topology → PARTS →
+membership arcs show function-tags (not a bare 'reference'); **Discover edges** proposes
+typed part→part relations (line-treated + legend); accept one → it persists to
+`.twriter/structural-edges.json`; tag a realization → persists to
+`.twriter/realizations.json`; declare-centre on a non-radix part → the `DECL≠COMP` cell
+lights neutral purple; `git diff` shows `project.md` unchanged, only the two sidecars;
+reload → edges/realizations/tags survive; re-run Discover parts → authored data survives.
+
+**Rollback.** `git revert` (both sidecars are additive; `data.structuralEdges ?? []` /
+`data.realizations ?? []` tolerate absence, and realizations reseed from part overlap on
+next open). To drop only the on-disk data, delete `.twriter/structural-edges.json` and
+`.twriter/realizations.json`.
+
+---
+
+## 2026-07-03 — Arpeggio integration Phase 3: the Ledger, declare/defer, capture inbox
+
+**What changed.** Two things at once. (1) The **commitment mesh is widened beyond textual
+adjacency** — the muddle-I.2.3 repair: `checkCommitmentMesh` only ever compared a section's
+interlocks against its tree-adjacent neighbours (parent + prev/next sibling), so a commitment
+paid three sections downstream was falsely flagged as dangling. (2) A **Ledger** (IOUs /
+declared-heap / declared-deviation / deferred-diagnostic) turns the strain register's
+dismissals into *recorded* concessions the tool remembers, and a **capture inbox** gives the
+ADHD "park a stray thought in <30 s" motive a home.
+
+- **The mesh-widening** (`src/lib/diagnostic-helpers.ts`). `checkCommitmentMesh(sectionId,
+  sections, specs, ctx?)` takes an optional **`MeshContext`** (`buildMeshContext(sections,
+  specs, ledger)`): precomputed prefix/suffix token unions (every earlier section's outgoing +
+  claim; every later section's incoming), the `paidCover` phrases of paid IOUs, and the set of
+  sections under a **declared heap**. The two helpers *append* these to their existing
+  adjacency pool, reusing `itemMetBy`/`significantTokens` unchanged — so a commitment consumed
+  anywhere later, established anywhere earlier, covered by a paid IOU, or under a declared heap
+  is now silent. **Monotone + back-compat:** absent `ctx` → byte-identical to before (guards
+  every un-updated caller, incl. spec-test's `meshFindingsFor`); present `ctx` only ever
+  *silences* a would-be finding, never creates one. `computeAllStrain` builds the ctx once from
+  the store ledger and threads it into every per-section check. (Spec-test's mesh stays
+  adjacency-scoped by design — a snapshot-internal A/B check, not the live register.)
+- **`LedgerEntry` / `InboxItem` types** (`src/types/index.ts`). `declared-heap` is a
+  `LedgerEntry` keyed by `openedAtSectionId` (NOT a `StructuralPart` flag) — the section-keyed
+  mesh + surround consume it with no part→section resolution. It exempts that section AND its
+  descendants (`declaredHeapSet`), and the diagnostic surround gains a "DECLARED HEAP" line so
+  the Phase-0 heap-license prompt clauses fire deterministically.
+- **Persistence — the SESSIONS per-entry-file template** (not the `StoredProjectData` blob).
+  `.twriter/ledger/<id>.yaml` + `.twriter/inbox/<id>.md`, one file per entry (merge-friendly):
+  Rust `layout.rs` paths (+ assertions), `commands/ledger.rs` + `commands/inbox.rs` (opaque
+  `serde_json::Value` per the serde lesson, sorted by filename stem, tolerant dir-walk;
+  round-trip tests), registered in `commands/mod.rs` + `lib.rs`; the `Repository`
+  list/save/delete triples (tauri thin-`invoke` wrappers + browser array-per-project); new
+  `src/state/ledger-state.ts` + `inbox-state.ts` slices (load/create/save-through-repo, the
+  sessions idiom, NO git ceremony), loaded EAGERLY in `project-state.ts loadProject` (the
+  always-mounted strain register needs the ledger live).
+- **Declare/defer from the strain register** (`StrainRegister.tsx`). Beside the ephemeral
+  dismiss (still "returns on reload"), each row gains **defer** (each finding → a recorded IOU
+  — Arpeggio's one-click candidate IOU) and **declare heap** (a `declared-heap` entry). The
+  register hides a signal already covered by an open deferred/IOU entry (section + owes match).
+- **Ledger drawer** (`src/features/ledger/LedgerDrawer.tsx`) — the app's FIRST right-side
+  drawer (`fixed inset-y-0 right-0`), self-gating on `ledgerOpen` (the `gist-state` workspace
+  pattern). Literal rows (kind · section · owes · age · status) with **pay** (strike-through,
+  the one juicy motion) + **waive**. Dock glyph `‡` + ⌘K. HLD tokens only (owed=amber,
+  paid=green, declared=cyan — no new pigment).
+- **Capture inbox** (`src/features/inbox/`). `Cmd/Ctrl+I` from anywhere opens a quick capture
+  field (`InboxCapture`, Enter parks it); the `InboxTray` drawer routes each item to a section
+  (**append** via the existing `handleSaveContent`, whose `content` includes the heading line)
+  or **promotes it to a germ part** (`promoteToGermPart` mints an authored germ
+  `StructuralPart` with an OPAQUE `newSectionId` — not the content hash, which collapses on
+  empty anchors). Dock glyph `⊞` + ⌘K. **OS-level global hotkey deferred** (it needs a new
+  `tauri-plugin-global-shortcut` Rust dependency + capability; the in-app chord already
+  satisfies "park it from anywhere in the app").
+- **Ledger currency at check-out** (user decision 2 — theory currency primary). `SessionModal`
+  check-out leads with "N paid · M open · K declared" above the demoted word stats;
+  `endSession` adds `Ledger-paid`/`Ledger-declared` commit trailers; the Progress Dashboard
+  leads its stat grid with "Debts paid".
+
+**Verify.** `npm run typecheck` clean; `npm test` **711 pass** (+16: 6 mesh — adjacency
+byte-identical without ctx, distance-silencing later/earlier, paid-IOU cover, declared-heap
+self+descendants, waived-not-exempt; 10 ledger/inbox slice); `npm run build` + `npm run lint`
+(0 errors) green. **Not run here (flagged):** `cargo test` — no GTK/GDK libs in CI; the
+`ledger`/`inbox` round-trip + `layout` path tests mirror the passing session pattern and must
+run on a desktop toolchain. **Local manual checks (need a real project with specs):** a
+commitment paid three sections later no longer flags in the strain register (was a false
+break); declare-heap on a parent silences its children *and* shows in the Ledger drawer + is
+read by the diagnostic prompt; defer a finding → it leaves the register as an open IOU; pay it
+→ strike-through; ⌘/Ctrl+I → capture → tray → append to a section (`git diff` shows only that
+section) or promote to a germ part (appears in Argument Topology → PARTS); check-out leads with
+the ledger currency; reload → `.twriter/ledger/*.yaml` + `.twriter/inbox/*.md` survive.
+
+**Deliberate limits (documented, not blocking).** Spec-test's mesh keeps adjacency scope (it
+audits a snapshot's internal consistency, not the live document). The OS-global capture hotkey
+is deferred (new Rust dependency). Append-to-section reads the section's `content` from the
+store's last parse; a heading edited in the sub-second before appending could revert in that
+narrow window (the inbox is a deliberate navigation away from typing — low risk).
+
+**Rollback.** `git revert` (the ledger + inbox are additive per-file sidecars;
+`data`-independent — the slices tolerate an empty list, and the mesh `ctx` is optional so the
+widening + declared-heap simply don't apply). To drop only the on-disk data, delete
+`.twriter/ledger/` and `.twriter/inbox/`.
+
+## 2026-07-03 — Arpeggio integration Phase 4: the W₁ Canvas workspace
+
+**What changed.** The topo modal's PARTS projection is a *derived-analysis lens* (a computed
+parts↔sections reconciliation). Arpeggio §2.1 wants W₁ as a **co-edited layer**, and §4.8 makes
+the writer's spatial placement *sacred* — external memory. Phase 4 builds that: a new
+full-screen, pan/zoom **W₁ Canvas** (`src/features/canvas/`) where the argument's parts live as
+hand-placed cards and the typed edges as lines, all **authored directly**. It is where Phase 3's
+inbox germ parts get laid out and where the `StructuralPart.position` / `body` fields (shipped
+*dormant* in Phase 2) finally have a consumer. Scope (user-approved): the *full* canvas.
+**No Rust changes, no new sidecar** — positions and the quarry `body` ride the existing
+`.twriter/structural-parts.json` sidecar (already round-trip-tested).
+
+- **Rendering decision** (from the reuse survey): an **HTML card overlay over an SVG edge
+  layer, both inside ONE world-coordinate container** transformed by a single
+  `transform: translate(tx,ty) scale(k)`. Node cards need an editable claim + a quarry `body`
+  `<textarea>` + status rings + drag — trivial in HTML, painful in SVG (`foreignObject` is used
+  nowhere and blurs text at zoom). A **fresh, small `useCanvasPanZoom`** (world-px) drives the
+  camera, NOT the SVG-viewBox-coupled `topo/usePanZoom` (whose 1100-unit space fights an HTML
+  overlay); it gives a clean `screenToWorld` for create-at-cursor + drag + drop. Node-drag
+  `pointerdown` stops propagation so the background pan never also fires (the `topo-marks`
+  precedent); the edge layer does the same so an edge click selects without panning.
+- **The one new pigment** — `--color-hld-feat-glow` (a quiet warm amber) in the `feat-*`
+  namespace, carried ONLY by a `declaredCenter` node as a CSS ring + `box-shadow`. CSS-only (the
+  glow is a DOM card, not SVG), so no `tk.ts` literal-hex mirror; the hex lives in `index.css`,
+  which the `.ts/.tsx`-only `no-restricted-syntax` hex-guard does not cover.
+- **State** — a new EPHEMERAL `src/state/canvas-state.ts` slice (registered in `state/index.ts`):
+  `canvasOpen`, the focus-on-open target (`canvasFocusPartId`, consumed once — the topo
+  deep-link), the selection, an in-progress edge draft (`canvasEdgeDraftFrom` +
+  `canvasEdgeDraftKind`), and the list-view toggle. All of it is lost on reload, by design — the
+  durable graph lives in `document-state` (`structuralParts` / `structuralEdges`).
+- **Pure, unit-tested core** — `canvas-geometry.ts` (world↔screen: `screenToWorld` /
+  `worldToScreen` / `zoomAt`-to-cursor / `fitView` / `centerOn`, node position = card *centre*);
+  `canvas-helpers.ts` (`makeGermPart`, `moveIn`, `patchIn`, `deletePartFrom` — the delete
+  cascade to incident edges + realizations — `seedPositions`, `positionSnapshot`); `canvas-keys.ts`
+  (`isEditableTarget` — the guard that keeps single-key authoring inert while typing, including
+  in a CodeMirror surface — and `KIND_BY_LETTER`).
+- **Mutations** — `use-canvas-actions.ts` follows the established idiom (build the next array via
+  a pure `canvas-helpers` transform → `setStructuralParts` / `setStructuralEdges` /
+  `setRealizations` → `await saveCurrentState()`). A live drag uses `movePartLive` (store-only, no
+  disk write, so edges follow the node) + `commit()` on drag-end — one write per gesture, not per
+  pointer move. Edge authoring + the declared-centre toggle reuse `use-structural-graph-actions`.
+- **Components** — `CanvasNode` (card at its world `position`, `translate(-50%,-50%)`, a status
+  ring encoding maturity, the centre-glow); `CanvasEdges` (SVG in world coords, reusing
+  `EDGE_DASH` / `SYMMETRIC_EDGE`: directed kinds get an arrowhead, symmetric `requires`/`opposes`
+  don't; proposed AI edges read amber/dashed; dangling edges hidden per the `pruneEdges` idiom);
+  `CanvasInspector` (a screen-space right panel — editable claim/kind, the status ladder, the ◎
+  declare-centre toggle, the deletable links list, and the **quarry `body`** where dictation dumps
+  and freewrites land as *material, never committed prose* per §6.1; auto-focuses the claim of a
+  freshly-created node); `CanvasListView` (an always-mounted `sr-only` outline mirroring the
+  treemap's sr-mirror pattern + a visible, keyboard-navigable panel — full accessibility parity);
+  `CanvasLegend` (the 7 kinds + their letters); `CanvasTopBar`; and the `CanvasWorkspace` shell.
+- **Keyboard authoring** (§6.1, guarded by `isEditableTarget`, inert under a chord): **N** germ
+  node at the cursor's world position (auto-focuses its claim); **E** arm an edge from the
+  selection, then a **kind letter** (`g/r/q/o/x/d/a`) + a click on the target draws it; **C**
+  toggle declared-centre; **1/2/3** set status germ/apprehended/articulated; **Delete** remove the
+  selected node (cascading) or edge; **Esc** blur a focused field, else cancel an armed edge, else
+  dismiss a layout preview, else close.
+- **Initial placement + suggest-layout** (spatial memory is sacred). On open, never-placed parts
+  get a deterministic grid via `seedPositions` and are **persisted once** (a placed part is *never*
+  moved); the camera then fits, or focuses the deep-link target. *Suggest layout* is explicit and
+  preview-only: synthesize `SimNode[]` + `Arc[]` from the placed parts and their edges → the pure
+  `optimizeTarget` (`topo-sim-atlas.ts`) → a **ghost preview** → **accept** stashes the prior
+  `{id→position}`, applies via `setPositions`, and fires an **undoable** sonner toast (the
+  `ai-error` action template; there is no shared undo helper) — never auto-applied.
+- **Wiring** — mounted unconditionally in `ModalLayer` beside `<GistWorkspace/>`; a Dock `⬡`
+  glyph + a ⌘K palette entry (`openCanvas()`); each `InboxRow` thought is **draggable onto the
+  canvas** (`dataTransfer` text + item id → `createPartAt(dropWorld, text)` + `removeInboxItem`);
+  and the topo `PartInspector` gains an **"open in canvas"** button (`onOpenInCanvas` threaded
+  like `onToggleCenter`) that closes the modal and focuses the part on the canvas.
+
+**Verify.** `npm run typecheck` clean; `npm test` **736 pass** (+25: 8 geometry round-trip /
+zoom-to-cursor / fit / centre, 9 helpers create-shape / delete-cascade / seed-fills-only-unplaced,
+8 canvas slice); `npm run build` + `npm run lint` (0 errors — the workspace/inspector carry only
+the same `max-lines-per-function` *warnings* every peer workspace does). **Manual (on a copy of a
+real project with discovered parts):** open the Canvas (⬡ / ⌘K) → parts appear as cards (placed
+once, stable on reload); drag a card → its `position` persists (`git diff` shows only
+`.twriter/structural-parts.json`); **N** → a germ node, type its claim; **E** + a kind letter + a
+click → a typed edge (per-kind treatment + legend); **C** → the centre-glow lights; edit a node's
+quarry `body`; **suggest layout** → ghost → accept → **Undo** restores the prior placement; drag an
+inbox item onto the canvas → a germ node at the drop; from the topo PARTS Inspector, **open in
+canvas** focuses that part; toggle **list view** → the same graph as a keyboard/SR outline; reload
+→ positions + bodies + edges survive.
+
+**Rollback.** `git revert` the commit. Purely additive: no new sidecar, no Rust/schema change,
+no migration — `position` / `body` are optional `StructuralPart` fields shipped dormant in Phase
+2, and the new slice tolerates an empty graph. Reverting the UI leaves any already-saved positions
+harmlessly in the parts sidecar (ignored by every other consumer).
+
+## 2026-07-04 — Arpeggio integration Phase 5: the precedence engine + order-space diagnosis
+
+**What changed.** The app's ONE shipped order-norm was `backwardArcSet` (`topo-centering.ts`): a
+section `Dependency` arc is "backward" iff `source.docIndex > target.docIndex` (a logical
+prerequisite placed *after* its dependent), and `miscentering = backwardCount / arcCount` — divergence
+from *logical* dependence, treated as pathology. But the precedence that binds composition is not
+entailment; it is the dynamics of a reader's GRASPING, which can legitimately invert logical order
+(an objection stated before its reply; an instance before its rule; a conclusion asserted first as a
+promissory gap). Phase 0 softened only the readout *text*; the arc glyph, the legend, and the
+AI-prompt evidence still coded backward as an unconditional violation. Phase 5 builds the precedence
+engine that tells a **covered** (deliberate) inversion from an **uncovered** one, completing that
+repair, and adds the order-diagnostics surface (admissibility, commutable runs, non-linearizable
+regions). This is the muddle-I.2.2 repair, *diagnosis half*; the reorder gesture is Phase 6.
+
+- **One engine, two projections (the low-risk core).** `computeCentering` is **unchanged** — its
+  `rank`/`radix`/`isRadix`/`isTelos` credit (consumed by `topo-layout-radix.ts`) and every existing
+  test are preserved. The reframe is additive and lives in a new pure module. **Err-toward-silence:**
+  with no W₁ edges drawn, `deriveConstraints → []`, `orderGraded === false`, every backward arc stays
+  NEUTRAL and `orderMiscentering === miscentering` — nothing changes until the writer draws structure.
+- **Pure engine** — new `src/lib/precedence.ts` (no React/store/SDK; sibling of
+  `structural-graph-helpers.ts`, content-stable `computeHash` ids, empty-degrade). `deriveConstraints`
+  (defines→definition-before-use; **answers→gap-before-filling with `before = toPartId`** — the
+  objection is the gap, the load-bearing inversion; grounds→ground-before-lean only under
+  systematic/spiral, order-free under genetic/reference; requires/qualifies/exemplifies/opposes →
+  nothing; proposed edges skipped), `buildGraspOrder` (a part's grasp = min `docIndex` over its
+  realizations, preferring the `introduce`/`open-gap`-tagged subset; germ/unrealized parts
+  positionless), `checkAdmissibility` (satisfied/violated/inapplicable; inapplicable on a positionless
+  endpoint or an equal grasp station), `commutableRuns` (maximal left-greedy antichain runs — "order
+  arbitrary here"), `nonLinearizableRegions` (SCC>1 over the `before→after` constraint graph),
+  `classifyBackwardArcs` (the covered/uncovered predicate: reference auto-covered · an endorsing
+  constraint · an inverting-reason constraint spanning the pair · an **open** IOU at the dependent · an
+  authored constraint), and `formatOrderEvidence` (neutral AI prose, empty-degrade).
+- **Shared SCC helpers** — `reachFrom`/`reachAll`/`sccGroups` lifted verbatim from `topo-centering.ts`
+  into a new pure **`src/lib/graph-scc.ts`**, imported by both the centering engine and the precedence
+  engine (one tested implementation; the extraction is behavior-preserving — the centering tests stay
+  green untouched).
+- **Strategy-relative derivation (zero-Rust)** — a new optional `StructuralPart.expositionStrategy`
+  (systematic/genetic/spiral/reference) rides the existing `structural-parts.json` sidecar (the
+  `declaredCenter`/`canonicalNeighbor` authored-field precedent — no Rust touch). `strategyOf` resolves
+  an edge by its ground/source part's strategy, defaulting to `systematic`, so the engine works with
+  nothing declared. A select in the canvas `CanvasInspector` sets a part's strategy.
+- **The verdict reframe (finishing Phase 0).** `DependencyGraphModal` composes `constraints` (derived +
+  `precedence.overrides` applied by content-stable id + `precedence.authored`), `grasp`, `admiss`,
+  `commutable`, `cycles`, and `orderVerdict`; it loads the ledger on open so **open** IOUs can cover a
+  backward arc. A single `orderGraded` boolean (any active constraint, or any open IOU) gates the
+  verdict: ungraded → every backward arc renders the neutral bridge (Phase-0 posture preserved); graded
+  → covered→neutral purple **bridge glyph**, uncovered→the magenta **read-ahead chevron**. The tri-state
+  `cover` prop drives `TopoMap` `DepArc` + `topo-marks` `Route` (one classification, three projections);
+  `StructuralReadout` shows UNCOVERED (magenta) / COVERED (neutral) / MISCENTER (from `orderMiscentering`)
+  when graded, else the neutral BACKWARD count; `LegendKey` splits its BACKWARD row; the interim
+  "pending Phase 5" NOTE is deleted; and `formatStructuralEvidence` softens its AI-prompt line.
+- **The SPINE order-diagnostics surface** — a new `topo-order-marks.tsx` (`OrderMarks`), rendered inside
+  `TopoMap`'s pan/zoom `<g>`: **admissibility ticks** (a red down-tick over a part grasped before a
+  precedence it must follow, reason on hover), **commutable brackets** (a gray connector through a run's
+  grasp stations + a click-to-"declare heap" glyph → `addLedgerEntry({kind:'declared-heap',…})`, reusing
+  the `StrainRegister` plumbing), and **non-linearizable chips** (a violet ∞ on each cycle member → an
+  SVG strategy menu: **spiral** tags each cycle part's earliest realization `introduce`; **declared-IOU**
+  adds an override converting one cycle constraint to an IOU — dropping it from the active set breaks the
+  cycle — and files the ledger IOU; **pointer beyond the medium** files a declared-deviation).
+- **Persistence — the `precedence.json` sidecar** (`PrecedenceData = { regions, authored, overrides }`),
+  via the proven ~9-touch template: `types/index.ts` (the data-model types — kept in `types`, not the
+  lib, so `precedence.ts → types` stays a one-way import) · `repository.ts` `StoredProjectData.precedence?`
+  · `document-state.ts` (field + `setPrecedence` + default + impl) · `project-state.ts` ×4 (two resets,
+  hydrate, save) · `layout.rs` `precedence_json()` + path assertion · `types.rs`
+  `precedence: Option<serde_json::Value>` (opaque, the 2026-06-24 sparse-serde lesson) · `document.rs`
+  read + write + a `precedence_round_trip_through_write_then_read` test. Browser repo: no touch (whole
+  blob → IndexedDB). Overrides are keyed by content-stable `constraint.id`, re-applied after each derive.
+- **Prompt** — `dependencies.md` now teaches the logical-survival vs grasping-dynamics distinction: a
+  late-placed prerequisite is not automatically an error (it may be a deliberate genetic/pedagogical
+  order); report the dependence neutrally, don't recommend reordering.
+
+**Verify.** `npm run typecheck` clean; `npm test` **769 pass** (+33: 28 precedence — the `answers`
+inversion, grounds strategy variance, grasp introduce-preference, admissibility, commutable antichains,
+cycle detection, the covered/uncovered predicate incl. open-IOU-covers-but-paid-does-not, the no-parts
+regression `orderMiscentering === miscentering`, and a `<50 ms` perf budget over ~500 parts / ~800 edges;
+5 graph-scc); `npm run build` + `npm run lint` (0 errors — the composer + `OrderMarks` carry only the
+same `max-lines-per-function` warnings every peer does). **Not run here (flagged, same as Phase 3):**
+`cargo test` / `cargo check` — this CI has no GTK/GDK system libs (`gdk-3.0` not found); the
+`precedence` round-trip + `layout` path assertion mirror the passing `structural_edges`/`realizations`
+tests byte-for-byte and must run on a desktop toolchain. **Manual (a copy of a real project with
+parts):** draw an `answers` edge whose objection sits after its reply → the backward arc renders the
+neutral bridge (covered), not the chevron; open an IOU at the early section → covered; set a part's
+strategy to genetic → its grounds edges stop generating precedence; the readout shows UNCOVERED/COVERED
++ `orderMiscentering`; SPINE shows admissibility ticks / commutable brackets (declare heap files a
+ledger entry) / non-linearizable chips (the strategy menu); reload → strategy + regions + overrides
+survive.
+
+**Rollback.** `git revert` the commit. Purely additive: `computeCentering` untouched; `precedence.json`
++ `expositionStrategy` are optional (absent ⇒ default systematic, empty overrides/regions); the graph-scc
+extraction is behavior-preserving. Reverting leaves any already-saved `precedence.json` harmlessly on
+disk (ignored by every other consumer). To drop only the on-disk data, delete `.twriter/precedence.json`.
+
+---
+
+## 2026-07-04 — Arpeggio integration Phase 6: reorder-as-operation + the homotypy inversion
+
+**What changed.** Phase 5 shipped the *diagnosis* half of muddle I.2.2 — the app could *see* an
+out-of-order prerequisite but had no way to *move* a section (`SegmentEdit` had no `move`; no reorder
+gesture existed anywhere). Phase 6 ships the *operation* half: a **move** relocates a heading and its
+whole subtree within `project.md` — **the first feature that structurally rewrites the single source of
+truth.** And it repairs the shipped staleness *inversion* (muddle I.4): the staleness check flagged
+parts whose text CHANGED, but was silent on parts whose text HELD while their surround/order MOVED
+("after restructuring one cannot correctly even write the same letters"). Phase 6 adds the **homotypy**
+check — the exact inverse — as a *standing* diagnostic. Reorder-into-a-violation is **allowed** (the
+writer may know better); it files a finding, it does not block. **No Rust changes** — `surroundHash`
+rides the parts sidecar; `applyMove`/`MoveSpec` are pure TS.
+
+- **The pure applier is the crux.** New **`applyMove(source, spec: MoveSpec): string`** in
+  `src/lib/segment-helpers.ts` — a standalone pure function, *not* a sixth `SegmentEdit` kind (the five
+  existing kinds are single in-place splices through `resolveOne`→one `SpliceOp`; a move is a
+  cut+reinsert with hygiene at ≤3 seams, provably cleaner as its own function). Same
+  resolve-anchors-or-no-op, **never-throw** contract as `applySegmentEdits`. It works in **line space,
+  not char offsets**: a section's whole-subtree range is `[section.startLine, section.endLine + 1)`
+  (`parseMarkdown` already sets `endLine` to the last descendant line), so `split('\n')/join('\n')` is
+  an exact inverse (CRLF rides inside each line string) → **byte-stability outside the touched seams**,
+  no `endOffset`/length arithmetic. It re-`parseMarkdown`es `source` internally (never trusts a stale
+  passed tree); `locate()` resolves heading-line → `sectionAnchor` body-anchor → nearest-ordinal (the
+  three-tier discipline `reconcileSectionIds`/`findHeadingByAnchor` already use — deterministic for
+  duplicate + germ headings); and guards **self / into-own-subtree / no-op-current-slot / orphan-anchor**
+  (each → `=== source`). Reconstruction concatenates disjoint line slices through one **`joinBlocks(…)`**
+  hygiene primitive (trims each segment's blank ends, rejoins with exactly one blank line — subsumes the
+  insert-applier `lead` idiom + the merge-applier trailing-blank absorption; interior blanks preserved),
+  so no seam can produce `\n\n\n` or eat content. The document's **outermost** blank runs (leading blanks
+  + the trailing final newline) are not touched seams, so they ride through verbatim (captured from the
+  full source, so they survive even when the moved subtree was itself the first or last block) — a move
+  is byte-stable at the document ends, and an already-in-place drop reproduces `source` exactly so the
+  store's no-op fast-path re-engages.
+- **ID preservation — a Pass 0 in `reconcileSectionIds`** (`src/lib/section-ids.ts`). The body-anchor
+  reconcile re-binds a moved section's stable id *except* for empty-body **germ** headings (empty anchor
+  → the nearest-ordinal Pass 2 can *swap* ids between two same-title/level germ siblings whose order
+  changed → orphaned specs). A new optional `pinned?: Map<Section, string>` arg + a **Pass 0** force-binds
+  those nodes' ids first (consuming their bindings so later passes can't reassign). The move action
+  captures `movingIds` (the moved subtree's ids, pre-move), locates the subtree root in the fresh parse,
+  zips descendants → `pinned`. Deterministic, body-content-independent; non-moved sections reconcile
+  normally; the debounced App reconcile re-runs as a stable no-op. (A root that is *itself* a duplicate
+  germ heading is unaddressable in the fresh parse — the pin is skipped and it degrades to the ordinary
+  nearest-ordinal reconcile, exactly as a hand-edit of the same two germs would; the pipeline still
+  reaches a consistent id fixpoint, so this is a degradation of the belt-and-suspenders pin, not a new
+  swap the move introduces.)
+- **Standing homotypy — a zero-Rust `surroundHash`** (`src/lib/structural-part-helpers.ts` +
+  `types/index.ts`). The direct inverse of `sourceHash`:
+  `computeHash(normalizeForHash(blockBefore(startAnchor) + '␞' + blockAfter(endAnchor)))` via
+  `segmentParagraphs` + `findBlockByAnchor` (empty for an unresolvable anchor — never throws). It rides
+  the `structural-parts.json` sidecar like Phase-5 `expositionStrategy` (zero Rust) and is stamped beside
+  `sourceHash` at **both** sites: discovery (`use-structural-parts-actions.ts`) and re-anchor
+  (`reanchoredPart`). New **`recomputeHomotypy(parts, markdown, sections)`** mirrors
+  `recomputeStructuralStale` as its inverse: skip germ; skip orphan (staleness owns it); `src ===
+  sourceHash` (text HELD) **and** `computeSurroundHash !== surroundHash` (surround MOVED) → candidate.
+  Partitions cleanly with staleness (stale XOR homotypy XOR clean). Being standing (not move-scoped) it
+  also catches order changes from retitle/relevel/merge/split/manual edits.
+- **The `moveSection` action + ceremony** — a new `src/state/reorder-state.ts` store slice (chosen over a
+  hook so the sidebar, the ⌘K palette, and the SPINE drag all invoke it uniformly, like
+  `createSnapshot`/`endSession`). `moveSection(fromId, toId, position)`: flatten + find (bail on
+  missing/identical) → build `MoveSpec` (canonical heading + `sectionAnchor` + ordinal) →
+  `next = applyMove(localContent, spec)` → **no-op short-circuits before any disk churn** if
+  `next === localContent` → capture pre-move state (content/sections/ledger/realizations) + `movingIds`
+  → **PRE-MOVE SNAPSHOT** `createSnapshot('pre-ai-write','all')` (the first structural rewrite genuinely
+  warrants it; try/catch mirrors `acceptLevel` — applied in memory, disk error toasted) → acceptLevel-exact
+  write (`setMarkdown`+`setLocalContent` → `parseMarkdown(next, preSections)` → Pass-0
+  `reconcileSectionIds(parsed, preLedger, pinned)` → `setSections`/`setSectionIdLedger`) → durable
+  `setRealizations(seedRealizations(…))` → `await saveCurrentState()` → `recomputeHomotypy` → returns
+  `{moved, movedTitle, homotypyIds, undo}`. **Undo** captures the pre-move slices in memory (independent
+  of the snapshot guards) and restores them. `moveSectionSibling(id, dir)` finds the prev/next sibling
+  (same parentId + level) and delegates.
+- **The gestures — SPINE drag (primary) + accessible keyboard (parity).** The topo `Station` `<g>`
+  (`TopoMap.tsx`) gains `onPointerDown`/`Move`/`Up` mirroring `CanvasNode` (`stopPropagation` so
+  `usePanZoom`'s svg-pan never fires; 3px threshold; `setPointerCapture`); a **`livePos` override** lets
+  the dragged station follow the pointer while the track/arcs/ticks re-read it. **Live admissibility**
+  (pure, no store writes): a provisional `docIndexOf` (the dragged id at its drop row) feeds
+  `buildGraspOrder`→`checkAdmissibility` → `OrderMarks` red ticks update live; **dropping into a
+  violation persists** (the post-move finding offers fix/declare/defer). Commit →
+  `onMoveSection(fromId, targetId, before|after)`. **Accessible parity:** `SectionRow` gains
+  **Alt+↑/↓** → sibling-swap; two ⌘K palette entries (**Move section up/down**); and the app's **first
+  `aria-live="polite"`** region announces "Moved *Title* before/after *Sibling*". A stable-id keyed list
+  keeps focus on the moved row, so repeated Alt+↓ walks it down.
+- **The "jolt, itemized."** `DependencyGraphModal` recomputes the mesh + arc-cover + admissibility +
+  homotypy automatically from the new `sections`; the move surfaces the homotypy count in its toast (with
+  **Undo**), the PARTS projection gains an **amber** homotypy tint (`TopoParts.tsx`, alongside the
+  orphan-mauve / stale-slate vocabulary), and the `PartInspector` (`topo/Inspector.tsx`) gains a
+  homotypy status + a **RE-READ** button (re-anchors the surround, clearing the tint) — the existing
+  `onReanchor`/`onStrategy`/`addLedgerEntry` plumbing.
+
+**Verify.** `npm run typecheck` clean; `npm test` **796 pass** (+28 Phase-6: 18 `applyMove` cases —
+byte-stable move-then-move-back round-trip, CRLF fidelity, subtree-with-children, move-before-§0 / to-end,
+no-op-current-slot, into-own-subtree, orphan-anchor, duplicate-heading disambiguation, blank-line hygiene,
+legitimate reparent, germ, and document-end byte fidelity (trailing-newline preserved even when the last
+section is the mover, leading-blank run preserved, newline-terminated move-then-move-back exact, and an
+already-in-place drop reproduces `source` so the store's no-op fast-path re-engages); 3 Pass-0 id-pinning
+— two germ siblings keep their ids across an order swap *and* (unpinned) reproduce the swap, the
+regression guard; 7 homotypy — text-held+surround-moved → candidate, text-changed → not (stale owns it),
+orphan → not, no-`surroundHash` → not, germ exemption, `computeSurroundHash` stability across a
+non-adjacent rename); `npm run build` + `npm run lint` (0 errors
+— `applyMove` and the `moveSection` slice carry only the same `max-lines`/`complexity` warnings every peer
+does). **No Rust to run** — `surroundHash` rides the sidecar, `applyMove`/`MoveSpec` are pure TS (no
+`layout.rs`/`types.rs`/`document.rs` touch). **Manual (a copy of a real project with parts):** `Alt+↓` in
+the sidebar → the section moves after its next sibling, `aria-live` announces it; drag a SPINE station
+within its column → live red ticks on a violating provisional slot, drop → the block relocates and the
+arcs/ticks re-settle; a spec attached to the moved section stays attached (`git diff` shows `project.md`
++ `.twriter/section-ids.json` only); move a part's realizing surround → the unchanged part shows the amber
+homotypy tint, **RE-READ** clears it; **Undo** restores `project.md` + ids to the pre-move state.
+
+**Rollback.** `git revert` the commit. Purely additive: no `SegmentEdit` kind changed (the five existing
+appliers are untouched); `applyMove` is a net-new pure function; the Pass-0 `pinned` arg is optional
+(absent ⇒ the prior reconcile behavior, byte-for-byte); `surroundHash` is an optional field (absent ⇒ no
+homotypy candidate). Reverting leaves any already-stamped `surroundHash` harmlessly in the parts sidecar
+(ignored by every other consumer). A move already written to `project.md` is ordinary git history — revert
+the manuscript with the pre-move snapshot/tag the action created, or a plain `git revert` of the content
+commit.
+
+---
+
+## 2026-07-05 — Backward-compat hardening: safely opening pre-Phase-6 projects
+
+**What changed.** Phases 2–6 accreted new persisted artifacts and new fields on existing ones
+(`StructuralPart` gained `sourceHash`, `origin`, `status`, `declaredCenter`, `body`, `position`,
+`expositionStrategy`, `surroundHash`; the `precedence.json` sidecar carries `{regions, authored,
+overrides}`). A project written *before* a given field existed loads with that field absent. Three
+parallel exploration sweeps confirmed the load path is already tolerant of a wholly **missing** sidecar
+(Rust `fs_io::read_json` → `Ok(None)` on absence; opaque `Option<serde_json::Value>` never validates inner
+shape — the 2026-06-24 sparse-serde rule; TS `loadProject` defaults the whole array/object). The gaps were
+**partial shapes** and **old entries missing new fields** flowing through the whole-array default
+un-normalized into consumers. This change closes them at the single load boundary — no Rust, no
+schema-version gate, no data rewrite.
+
+- **Hard crash fixed — a partial `PrecedenceData`.** `precedence: data.precedence ?? {…}`
+  (`project-state.ts`) only fired when precedence was *entirely* absent; a truthy-but-partial
+  `{regions:[…]}` (written before `authored`/`overrides` existed) skipped the `??`, so
+  `DependencyGraphModal`'s `precedence.overrides.map(...)` / `...precedence.authored` threw and the whole
+  dependency/topo modal crashed on open. New **`normalizePrecedenceData(raw)`** (`src/lib/precedence.ts`)
+  coerces each sub-array independently → the full three-array shape.
+- **False "stale" fixed — a missing `sourceHash`.** `recomputeStructuralStale`
+  (`src/lib/structural-part-helpers.ts`) did `computeHash(...) !== p.sourceHash`; an old part with no
+  stamped hash always compared unequal → **flagged stale forever** (slate tint on every old part). Added
+  `if (p.sourceHash === undefined) continue;` — no baseline ⇒ "unknown", not stale — mirroring the
+  `recomputeHomotypy` `surroundHash` guard directly above it. The hash gets stamped for real on the next
+  re-anchor/re-discovery, so an old part reads neutral until then.
+- **Invariant restored — `normalizeLoadedParts(raw)`** (`src/lib/structural-graph-helpers.ts`, distinct
+  from the discovery-time `normalizeStructuralParts` that parses raw LLM JSON). Per entry: coerce
+  `sectionIds` to an array (six consumers iterate it unguarded — `structural-part-helpers`,
+  `structural-graph-helpers` `seedRealizations`, `topo-parts`, `ai-provider.impl`), default `origin` to
+  `'discovered'` (the honest default — pre-Phase-4 there was no authoring UI, and an explicit `'authored'`
+  is preserved so re-discovery's authored-part filter is undisturbed), default `confidence`/`rationale`,
+  and pass every optional/additive field (incl. the hashes) through **untouched** — it never fabricates a
+  hash (a hash asserts a content baseline the load boundary can't honestly supply; there is no parsed
+  section tree there — the live parse happens later in `App.tsx`).
+- **Wired into `loadProject`** (`src/state/project-state.ts`) beside the existing inline load-migrations
+  (`normalizeModelConfig`, the testSuite-deps upgrade): `normalizeLoadedParts(data.structuralParts)`,
+  `normalizePrecedenceData(data.precedence)`, and an `Array.isArray` guard on edges/realizations. One
+  boundary pass keeps the ~25 downstream readers on their current shape; the normalized form persists on
+  the next ordinary save. An **adversarial review** verified every disk→store path funnels through
+  `loadProject` — `restoreSnapshot` carries no structural sidecars, and the sync-policy reload / legacy
+  backup importer / clone all route back through `loadProject`; no path reaches a consumer raw.
+
+**Verify.** `npm run typecheck` clean; `npm test` **807 pass** (+11: 4 `normalizePrecedenceData` —
+undefined/partial/garbage/full; 1 stale guard — a no-`sourceHash` part resolves but is not stale; 5
+`normalizeLoadedParts` — non-array→[], missing `sectionIds`→[], `origin` default vs preserved-`authored`,
+optional fields preserved + no hash fabricated, non-object entries dropped; 1 `persistence` integration —
+a partial `precedence` + old-shape part hydrate normalized without throwing); `npm run build` +
+`npm run lint` (0 errors). **No Rust to run** — the fix is TS-only at the load boundary. **Manual (a copy
+of a real older project or a hand-made `.twriter/` fixture):** open it → the dependency/topo modal opens
+without throwing on a partial `precedence.json`; old discovered parts show a neutral (not slate-stale)
+tint until edited; `git diff` after the first save shows the sidecars rewritten in normalized full-shape
+form.
+
+**Rollback.** `git revert` the commit. Purely additive and read-time: the three helpers are net-new pure
+functions; `loadProject`'s prior `?? []` / `?? {…}` defaults are replaced by strictly-more-tolerant
+normalizers; the stale guard only *removes* false positives. No persisted shape changes until a project is
+re-saved (which writes the same normalized shape the app already produces). No Rust, no schema version.
+
+---
+
+## 2026-07-05 — Gist omission: un-block the coverage gate, read omission as signal
+
+**What changed.** The gist (a whole-at-once "scale model" of the document, in its own voice, for
+re-entry) enforced **total coverage**: `validateGist`/`checkCoverage` rejected any grain that left a
+section's span missing or empty, and that reason was OR-ed with the genuine fidelity checks (word caps,
+banned reporting frames, duplicate spans) into one `ok` boolean; a second validation failure *discarded*
+the newly-generated gist when a prior one existed. Compose-prompt rule 8 reinforced it ("a weight-1 survey
+gets a clause"), so omission was impossible by construction. **That is an anti-feature.** By the app's own
+thesis — *"a summary hands back the pieces in a sum; the two-wholes analysis asks for the opposite"*
+(`gestalt-and-text-structure.md`), *"Size ≠ structural weight,"* and the honest-heap license *"where inner
+functional content approaches zero, piecemeal composition is the correct form; never manufacture
+commitments"* (`arpeggio-integration.md`) — a section the whole-summary does not lean on is **information**:
+it is not carrying essential substance. Forcing a line for it is plausibility-forgery. This reframes
+omission as signal, not error (no Rust, no persisted-schema change).
+
+- **`validateGist` split (`src/lib/gist-helpers.ts`).** Missing/empty spans are pulled out of the blocking
+  `reasons` into a new `omitted: { coarse: string[]; fine: string[] }` field (informational, never folded
+  into `ok`); a **duplicate** span stays a fidelity `reason` (a genuinely malformed grain). New pure helpers
+  `spansOmitted(spans, expectedIds)` (present-but-empty OR absent) and `gistOmittedIds(gist)` (derives a
+  stored gist's uncarried sections from its own empty spans — never separately persisted, like staleness).
+- **Degeneracy floors** — so the honest-heap license can't accept a *useless* gist now that empty spans no
+  longer fail. An empty `g0` thesis (the irreducible core, never an omittable section) fails; and a grain in
+  which the whole joined text is blank ("every fine/coarse span is empty — the gist carries no section")
+  fails, so a truncated/refused compose that produced only `g0` still retries and keeps a good prior gist
+  rather than overwriting it with a blank map. Sparse omission stays valid; total omission does not.
+- **`generate` un-blocks (`src/features/gist/use-gist-actions.ts`).** No code change beyond the new return
+  shape — the retry/discard branch already keys on `check.ok`, which no longer folds in omission, so an
+  omission-only composition has `ok === true` and stores cleanly (with its omitted sections as empty spans).
+  The one corrective retry now carries fidelity-only reasons (never nags the model to fill an omission).
+- **Prompt license (`src/services/prompts/gist-composition.md`).** New rule 9 grants an explicit license to
+  leave a non-essential segment's span empty (grounded in the honest-heap "inner functional content ≈ 0"
+  language), with a guard to omit *sparingly* — only genuine non-contributors; when in doubt keep a
+  compressed token — so the gist stays navigable for re-entry.
+- **Light surface (`src/features/gist/StatusRow.tsx`).** A small muted note — `· N not carried` — rendered
+  only when the fine grain omits sections, with a `title` tooltip listing the omitted sections' heading
+  paths (from `gist.segmentation`). No Strain-Register kind, no ledger entry (the user-chosen "lighter"
+  scope). `gist-normalize.ts`'s `alignSpans` comment updated: an empty span is now a recorded omission, not
+  a flagged failure.
+
+**Verify.** `npm run typecheck` clean; `npm test` **812 pass** (+5 gist: omission no longer fails the gate
+(dropped + empty span) with the ids recorded in `omitted`; duplicate span / banned frame / over-budget /
+empty-g0 / total-omission still fail; `spansOmitted` + `gistOmittedIds` derive the uncarried set incl. a
+sparse gist staying valid); the unchanged `alignSpans`-inserts-empty-spans test stays green; `npm run
+build` + `npm run lint` (0 errors). **No Rust to run.** An **adversarial review** (focused on the split —
+that no genuine fidelity fault now slips through as "omission") found one real hole — a `g0`-present /
+all-spans-empty composition would pass and overwrite a good gist — fixed by the all-empty-grain floors
+above; plus two cheap hardenings (de-dupe the omitted list; `gist.segmentation?.` guard). **Manual (a copy
+of a real project):** generate a gist over a document with a genuinely peripheral section (citation dump /
+inventory) → the composer may leave its span empty, the gist is **kept** (not discarded), and the StatusRow
+shows `N not carried` with the titles on hover; a real fidelity fault (over-budget / banned frame / blank
+gist) still retries and keeps the prior gist on a second failure.
+
+**Rollback.** `git revert` the commit. Additive and read-time: `validateGist` gains a field and the helpers
+are net-new; omission is derived from the stored gist's own empty spans (nothing new persisted); the prompt
+change is text. No Rust, no schema version.
+
+---
+
+## 2026-07-05 — Fix `sync_resolve_merge` "missing required key theirCommit" (serde enum-field bug)
+
+**Symptom.** Resolving a git merge conflict on an old git-tracked project threw *"invalid args
+`theirCommit` for command `sync_resolve_merge`: command sync_resolve_merge missing required key
+theirCommit."*
+
+**Root cause — a serde enum quirk, not a caller typo.** The frontend was correct end-to-end: the resolve
+invoke (`src/services/tauri-repository.ts:296`) sends `{ theirCommit, baseHead, resolutions }` (camelCase,
+matching the Tauri command). The value arrived `undefined` one boundary earlier. `PullOutcome`
+(`src-tauri/src/types.rs`) is an externally-tagged enum with `#[serde(rename_all = "camelCase", tag =
+"kind")]`. **On an enum, `rename_all` renames only the variant tags — not the fields inside struct
+variants.** So `MergeRequired { their_commit, base_head, conflicts }` serialized those two fields as
+snake_case, while the TS type (`src/types/index.ts:1473`) and the whole conflict flow
+(`sync-policy.ts` latch → `ConflictResolutionModal.tsx` → resolve invoke) read `theirCommit`/`baseHead`
+→ `undefined` → Tauri drops the key and reports it missing. (`conflicts` rendered fine because
+`ConflictFile` is a standalone struct whose own `rename_all` *does* reach its fields.) It stayed latent
+because `MergeRequired` is produced only on a genuinely divergent `sync_pull` — an old project with a
+diverged remote — and no test asserted the *serialized JSON keys* (the existing `sync-policy.test.ts`
+mocks a hand-written camelCase payload).
+
+**Fix (Rust only — the TS contract was already camelCase).** Add `rename_all_fields = "camelCase"` to
+`PullOutcome` so `their_commit`/`base_head` serialize as `theirCommit`/`baseHead` (single-word fields like
+`commits`/`conflicts` are unchanged); `sync_pull` now emits the keys the frontend already expects, and the
+whole downstream chain carries real OIDs. The same attribute was added to the three sibling command-facing
+tagged enums — `Resolution`, `ResolveOutcome`, `PushOutcome` — as recurrence-proofing (a no-op on their
+current single-word fields; audit confirmed these four are the *only* enums with struct variants, and every
+other `rename_all` site is a standalone struct that already camelCases correctly). No frontend change and no
+band-aid (`?? their_commit` would mask the contract, not fix it).
+
+**Verify.** Frontend gate unaffected and green (no TS touched): typecheck clean, `npm test` **812 pass**,
+build ok. A new Rust `#[cfg(test)]` serde test (`types.rs` `mod tests`) serializes
+`PullOutcome::MergeRequired` and asserts the wire keys are `theirCommit`/`baseHead` (and `their_commit` is
+absent) + round-trips back — the guard the frontend mock cannot provide. **`cargo test` is not runnable in
+this CI** (no `gdk-3.0`/GTK system libs, the standing constraint) — the test is written to the file's
+established `serde_json` round-trip idiom and runs on a desktop toolchain. **Reaching users requires a
+desktop rebuild** (a Rust recompile); no data migration — the `their_commit` OID is still pinned alive under
+`refs/twriter/incoming`, so after rebuild + a re-pull, `sync_pull` re-detects the conflict, emits the
+correct keys, and *Resolve* completes.
+
+**Rollback.** `git revert` the commit (drops the `rename_all_fields` attribute + the test). Pure
+serialization change; no schema version, no persisted data affected.

@@ -42,7 +42,10 @@ Then assess the section AS A PART:
     or the emphasis has shifted so the section now serves a different point than its role).
   For each: set "kind", a concrete "detail", and "relatedSectionTitle" (the neighbour
   involved) when one applies. Report only real breaks — do not invent findings to fill the
-  list. An empty list is the correct answer for a well-meshed section.
+  list. An empty list is the correct answer for a well-meshed section. It is also the correct
+  answer for a genuinely AGGREGATE section (a catalogue entry, an inventory item, a coordinate
+  case with no argued throughline): the absence of interlocks there is honest form, not a break
+  — do not flag missing commitments for and-summative material.
 - overallReadiness: "draft" | "developing" | "nearly-there" | "solid"
 - nextAction: The single most important next step, framed as a LOCATED GAP and the VECTOR
   that fills it — what the structure now requires, not a chore the writer must summon will

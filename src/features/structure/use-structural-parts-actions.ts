@@ -2,9 +2,12 @@ import { useCallback } from 'react';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
-import { reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
+import { computeSurroundHash, reanchoredPart, resolvePart } from '../../lib/structural-part-helpers';
+import { pruneEdges, seedRealizations } from '../../lib/structural-graph-helpers';
+import { newSectionId } from '../../lib/section-ids';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { computeHash } from '../../lib/utils';
+import type { StructuralPart } from '../../types';
 import { normalizeForHash } from '../../lib/gist-helpers';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
@@ -33,6 +36,8 @@ const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API 
 export const useStructuralPartsActions = () => {
   const setIsProcessing = useStore((s) => s.setIsProcessing);
   const setStructuralParts = useStore((s) => s.setStructuralParts);
+  const setStructuralEdges = useStore((s) => s.setStructuralEdges);
+  const setRealizations = useStore((s) => s.setRealizations);
   const saveCurrentState = useStore((s) => s.saveCurrentState);
 
   const runDiscoverStructuralParts = useCallback(async () => {
@@ -87,12 +92,25 @@ export const useStructuralPartsActions = () => {
         const { sectionIds, orphan, startOffset, endOffset } = resolvePart(p, markdown, sections);
         return {
           ...p,
+          origin: 'discovered' as const,
           sectionIds,
           // Unresolved at discovery keeps no hash (recompute re-flags it as orphan).
           sourceHash: orphan ? p.sourceHash : computeHash(normalizeForHash(markdown.slice(startOffset, endOffset))),
+          // Stamp the surround too (the Phase-6 homotypy anchor); '' when unresolvable.
+          surroundHash: orphan ? p.surroundHash : computeSurroundHash(p, markdown),
         };
       });
-      setStructuralParts(resolved);
+      // MERGE, don't replace: hand-authored parts (Phase 4 canvas) survive re-discovery
+      // unclobbered; only discovered parts are refreshed (Phase 2 groundwork).
+      const authored = useStore.getState().structuralParts.filter((p) => p.origin === 'authored');
+      const merged = [...authored, ...resolved];
+      setStructuralParts(merged);
+      // Seed the function-taggable realizations from the fresh part↔section overlap,
+      // preserving any tags the writer already set (annotate-only).
+      setRealizations(seedRealizations(merged, sections, useStore.getState().realizations));
+      // Drop edges left dangling by a part that re-discovered under a new content-id,
+      // so they don't linger in the sidecar or the AI-prompt summaries.
+      setStructuralEdges(pruneEdges(useStore.getState().structuralEdges, merged));
       // Persist the discovery to the committed sidecar (mirrors use-gist-actions).
       await saveCurrentState();
     } catch (e) {
@@ -102,7 +120,7 @@ export const useStructuralPartsActions = () => {
       setIsProcessing(false);
       useStore.getState().endOp(opId);
     }
-  }, [setIsProcessing, setStructuralParts, saveCurrentState]);
+  }, [setIsProcessing, setStructuralParts, setStructuralEdges, setRealizations, saveCurrentState]);
 
   /**
    * Per-part repair — Mode 1 (pure re-anchor, NO AI). Re-stamp a stale part's
@@ -130,5 +148,37 @@ export const useStructuralPartsActions = () => {
     [setStructuralParts, saveCurrentState],
   );
 
-  return { runDiscoverStructuralParts, reanchorPart };
+  /**
+   * Promote a captured thought (an inbox item) to an AUTHORED GERM part (Arpeggio
+   * Phase 3): a W₁ node that exists pre-prose — empty anchors, no section mapping,
+   * `status: 'germ'` (content debt). Uses an OPAQUE id (`newSectionId`), never the
+   * content hash (which collapses on empty anchors), and `origin: 'authored'` so
+   * re-discovery never clobbers it and the germ-exemption keeps it off the orphan
+   * list. It surfaces immediately in the Argument Topology PARTS projection.
+   */
+  const promoteToGermPart = useCallback(
+    async (text: string) => {
+      const claim = text.trim();
+      if (!claim) return;
+      const parts = useStore.getState().structuralParts;
+      const id = newSectionId(new Set(parts.map((p) => p.id)));
+      const part: StructuralPart = {
+        id,
+        kind: 'germ',
+        claim,
+        startAnchor: '',
+        endAnchor: '',
+        sectionIds: [],
+        confidence: 1,
+        rationale: '',
+        origin: 'authored',
+        status: 'germ',
+      };
+      setStructuralParts([...parts, part]);
+      await saveCurrentState();
+    },
+    [setStructuralParts, saveCurrentState],
+  );
+
+  return { runDiscoverStructuralParts, reanchorPart, promoteToGermPart };
 };

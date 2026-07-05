@@ -3,13 +3,17 @@ import type {
   AnalysisVersion,
   Dependency,
   DialogueMessage,
+  PrecedenceData,
   ProvenanceMark,
+  Realization,
   Recenterings,
   ReverseOutlineDoc,
   Section,
+  SectionIdBinding,
   SectionSpec,
   Snapshot,
   StoredGist,
+  StructuralEdge,
   StructuralPart,
   TestSuite,
   TestSuiteEntry,
@@ -89,6 +93,33 @@ export interface DocumentStateSlice {
    * writer runs "Discover parts".
    */
   structuralParts: StructuralPart[];
+  /**
+   * The W₁ edge-set (Phase 2) — typed part-to-part relations, persisted to
+   * `.twriter/structural-edges.json`. Domain data; travels with the document.
+   * Empty until the writer discovers or draws edges.
+   */
+  structuralEdges: StructuralEdge[];
+  /**
+   * The part↔section realizations (Phase 2) — the function-tagged mapping,
+   * persisted to `.twriter/realizations.json`. Seeded from part↔section overlap
+   * and tagged by the writer. Domain data; travels with the document.
+   */
+  realizations: Realization[];
+  /**
+   * The precedence sidecar (Phase 5) — regions (the exposition-strategy dimension),
+   * authored constraints, and suspend/convert-to-IOU overrides, persisted to
+   * `.twriter/precedence.json`. The DERIVED constraints are recomputed on demand
+   * (never persisted); only the writer's authored/region/override state lives here.
+   */
+  precedence: PrecedenceData;
+  /**
+   * The section-id ledger (Phase 1) — stable ids bound to headings by verbatim
+   * body anchor, persisted to `.twriter/section-ids.json`. Rebuilt on every live
+   * parse by `reconcileSectionIds` (in App.tsx) and written back here when it
+   * changes; the freeze on first load keeps existing testSuite keys attached.
+   * Domain data — travels with the document — so it lives here beside `sections`.
+   */
+  sectionIdLedger: SectionIdBinding[];
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -107,6 +138,14 @@ export interface DocumentStateSlice {
   addProvenanceMark: (mark: ProvenanceMark) => void;
   /** Replace the document's discovered structural parts (the discovery result). */
   setStructuralParts: (parts: StructuralPart[]) => void;
+  /** Replace the W₁ edge-set (discovery / merge / accept / the load path). */
+  setStructuralEdges: (edges: StructuralEdge[]) => void;
+  /** Replace the part↔section realizations (seeding / tagging / the load path). */
+  setRealizations: (realizations: Realization[]) => void;
+  /** Replace the precedence sidecar (regions / authored constraints / overrides / the load path). */
+  setPrecedence: (precedence: PrecedenceData) => void;
+  /** Replace the section-id ledger (the reconcile result / the load path). */
+  setSectionIdLedger: (ledger: SectionIdBinding[]) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -184,6 +223,10 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   gist: null,
   provenanceMarks: [],
   structuralParts: [],
+  structuralEdges: [],
+  realizations: [],
+  precedence: { regions: [], authored: [], overrides: [] },
+  sectionIdLedger: [],
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -213,6 +256,10 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   addProvenanceMark: (mark) =>
     set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
   setStructuralParts: (parts) => set({ structuralParts: parts }),
+  setStructuralEdges: (edges) => set({ structuralEdges: edges }),
+  setRealizations: (realizations) => set({ realizations }),
+  setPrecedence: (precedence) => set({ precedence }),
+  setSectionIdLedger: (ledger) => set({ sectionIdLedger: ledger }),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>

@@ -10,8 +10,14 @@ import type {
   PushOutcome,
   Resolution,
   ResolveOutcome,
+  InboxItem,
+  LedgerEntry,
+  PrecedenceData,
+  Realization,
   ReverseOutlineDoc,
+  SectionIdBinding,
   StoredGist,
+  StructuralEdge,
   StructuralPart,
   SearchHit,
   SectionInput,
@@ -77,6 +83,38 @@ export interface StoredProjectData {
    * TS layer owns the shape. Absent until the writer first runs "Discover parts".
    */
   structuralParts?: StructuralPart[];
+  /**
+   * The W₁ EDGE-SET — typed part-to-part functional relations (`.twriter/
+   * structural-edges.json` on desktop; Phase 2). Turns the discovered part
+   * node-set into a configuration. Persisted as the BARE array; opaque to the Rust
+   * mirror (an opaque `Value`, like `structuralParts`), so the TS layer owns the
+   * shape. Absent until the writer discovers or draws edges.
+   */
+  structuralEdges?: StructuralEdge[];
+  /**
+   * The part↔section REALIZATIONS — the function-tagged mapping between W₁ parts
+   * and W₂ sections (`.twriter/realizations.json` on desktop; Phase 2). Seeded
+   * deterministically from part↔section overlap, then tagged by the writer.
+   * Persisted as the BARE array; opaque to the Rust mirror, so the TS layer owns
+   * the shape. Absent until parts exist.
+   */
+  realizations?: Realization[];
+  /**
+   * The PRECEDENCE sidecar (`.twriter/precedence.json`; Arpeggio Phase 5) — regions
+   * (the strategy dimension), authored constraints, and suspend/convert-to-IOU
+   * overrides. Persisted as an opaque JSON object (like `gist`) — the TS layer owns
+   * the shape. Absent until the writer declares a region or authors a constraint.
+   */
+  precedence?: PrecedenceData;
+  /**
+   * The section-id ledger — stable ids bound to headings by verbatim body anchor
+   * (`.twriter/section-ids.json` on desktop; Phase 1). Keeps `testSuite` keys,
+   * spec filenames, and dependency refs attached across rename / reorder /
+   * duplicate-title. Persisted as the BARE array; opaque to the Rust mirror (an
+   * opaque `Value`, like `structuralParts`), so the TS layer owns the shape.
+   * Absent on pre-Phase-1 projects — seeded from the current parse on first load.
+   */
+  sectionIdLedger?: SectionIdBinding[];
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;
@@ -201,6 +239,27 @@ export interface Repository {
    * single YAML sidecar; the browser updates its IndexedDB session store.
    */
   saveSession(record: SessionRecord): Promise<void>;
+
+  /**
+   * The Ledger (Arpeggio Phase 3) — all recorded entries for the open project,
+   * newest first. Desktop reads `.twriter/ledger/*.yaml`; the browser reads its
+   * IndexedDB ledger store. Per-entry (merge-friendly), like the sessions.
+   */
+  listLedger(): Promise<LedgerEntry[]>;
+  /** Persist one ledger entry (create or overwrite by `id`). */
+  saveLedgerEntry(entry: LedgerEntry): Promise<void>;
+  /** Remove one ledger entry by `id` (waive is a status, deletion is rare). */
+  deleteLedgerEntry(id: string): Promise<void>;
+
+  /**
+   * The capture inbox (Arpeggio Phase 3) — parked thoughts, newest first. Desktop
+   * reads `.twriter/inbox/*.md`; the browser reads its IndexedDB inbox store.
+   */
+  listInbox(): Promise<InboxItem[]>;
+  /** Persist one inbox item (create or overwrite by `id`). */
+  saveInboxItem(item: InboxItem): Promise<void>;
+  /** Remove one inbox item by `id` (on promote/append/discard). */
+  deleteInboxItem(id: string): Promise<void>;
 
   /**
    * Blob-free listing of the open project's snapshot history, newest first.

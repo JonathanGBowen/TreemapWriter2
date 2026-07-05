@@ -61,6 +61,10 @@ const overlaps = (aStart: number, aEnd: number, bStart: number, bEnd: number): b
  * orphan with an empty section mapping.
  */
 export function resolvePart(part: StructuralPart, markdown: string, sections: Section[]): ResolvedPart {
+  // An empty anchor cannot be relocated (findBlockByAnchor would match the first
+  // block on a '' prefix). An authored germ part with no prose yet is unresolved —
+  // orphan here, but exempted from orphan-FLAGGING in recomputeStructuralStale.
+  if (!part.startAnchor || !part.endAnchor) return { startOffset: -1, endOffset: -1, sectionIds: [], orphan: true };
   const blocks = segmentParagraphs(markdown);
   const startBlock = findBlockByAnchor(blocks, part.startAnchor);
   const endBlock = findBlockByAnchor(blocks, part.endAnchor);
@@ -91,13 +95,67 @@ export function reanchoredPart(
   const startBlock = findBlockByAnchor(blocks, part.startAnchor);
   const endBlock = findBlockByAnchor(blocks, part.endAnchor);
   if (!startBlock || !endBlock) return null;
-  return {
+  const reanchored: StructuralPart = {
     ...part,
     startAnchor: anchorFor(startBlock.text),
     endAnchor: anchorFor(endBlock.text),
     sectionIds,
     sourceHash: computeHash(normalizeForHash(markdown.slice(startOffset, endOffset))),
   };
+  // Re-stamp the surround too, so a re-anchor also clears a homotypy flag (Phase 6).
+  return { ...reanchored, surroundHash: computeSurroundHash(reanchored, markdown) };
+}
+
+/**
+ * Hash of a part's immediate document SURROUND — the paragraph block just before
+ * its start anchor + the block just after its end anchor. The direct inverse of
+ * `sourceHash` (which hashes the part's OWN text): `surroundHash` HOLDS while the
+ * neighbours are unchanged and MOVES when the part is relocated / re-neighboured.
+ * The homotypy anchor (Phase 6) — "the same letters, a new surround." Empty for an
+ * unresolvable (germ / orphan) part, so it never falsely reads as changed.
+ */
+export function computeSurroundHash(part: StructuralPart, markdown: string): string {
+  if (!part.startAnchor || !part.endAnchor) return '';
+  const blocks = segmentParagraphs(markdown);
+  const s = findBlockByAnchor(blocks, part.startAnchor);
+  const e = findBlockByAnchor(blocks, part.endAnchor);
+  if (!s || !e) return '';
+  const before = s.index > 0 ? blocks[s.index - 1].text : '';
+  const after = e.index < blocks.length - 1 ? blocks[e.index + 1].text : '';
+  // A record-separator glyph between the two so `before|after` can't collide.
+  return computeHash(normalizeForHash(`${before}␞${after}`));
+}
+
+export interface StructuralHomotypyResult {
+  /** Part ids whose OWN text HELD but whose document surround/order moved (the I.4 inversion). */
+  homotypyIds: string[];
+}
+
+/**
+ * The INVERSE of `recomputeStructuralStale` (Phase 6, repairing muddle I.4): flag
+ * each part whose span text is UNCHANGED (`src === sourceHash`) but whose stored
+ * `surroundHash` no longer matches its current surround — "after restructuring, one
+ * cannot correctly even write the same letters." Partitions cleanly with staleness:
+ * a part is STALE (text changed) XOR homotypy-candidate (text held, surround moved)
+ * XOR clean. Germ exemption + orphan skip mirror the staleness check; a part with no
+ * stored `surroundHash` (pre-Phase-6, or never stamped) has no "before" to diff and
+ * is never a candidate. Annotate-only; a re-anchor re-stamps and clears it.
+ */
+export function recomputeHomotypy(
+  parts: StructuralPart[],
+  markdown: string,
+  sections: Section[],
+): StructuralHomotypyResult {
+  const homotypyIds: string[] = [];
+  for (const p of parts) {
+    if (p.origin === 'authored' && !p.startAnchor && !p.endAnchor) continue; // germ: content-debt
+    const r = resolvePart(p, markdown, sections);
+    if (r.orphan) continue; // orphans belong to the staleness path
+    const src = computeHash(normalizeForHash(markdown.slice(r.startOffset, r.endOffset)));
+    if (src !== p.sourceHash) continue; // text CHANGED → stale, not homotypy
+    if (p.surroundHash && computeSurroundHash(p, markdown) !== p.surroundHash) homotypyIds.push(p.id);
+  }
+  return { homotypyIds };
 }
 
 export interface StructuralStaleResult {
@@ -123,11 +181,19 @@ export function recomputeStructuralStale(
   const staleIds: string[] = [];
   const orphanIds: string[] = [];
   for (const p of parts) {
+    // An authored germ part (no anchors yet) is CONTENT-DEBT — unrealized prose,
+    // not a lost anchor. It is neither stale nor orphan; skip it entirely (Phase 2).
+    if (p.origin === 'authored' && !p.startAnchor && !p.endAnchor) continue;
     const r = resolvePart(p, markdown, sections);
     if (r.orphan) {
       orphanIds.push(p.id);
       continue;
     }
+    // A part with no stored `sourceHash` (pre-staleness discovery, or an older
+    // sidecar entry) has no baseline to diff against — it is "unknown", not stale.
+    // Skip it (mirrors the `recomputeHomotypy` `surroundHash` guard); the hash is
+    // stamped for real on the next re-anchor / re-discovery.
+    if (p.sourceHash === undefined) continue;
     if (computeHash(normalizeForHash(markdown.slice(r.startOffset, r.endOffset))) !== p.sourceHash) {
       staleIds.push(p.id);
     }

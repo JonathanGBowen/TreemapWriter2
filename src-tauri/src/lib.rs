@@ -119,6 +119,14 @@ pub fn run() {
             // commands/session.rs
             commands::session::session_list,
             commands::session::session_save,
+            // commands/ledger.rs (Phase 3)
+            commands::ledger::ledger_list,
+            commands::ledger::ledger_save,
+            commands::ledger::ledger_delete,
+            // commands/inbox.rs (Phase 3)
+            commands::inbox::inbox_list,
+            commands::inbox::inbox_save,
+            commands::inbox::inbox_delete,
             // commands/credentials.rs (Phase 4a)
             commands::credentials::credentials_set,
             commands::credentials::credentials_get,

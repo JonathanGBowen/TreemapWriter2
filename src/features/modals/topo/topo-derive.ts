@@ -23,8 +23,10 @@ import type {
   TestSuite,
   TestSuiteEntry,
   Dependency,
+  FunctionTag,
   SectionFunction,
   ReadinessLevel,
+  StructuralEdgeKind,
 } from '../../../types';
 
 export type Status = TestSuiteEntry['status']; // 'idle'|'running'|'success'|'fail'|'stale'
@@ -62,6 +64,11 @@ export interface Arc {
   source: string; // dep.id — the prerequisite/reference section
   target: string; // the section that OWNS the dependency entry (depends on source)
   type: DepType;
+  // --- PARTS projection only (Phase 2). Section projections leave both unset. ---
+  /** Membership arc (part→section): the job the section does for the part, when tagged. */
+  functionTag?: FunctionTag;
+  /** Part→part arc: the typed W₁ relation kind (drives line treatment + the legend). */
+  edgeKind?: StructuralEdgeKind;
 }
 
 export interface BoardData {

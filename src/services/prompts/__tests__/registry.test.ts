@@ -52,6 +52,8 @@ const HISTORICAL_KEYS = [
   'segmentSummaryTask',
   // StructuralPart discovery (2026-07-01) — the whole-document sibling of Articulation.
   'discoverStructuralPartsPrompt',
+  // StructuralEdge discovery (2026-07-03, Arpeggio Phase 2) — the W₁ edge-set.
+  'discoverStructuralEdgesPrompt',
   'rootTaskInstruction',
   'subTaskInstruction',
   'suggestContentPrompt',

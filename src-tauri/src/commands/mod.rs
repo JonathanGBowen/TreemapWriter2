@@ -9,6 +9,8 @@
 pub mod agent_fs;
 pub mod credentials;
 pub mod document;
+pub mod inbox;
+pub mod ledger;
 pub mod project;
 pub mod search;
 pub mod session;
