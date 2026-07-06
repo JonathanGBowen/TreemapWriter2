@@ -269,8 +269,9 @@ lightweight **Zotero bridge** (2026-06-21, see
 (`src/lib/bibImport.ts` — pure, no dependency) into one ephemeral source per
 reference (`Author (Year)` chip, APA + abstract as content), so Citations builds an
 accurate `## References` section and APA audit instead of guessing. Full source text
-still rides the existing `.md` upload; bibliographies are session-only, and BibTeX /
-the live Zotero local-API picker / Web-API sync are deliberately out of scope (below).
+rides the `.md`/PDF/DOCX upload; BibTeX / the live Zotero local-API picker / Web-API sync
+are deliberately out of scope (below). (Sources — bibliographies included — now persist
+with the project as of 2026-07-06; see below.)
 
 **Role-aware referenced works + mixed-source passes** shipped 2026-07-06 (see
 [`docs/migration-log.md`](docs/migration-log.md)): the standard revision mode now treats
@@ -286,8 +287,21 @@ was split into orthogonal `hasSources` (prompt shape) + `receiptRequired` (schem
 rule), so a source-derived proposal carries its receipt while an intrinsic one survives
 (previously *all* intrinsic edits were silently dropped once any source was attached).
 Assembly and Citations stay strictly receipted. The single-source `fallbackSourceId` is
-now guarded so an intrinsic proposal is never mis-attributed. Sources remain ephemeral
-(no persistence change).
+now guarded so an intrinsic proposal is never mis-attributed.
+
+**PDF/DOCX source upload + source persistence** shipped 2026-07-06 (see
+[`docs/migration-log.md`](docs/migration-log.md)): sources can be uploaded as **PDF or DOCX**
+(text extracted client-side via `pdfjs-dist` / `mammoth` in a new pure `src/lib/docExtract.ts`,
+dynamically imported so pdf.js splits into its own chunk; runs in both browser and webview),
+and sources are now **persisted with the project** rather than session-only. The collection
+moved from the ephemeral `revision-state` slice to persisted domain state in `document-state`
+(a committed `.twriter/sources.json` sidecar via the bare-array + opaque-Rust-`Value` recipe
+cloned from `structuralParts`); the per-pass *selection* stays ephemeral. Extracted **text
+only** is stored (not the binary); `SourceDocument` gained optional `origin`/`fileName`/`mime`
+metadata. Deferred by design: OCR for scanned PDFs; auto-chunking of book-length documents (the
+`guardContextFit` pre-flight still blocks over-window sources); the heavier per-item-file
+storage (Pattern B, `sources_*` IPC) — only worth it for many/huge files; storing the original
+uploaded binary.
 
 A **catalog/ladder reconcile** shipped 2026-06-28 (follow-up to the six-fix pass; see
 [`docs/migration-log.md`](docs/migration-log.md)) so the built-in Gemini list actually
@@ -631,12 +645,12 @@ Unless requirements genuinely change:
   CLI, then the standard project-open flow.
 - **Y.js / Automerge real-time collaboration.** Only if a co-author is ever
   invited. Otherwise out of scope.
-- **Deep Zotero integration.** The Glass-Box bridge is file-import only
-  (CSL-JSON / `.md`, ephemeral). A live **local-API picker** (`localhost:23119`,
-  read-only, Zotero-7+ — would need the "Allow other applications…" toggle, a
-  CORS/Tauri-command path, and a picker modal), **Web-API sync** (key in keyring),
-  **BibTeX/RIS** parsing, and **persisting** imported bibliographies across sessions
-  are all deferred — revisit only if file import proves too manual in real use.
+- **Deep Zotero integration.** The Glass-Box bridge is file-import only (CSL-JSON /
+  `.md` / PDF / DOCX). Imported sources now **persist** with the project (2026-07-06),
+  but a live **local-API picker** (`localhost:23119`, read-only, Zotero-7+ — would need
+  the "Allow other applications…" toggle, a CORS/Tauri-command path, and a picker modal),
+  **Web-API sync** (key in keyring), and **BibTeX/RIS** parsing are all deferred — revisit
+  only if file import proves too manual in real use.
 
 (The permanent non-goals — accounts, billing, telemetry, i18n, feature flags —
 are a matter of project *identity* and live in [`docs/VISION.md`](docs/VISION.md),

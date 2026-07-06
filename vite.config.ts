@@ -28,7 +28,10 @@ export default defineConfig(({ mode }) => {
         }
       },
       optimizeDeps: {
-        exclude: ['@lezer/markdown']
+        exclude: ['@lezer/markdown'],
+        // pdfjs-dist ships an ESM worker + is dynamically imported by lib/docExtract;
+        // pre-bundling it avoids dev-server prebundle churn on first PDF upload.
+        include: ['pdfjs-dist']
       }
     };
 });

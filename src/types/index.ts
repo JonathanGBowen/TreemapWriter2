@@ -577,9 +577,11 @@ export type AssemblySubMode = 'verbatim' | 'woven';
 export type SourceRole = 'reference' | 'bibliographic' | 'guidance' | 'voice';
 
 /**
- * A source document the revision engine may draw on. Ephemeral (session-only): the
- * writer pastes / uploads reference works, advisor notes, reviewer reports, or a
- * bibliography when revising; sources are NOT persisted to the project file.
+ * A source document the revision engine may draw on — pasted notes, an imported
+ * bibliography, or an uploaded PDF/DOCX/text file with its extracted text. Persisted
+ * domain data: the collection lives in `document-state` and is saved to the
+ * `.twriter/sources.json` sidecar (the per-pass *selection* stays ephemeral in
+ * `revision-state`). See `lib/docExtract.ts` for the upload/extraction path.
  */
 export interface SourceDocument {
   id: string;
@@ -591,8 +593,16 @@ export interface SourceDocument {
   label: string;
   /** A single glyph icon (HLD style). */
   glyph: string;
-  /** The full source text the model may quote or draw on. */
+  /** The full source text the model may quote or draw on (extracted, for uploaded files). */
   content: string;
+  /** How this source was ingested. Optional (older sessions predate it). */
+  origin?: 'paste' | 'upload' | 'bibliography';
+  /** Original filename, for an uploaded PDF/DOCX/text source. */
+  fileName?: string;
+  /** Original MIME type of an uploaded file, when the browser reported one. */
+  mime?: string;
+  /** When the source was added (epoch ms). */
+  addedAt?: number;
 }
 
 /**

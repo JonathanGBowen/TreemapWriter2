@@ -9,6 +9,7 @@ import type {
   Section,
   SectionSpec,
   Snapshot,
+  SourceDocument,
   StoredGist,
   StructuralPart,
   TestSuite,
@@ -29,6 +30,10 @@ const blankEntry = (): TestSuiteEntry => ({
   status: 'idle',
   history: [],
 });
+
+let srcSeq = 0;
+/** Monotonic id for a source document — Date.now alone can collide within a tick. */
+export const makeSourceId = (): string => `src_${Date.now()}_${srcSeq++}`;
 
 /**
  * True when an entry holds anything the user (or the AI on their behalf) authored.
@@ -89,6 +94,15 @@ export interface DocumentStateSlice {
    * writer runs "Discover parts".
    */
   structuralParts: StructuralPart[];
+  /**
+   * The revision workspace's source documents (pasted notes, imported bibliography,
+   * uploaded PDF/DOCX/text with their extracted text). Persisted domain data — it must
+   * survive reload and travel with git sync (`.twriter/sources.json`), so it lives here
+   * beside the other per-document collections, NOT in the ephemeral revision slice
+   * (which keeps only the per-pass *selection* + proposals). Empty until the writer adds
+   * a source.
+   */
+  sources: SourceDocument[];
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -107,6 +121,12 @@ export interface DocumentStateSlice {
   addProvenanceMark: (mark: ProvenanceMark) => void;
   /** Replace the document's discovered structural parts (the discovery result). */
   setStructuralParts: (parts: StructuralPart[]) => void;
+  /** Replace all source documents (the load path). */
+  setSources: (sources: SourceDocument[]) => void;
+  /** Add one source document (append). */
+  addSource: (source: SourceDocument) => void;
+  /** Remove one source document by id. */
+  removeSource: (id: string) => void;
   setLastAutoSave: (date: Date | null) => void;
 
   /**
@@ -184,6 +204,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   gist: null,
   provenanceMarks: [],
   structuralParts: [],
+  sources: [],
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -213,6 +234,9 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   addProvenanceMark: (mark) =>
     set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
   setStructuralParts: (parts) => set({ structuralParts: parts }),
+  setSources: (sources) => set({ sources }),
+  addSource: (source) => set((state) => ({ sources: [...state.sources, source] })),
+  removeSource: (id) => set((state) => ({ sources: state.sources.filter((s) => s.id !== id) })),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 
   setCachedSuggestions: (sectionId, inputHash, suggestions) =>

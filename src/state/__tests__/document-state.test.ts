@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { create } from 'zustand';
 import type { StateCreator } from 'zustand';
-import { createDocumentStateSlice, type DocumentStateSlice } from '../document-state';
+import { createDocumentStateSlice, makeSourceId, type DocumentStateSlice } from '../document-state';
 import type { SectionSpec, TestSuiteEntry } from '../../types';
 
 // The slice is typed against the whole AppState (it reads `get().createSnapshot`
@@ -131,6 +131,36 @@ describe('document-state mutators', () => {
       store.getState().pruneOrphanEntries([]);
       // Same reference back: nothing removed.
       expect(store.getState().testSuite).toBe(before);
+    });
+  });
+
+  describe('sources (persisted collection)', () => {
+    const src = (id: string) => ({
+      id,
+      role: 'reference' as const,
+      kind: 'Reference',
+      label: id,
+      glyph: '❡',
+      content: `content of ${id}`,
+    });
+
+    it('addSource appends; removeSource drops by id', () => {
+      const s = store.getState();
+      s.addSource(src('a'));
+      s.addSource(src('b'));
+      expect(store.getState().sources.map((x) => x.id)).toEqual(['a', 'b']);
+      store.getState().removeSource('a');
+      expect(store.getState().sources.map((x) => x.id)).toEqual(['b']);
+    });
+
+    it('setSources replaces the collection (the load path)', () => {
+      store.getState().addSource(src('a'));
+      store.getState().setSources([src('x'), src('y')]);
+      expect(store.getState().sources.map((x) => x.id)).toEqual(['x', 'y']);
+    });
+
+    it('mints collision-safe ids', () => {
+      expect(makeSourceId()).not.toBe(makeSourceId());
     });
   });
 });

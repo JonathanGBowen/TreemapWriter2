@@ -5234,3 +5234,62 @@ undo only the receipt split, restore the single `sourceless` boolean in
 `ai-provider.revisions.ts` + `revision-helpers.ts` and the strict `normalizeOne` guard;
 the `role` field is inert if unused, so a partial revert degrades cleanly to the prior
 strict-when-sourced behavior.
+
+---
+
+## 2026-07-06 — Glass Box sources: PDF/DOCX upload + persistence
+
+**What changed.** Source documents can now be **uploaded as PDF or DOCX** (text extracted
+client-side) and — a deliberate architecture change — are now **persisted with the
+project** instead of being session-only.
+
+- **Text extraction** — new pure module `src/lib/docExtract.ts` (mirrors `bibImport.ts`):
+  `extractPdf` (**dynamic** `import('pdfjs-dist')` so the ~425 KB lib splits into its own
+  chunk, loaded only on first PDF; worker wired via a `?url` import → `GlobalWorkerOptions.
+  workerSrc` — the repo's first `?url`/worker usage), `extractDocx` (dynamic
+  `import('mammoth')` → `extractRawText`), and `extractSourceText(file)` dispatching by
+  extension with friendly errors (unsupported type, empty/scanned PDF). Runs in **both** the
+  browser and the Tauri webview (no Rust dependency — parity preserved). Two new runtime deps:
+  `pdfjs-dist`, `mammoth` (user-approved). `vite.config.ts` gained `optimizeDeps.include:
+  ['pdfjs-dist']`.
+- **Persistence** — sources moved from the **ephemeral** `revision-state` slice to
+  **persisted domain** state in `document-state` (`sources: SourceDocument[]` + `setSources`
+  / `addSource` / `removeSource`, and `makeSourceId`), saved to a committed
+  `.twriter/sources.json` sidecar via the **bare-array + opaque Rust `Value`** recipe cloned
+  from `structuralParts` (`repository.ts` field → `types.rs` `Option<serde_json::Value>` →
+  `layout.rs::sources_json()` → `document.rs` read/write; browser rides the whole-blob
+  `setProject`, no code). The 2026-06-24 sparse-payload lesson is honored (opaque `Value`,
+  never a strict mirror). `revision-state` keeps only the **ephemeral per-pass selection**
+  (`selectedSourceIds` + `selectSource`/`deselectSource`/`setSelectedSourceIds`/toggle); on
+  project load every persisted source is default-selected. `SourceDocument` gained optional
+  `origin`/`fileName`/`mime`/`addedAt` metadata (opaque-safe).
+- **UI** (`SourcePicker.tsx`): the upload `<input accept>` now takes `.pdf,.docx` (+ text/md);
+  binaries are read as ArrayBuffer and extracted with the `beginOp`/`endOp` activity pill + a
+  stable-id sonner toast ("Extracting…" → success / error), and a soft size warning on very
+  large text. Add/remove **write through** with an explicit `saveCurrentState()` (a plain
+  state mutation otherwise wouldn't persist — caught during e2e verification). Chips show the
+  file type + word count. All `revisionSources` consumers (`use-revision-actions`,
+  `use-suggest-directives`, `RevisionTopBar`, `ProposalCard`, `RevisionTokenPreview`) now read
+  `sources`.
+
+**Scope / deferred.** Store extracted **text only**, not the original binary. Storage is the
+simple whole-collection Pattern A (rides `project_write`); the per-item-file Pattern B
+(`sources_*` IPC) is deferred to only-if-needed (many/huge files). No OCR for scanned PDFs; no
+auto-chunking of book-length documents (the existing `guardContextFit` pre-flight blocks
+over-window sources without truncation, unchanged).
+
+**Verify.** `npm run typecheck` clean; `npm test` 669 pass (new: `docExtract.test.ts` —
+dispatch/error paths + a **real** DOCX extraction against a committed `sample.docx` fixture
+via a node/browser mammoth bridge; relocated source-collection tests in `document-state.test.ts`
++ selection tests in `revision-state.test.ts`; the Rust `sources_round_trips_through_write_then_read`
+mirrors the passing `structural_parts` one); `npm run lint` 0 errors; `npm run build` succeeds
+(pdf.js in its own chunk + the emitted `pdf.worker.min-*.mjs` asset). **Real-browser e2e**
+(headless Chromium): open the Revision workspace → upload the DOCX fixture → chip appears with a
+DOCX tag + word count → the source is written to IndexedDB (`sources` length 1) → **survives a
+page reload**. (`cargo test` for the Rust sidecar not run here — no GTK libs — but the test
+clones the proven structural-parts round-trip.)
+
+**Rollback.** `git revert`. Extraction is additive (docExtract + the deps). The persistence is a
+superset of the old ephemeral behavior — reverting restores session-only sources; the
+`.twriter/sources.json` sidecar and the opaque Rust field are inert if unused, and TS→Rust
+serde tolerates their absence.

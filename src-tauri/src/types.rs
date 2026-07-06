@@ -281,6 +281,13 @@ pub struct StoredProjectData {
     /// `provenance`, so a sparse/evolving shape can never reject the whole save.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub structural_parts: Option<serde_json::Value>,
+    /// The revision workspace's source documents (`.twriter/sources.json`): pasted notes,
+    /// imported bibliography, and uploaded PDF/DOCX/text with their extracted text.
+    /// Schema-agnostic on the Rust side — the TS layer owns the shape (a bare
+    /// `SourceDocument[]`). Opaque `Value`, like `gist`/`structural_parts`, so a
+    /// sparse/evolving shape can never reject the whole save.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub sources: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
