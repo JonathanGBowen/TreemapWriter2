@@ -272,6 +272,23 @@ accurate `## References` section and APA audit instead of guessing. Full source 
 still rides the existing `.md` upload; bibliographies are session-only, and BibTeX /
 the live Zotero local-API picker / Web-API sync are deliberately out of scope (below).
 
+**Role-aware referenced works + mixed-source passes** shipped 2026-07-06 (see
+[`docs/migration-log.md`](docs/migration-log.md)): the standard revision mode now treats
+included **source texts as source texts** — integrating a referenced work's ideas *in
+the prose* with a proper APA in-text citation and a synced `## References` proposal — and
+lets a referenced work sit **alongside** advisor notes, a bibliography, a voice sample,
+and purely intrinsic flow/tone edits in a single pass. Two fixes made this possible: a
+typed `SourceRole` (`reference` / `bibliographic` / `guidance` / `voice`) on
+`SourceDocument` (the picker gained a role selector + role-coded chips; the Citations
+prompts now key on `role` instead of the old `kind === 'Reading'` heuristic), and a
+**per-proposal receipt contract** in revision mode — the overloaded `sourceless` boolean
+was split into orthogonal `hasSources` (prompt shape) + `receiptRequired` (schema + drop
+rule), so a source-derived proposal carries its receipt while an intrinsic one survives
+(previously *all* intrinsic edits were silently dropped once any source was attached).
+Assembly and Citations stay strictly receipted. The single-source `fallbackSourceId` is
+now guarded so an intrinsic proposal is never mis-attributed. Sources remain ephemeral
+(no persistence change).
+
 A **catalog/ladder reconcile** shipped 2026-06-28 (follow-up to the six-fix pass; see
 [`docs/migration-log.md`](docs/migration-log.md)) so the built-in Gemini list actually
 reaches users: the model catalog + fallback ladder are persisted prefs, and hydration
@@ -593,6 +610,15 @@ streams keep their own inline indicators rather than the pill.
   to copy); `assembly` mode remains source-required by design. The shared
   `useColumnResize`/`ResizeHandle` primitive is ready to apply to any other
   column workspace (Climate/Sprint) if they grow resizable columns.
+
+- **Role-aware revision follow-ups.** Shipped 2026-07-06. Deliberate limits, by
+  mood: `role` is set at ingestion and not editable after a source is added (remove +
+  re-add to change it — a per-chip role dropdown is the trivial lift); sources remain
+  ephemeral, so `role` is never persisted; the revision-mode `## References` proposal
+  reuses the Citations-mode append heuristic (unique trailing substring) rather than a
+  structured reference-list model; and APA Author/Year still rides source-label/content
+  inference (the Zotero bridge is the reliable feed). The per-proposal receipt relaxation
+  is revision-mode only — Assembly and Citations stay strict by design.
 
 ## Non-goals (out of scope by design — do not pre-build)
 

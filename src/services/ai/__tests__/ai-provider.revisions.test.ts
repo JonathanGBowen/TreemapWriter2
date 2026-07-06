@@ -29,7 +29,8 @@ const config = { ...DEFAULT_PROMPTS_CONFIG, generateRevisionsPrompt: 'REV-SYS' }
 
 const source: SourceDocument = {
   id: 's1',
-  kind: 'Reading',
+  role: 'reference',
+  kind: 'Reference',
   label: 'Smith 2020',
   glyph: '§',
   content: 'The cat sat on the mat.',
@@ -51,8 +52,8 @@ const requiredFields = (req: LLMRequest): string[] =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (req.responseJsonSchema as any).properties.proposals.items.required;
 
-describe('generateRevisions — sourced revision mode', () => {
-  it('uses the editable system prompt, sends the SOURCE_DOCUMENTS block, and keeps the receipt fields required', async () => {
+describe('generateRevisions — sourced revision mode (mixed pass)', () => {
+  it('uses the editable system prompt, sends the SOURCE_DOCUMENTS block with role, and relaxes the receipt per-proposal', async () => {
     const reqs: LLMRequest[] = [];
     const responses = [
       JSON.stringify({
@@ -82,13 +83,15 @@ describe('generateRevisions — sourced revision mode', () => {
     expect(reqs[0].prompt).toContain('Sharpen the claim.');
     expect(reqs[0].prompt).toContain('### SOURCE_DOCUMENTS ###');
     expect(reqs[0].prompt).toContain('Smith 2020');
+    // The source's ROLE is surfaced to the model.
+    expect(reqs[0].prompt).toContain('role: reference');
     expect(reqs[0].prompt).not.toContain('### INSTRUCTION ###');
-    // Sourced schema keeps the glass-box receipt mandatory.
-    expect(requiredFields(reqs[0])).toEqual(
-      expect.arrayContaining(['source_id', 'verbatim_source_quote']),
-    );
+    // Revision mode is per-proposal: the receipt fields are NOT in the required set,
+    // so intrinsic edits can co-exist with source-derived ones.
+    expect(requiredFields(reqs[0])).not.toContain('source_id');
+    expect(requiredFields(reqs[0])).not.toContain('verbatim_source_quote');
 
-    // The parsed proposal round-trips through the normalizer intact.
+    // The receipted proposal still round-trips through the normalizer intact.
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
       revision_type: 'Rewording',
@@ -97,6 +100,45 @@ describe('generateRevisions — sourced revision mode', () => {
       source_id: 's1',
       confidence_score: 4,
     });
+  });
+
+  it('keeps BOTH a source-derived and an intrinsic proposal in one pass', async () => {
+    const reqs: LLMRequest[] = [];
+    const responses = [
+      JSON.stringify({
+        proposals: [
+          {
+            section: 'Intro',
+            revision_type: 'Citation',
+            original_text: 'The original sentence here.',
+            proposed_text: 'A cited sentence (Smith, 2020).',
+            rationale: 'draws on the reference',
+            source_id: 's1',
+            verbatim_source_quote: 'The cat sat on the mat.',
+            confidence_score: 4.5,
+          },
+          {
+            // Intrinsic: no receipt. Under the old binary contract this was dropped.
+            section: 'Intro',
+            revision_type: 'Flow Improvement',
+            original_text: 'A sharper sentence.',
+            proposed_text: 'A sharper, better-flowing sentence.',
+            rationale: 'smooths the transition',
+            confidence_score: 3,
+          },
+        ],
+      }),
+    ];
+
+    const out = await generateRevisions(mockClient(responses, reqs), 'model', 0, baseInput());
+
+    expect(out).toHaveLength(2);
+    // Source-derived proposal carries its receipt.
+    expect(out[0]).toMatchObject({ source_id: 's1', verbatim_source_quote: 'The cat sat on the mat.' });
+    // Intrinsic proposal survives with empty receipt — NOT mis-attributed to the
+    // single source via the fallback.
+    expect(out[1].source_id).toBe('');
+    expect(out[1].verbatim_source_quote).toBe('');
   });
 });
 
@@ -142,7 +184,7 @@ describe('generateRevisions — sourceless revision mode', () => {
 });
 
 describe('generateRevisions — locked prompts for citations + assembly modes', () => {
-  it('citations mode pulls the locked citations system prompt', async () => {
+  it('citations mode pulls the locked citations system prompt and keeps receipts required', async () => {
     const reqs: LLMRequest[] = [];
     await generateRevisions(
       mockClient(['{"proposals":[]}'], reqs),
@@ -151,6 +193,10 @@ describe('generateRevisions — locked prompts for citations + assembly modes', 
       baseInput({ mode: 'citations' }),
     );
     expect(reqs[0].systemInstruction).toBe(getPromptText('citationsSystem'));
+    // Strict modes keep the glass-box receipt mandatory in the schema.
+    expect(requiredFields(reqs[0])).toEqual(
+      expect.arrayContaining(['source_id', 'verbatim_source_quote']),
+    );
   });
 
   it('assembly mode pulls the locked assembly system prompt and the sub-mode task', async () => {
@@ -163,6 +209,10 @@ describe('generateRevisions — locked prompts for citations + assembly modes', 
     );
     expect(verbatim[0].systemInstruction).toBe(getPromptText('revisionAssemblySystem'));
     expect(verbatim[0].prompt).toContain(getPromptText('revisionAssemblyVerbatimTask'));
+    // Assembly is strictly receipted too.
+    expect(requiredFields(verbatim[0])).toEqual(
+      expect.arrayContaining(['source_id', 'verbatim_source_quote']),
+    );
 
     const woven: LLMRequest[] = [];
     await generateRevisions(

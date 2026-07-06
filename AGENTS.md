@@ -149,7 +149,7 @@ mis-modeling new work:
 |---|---|---|
 | Original spec / diagnostic (the exegesis core) | `Section`, `SectionSpec`, `RequiredMove`, `MoveResult`, `DiagnosticResult` | the argument structure of a section and how well the prose realizes it |
 | Grimoire / Analysis | `SectionAnalysis`, `AnalysisSpell`, `AnalysisVersion`, `SectionAnalysisState`, `DialogueMessage` | structural analysis + Socratic dialogue (the Analysis/Dialogue tabs) |
-| Glass-Box revision | `RevisionProposal`, `RevisionType`, `RevisionMode`, `SourceDocument`, `DirectiveSuggestion` | the proposal-driven revision workspace |
+| Glass-Box revision | `RevisionProposal`, `RevisionType`, `RevisionMode`, `SourceDocument`, `SourceRole`, `DirectiveSuggestion` | the proposal-driven revision workspace. A `SourceDocument` carries a typed `SourceRole` (`reference`/`bibliographic`/`guidance`/`voice`) that drives how the engine treats it; the glass-box receipt is **per-proposal in revision mode** (a source-derived proposal cites, an intrinsic one need not) but **strict in Assembly/Citations** — enforced by `receiptRequired` in `ai-provider.revisions.ts` + `normalizeOne`, not a per-pass boolean |
 | Living Sprints | `SprintPlan`, `SprintMove`, `SprintMoveRole`, `ArgumentShape` | the timed, move-based writing session |
 | Structural parts | `StructuralPart` | the argument's functional parts (the *moves* it makes) as anchored text spans, decoupled from the heading `Section` grid and mapped many-to-many onto it (a part may span sections, subdivide one, or belong to two wholes). Discovered by `discoverStructuralParts`; Tier 1 is in-memory only |
 

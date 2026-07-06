@@ -5159,3 +5159,78 @@ empty); Estimate Dependencies with parts → the advisory block is included.
 **Rollback.** `git revert` (pure TS; no schema/persistence change this tier). The
 consumption blocks and the inspector are additive and inert when `structuralParts` is
 empty, so a partial revert degrades cleanly to Tier-2 behavior.
+
+---
+
+## 2026-07-06 — Glass Box: role-aware referenced works + mixed-source revision passes
+
+**What changed.** The Glass-Box revision workspace now treats *referenced works as
+source texts in ordinary revision mode* — integrating their ideas with proper APA
+citations — and lets a referenced work sit **alongside** other source kinds and
+intrinsic edits in one pass. Two defects were fixed and source *role* became a typed,
+behavior-driving concept.
+
+- **Defect 1 — the sourced revision task was blind to sources.** `revision-task.md`
+  (the locked `revisionTask`) never told the model the attached sources existed, how to
+  use a referenced work, or to add a citation; APA discipline existed only in the
+  separate Citations *audit* mode. Rewritten to teach the role taxonomy, per-proposal
+  receipts, in-text APA citations (Author/Year inferred from the source label/content),
+  and a `## References` sync (reusing the Citations-mode guarded single-proposal append
+  trick — a rejectable proposal, never an auto-write).
+- **Defect 2 — the receipt contract was binary per-pass, silently dropping intrinsic
+  work.** `sourceless = sources.length === 0` did double duty (prompt shape *and* the
+  receipt rule), so the moment any source was attached `normalizeOne` dropped every
+  proposal lacking a `verbatim_source_quote` — losing all the flow/tone/consistency
+  edits in a mixed pass. Split into two orthogonal flags in
+  `services/ai/ai-provider.revisions.ts`: `hasSources` (drives prompt assembly —
+  SOURCE_DOCUMENTS vs INSTRUCTION block, sourced vs sourceless task `.md`) and
+  `receiptRequired = mode==='assembly' || mode==='citations'` (drives the schema
+  `required` set + the normalizer drop rule). Revision mode is now **per-proposal**: a
+  source-derived proposal carries its receipt, an intrinsic one leaves it empty and
+  survives. Assembly and Citations stay strict. The glass-box thesis is preserved and
+  sharpened to *no source claim without a source receipt*.
+- **Typed `SourceRole`** (`src/types/index.ts`): `reference` (a work's full text —
+  integrate + cite, quote-verifiable) · `bibliographic` (Zotero metadata — cite, never
+  quote-verify) · `guidance` (advisor/reviewer notes — apply, don't cite) · `voice`
+  (style sample — match register, don't cite/quote). Added as a **required** field on
+  `SourceDocument` (`kind` demoted to a human display label). New pure UI-meta module
+  `src/lib/source-roles.ts` (label/glyph/hint per role — mirrors `revisionTypeColors.ts`;
+  behavioral prose stays in the `.md` prompts per law #5).
+- **`normalizeOne` fallback guard** (`lib/revision-helpers.ts`): the single-source
+  `fallbackSourceId` now attaches ONLY to a proposal that actually cited (has a verbatim
+  quote), so an intrinsic proposal in a one-source pass is never mis-attributed — its
+  audit trail can't lie. `NormalizeOpts.sourceless` → `receiptRequired` (defaults `true`
+  = strict, so every no-opts caller is unchanged).
+- **Citations prompts keyed on role** (`citations-system.md` / `citations-task.md`): the
+  brittle "typically marked with the kind 'Reading'" heuristic is replaced by the real
+  signal (`role: reference` = FULL-TEXT, `role: bibliographic` = metadata).
+- **UI** (`features/revision/`): `SourcePicker` gained a 4-way role selector (default
+  `reference`), role-coded chip glyphs + a role tag, and role-aware ingestion defaults
+  (`.md` upload → `reference`; Zotero import → `bibliographic`); `ReviseConfig` source
+  hint updated; `ProposalCard` audit trail shows the source's role. The deep-pass
+  (agent) normalizer in `use-revision-actions.ts` passes `receiptRequired` by mode.
+
+**Scope.** No persistence change — sources stay ephemeral (no Rust mirror, no serde
+field). No new prompt files, no new registry entries (the `revisionTask` description was
+refreshed). `bibImport.ts` untouched (role is assigned at the `SourcePicker`
+`addRevisionSource` call, not in the parser).
+
+**Verify.** `npm run typecheck` clean; `npm test` 659 pass (new: `source-roles.test.ts`;
+a mixed-pass test proving a source-derived AND an intrinsic proposal both survive in
+revision mode + the role appears in the prompt; the fallback-guard case; assembly/
+citations still require receipts; the sourced-revision receipt-required assertion
+inverted); `npm run lint` 0 errors (pre-existing `warn`-level max-lines only);
+`npm run build` succeeds. Manual: open the Revision workspace, paste a short **reference**
+work + a **guidance** note in one pass, set a directive, Generate → the result contains
+both a cited edit (audit trail shows the `reference` role + verbatim receipt; proposed
+text carries an APA citation) and an intrinsic edit ("grounded in the document"), plus a
+`## References` proposal; accept one of each → the draft updates and a `pre-ai-write`
+snapshot is taken. (A live-LLM end-to-end was not run here — no API key is configured in
+this environment — but the orchestration characterization tests pin the behavior at the
+`generateRevisions` boundary.)
+
+**Rollback.** `git revert` (pure TS + prompt text; no schema/persistence change). To
+undo only the receipt split, restore the single `sourceless` boolean in
+`ai-provider.revisions.ts` + `revision-helpers.ts` and the strict `normalizeOne` guard;
+the `role` field is inert if unused, so a partial revert degrades cleanly to the prior
+strict-when-sourced behavior.

@@ -69,11 +69,16 @@ interface NormalizeOpts {
   sectionLabel?: string;
   fallbackSourceId?: string;
   /**
-   * SOURCELESS pass (no source documents). When true the glass-box receipt is
-   * not required: proposals are grounded in the document itself, so a missing
-   * `verbatim_source_quote`/`source_id` is expected, not a defect.
+   * Whether the glass-box receipt is mandatory. Defaults to `true` — the strict
+   * posture (Assembly / Citations always require a receipt; so does a plain
+   * no-opts caller). Revision mode passes `false`: a proposal there may be
+   * intrinsic (grounded in the document itself, no receipt) OR source-derived
+   * (carries one), so a missing `verbatim_source_quote` is expected on the
+   * intrinsic ones, not a defect. This is the one place the receipt contract is
+   * conditional; the enforcement stays PER-PROPOSAL (a proposal with a quote
+   * still keeps it) rather than per-pass.
    */
-  sourceless?: boolean;
+  receiptRequired?: boolean;
 }
 
 /** Validate + coerce one raw item, or null if it lacks a load-bearing field. */
@@ -99,12 +104,21 @@ const normalizeOne = (item: unknown, opts: NormalizeOpts): RevisionProposal | nu
     'verbatim_quote',
     'quote',
   ]);
-  // The glass-box guarantees: a span to replace, a replacement, and — in SOURCED
-  // mode — a verbatim receipt. A sourceless pass grounds proposals in the document
-  // itself, so it drops to two guarantees (no receipt to require). This is the one
-  // place the receipt contract is conditional; keep sourced mode strict.
+  // The glass-box guarantees: a span to replace, a replacement, and — when
+  // receipts are required (Assembly / Citations / any strict caller) — a verbatim
+  // receipt. Revision mode relaxes this per-proposal: an intrinsic proposal is
+  // grounded in the document itself and carries no receipt, so it drops to two
+  // guarantees. The enforcement is still per-proposal (a receipted proposal keeps
+  // its receipt); only the *requirement* is conditional.
+  const receiptRequired = opts.receiptRequired ?? true;
   if (!original_text || !proposed_text) return null;
-  if (!opts.sourceless && !verbatim_source_quote) return null;
+  if (receiptRequired && !verbatim_source_quote) return null;
+
+  // Attach the single-source fallback id ONLY to a proposal that actually cited
+  // something (has a verbatim quote). An intrinsic proposal in a one-source pass
+  // must not be mis-attributed to that source, or its audit trail would lie.
+  const rawSourceId = pickStr(o, ['source_id', 'sourceId']);
+  const source_id = rawSourceId || (verbatim_source_quote ? opts.fallbackSourceId ?? '' : '');
 
   return {
     id: `rev_${Date.now()}_${revSeq++}`,
@@ -113,7 +127,7 @@ const normalizeOne = (item: unknown, opts: NormalizeOpts): RevisionProposal | nu
     original_text,
     proposed_text,
     rationale: pickStr(o, ['rationale', 'reason', 'justification']),
-    source_id: pickStr(o, ['source_id', 'sourceId']) || opts.fallbackSourceId || '',
+    source_id,
     verbatim_source_quote,
     confidence_score: clampScore(pickRaw(o, ['confidence_score', 'confidenceScore', 'confidence'])),
   };

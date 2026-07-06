@@ -192,7 +192,9 @@ export const useRevisionActions = () => {
       const proposals =
         normalizeRevisions(parseAgentProposals(answer), {
           sectionLabel: currentSection.title,
-          sourceless: sources.length === 0,
+          // The deep pass is grounded in the document itself (see revision-agent.md),
+          // so receipts are optional — only Assembly / Citations are strict.
+          receiptRequired: st.revisionMode === 'assembly' || st.revisionMode === 'citations',
         }) ?? [];
       setProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));
       setRevisionPhase('review');

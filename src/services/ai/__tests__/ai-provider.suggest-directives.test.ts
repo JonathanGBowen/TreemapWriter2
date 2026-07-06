@@ -22,6 +22,7 @@ const mockClient = (responses: string[], reqs: LLMRequest[]): LLMClient => {
 
 const source: SourceDocument = {
   id: 's1',
+  role: 'bibliographic',
   kind: 'Reading',
   label: 'Smith 2020',
   glyph: '§',

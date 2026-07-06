@@ -33,11 +33,11 @@ describe('parseAgentProposals', () => {
 });
 
 describe('deep-pass agent answer -> normalizeRevisions', () => {
-  it('yields a usable proposal from a fenced array (sourceless)', () => {
+  it('yields a usable proposal from a fenced array (receipt optional)', () => {
     const answer = '```json\n' + JSON.stringify([PROPOSAL]) + '\n```';
     const proposals = normalizeRevisions(parseAgentProposals(answer), {
       sectionLabel: 'Intro',
-      sourceless: true,
+      receiptRequired: false,
     });
     expect(proposals).toHaveLength(1);
     expect(proposals![0]).toMatchObject({
@@ -48,13 +48,13 @@ describe('deep-pass agent answer -> normalizeRevisions', () => {
     });
   });
 
-  it('honours the receipt contract: dropped when sourced, kept when sourceless', () => {
+  it('honours the receipt contract: dropped when required, kept when optional', () => {
     const arr = parseAgentProposals(JSON.stringify([PROPOSAL]));
-    expect(normalizeRevisions(arr, { sourceless: false })).toHaveLength(0);
-    expect(normalizeRevisions(arr, { sourceless: true })).toHaveLength(1);
+    expect(normalizeRevisions(arr, { receiptRequired: true })).toHaveLength(0);
+    expect(normalizeRevisions(arr, { receiptRequired: false })).toHaveLength(1);
   });
 
   it('returns [] when the agent reports no edits', () => {
-    expect(normalizeRevisions(parseAgentProposals('[]'), { sourceless: true }) ?? []).toEqual([]);
+    expect(normalizeRevisions(parseAgentProposals('[]'), { receiptRequired: false }) ?? []).toEqual([]);
   });
 });

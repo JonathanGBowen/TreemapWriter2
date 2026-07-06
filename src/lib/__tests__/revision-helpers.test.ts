@@ -55,8 +55,8 @@ describe('normalizeRevisions', () => {
     expect(out).toHaveLength(1);
   });
 
-  it('sourceless mode keeps proposals with no receipt (two guarantees, not three)', () => {
-    const sourcelessItem = {
+  it('receipt-optional mode keeps proposals with no receipt (two guarantees, not three)', () => {
+    const intrinsicItem = {
       revision_type: 'Addition',
       original_text: '[stub]',
       proposed_text: 'a finished thought.',
@@ -65,26 +65,47 @@ describe('normalizeRevisions', () => {
       verbatim_source_quote: '',
       confidence_score: 4,
     };
-    // Sourced mode (default) drops it for the missing receipt...
-    expect(normalizeRevisions([sourcelessItem])).toHaveLength(0);
-    // ...but a sourceless pass keeps it (the receipt isn't required).
-    const out = normalizeRevisions([sourcelessItem], { sourceless: true })!;
+    // The strict default (receiptRequired) drops it for the missing receipt...
+    expect(normalizeRevisions([intrinsicItem])).toHaveLength(0);
+    // ...but a receipt-optional pass (revision mode) keeps it.
+    const out = normalizeRevisions([intrinsicItem], { receiptRequired: false })!;
     expect(out).toHaveLength(1);
     expect(out[0].original_text).toBe('[stub]');
     expect(out[0].verbatim_source_quote).toBe('');
     expect(out[0].source_id).toBe('');
   });
 
-  it('sourceless mode still requires the edit spans', () => {
+  it('receipt-optional mode still requires the edit spans', () => {
     const out = normalizeRevisions(
       [
         { ...valid, source_id: '', verbatim_source_quote: '' },
         { ...valid, source_id: '', verbatim_source_quote: '', original_text: '' },
         { ...valid, source_id: '', verbatim_source_quote: '', proposed_text: '  ' },
       ],
-      { sourceless: true },
+      { receiptRequired: false },
     )!;
     expect(out).toHaveLength(1);
+  });
+
+  it('keeps a source-derived AND an intrinsic proposal in a mixed receipt-optional pass', () => {
+    const out = normalizeRevisions(
+      [
+        valid, // source-derived (has a receipt)
+        {
+          revision_type: 'Flow Improvement',
+          original_text: 'another sentence.',
+          proposed_text: 'a smoother sentence.',
+          rationale: 'flow',
+          source_id: '',
+          verbatim_source_quote: '',
+          confidence_score: 3,
+        },
+      ],
+      { receiptRequired: false },
+    )!;
+    expect(out).toHaveLength(2);
+    expect(out[0].verbatim_source_quote).toBe('a quote');
+    expect(out[1].verbatim_source_quote).toBe('');
   });
 
   it('clamps confidence to 0–5 and defaults non-numbers to 3', () => {
@@ -103,9 +124,21 @@ describe('normalizeRevisions', () => {
     expect(out[0].revision_type).toBe('Replacement');
   });
 
-  it('fills an empty source_id from the fallback', () => {
-    const out = normalizeRevisions([{ ...valid, source_id: '' }], { fallbackSourceId: 'only-src' })!;
-    expect(out[0].source_id).toBe('only-src');
+  it('fills an empty source_id from the fallback ONLY for a receipted proposal', () => {
+    // A receipted proposal (has a verbatim quote) missing its source_id gets the
+    // single-source fallback.
+    const receipted = normalizeRevisions([{ ...valid, source_id: '' }], {
+      fallbackSourceId: 'only-src',
+    })!;
+    expect(receipted[0].source_id).toBe('only-src');
+
+    // An intrinsic proposal (no receipt) must NOT be mis-attributed to that source —
+    // the fallback is guarded on the verbatim quote being present.
+    const intrinsic = normalizeRevisions(
+      [{ ...valid, source_id: '', verbatim_source_quote: '' }],
+      { fallbackSourceId: 'only-src', receiptRequired: false },
+    )!;
+    expect(intrinsic[0].source_id).toBe('');
   });
 
   it('tolerates field-name variance (camelCase + synonyms)', () => {

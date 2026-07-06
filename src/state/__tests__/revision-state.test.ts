@@ -35,14 +35,16 @@ describe('revision slice', () => {
 
   it('adds a source and selects it by default', () => {
     const id = makeSourceId();
-    store.getState().addRevisionSource({ id, kind: 'Source', label: 'Notes', glyph: '✒', content: 'text' });
+    store
+      .getState()
+      .addRevisionSource({ id, role: 'guidance', kind: 'Source', label: 'Notes', glyph: '✒', content: 'text' });
     expect(store.getState().revisionSources).toHaveLength(1);
     expect(store.getState().selectedSourceIds).toContain(id);
   });
 
   it('toggles source selection on and off', () => {
     const s = store.getState();
-    s.addRevisionSource({ id: 'x', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
+    s.addRevisionSource({ id: 'x', role: 'reference', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
     s.toggleRevisionSource('x');
     expect(store.getState().selectedSourceIds).not.toContain('x');
     store.getState().toggleRevisionSource('x');
@@ -51,7 +53,7 @@ describe('revision slice', () => {
 
   it('removing a source also deselects it', () => {
     const s = store.getState();
-    s.addRevisionSource({ id: 'x', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
+    s.addRevisionSource({ id: 'x', role: 'reference', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
     store.getState().removeRevisionSource('x');
     expect(store.getState().revisionSources).toHaveLength(0);
     expect(store.getState().selectedSourceIds).not.toContain('x');
