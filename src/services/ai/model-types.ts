@@ -37,6 +37,7 @@ export type AICallKind =
   | 'refreshGistSpan'
   | 'refitGist'
   | 'suggestDirectives'
+  | 'directiveDialogueTurn'
   | 'exegeteSource'
   | 'generateSprintPlan'
   | 'coachSprintTurn'
@@ -73,6 +74,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'refreshGistSpan',
   'refitGist',
   'suggestDirectives',
+  'directiveDialogueTurn',
   'exegeteSource',
   'generateSprintPlan',
   'coachSprintTurn',
@@ -110,6 +112,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   refreshGistSpan: 'Gist span refresh',
   refitGist: 'Gist re-fit',
   suggestDirectives: 'Suggest directives',
+  directiveDialogueTurn: 'Directive dialogue (live)',
   exegeteSource: 'Source exegesis',
   generateSprintPlan: 'Generate sprint plan',
   coachSprintTurn: 'Sprint coach (live)',

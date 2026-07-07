@@ -63,6 +63,7 @@ import type {
   RefreshGistSpanInput,
   RefitGistInput,
   SuggestDirectivesInput,
+  DirectiveDialogueTurnInput,
   ExegeteSourceInput,
   GenerateSprintPlanInput,
   CoachSprintTurnInput,
@@ -930,6 +931,43 @@ export class MultiProviderAIProvider implements AIProvider {
 
     const choice = this.choose('coachSprintTurn', input);
     const stream = this.dispatch(choice, 'coachSprintTurn').streamText({
+      model: choice.model,
+      messages,
+      systemInstruction,
+      thinkingBudget: choice.thinkingBudget,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * Socratic directive extraction — a streaming inquiry-rule turn, mirroring
+   * coachSprintTurn (full history each turn, stateless provider). The system
+   * instruction is the editable directive-dialogue contract + the pass framing
+   * (mode, section, selected source labels, any directive draft) + the prose
+   * under revision, so the partner can point at the text rather than generalize.
+   */
+  async *directiveDialogueTurn(input: DirectiveDialogueTurnInput): AsyncIterable<string> {
+    const sourceLines = input.sourceSummaries.length
+      ? `SELECTED SOURCES:\n${input.sourceSummaries.map((s) => `- ${s.label} (role: ${s.role})`).join('\n')}`
+      : '';
+    const systemInstruction = [
+      input.config.directiveDialoguePrompt,
+      `CONTEXT:\nREVISION MODE: ${input.mode}\nSECTION: "${input.sectionTitle}"`,
+      sourceLines,
+      input.currentDirective?.trim()
+        ? `CURRENT DIRECTIVE DRAFT (refine or replace):\n${input.currentDirective.trim()}`
+        : '',
+      `THE TEXT UNDER REVISION:\n---\n${input.sectionText}\n---`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
+
+    const choice = this.choose('directiveDialogueTurn', input);
+    const stream = this.dispatch(choice, 'directiveDialogueTurn').streamText({
       model: choice.model,
       messages,
       systemInstruction,

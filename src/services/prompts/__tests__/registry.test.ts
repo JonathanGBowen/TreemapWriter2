@@ -25,6 +25,7 @@ const HISTORICAL_KEYS = [
   'dependenciesPrompt',
   'diagnosticInstruction',
   'dialoguePrompt',
+  'directiveDialoguePrompt',
   'generatePersonasPrompt',
   'generateRevisionsPrompt',
   // Parallel Editor (reverse-outline revision) — two new editable flows.

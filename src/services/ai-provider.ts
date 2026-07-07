@@ -112,6 +112,14 @@ export interface AIProvider {
   refitGist(input: RefitGistInput): Promise<GistSpan[] | null>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
   /**
+   * Socratic directive extraction — a short, streaming inquiry-rule dialogue
+   * (one probing question per turn) that converges on the writer's primary
+   * revision intent and emits it as a fenced ```json``` `{directive}` block the
+   * caller parses (`extractDirectiveFromTurn`). Mirrors `coachSprintTurn`: the
+   * full history travels each turn; the transcript is ephemeral by design.
+   */
+  directiveDialogueTurn(input: DirectiveDialogueTurnInput): AsyncIterable<string>;
+  /**
    * Close exegesis of ONE source document: a concise, faithful reconstruction of
    * its argument — moves, commitments, terms — per the VISION summary-vs-exegesis
    * thesis (never a summary). Streamed token-by-token (the app's preferred
@@ -619,6 +627,23 @@ export interface SuggestDirectivesInput {
   /** Active persona name + instruction, to flavor the strategic directives. */
   personaName: string;
   personaInstruction: string;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface DirectiveDialogueTurnInput {
+  sectionTitle: string;
+  /** The prose under revision (the whole document when scope is 'root'). */
+  sectionText: string;
+  mode: RevisionMode;
+  /** Selected sources by label + role only — orientation, not content. */
+  sourceSummaries: { label: string; role: SourceRole }[];
+  /** Whatever is already in the directive box, as a starting point. */
+  currentDirective?: string;
+  /** Full history; the last message is the new user turn. */
+  messages: DialogueMessage[];
+  config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

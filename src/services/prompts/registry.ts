@@ -64,6 +64,7 @@ import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
 import revisionAgentPreamble from './revision-agent.md?raw';
 import sourceExegesisPrompt from './source-exegesis.md?raw';
+import directiveDialoguePrompt from './directive-dialogue.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
 import compareModeDraft from './compare-mode-draft.md?raw';
@@ -690,6 +691,17 @@ export const PROMPT_REGISTRY = [
     category: 'revision-engine',
     flow: 'runAgent',
     editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'directiveDialoguePrompt',
+    defaultText: strip(directiveDialoguePrompt),
+    label: 'Directive Dialogue',
+    description:
+      'Socratic partner that extracts the primary intent of a revision pass in a short inquiry-rule dialogue, converging on one engine-ready directive (emitted as a fenced JSON block).',
+    category: 'revision-engine',
+    flow: 'directiveDialogueTurn',
+    editability: 'editable',
     variables: [],
   },
   {

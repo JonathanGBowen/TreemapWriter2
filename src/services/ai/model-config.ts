@@ -48,6 +48,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   coachSprintTurn: g(INTERACTIVE, NO_THINK),
   // A single-step breakdown is tiny and must feel instant.
   decomposeSprintStep: g(INTERACTIVE, NO_THINK),
+  // Socratic directive extraction — a live dialogue turn; must feel instant.
+  directiveDialogueTurn: g(INTERACTIVE, NO_THINK),
 
   // --- A: heavy reasoning (top flash, maximum thinking) ---
   estimateDependencies: g(HEAVY, THINK),

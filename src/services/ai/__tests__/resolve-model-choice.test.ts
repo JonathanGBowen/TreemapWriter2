@@ -42,6 +42,10 @@ describe('resolveModelChoice — Agent mode', () => {
       provider: 'agent-sdk',
       model: 'claude-opus-4-8',
     });
+    expect(resolveModelChoice('directiveDialogueTurn', {}, {}, agent)).toEqual({
+      provider: 'agent-sdk',
+      model: 'claude-opus-4-8',
+    });
   });
 
   it('leaves non-dialogue/coaching kinds on their normal provider', () => {

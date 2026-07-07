@@ -4,6 +4,7 @@
 
 import type { DirectiveSuggestion, RevisionMode, RevisionProposal, RevisionType } from '../types';
 import { safeJsonParse } from './utils';
+import { extractFencedJson } from './fenced-json';
 
 /**
  * Whether a revision pass is ready to generate. `revision` mode needs a directive
@@ -199,6 +200,20 @@ export const parseAgentProposals = (answer: string): unknown => {
   }
   // Last resort: a clean object envelope normalizeRevisions can still unwrap.
   return direct && typeof direct === 'object' ? direct : null;
+};
+
+/**
+ * Pull the confirmed directive out of a directive-dialogue turn. The partner's
+ * final turn carries a fenced ```json``` `{directive}` block (see
+ * directive-dialogue.md); mid-dialogue turns carry none, so null here simply
+ * means "still asking". Tolerates key variance and a fence-less JSON object.
+ */
+export const extractDirectiveFromTurn = (text: string): string | null => {
+  const fenced = extractFencedJson(text);
+  const parsed = fenced !== null ? safeJsonParse(fenced, null) : safeJsonParse(text, null);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const directive = pickStr(parsed as Record<string, unknown>, ['directive', 'text', 'body']);
+  return directive || null;
 };
 
 /**
