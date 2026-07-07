@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import { Library, Pencil, Plus, Upload, X } from 'lucide-react';
+import { BookMarked, Library, Pencil, Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { makeSourceId } from '../../state/document-state';
+import { isTauri } from '../../services/tauri-environment';
 import { parseCslJson, referenceToSourceContent } from '../../lib/bibImport';
-import { SOURCE_ACCEPT, extractSourceText } from '../../lib/docExtract';
+import { LARGE_SOURCE_CHARS, SOURCE_ACCEPT, extractSourceText } from '../../lib/docExtract';
 import { roleGlyph, roleLabel, sourceRoleMeta } from '../../lib/source-roles';
 import { isExegesisStale } from '../../lib/source-edit';
 import type { SourceRole } from '../../types';
@@ -12,8 +13,6 @@ import { Pip } from '../shared/Pip';
 import { AddSourceForm } from './RolePicker';
 
 const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
-/** ~4 chars per token; warn when one source alone eats a big chunk of any window. */
-const LARGE_SOURCE_CHARS = 120_000;
 
 /** Take the single picked file (if any) and reset the input so re-picking re-fires. */
 function takePickedFile(e: React.ChangeEvent<HTMLInputElement>): File | null {
@@ -233,6 +232,16 @@ export function SourcePicker() {
               className="hidden"
               onChange={onImportBib}
             />
+            {isTauri() && (
+              <button
+                type="button"
+                onClick={() => useStore.getState().setShowZoteroPickerModal(true)}
+                title="Browse your Zotero library (Zotero 7 running, local API enabled) and import items as bibliography or full-text sources"
+                className="flex items-center gap-1 px-2 py-1.5 border border-dashed border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9.5px] uppercase tracking-[0.08em] transition-colors"
+              >
+                <BookMarked size={10} /> Zotero
+              </button>
+            )}
           </>
         )}
       </div>

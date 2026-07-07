@@ -27,6 +27,7 @@ import { ExternalChangeModal } from "./ExternalChangeModal";
 import { RevisionWorkspace } from "../revision/RevisionWorkspace";
 import { RevisionSettingsModal } from "./RevisionSettingsModal";
 import { SourceEditorModal } from "./SourceEditorModal";
+import { ZoteroPickerModal } from "./ZoteroPickerModal";
 import { AgentTraceModal } from "./AgentTraceModal";
 import { CompareWorkspace } from "../compare/CompareWorkspace";
 import { SpecTestWorkspace } from "../spec-test/SpecTestWorkspace";
@@ -264,6 +265,8 @@ export const ModalLayer = ({
       <RevisionSettingsModal />
 
       <SourceEditorModal />
+
+      <ZoteroPickerModal />
 
       <AgentTraceModal />
 

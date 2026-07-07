@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCslJson, referenceToSourceContent } from '../bibImport';
+import { cslItemToReference, parseCslJson, referenceToSourceContent } from '../bibImport';
 
 const article = {
   type: 'article-journal',
@@ -132,5 +132,24 @@ describe('referenceToSourceContent', () => {
     expect(referenceToSourceContent(ref)).toBe(
       'Dewey, J. (1922). Human Nature and Conduct. Henry Holt.',
     );
+  });
+});
+
+describe('cslItemToReference (the per-item body, exported for the Zotero picker)', () => {
+  it('shapes one item exactly as parseCslJson does', () => {
+    const item = {
+      author: [{ family: 'Dewey', given: 'John' }],
+      issued: { 'date-parts': [[1922]] },
+      title: 'Human Nature and Conduct',
+      publisher: 'Henry Holt',
+    };
+    const viaOne = cslItemToReference(item);
+    const viaParse = parseCslJson(JSON.stringify([item]));
+    expect(viaOne).toEqual(viaParse[0]);
+  });
+
+  it('returns null for junk', () => {
+    expect(cslItemToReference(null)).toBeNull();
+    expect(cslItemToReference('nope')).toBeNull();
   });
 });
