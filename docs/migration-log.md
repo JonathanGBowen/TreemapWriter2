@@ -5335,3 +5335,79 @@ a divergent pull opens the conflict modal → resolve → merge commit lands, no
 
 **Rollback.** `git revert`. Pure serde-attribute + guard change; no schema/persistence change.
 Reverting restores the (buggy) snake_case wire format.
+
+## 2026-07-07 — Glass Box workbench wave: editable sources, exegesis, directive dialogue, per-source audit, live Zotero
+
+**What changed.** Five independently-landed slices (one commit each, oldest first —
+revert per-commit to roll back a single slice) deepening the revision workbench's
+source-material half. Owner decisions recorded in the plan: live Zotero local-API
+picker (deliberately overturning the STATUS.md non-goal), batch pacing continuous
+with a pause-after-each-source toggle, exegesis as a standalone action only.
+
+- **Editable sources** (`feat(revision): editable sources`). Every source chip gains
+  a pencil opening `SourceEditorModal` (label · role · content, auto-saved per
+  keystroke, debounced write-through + flush on close). A role change recomputes the
+  derived `kind`/`glyph` (pure `lib/source-edit.ts` `applySourcePatch`);
+  `document-state.updateSource` lands beside add/remove. `SourceDocument` gains
+  optional `zoteroKey` + `exegesis` + the `'zotero'` origin — **no Rust change**
+  (`.twriter/sources.json` is an opaque `Value`; TS owns the shape).
+- **Per-source exegesis** (`feat(revision): per-source exegesis`). A standalone
+  action in the source editor: reconstruct one source's argument (thesis, moves,
+  commitments, the author's terms verbatim, sparing exact quotes) — exegesis, never
+  summary, with reporting-frame verbs banned in the locked `source-exegesis.md`
+  (mirroring the gist prompts' discipline). Streams live; persists
+  `SourceDocument.exegesis {content, createdAt, sourceHash}`; staleness by
+  normalized content hash (annotated, never auto-deleted); a dim `◈` on the chip
+  marks a current reconstruction. New call kind `exegeteSource` (heavy tier).
+- **Socratic directive dialogue** (`feat(revision): Socratic directive dialogue`).
+  `⟡ Find the directive` beside the suggester opens a short streaming inquiry-rule
+  dialogue inline in the config column (ephemeral by design). The partner's final
+  turn emits a fenced `{directive}` JSON block (`extractDirectiveFromTurn`);
+  confirming fills the directive box, optionally saving to the Instruction library.
+  New **editable** prompt `directive-dialogue.md` (the `PromptsConfig` key derives
+  from the registry) + streaming kind `directiveDialogueTurn` (interactive tier,
+  in `AGENT_DEFAULT_KINDS`).
+- **Per-source batch citation audit** (`feat(revision): batch per-source citation
+  audit`). Citations mode gains a "per-source audit" run mode: one focused pass per
+  selected source — read THAT source rigorously, then assess the document's usage
+  *and non-usage* of it, proposing surgical, strictly-receipted edits with
+  new-citation additions held to a definite-improvement bar; an empty result is a
+  good outcome, surfaced as such. New locked `citations-audit-task.md` + kind
+  `auditSourceUsage` + `ai-provider.audit.ts` (reuses `citationsSystem`, the strict
+  schema, and the now-exported `formatSources`/`STRICT_RECEIPT_TAIL`/
+  `revisionsJsonSchema`). `revision-state` gains phase `'auditing'` + an honest
+  queue (`queued/auditing/done/error/skipped` + note), pacing, boundary-grained
+  stop, `appendProposals`; orchestration in `use-source-audit.ts` (per-item
+  try/catch + continue; over-window sources skip with a note; the `isProcessing`
+  lock is held per call so a stepped pause never locks the app). UI: `AuditRun`
+  (pip row + continue/stop) + `GroupedProposals` (by-source grouping surviving into
+  review; silent outcomes get caption rows). The accept gate is untouched.
+- **Live Zotero picker** (`feat(revision): live Zotero picker`, desktop only). A
+  "Zotero" affordance opens a picker over Zotero 7's local API
+  (`http://localhost:23119/api/users/0/…`): collections, title/creator/year search,
+  multi-select, then import as bibliographic chips (same shape as the CSL-JSON file
+  import — `bibImport` gained the exported `cslItemToReference`) or as full-text
+  reference sources (Zotero's own fulltext index first, then the raw attachment
+  through the existing pdf/docx extractors). Re-import updates in place (dedupe by
+  `zoteroKey`+role) — which naturally marks an exegesis stale. Unreachable Zotero
+  degrades to one quiet hint + retry. **New dependency (owner-approved):**
+  `tauri-plugin-http` + `@tauri-apps/plugin-http`, capability-scoped to
+  `http://localhost:23119/*` / `http://127.0.0.1:23119/*` ONLY (Zotero sends no
+  CORS headers, so webview fetch cannot reach it); `src/services/zotero.ts` is the
+  single caller (dynamic import — never in the browser bundle), sending
+  `Zotero-Allowed-Request: true`.
+
+**Verify.** Per slice: `npm test` (682 → 720 passing; new suites: `source-edit`,
+`audit-helpers`, `zoteroImport`, `ai-provider.audit` characterization, plus
+`extractDirectiveFromTurn` / `cslItemToReference` / state-slice cases),
+`npm run typecheck`, `npm run build` all green. `cargo` not runnable here (no GTK
+libs); `cargo metadata` validates the manifest and the plugin registration runs on
+PR CI (`cargo test`). **The Zotero slice touches Rust (plugin + capability), so it
+takes effect only after a desktop rebuild**; end-to-end needs Zotero 7 running with
+"Allow other applications…" enabled — without it the picker shows its hint state
+(also reachable in browser dev, where the button is hidden and the service throws
+"desktop-only").
+
+**Rollback.** Each slice is one `git revert`-able commit. No data migrations: the
+new `SourceDocument` fields are optional (older sidecars load unchanged; a reverted
+build simply ignores them — serde/TS both tolerate unknown/missing optionals).
