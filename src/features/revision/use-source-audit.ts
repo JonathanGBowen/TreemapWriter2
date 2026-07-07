@@ -28,6 +28,10 @@ export const useSourceAudit = () => {
 
     for (;;) {
       const st = useStore.getState();
+      // Closing the workspace clears the pass (CLEARED_PASS empties the queue);
+      // treat it as a cancel so this detached loop stops calling and never
+      // stamps a review phase onto the cleared state.
+      if (!st.revisionWorkspaceOpen) return;
       if (st.auditCancelled) {
         st.settleAuditRemaining('skipped', 'stopped');
         break;
@@ -69,6 +73,9 @@ export const useSourceAudit = () => {
           directive: st.directive,
         });
         const live = useStore.getState();
+        // The pass may have been closed while this call was in flight — its
+        // results belong to a cleared pass, so drop them.
+        if (!live.revisionWorkspaceOpen) return;
         live.appendProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));
         live.patchAuditItem(source.id, { status: 'done', proposalCount: proposals.length });
       } catch (e) {
@@ -88,7 +95,9 @@ export const useSourceAudit = () => {
 
     const st = useStore.getState();
     st.setAuditAwaiting(false);
-    st.setRevisionPhase('review');
+    // Only land on review while the run's queue still exists — a pass cleared
+    // out from under the loop (close / new pass) must stay cleared.
+    if (st.auditQueue.length) st.setRevisionPhase('review');
   }, [currentSection]);
 
   const runAudit = useCallback(async () => {
