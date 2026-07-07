@@ -26,6 +26,7 @@ import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import { ExternalChangeModal } from "./ExternalChangeModal";
 import { RevisionWorkspace } from "../revision/RevisionWorkspace";
 import { RevisionSettingsModal } from "./RevisionSettingsModal";
+import { SourceEditorModal } from "./SourceEditorModal";
 import { AgentTraceModal } from "./AgentTraceModal";
 import { CompareWorkspace } from "../compare/CompareWorkspace";
 import { SpecTestWorkspace } from "../spec-test/SpecTestWorkspace";
@@ -261,6 +262,8 @@ export const ModalLayer = ({
       <RevisionWorkspace />
 
       <RevisionSettingsModal />
+
+      <SourceEditorModal />
 
       <AgentTraceModal />
 

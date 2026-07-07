@@ -596,13 +596,37 @@ export interface SourceDocument {
   /** The full source text the model may quote or draw on (extracted, for uploaded files). */
   content: string;
   /** How this source was ingested. Optional (older sessions predate it). */
-  origin?: 'paste' | 'upload' | 'bibliography';
+  origin?: 'paste' | 'upload' | 'bibliography' | 'zotero';
   /** Original filename, for an uploaded PDF/DOCX/text source. */
   fileName?: string;
   /** Original MIME type of an uploaded file, when the browser reported one. */
   mime?: string;
   /** When the source was added (epoch ms). */
   addedAt?: number;
+  /**
+   * The Zotero item key this source was imported from (live local-API import).
+   * Re-importing the same item updates the existing source instead of duplicating it.
+   */
+  zoteroKey?: string;
+  /** The source's exegetical reconstruction, if the writer has generated one. */
+  exegesis?: SourceExegesis;
+}
+
+/**
+ * A concise, faithful exegetical reconstruction of one source — the argument's
+ * moves and commitments in the author's own terms, never a summary (the VISION
+ * summary-vs-exegesis thesis). Attached to its SourceDocument (it travels and
+ * deletes with the source, in the `.twriter/sources.json` sidecar). `sourceHash`
+ * is stamped from the source content at generation time; a mismatch marks the
+ * reconstruction stale (annotate, never rewrite — the writer regenerates).
+ */
+export interface SourceExegesis {
+  /** The reconstruction, as markdown. */
+  content: string;
+  /** When it was generated (epoch ms). */
+  createdAt: number;
+  /** Hash of the source content it was generated from (stale detection). */
+  sourceHash: string;
 }
 
 /**

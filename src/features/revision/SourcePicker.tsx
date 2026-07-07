@@ -1,19 +1,14 @@
 import { useRef, useState } from 'react';
-import { Library, Plus, Upload, X } from 'lucide-react';
+import { Library, Pencil, Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { makeSourceId } from '../../state/document-state';
 import { parseCslJson, referenceToSourceContent } from '../../lib/bibImport';
 import { SOURCE_ACCEPT, extractSourceText } from '../../lib/docExtract';
-import {
-  DEFAULT_SOURCE_ROLE,
-  SOURCE_ROLES,
-  roleGlyph,
-  roleLabel,
-  sourceRoleMeta,
-} from '../../lib/source-roles';
+import { roleGlyph, roleLabel, sourceRoleMeta } from '../../lib/source-roles';
 import type { SourceRole } from '../../types';
 import { Pip } from '../shared/Pip';
+import { AddSourceForm } from './RolePicker';
 
 const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 /** ~4 chars per token; warn when one source alone eats a big chunk of any window. */
@@ -25,92 +20,15 @@ function takePickedFile(e: React.ChangeEvent<HTMLInputElement>): File | null {
   e.target.value = '';
   return file;
 }
-const inputCls =
-  'bg-hld-bg border border-hld-border focus:border-hld-cyan outline-none text-hld-text font-mono text-[11px] px-2 py-1.5';
-
-/** The 4-way role picker: how the engine will treat this source. */
-function RolePicker({ role, onPick }: { role: SourceRole; onPick: (r: SourceRole) => void }) {
-  return (
-    <div className="flex gap-1">
-      {SOURCE_ROLES.map((r) => {
-        const on = r === role;
-        return (
-          <button
-            key={r}
-            type="button"
-            onClick={() => onPick(r)}
-            title={sourceRoleMeta[r].hint}
-            className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-1 border font-mono text-[8.5px] uppercase tracking-[0.08em] transition-all ${
-              on
-                ? 'border-hld-cyan/55 bg-hld-cyan/10 text-hld-cyan'
-                : 'border-hld-border text-hld-muted-text hover:text-hld-text'
-            }`}
-          >
-            <span className="text-[10px]">{sourceRoleMeta[r].glyph}</span>
-            {sourceRoleMeta[r].label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Inline paste form for a new ephemeral source (role + label + body). */
-function AddSourceForm({
-  onAdd,
-  onCancel,
-}: {
-  onAdd: (label: string, content: string, role: SourceRole) => void;
-  onCancel: () => void;
-}) {
-  const [role, setRole] = useState<SourceRole>(DEFAULT_SOURCE_ROLE);
-  const [label, setLabel] = useState('');
-  const [content, setContent] = useState('');
-  return (
-    <div className="flex flex-col gap-1.5 border border-hld-border bg-hld-bg p-2">
-      <RolePicker role={role} onPick={setRole} />
-      <div className="font-mono text-[8.5px] text-hld-muted-text leading-[1.4]">{sourceRoleMeta[role].hint}</div>
-      <input
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder={role === 'reference' ? 'Label (e.g. Dewey 1922)' : 'Label (e.g. Advisor notes)'}
-        className={inputCls}
-      />
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        rows={4}
-        placeholder="Paste the source text the engine may draw on…"
-        className={`${inputCls} resize-none leading-[1.5]`}
-      />
-      <div className="flex justify-end gap-1.5">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-2.5 py-1 border border-hld-border text-hld-muted-text hover:text-hld-text font-mono text-[9px] uppercase tracking-[0.12em]"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={() => onAdd(label, content, role)}
-          disabled={!content.trim()}
-          className="px-2.5 py-1 border border-hld-cyan/40 text-hld-cyan hover:bg-hld-cyan/10 disabled:opacity-35 disabled:cursor-not-allowed font-mono text-[9px] uppercase tracking-[0.12em]"
-        >
-          Add
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /**
- * Ephemeral (session-only) source materials. The writer pastes / uploads reference
- * works, advisor notes, reviewer reports, or a bibliography here; sources are not
- * persisted. Each source carries a typed ROLE (see lib/source-roles) that drives how
- * the engine treats it — a reference work is integrated with a citation, guidance is
- * applied, a bibliography supplies citation metadata, a voice sample is matched. Each
- * chip toggles selection; the engine uses only selected sources.
+ * The project's source materials (persisted with the project in the
+ * `.twriter/sources.json` sidecar). The writer pastes / uploads reference works,
+ * advisor notes, reviewer reports, or a bibliography here. Each source carries a
+ * typed ROLE (see lib/source-roles) that drives how the engine treats it — a
+ * reference work is integrated with a citation, guidance is applied, a bibliography
+ * supplies citation metadata, a voice sample is matched. Each chip toggles the
+ * per-pass selection (ephemeral); the engine uses only selected sources. The pencil
+ * opens the source editor (label · role · content · exegesis).
  */
 export function SourcePicker() {
   const sources = useStore((s) => s.sources);
@@ -120,6 +38,7 @@ export function SourcePicker() {
   const removeSource = useStore((s) => s.removeSource);
   const selectSource = useStore((s) => s.selectSource);
   const deselectSource = useStore((s) => s.deselectSource);
+  const openSourceEditor = useStore((s) => s.openSourceEditor);
   const [adding, setAdding] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const bibRef = useRef<HTMLInputElement>(null);
@@ -244,6 +163,17 @@ export function SourcePicker() {
               </span>
               <span className="text-[8px] opacity-55">{wordCount(s.content)}</span>
               <Pip status={on ? 'cyan' : 'idle'} size="sm" />
+              <button
+                type="button"
+                aria-label="Edit source"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openSourceEditor(s.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 text-hld-muted-text hover:text-hld-cyan transition-opacity"
+              >
+                <Pencil size={10} />
+              </button>
               <button
                 type="button"
                 aria-label="Remove source"

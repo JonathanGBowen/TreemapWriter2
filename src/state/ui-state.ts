@@ -145,6 +145,12 @@ export interface UIStateSlice {
   showRemoteProjectModal: boolean;
   /** Revision feature settings (instruction · model · token preview · prompts). */
   showRevisionSettingsModal: boolean;
+  /** Edit one source document (label · role · content · exegesis). */
+  showSourceEditorModal: boolean;
+  /** Which source the editor modal targets (set by openSourceEditor). */
+  editingSourceId: string | null;
+  /** Zotero live local-API picker (desktop only). */
+  showZoteroPickerModal: boolean;
   /** Parallel Editor settings (voice · model · token preview · prompts). */
   showParallelSettingsModal: boolean;
   /** Gist Editor settings (model depth · prompts). */
@@ -214,6 +220,10 @@ export interface UIStateSlice {
   setShowConflictModal: (show: boolean) => void;
   setShowRemoteProjectModal: (show: boolean) => void;
   setShowRevisionSettingsModal: (show: boolean) => void;
+  /** Open the source editor targeting one source. */
+  openSourceEditor: (id: string) => void;
+  setShowSourceEditorModal: (show: boolean) => void;
+  setShowZoteroPickerModal: (show: boolean) => void;
   setShowParallelSettingsModal: (show: boolean) => void;
   setShowGistSettingsModal: (show: boolean) => void;
   setShowAgentTraceModal: (show: boolean) => void;
@@ -268,6 +278,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showConflictModal: false,
   showRemoteProjectModal: false,
   showRevisionSettingsModal: false,
+  showSourceEditorModal: false,
+  editingSourceId: null,
+  showZoteroPickerModal: false,
   showParallelSettingsModal: false,
   showGistSettingsModal: false,
   showAgentTraceModal: false,
@@ -356,6 +369,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowConflictModal: (show) => set({ showConflictModal: show }),
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
   setShowRevisionSettingsModal: (show) => set({ showRevisionSettingsModal: show }),
+  openSourceEditor: (id) => set({ editingSourceId: id, showSourceEditorModal: true }),
+  setShowSourceEditorModal: (show) => set({ showSourceEditorModal: show }),
+  setShowZoteroPickerModal: (show) => set({ showZoteroPickerModal: show }),
   setShowParallelSettingsModal: (show) => set({ showParallelSettingsModal: show }),
   setShowGistSettingsModal: (show) => set({ showGistSettingsModal: show }),
   setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),

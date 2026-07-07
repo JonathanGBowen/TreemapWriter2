@@ -162,5 +162,32 @@ describe('document-state mutators', () => {
     it('mints collision-safe ids', () => {
       expect(makeSourceId()).not.toBe(makeSourceId());
     });
+
+    it('updateSource patches editable fields and recomputes derived ones on a role change', () => {
+      store.getState().addSource(src('a'));
+      store.getState().updateSource('a', { label: 'Renamed', role: 'guidance' });
+      const a = store.getState().sources[0];
+      expect(a.label).toBe('Renamed');
+      expect(a.role).toBe('guidance');
+      expect(a.kind).toBe('Guidance');
+      expect(a.glyph).not.toBe('❡');
+      expect(a.content).toBe('content of a');
+    });
+
+    it('updateSource attaches an exegesis without disturbing siblings', () => {
+      store.getState().addSource(src('a'));
+      store.getState().addSource(src('b'));
+      const exegesis = { content: 'Recon.', createdAt: 1, sourceHash: 'h' };
+      store.getState().updateSource('b', { exegesis });
+      expect(store.getState().sources[0].exegesis).toBeUndefined();
+      expect(store.getState().sources[1].exegesis).toEqual(exegesis);
+    });
+
+    it('updateSource is a no-op for an unknown id', () => {
+      store.getState().addSource(src('a'));
+      const before = store.getState().sources;
+      store.getState().updateSource('nope', { label: 'x' });
+      expect(store.getState().sources).toEqual(before);
+    });
   });
 });
