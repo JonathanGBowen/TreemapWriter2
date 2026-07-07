@@ -30,6 +30,16 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, magenta on error) surfaces status without distraction.
 
+**Fixed 2026-07-06 — merge-resolve crash on old divergent projects** (see
+[`docs/migration-log.md`](docs/migration-log.md)). `sync_resolve_merge` failed with
+"missing required key theirCommit": `PullOutcome::MergeRequired`'s `their_commit`/`base_head`
+serialized snake_case because an enum's `rename_all` doesn't reach struct-variant fields
+(needs `rename_all_fields`), so the TS side read `undefined`. Fixed with `rename_all_fields`
++ a serde-contract test pinning the wire keys, plus a TS self-heal (a conflict missing its
+ref flags an actionable "update the app" error instead of hard-crashing the resolve). Requires
+a desktop rebuild to take effect. *Deferred:* in-app reconciliation of **unrelated** histories
+(the remote-seeded-separately migration case) — still punted to the CLI.
+
 **Gestalt segmentation — "Articulation"** shipped 2026-06-29 (see
 [`docs/migration-log.md`](docs/migration-log.md)). A top-down, recursive walk that
 divides a long text into its natural parts (Wertheimer's division-by-articulation —

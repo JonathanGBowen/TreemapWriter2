@@ -250,6 +250,15 @@ export const tauriRepository: Repository = {
     baseHead: string,
     resolutions: Resolution[],
   ): Promise<ResolveOutcome> {
+    // A missing ref makes `invoke` drop the key, and Tauri rejects the call with a
+    // cryptic "missing required key theirCommit". Fail with a clear, actionable message
+    // instead — the modal surfaces it in its error banner. (The sync-policy guard should
+    // prevent ever reaching here with an empty ref; this is defence in depth.)
+    if (!theirCommit || !baseHead) {
+      throw new Error(
+        'Cannot resolve: the merge is missing its remote reference. Re-pull to refresh the conflict, or update the app.',
+      );
+    }
     return invoke<ResolveOutcome>('sync_resolve_merge', {
       theirCommit,
       baseHead,

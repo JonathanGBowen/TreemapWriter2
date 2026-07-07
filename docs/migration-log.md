@@ -5293,3 +5293,45 @@ clones the proven structural-parts round-trip.)
 superset of the old ephemeral behavior — reverting restores session-only sources; the
 `.twriter/sources.json` sidecar and the opaque Rust field are inert if unused, and TS→Rust
 serde tolerates their absence.
+
+---
+
+## 2026-07-06 — Fix merge-conflict resolution crash (`theirCommit` missing) + self-heal
+
+**What changed.** Resolving a merge conflict on an old, divergent project crashed with
+`invalid args theirCommit for command sync_resolve_merge: … missing required key theirCommit`.
+
+- **Root cause (latent serde bug).** `PullOutcome` (`src-tauri/src/types.rs`) is an
+  externally-tagged enum with `#[serde(rename_all = "camelCase", tag = "kind")]`. On an ENUM,
+  `rename_all` renames the *variant names* only — **not** the fields inside a struct variant
+  (that needs `rename_all_fields`, serde ≥1.0.157). So `MergeRequired { their_commit, base_head,
+  conflicts }` serialized with **snake_case** keys, while the TS `PullOutcome`/`PendingMerge`
+  read `theirCommit`/`baseHead` → `undefined`. That undefined flowed `sync_pull` →
+  `sync-policy` `setPendingMerge` → `ConflictResolutionModal` → `invoke('sync_resolve_merge', {
+  theirCommit: undefined, … })`; JSON drops undefined keys, so Tauri rejected the call. These
+  were the *only* multi-word struct-variant fields in any tagged enum, so it never fired until a
+  real conflict (an old divergent project) hit `MergeRequired`. Verified empirically in a
+  standalone serde crate: the old form emits `{"their_commit":…}` (no `theirCommit`); the fix
+  emits `{"theirCommit":…}`.
+- **Fix (Rust).** Added `rename_all_fields = "camelCase"` to `PullOutcome` and the sibling
+  tagged sync enums `Resolution` / `ResolveOutcome` / `PushOutcome` (no-ops today — their variant
+  fields are single-word — but they guard the same class of bug), with an explanatory comment.
+  Added a **serde-contract test** (`merge_required_serializes_struct_variant_fields_as_camel_case`)
+  that pins the exact wire keys (`theirCommit`/`baseHead`, and asserts `their_commit`/`base_head`
+  are absent) — it fails on the buggy shape, passes after the fix, and runs in CI (`cargo test`).
+- **Fix (TS self-heal / defence in depth).** `sync-policy.ts` now validates `theirCommit` +
+  `baseHead` before latching a `mergeRequired` conflict; if either is missing (e.g. a stale
+  installed binary predating the fix) it flags an actionable error ("update the desktop app,
+  then pull again") instead of opening a modal that would hard-crash on submit.
+  `tauri-repository.syncResolveMerge` throws a clear `Error` on a falsy ref rather than invoking
+  with `undefined`. New `sync-policy.test.ts` case pins the self-heal path.
+
+**Verify.** `npm test` 670 pass (new self-heal case); `npm run typecheck` + `npm run build`
+clean. `cargo test` (the serde-contract test) not runnable here — no GTK libs to compile the
+Tauri crate — but validated in a standalone serde crate and it runs on PR CI. **This is a Rust
+change, so it takes effect only after rebuilding the desktop app** (`npm run tauri:build` /
+`tauri:dev`); the installed binary keeps the old wire format until rebuilt. After rebuild:
+a divergent pull opens the conflict modal → resolve → merge commit lands, no `theirCommit` error.
+
+**Rollback.** `git revert`. Pure serde-attribute + guard change; no schema/persistence change.
+Reverting restores the (buggy) snake_case wire format.

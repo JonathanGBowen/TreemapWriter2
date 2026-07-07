@@ -379,8 +379,16 @@ fn default_session_source() -> String {
 // The user resolves out-of-band; we never run reset --hard or anything that
 // throws away history.
 
+// NOTE (serde gotcha): on an ENUM, `rename_all` renames the *variant names* only —
+// it does NOT rename the fields inside a struct variant. Those need
+// `rename_all_fields`. Without it, `MergeRequired { their_commit, base_head }` would
+// serialize with snake_case keys while the TS `PullOutcome`/`PendingMerge` types read
+// `theirCommit`/`baseHead` — the exact mismatch that crashed `sync_resolve_merge`
+// with "missing required key theirCommit". Keep `rename_all_fields` on every tagged
+// sync enum so a future multi-word variant field can't regress the same way (it is a
+// no-op for the single-word fields the siblings carry today).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum PullOutcome {
     UpToDate,
     FastForwarded { commits: u32 },
@@ -432,7 +440,7 @@ pub struct ConflictFile {
 /// Externally tagged so binary files stay byte-exact (Ours/Theirs reference the
 /// blob OID rather than round-tripping through a string).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum Resolution {
     /// Resolved text (text files) — committed as the given UTF-8 bytes.
     Content { path: String, text: String },
@@ -445,7 +453,7 @@ pub enum Resolution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum ResolveOutcome {
     Resolved { commits: u32 },
     /// HEAD moved or the working tree went dirty between detect and resolve;
@@ -458,7 +466,7 @@ pub enum ResolveOutcome {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum PushOutcome {
     UpToDate,
     Pushed { commits: u32 },
@@ -623,5 +631,49 @@ mod tests {
 
         let back: Dependency = serde_json::from_str(&json).unwrap();
         assert_eq!(back.kind, "prerequisite");
+    }
+
+    #[test]
+    fn merge_required_serializes_struct_variant_fields_as_camel_case() {
+        // Regression guard: `rename_all` on an enum renames variant names, NOT the
+        // fields of a struct variant — those need `rename_all_fields`. Without it the
+        // TS side reads `theirCommit`/`baseHead` as undefined and `sync_resolve_merge`
+        // crashes with "missing required key theirCommit". Pin the exact wire keys.
+        let outcome = PullOutcome::MergeRequired {
+            their_commit: "aaaa".into(),
+            base_head: "bbbb".into(),
+            conflicts: vec![ConflictFile {
+                path: "project.md".into(),
+                kind: "text".into(),
+                base: None,
+                ours: Some("ours".into()),
+                theirs: Some("theirs".into()),
+                merged: None,
+                automergeable: false,
+                our_deleted: false,
+                their_deleted: false,
+            }],
+        };
+        let v = serde_json::to_value(&outcome).unwrap();
+        assert_eq!(v["kind"], "mergeRequired");
+        assert_eq!(v["theirCommit"], "aaaa");
+        assert_eq!(v["baseHead"], "bbbb");
+        // The snake_case keys must NOT appear — that was the bug.
+        assert!(v.get("their_commit").is_none());
+        assert!(v.get("base_head").is_none());
+        // Nested ConflictFile also camelCases its multi-word fields.
+        assert_eq!(v["conflicts"][0]["ourDeleted"], false);
+        assert_eq!(v["conflicts"][0]["theirDeleted"], false);
+
+        // And it round-trips back through the TS-facing shape.
+        let back: PullOutcome = serde_json::from_value(v).unwrap();
+        match back {
+            PullOutcome::MergeRequired { their_commit, base_head, conflicts } => {
+                assert_eq!(their_commit, "aaaa");
+                assert_eq!(base_head, "bbbb");
+                assert_eq!(conflicts.len(), 1);
+            }
+            _ => panic!("expected MergeRequired"),
+        }
     }
 }

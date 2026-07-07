@@ -223,6 +223,18 @@ async function runPull() {
         succeed();
         break;
       case 'mergeRequired':
+        // Defensive self-heal: the resolve command requires theirCommit + baseHead.
+        // If a divergent pull reports a conflict without them (e.g. an out-of-date
+        // desktop binary whose wire format predates the camelCase fix), do NOT open
+        // the modal — submitting it would hard-crash `sync_resolve_merge` with
+        // "missing required key theirCommit". Flag an actionable error instead.
+        if (!result.theirCommit || !result.baseHead) {
+          flagError(
+            'A merge conflict was detected, but the remote reference is incomplete. ' +
+              'Update the desktop app to the latest version, then pull again.',
+          );
+          break;
+        }
         // Latch the conflict and open the resolution modal. runPull/runPush
         // short-circuit on pendingMerge, so sync stays paused until resolved.
         ui.setPendingMerge({
