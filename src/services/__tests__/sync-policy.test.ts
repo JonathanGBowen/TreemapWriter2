@@ -160,6 +160,26 @@ describe('sync-policy', () => {
     expect(h.ui.setShowConflictModal).toHaveBeenCalledWith(true);
   });
 
+  it('mergeRequired missing theirCommit self-heals: no modal, an actionable error', async () => {
+    // Defends against a stale/mismatched binary whose wire format lacks theirCommit.
+    // Opening the modal would let the user submit an undefined ref and hard-crash
+    // sync_resolve_merge, so the policy flags an actionable error instead.
+    h.repo.syncPull.mockResolvedValue({
+      kind: 'mergeRequired',
+      theirCommit: undefined,
+      baseHead: undefined,
+      conflicts: [{ path: 'project.md' }],
+    });
+    h.repo.syncPush.mockResolvedValue({ kind: 'nonFastForward' });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.setPendingMerge).not.toHaveBeenCalled();
+    expect(h.ui.setShowConflictModal).not.toHaveBeenCalledWith(true);
+    expect(h.ui.syncStatus).toBe('error');
+    const errorCalls = (h.ui.setSyncError as ReturnType<typeof vi.fn>).mock.calls;
+    expect(errorCalls.flat().some((m) => /update the desktop app/i.test(String(m)))).toBe(true);
+  });
+
   it('init is idempotent — a second call before teardown is a no-op', async () => {
     await initSyncPolicy();
     await settle();

@@ -557,7 +557,8 @@ export const PROMPT_REGISTRY = [
     key: 'revisionTask',
     defaultText: strip(revisionTask),
     label: 'Revision Task',
-    description: 'Standard (non-assembly) revision task instruction. Engine internal — not user-editable.',
+    description:
+      'Sourced (mixed) revision task: role-aware use of reference / bibliographic / guidance / voice sources, per-proposal receipts (source-derived vs intrinsic), APA citations, and References sync. Engine internal — not user-editable.',
     category: 'revision-engine',
     flow: 'generateRevisions',
     editability: 'locked',

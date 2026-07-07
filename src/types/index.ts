@@ -559,20 +559,50 @@ export type RevisionMode = 'revision' | 'assembly' | 'citations';
 export type AssemblySubMode = 'verbatim' | 'woven';
 
 /**
- * A source document the revision engine may quote from. Ephemeral (session-only):
- * the writer pastes advisor notes / reviewer reports / reading notes when revising;
- * sources are NOT persisted to the project file.
+ * What a source document IS, which drives how the engine treats it. Distinct from
+ * the free-form `kind` display label: `role` is the typed behavioral discriminant
+ * the revision + citations engines switch on.
+ *
+ * - `reference` — a referenced work's full text (an uploaded/pasted document). Its
+ *   ideas may be integrated into the prose, but only WITH a proper APA in-text
+ *   citation, and its prose is the basis for verifying quotations.
+ * - `bibliographic` — reference-list metadata only (e.g. a Zotero CSL-JSON import):
+ *   an APA entry + maybe an abstract. Use it for in-text citations and the
+ *   References section; NEVER verify a quotation against it (it lacks the full text).
+ * - `guidance` — advisor notes / reviewer reports: instructions to APPLY to the
+ *   prose, never cited or quoted as a source in the manuscript.
+ * - `voice` — a style/voice sample: match its register and cadence, never cite or
+ *   quote it.
+ */
+export type SourceRole = 'reference' | 'bibliographic' | 'guidance' | 'voice';
+
+/**
+ * A source document the revision engine may draw on — pasted notes, an imported
+ * bibliography, or an uploaded PDF/DOCX/text file with its extracted text. Persisted
+ * domain data: the collection lives in `document-state` and is saved to the
+ * `.twriter/sources.json` sidecar (the per-pass *selection* stays ephemeral in
+ * `revision-state`). See `lib/docExtract.ts` for the upload/extraction path.
  */
 export interface SourceDocument {
   id: string;
-  /** Short category, e.g. "Advisor", "Review", "Reading", "Voice". */
+  /** The typed behavioral role — how the engine treats this source (see SourceRole). */
+  role: SourceRole;
+  /** Human display label only (e.g. "Advisor", "Reading"); behavior is driven by `role`. */
   kind: string;
   /** Human label shown on the chip. */
   label: string;
   /** A single glyph icon (HLD style). */
   glyph: string;
-  /** The full source text the model may quote. */
+  /** The full source text the model may quote or draw on (extracted, for uploaded files). */
   content: string;
+  /** How this source was ingested. Optional (older sessions predate it). */
+  origin?: 'paste' | 'upload' | 'bibliography';
+  /** Original filename, for an uploaded PDF/DOCX/text source. */
+  fileName?: string;
+  /** Original MIME type of an uploaded file, when the browser reported one. */
+  mime?: string;
+  /** When the source was added (epoch ms). */
+  addedAt?: number;
 }
 
 /**
@@ -594,9 +624,13 @@ export interface RevisionInstruction {
 }
 
 /**
- * One auditable revision proposal. Every proposal carries a verbatim quote from a
- * named source — the "glass box" guarantee: no claim without a receipt. Acceptance
- * is a literal `original_text → proposed_text` replace (no fuzzy matching).
+ * One auditable revision proposal — the "glass box" guarantee: no *source* claim
+ * without a *source* receipt. A source-derived proposal carries `source_id` +
+ * `verbatim_source_quote`; an *intrinsic* proposal (revision mode — a flow/tone edit
+ * or a gap the document's own logic calls for) makes no claim about a source and
+ * leaves both empty, its warrant being the `rationale` plus the verifiable
+ * `original_text`. Assembly and Citations modes always require the receipt.
+ * Acceptance is a literal `original_text → proposed_text` replace (no fuzzy matching).
  */
 export interface RevisionProposal {
   id: string;
@@ -607,11 +641,11 @@ export interface RevisionProposal {
   original_text: string;
   /** The proposed replacement prose. */
   proposed_text: string;
-  /** Why the edit is warranted, grounded in the source. */
+  /** Why the edit is warranted (grounded in the source, or in the document itself). */
   rationale: string;
-  /** Which SourceDocument the receipt comes from. */
+  /** Which SourceDocument the receipt comes from; empty for an intrinsic proposal. */
   source_id: string;
-  /** The verbatim quote from that source justifying the edit. */
+  /** The verbatim quote from that source justifying the edit; empty for an intrinsic proposal. */
   verbatim_source_quote: string;
   /** Model confidence, 0–5. */
   confidence_score: number;

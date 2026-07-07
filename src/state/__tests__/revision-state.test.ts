@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import type { StateCreator } from 'zustand';
 import {
   createRevisionSlice,
-  makeSourceId,
   type RevisionSlice,
   type SessionProposal,
 } from '../revision-state';
@@ -33,28 +32,28 @@ describe('revision slice', () => {
     store = makeStore();
   });
 
-  it('adds a source and selects it by default', () => {
-    const id = makeSourceId();
-    store.getState().addRevisionSource({ id, kind: 'Source', label: 'Notes', glyph: '✒', content: 'text' });
-    expect(store.getState().revisionSources).toHaveLength(1);
-    expect(store.getState().selectedSourceIds).toContain(id);
-  });
-
   it('toggles source selection on and off', () => {
     const s = store.getState();
-    s.addRevisionSource({ id: 'x', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
+    s.selectSource('x');
+    expect(store.getState().selectedSourceIds).toContain('x');
     s.toggleRevisionSource('x');
     expect(store.getState().selectedSourceIds).not.toContain('x');
     store.getState().toggleRevisionSource('x');
     expect(store.getState().selectedSourceIds).toContain('x');
   });
 
-  it('removing a source also deselects it', () => {
+  it('selectSource is idempotent; deselectSource drops it', () => {
     const s = store.getState();
-    s.addRevisionSource({ id: 'x', kind: 'k', label: 'l', glyph: '✒', content: 'c' });
-    store.getState().removeRevisionSource('x');
-    expect(store.getState().revisionSources).toHaveLength(0);
+    s.selectSource('x');
+    s.selectSource('x');
+    expect(store.getState().selectedSourceIds).toEqual(['x']);
+    store.getState().deselectSource('x');
     expect(store.getState().selectedSourceIds).not.toContain('x');
+  });
+
+  it('setSelectedSourceIds replaces the whole selection (project-load default)', () => {
+    store.getState().setSelectedSourceIds(['a', 'b', 'c']);
+    expect(store.getState().selectedSourceIds).toEqual(['a', 'b', 'c']);
   });
 
   it('setProposals activates the first proposal', () => {

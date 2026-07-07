@@ -91,6 +91,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.provenance_json())?;
     let structural_parts: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.structural_parts_json())?;
+    let sources: Option<serde_json::Value> = crate::fs_io::read_json(&layout.sources_json())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -116,6 +117,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         gist,
         provenance,
         structural_parts,
+        sources,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -160,6 +162,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(sp) = &data.structural_parts {
         crate::fs_io::write_json(&layout.structural_parts_json(), sp)?;
+    }
+    if let Some(src) = &data.sources {
+        crate::fs_io::write_json(&layout.sources_json(), src)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;
@@ -441,5 +446,41 @@ mod tests {
         assert!(layout.structural_parts_json().is_file());
         let back = read_from(&layout).unwrap();
         assert_eq!(back.structural_parts, Some(structural_parts));
+    }
+
+    #[test]
+    fn sources_round_trips_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the SourceDocument[] shape (id/role/kind/label/glyph/content
+        // + optional upload metadata); Rust round-trips the BARE array as an opaque Value,
+        // so a schema addition on the TS side can never reject the whole save.
+        let sources = serde_json::json!([
+            {
+                "id": "src_1",
+                "role": "reference",
+                "kind": "Reference",
+                "label": "Dewey 1922",
+                "glyph": "\u{2761}",
+                "content": "Habit and character are the same thing.",
+                "origin": "upload",
+                "fileName": "dewey-1922.pdf",
+                "mime": "application/pdf",
+                "addedAt": 1_720_000_000_000_i64
+            }
+        ]);
+
+        let data = StoredProjectData {
+            markdown: Some("# Chapter\n\nHabit shapes character.".to_string()),
+            sources: Some(sources.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        assert!(layout.sources_json().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.sources, Some(sources));
     }
 }

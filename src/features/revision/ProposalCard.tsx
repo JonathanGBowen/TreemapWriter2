@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../state';
 import type { SessionProposal } from '../../state/revision-state';
+import { roleLabel } from '../../lib/source-roles';
 import { Confidence } from './Confidence';
 import { Pip } from '../shared/Pip';
 import { revisionTypeChipClass } from './revisionTypeColors';
@@ -46,7 +47,7 @@ function ResolvedStrip({ proposal }: { proposal: SessionProposal }) {
 
 /** The glass-box receipt: progressively disclosed source id + verbatim quote. */
 function AuditTrail({ proposal, large }: { proposal: SessionProposal; large?: boolean }) {
-  const source = useStore((s) => s.revisionSources.find((x) => x.id === proposal.source_id));
+  const source = useStore((s) => s.sources.find((x) => x.id === proposal.source_id));
   const [open, setOpen] = useState(!!large);
 
   // Sourceless proposal: no external receipt to disclose. State the grounding
@@ -72,7 +73,7 @@ function AuditTrail({ proposal, large }: { proposal: SessionProposal; large?: bo
         audit trail
         <span className="ml-auto flex items-center gap-1.5 opacity-80">
           <span className="text-[11px]">{source?.glyph ?? '❡'}</span>
-          {source?.kind ?? 'source'}
+          {source ? roleLabel(source.role) : 'source'}
         </span>
       </button>
       {open && (

@@ -30,7 +30,7 @@ export const useSuggestDirectives = () => {
     if (!currentSection) return [];
     const { title: sectionTitle, fullContent: sectionText } = currentSection;
     const {
-      revisionSources,
+      sources: allSources,
       selectedSourceIds,
       activePersonaId,
       customPersonas,
@@ -38,7 +38,7 @@ export const useSuggestDirectives = () => {
       globalModelDefault,
       modelCatalog,
     } = useStore.getState();
-    const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
+    const sources = allSources.filter((s) => selectedSourceIds.includes(s.id));
     const persona = resolveActivePersona(activePersonaId, customPersonas);
 
     // The prompt sends the full section + sources whole; abort on overflow.

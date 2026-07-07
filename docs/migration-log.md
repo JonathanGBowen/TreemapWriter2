@@ -5159,3 +5159,179 @@ empty); Estimate Dependencies with parts → the advisory block is included.
 **Rollback.** `git revert` (pure TS; no schema/persistence change this tier). The
 consumption blocks and the inspector are additive and inert when `structuralParts` is
 empty, so a partial revert degrades cleanly to Tier-2 behavior.
+
+---
+
+## 2026-07-06 — Glass Box: role-aware referenced works + mixed-source revision passes
+
+**What changed.** The Glass-Box revision workspace now treats *referenced works as
+source texts in ordinary revision mode* — integrating their ideas with proper APA
+citations — and lets a referenced work sit **alongside** other source kinds and
+intrinsic edits in one pass. Two defects were fixed and source *role* became a typed,
+behavior-driving concept.
+
+- **Defect 1 — the sourced revision task was blind to sources.** `revision-task.md`
+  (the locked `revisionTask`) never told the model the attached sources existed, how to
+  use a referenced work, or to add a citation; APA discipline existed only in the
+  separate Citations *audit* mode. Rewritten to teach the role taxonomy, per-proposal
+  receipts, in-text APA citations (Author/Year inferred from the source label/content),
+  and a `## References` sync (reusing the Citations-mode guarded single-proposal append
+  trick — a rejectable proposal, never an auto-write).
+- **Defect 2 — the receipt contract was binary per-pass, silently dropping intrinsic
+  work.** `sourceless = sources.length === 0` did double duty (prompt shape *and* the
+  receipt rule), so the moment any source was attached `normalizeOne` dropped every
+  proposal lacking a `verbatim_source_quote` — losing all the flow/tone/consistency
+  edits in a mixed pass. Split into two orthogonal flags in
+  `services/ai/ai-provider.revisions.ts`: `hasSources` (drives prompt assembly —
+  SOURCE_DOCUMENTS vs INSTRUCTION block, sourced vs sourceless task `.md`) and
+  `receiptRequired = mode==='assembly' || mode==='citations'` (drives the schema
+  `required` set + the normalizer drop rule). Revision mode is now **per-proposal**: a
+  source-derived proposal carries its receipt, an intrinsic one leaves it empty and
+  survives. Assembly and Citations stay strict. The glass-box thesis is preserved and
+  sharpened to *no source claim without a source receipt*.
+- **Typed `SourceRole`** (`src/types/index.ts`): `reference` (a work's full text —
+  integrate + cite, quote-verifiable) · `bibliographic` (Zotero metadata — cite, never
+  quote-verify) · `guidance` (advisor/reviewer notes — apply, don't cite) · `voice`
+  (style sample — match register, don't cite/quote). Added as a **required** field on
+  `SourceDocument` (`kind` demoted to a human display label). New pure UI-meta module
+  `src/lib/source-roles.ts` (label/glyph/hint per role — mirrors `revisionTypeColors.ts`;
+  behavioral prose stays in the `.md` prompts per law #5).
+- **`normalizeOne` fallback guard** (`lib/revision-helpers.ts`): the single-source
+  `fallbackSourceId` now attaches ONLY to a proposal that actually cited (has a verbatim
+  quote), so an intrinsic proposal in a one-source pass is never mis-attributed — its
+  audit trail can't lie. `NormalizeOpts.sourceless` → `receiptRequired` (defaults `true`
+  = strict, so every no-opts caller is unchanged).
+- **Citations prompts keyed on role** (`citations-system.md` / `citations-task.md`): the
+  brittle "typically marked with the kind 'Reading'" heuristic is replaced by the real
+  signal (`role: reference` = FULL-TEXT, `role: bibliographic` = metadata).
+- **UI** (`features/revision/`): `SourcePicker` gained a 4-way role selector (default
+  `reference`), role-coded chip glyphs + a role tag, and role-aware ingestion defaults
+  (`.md` upload → `reference`; Zotero import → `bibliographic`); `ReviseConfig` source
+  hint updated; `ProposalCard` audit trail shows the source's role. The deep-pass
+  (agent) normalizer in `use-revision-actions.ts` passes `receiptRequired` by mode.
+
+**Scope.** No persistence change — sources stay ephemeral (no Rust mirror, no serde
+field). No new prompt files, no new registry entries (the `revisionTask` description was
+refreshed). `bibImport.ts` untouched (role is assigned at the `SourcePicker`
+`addRevisionSource` call, not in the parser).
+
+**Verify.** `npm run typecheck` clean; `npm test` 659 pass (new: `source-roles.test.ts`;
+a mixed-pass test proving a source-derived AND an intrinsic proposal both survive in
+revision mode + the role appears in the prompt; the fallback-guard case; assembly/
+citations still require receipts; the sourced-revision receipt-required assertion
+inverted); `npm run lint` 0 errors (pre-existing `warn`-level max-lines only);
+`npm run build` succeeds. Manual: open the Revision workspace, paste a short **reference**
+work + a **guidance** note in one pass, set a directive, Generate → the result contains
+both a cited edit (audit trail shows the `reference` role + verbatim receipt; proposed
+text carries an APA citation) and an intrinsic edit ("grounded in the document"), plus a
+`## References` proposal; accept one of each → the draft updates and a `pre-ai-write`
+snapshot is taken. (A live-LLM end-to-end was not run here — no API key is configured in
+this environment — but the orchestration characterization tests pin the behavior at the
+`generateRevisions` boundary.)
+
+**Rollback.** `git revert` (pure TS + prompt text; no schema/persistence change). To
+undo only the receipt split, restore the single `sourceless` boolean in
+`ai-provider.revisions.ts` + `revision-helpers.ts` and the strict `normalizeOne` guard;
+the `role` field is inert if unused, so a partial revert degrades cleanly to the prior
+strict-when-sourced behavior.
+
+---
+
+## 2026-07-06 — Glass Box sources: PDF/DOCX upload + persistence
+
+**What changed.** Source documents can now be **uploaded as PDF or DOCX** (text extracted
+client-side) and — a deliberate architecture change — are now **persisted with the
+project** instead of being session-only.
+
+- **Text extraction** — new pure module `src/lib/docExtract.ts` (mirrors `bibImport.ts`):
+  `extractPdf` (**dynamic** `import('pdfjs-dist')` so the ~425 KB lib splits into its own
+  chunk, loaded only on first PDF; worker wired via a `?url` import → `GlobalWorkerOptions.
+  workerSrc` — the repo's first `?url`/worker usage), `extractDocx` (dynamic
+  `import('mammoth')` → `extractRawText`), and `extractSourceText(file)` dispatching by
+  extension with friendly errors (unsupported type, empty/scanned PDF). Runs in **both** the
+  browser and the Tauri webview (no Rust dependency — parity preserved). Two new runtime deps:
+  `pdfjs-dist`, `mammoth` (user-approved). `vite.config.ts` gained `optimizeDeps.include:
+  ['pdfjs-dist']`.
+- **Persistence** — sources moved from the **ephemeral** `revision-state` slice to
+  **persisted domain** state in `document-state` (`sources: SourceDocument[]` + `setSources`
+  / `addSource` / `removeSource`, and `makeSourceId`), saved to a committed
+  `.twriter/sources.json` sidecar via the **bare-array + opaque Rust `Value`** recipe cloned
+  from `structuralParts` (`repository.ts` field → `types.rs` `Option<serde_json::Value>` →
+  `layout.rs::sources_json()` → `document.rs` read/write; browser rides the whole-blob
+  `setProject`, no code). The 2026-06-24 sparse-payload lesson is honored (opaque `Value`,
+  never a strict mirror). `revision-state` keeps only the **ephemeral per-pass selection**
+  (`selectedSourceIds` + `selectSource`/`deselectSource`/`setSelectedSourceIds`/toggle); on
+  project load every persisted source is default-selected. `SourceDocument` gained optional
+  `origin`/`fileName`/`mime`/`addedAt` metadata (opaque-safe).
+- **UI** (`SourcePicker.tsx`): the upload `<input accept>` now takes `.pdf,.docx` (+ text/md);
+  binaries are read as ArrayBuffer and extracted with the `beginOp`/`endOp` activity pill + a
+  stable-id sonner toast ("Extracting…" → success / error), and a soft size warning on very
+  large text. Add/remove **write through** with an explicit `saveCurrentState()` (a plain
+  state mutation otherwise wouldn't persist — caught during e2e verification). Chips show the
+  file type + word count. All `revisionSources` consumers (`use-revision-actions`,
+  `use-suggest-directives`, `RevisionTopBar`, `ProposalCard`, `RevisionTokenPreview`) now read
+  `sources`.
+
+**Scope / deferred.** Store extracted **text only**, not the original binary. Storage is the
+simple whole-collection Pattern A (rides `project_write`); the per-item-file Pattern B
+(`sources_*` IPC) is deferred to only-if-needed (many/huge files). No OCR for scanned PDFs; no
+auto-chunking of book-length documents (the existing `guardContextFit` pre-flight blocks
+over-window sources without truncation, unchanged).
+
+**Verify.** `npm run typecheck` clean; `npm test` 669 pass (new: `docExtract.test.ts` —
+dispatch/error paths + a **real** DOCX extraction against a committed `sample.docx` fixture
+via a node/browser mammoth bridge; relocated source-collection tests in `document-state.test.ts`
++ selection tests in `revision-state.test.ts`; the Rust `sources_round_trips_through_write_then_read`
+mirrors the passing `structural_parts` one); `npm run lint` 0 errors; `npm run build` succeeds
+(pdf.js in its own chunk + the emitted `pdf.worker.min-*.mjs` asset). **Real-browser e2e**
+(headless Chromium): open the Revision workspace → upload the DOCX fixture → chip appears with a
+DOCX tag + word count → the source is written to IndexedDB (`sources` length 1) → **survives a
+page reload**. (`cargo test` for the Rust sidecar not run here — no GTK libs — but the test
+clones the proven structural-parts round-trip.)
+
+**Rollback.** `git revert`. Extraction is additive (docExtract + the deps). The persistence is a
+superset of the old ephemeral behavior — reverting restores session-only sources; the
+`.twriter/sources.json` sidecar and the opaque Rust field are inert if unused, and TS→Rust
+serde tolerates their absence.
+
+---
+
+## 2026-07-06 — Fix merge-conflict resolution crash (`theirCommit` missing) + self-heal
+
+**What changed.** Resolving a merge conflict on an old, divergent project crashed with
+`invalid args theirCommit for command sync_resolve_merge: … missing required key theirCommit`.
+
+- **Root cause (latent serde bug).** `PullOutcome` (`src-tauri/src/types.rs`) is an
+  externally-tagged enum with `#[serde(rename_all = "camelCase", tag = "kind")]`. On an ENUM,
+  `rename_all` renames the *variant names* only — **not** the fields inside a struct variant
+  (that needs `rename_all_fields`, serde ≥1.0.157). So `MergeRequired { their_commit, base_head,
+  conflicts }` serialized with **snake_case** keys, while the TS `PullOutcome`/`PendingMerge`
+  read `theirCommit`/`baseHead` → `undefined`. That undefined flowed `sync_pull` →
+  `sync-policy` `setPendingMerge` → `ConflictResolutionModal` → `invoke('sync_resolve_merge', {
+  theirCommit: undefined, … })`; JSON drops undefined keys, so Tauri rejected the call. These
+  were the *only* multi-word struct-variant fields in any tagged enum, so it never fired until a
+  real conflict (an old divergent project) hit `MergeRequired`. Verified empirically in a
+  standalone serde crate: the old form emits `{"their_commit":…}` (no `theirCommit`); the fix
+  emits `{"theirCommit":…}`.
+- **Fix (Rust).** Added `rename_all_fields = "camelCase"` to `PullOutcome` and the sibling
+  tagged sync enums `Resolution` / `ResolveOutcome` / `PushOutcome` (no-ops today — their variant
+  fields are single-word — but they guard the same class of bug), with an explanatory comment.
+  Added a **serde-contract test** (`merge_required_serializes_struct_variant_fields_as_camel_case`)
+  that pins the exact wire keys (`theirCommit`/`baseHead`, and asserts `their_commit`/`base_head`
+  are absent) — it fails on the buggy shape, passes after the fix, and runs in CI (`cargo test`).
+- **Fix (TS self-heal / defence in depth).** `sync-policy.ts` now validates `theirCommit` +
+  `baseHead` before latching a `mergeRequired` conflict; if either is missing (e.g. a stale
+  installed binary predating the fix) it flags an actionable error ("update the desktop app,
+  then pull again") instead of opening a modal that would hard-crash on submit.
+  `tauri-repository.syncResolveMerge` throws a clear `Error` on a falsy ref rather than invoking
+  with `undefined`. New `sync-policy.test.ts` case pins the self-heal path.
+
+**Verify.** `npm test` 670 pass (new self-heal case); `npm run typecheck` + `npm run build`
+clean. `cargo test` (the serde-contract test) not runnable here — no GTK libs to compile the
+Tauri crate — but validated in a standalone serde crate and it runs on PR CI. **This is a Rust
+change, so it takes effect only after rebuilding the desktop app** (`npm run tauri:build` /
+`tauri:dev`); the installed binary keeps the old wire format until rebuilt. After rebuild:
+a divergent pull opens the conflict modal → resolve → merge commit lands, no `theirCommit` error.
+
+**Rollback.** `git revert`. Pure serde-attribute + guard change; no schema/persistence change.
+Reverting restores the (buggy) snake_case wire format.

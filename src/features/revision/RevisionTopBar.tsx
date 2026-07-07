@@ -8,7 +8,7 @@ export function RevisionTopBar() {
   const phase = useStore((s) => s.revisionPhase);
   const previewAll = useStore((s) => s.previewAll);
   const setPreviewAll = useStore((s) => s.setPreviewAll);
-  const sources = useStore((s) => s.revisionSources);
+  const sources = useStore((s) => s.sources);
   const selectedIds = useStore((s) => s.selectedSourceIds);
   const setShowSettings = useStore((s) => s.setShowRevisionSettingsModal);
   const current = useCurrentSection();

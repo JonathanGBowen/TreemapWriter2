@@ -15,7 +15,7 @@ const fmtK = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
  */
 export function RevisionTokenPreview() {
   const current = useCurrentSection();
-  const revisionSources = useStore((s) => s.revisionSources);
+  const revisionSources = useStore((s) => s.sources);
   const selectedSourceIds = useStore((s) => s.selectedSourceIds);
   const revisionInstructions = useStore((s) => s.revisionInstructions);
   const activeRevisionInstructionId = useStore((s) => s.activeRevisionInstructionId);

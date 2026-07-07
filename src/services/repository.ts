@@ -18,6 +18,7 @@ import type {
   SessionRecord,
   Snapshot,
   SnapshotMeta,
+  SourceDocument,
   SyncState,
   TestSuite,
 } from '../types';
@@ -77,6 +78,14 @@ export interface StoredProjectData {
    * TS layer owns the shape. Absent until the writer first runs "Discover parts".
    */
   structuralParts?: StructuralPart[];
+  /**
+   * The revision workspace's source documents (pasted notes, imported bibliography,
+   * and uploaded PDF/DOCX/text with their extracted text) — `.twriter/sources.json`
+   * on desktop. Persisted as the BARE array (like `structuralParts`); opaque to the
+   * Rust mirror (an opaque `Value`), so the TS layer owns the shape. Absent until the
+   * writer adds a source.
+   */
+  sources?: SourceDocument[];
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

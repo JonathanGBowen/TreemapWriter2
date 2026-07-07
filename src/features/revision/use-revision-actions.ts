@@ -42,7 +42,7 @@ export const useRevisionActions = () => {
     if (!currentSection) return;
     const { title: sectionTitle, fullContent: sectionText } = currentSection;
     const {
-      revisionSources,
+      sources: allSources,
       selectedSourceIds,
       directive,
       revisionMode,
@@ -57,7 +57,7 @@ export const useRevisionActions = () => {
     } = useStore.getState();
     if (isProcessing) return;
 
-    const sources = revisionSources.filter((s) => selectedSourceIds.includes(s.id));
+    const sources = allSources.filter((s) => selectedSourceIds.includes(s.id));
     // Sourceless revision is now the default when no sources exist: the engine
     // grounds proposals in the document itself via the active Instruction. Assembly
     // (assembles FROM sources) and Citations (checks the draft AGAINST sources) are
@@ -154,7 +154,7 @@ export const useRevisionActions = () => {
       config: st.promptsConfig,
       enableFsTools: isTauri(),
     });
-    const sources = st.revisionSources.filter((s) => st.selectedSourceIds.includes(s.id));
+    const sources = st.sources.filter((s) => st.selectedSourceIds.includes(s.id));
     const instruction = resolveActiveInstruction(
       st.revisionInstructions,
       st.activeRevisionInstructionId,
@@ -192,7 +192,9 @@ export const useRevisionActions = () => {
       const proposals =
         normalizeRevisions(parseAgentProposals(answer), {
           sectionLabel: currentSection.title,
-          sourceless: sources.length === 0,
+          // The deep pass is grounded in the document itself (see revision-agent.md),
+          // so receipts are optional — only Assembly / Citations are strict.
+          receiptRequired: st.revisionMode === 'assembly' || st.revisionMode === 'citations',
         }) ?? [];
       setProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));
       setRevisionPhase('review');

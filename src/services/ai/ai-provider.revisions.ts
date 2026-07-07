@@ -34,11 +34,12 @@ const REVISION_TYPES = [
  * constrained to this exact shape, so proposals always come back with the right
  * field names — the reliable approach the prototype's bare JSON mode lacked.
  *
- * Built per-call: in SOURCELESS mode there is no source to cite, so `source_id`
- * and `verbatim_source_quote` drop out of the required set (the glass-box receipt
- * is conditional — see normalizeRevisions). Sourced passes keep all eight fields.
+ * Built per-call: the glass-box receipt (`source_id` + `verbatim_source_quote`) is
+ * in the required set only when `receiptRequired` — i.e. Assembly / Citations. In
+ * revision mode it is optional per-proposal (intrinsic edits carry no receipt; see
+ * normalizeRevisions), so those two fields drop out of `required`.
  */
-const revisionsJsonSchema = (sourceless: boolean) => {
+const revisionsJsonSchema = (receiptRequired: boolean) => {
   const required = [
     'section',
     'revision_type',
@@ -47,7 +48,7 @@ const revisionsJsonSchema = (sourceless: boolean) => {
     'rationale',
     'confidence_score',
   ];
-  if (!sourceless) required.push('source_id', 'verbatim_source_quote');
+  if (receiptRequired) required.push('source_id', 'verbatim_source_quote');
   return {
     type: 'object',
     properties: {
@@ -78,21 +79,38 @@ const formatSources = (sources: SourceDocument[]): string =>
     ? sources
         .map(
           (s) =>
-            `--- [Source ID: ${s.id}] ${s.label} (${s.kind}) ---\n${s.content}`,
+            `--- [Source ID: ${s.id}] ${s.label} — role: ${s.role} (${s.kind}) ---\n${s.content}`,
         )
         .join('\n\n')
     : '(none provided)';
 
+// The verbatim-receipt demand for a strictly-receipted pass (Assembly / Citations):
+// EVERY proposal must carry a source receipt.
+const STRICT_RECEIPT_TAIL =
+  'Return ONLY the JSON object defined by the schema (a "proposals" array). For each proposal: original_text MUST be an exact verbatim substring of the MASTER_DOCUMENT; verbatim_source_quote MUST be copied exactly from one SOURCE_DOCUMENT, and source_id MUST be that source\'s ID.';
+
+// Revision mode WITH sources: a mixed pass. Each source carries a ROLE (see the
+// SOURCE_DOCUMENTS header lines) that governs how to use it; a proposal may be
+// source-derived (carries a receipt) or intrinsic (no receipt).
+const MIXED_RECEIPT_TAIL =
+  'Return ONLY the JSON object defined by the schema (a "proposals" array). Each source is tagged with a ROLE that governs how you use it — treat each per its role exactly as your task instructions describe. A proposal is one of two kinds: (a) SOURCE-DERIVED — it draws on a reference/bibliographic source, so it MUST carry that source\'s id in source_id and a verbatim_source_quote copied EXACTLY from that source, and (when it integrates a claim from the work) an APA in-text citation in proposed_text; or (b) INTRINSIC — a flow/tone/consistency edit or an application of guidance, grounded in the MASTER_DOCUMENT itself, which leaves source_id and verbatim_source_quote empty and puts its justification in rationale. In every proposal original_text MUST be an exact verbatim substring of the MASTER_DOCUMENT. Never invent a quotation, a citation, or a page number.';
+
+// Revision mode WITHOUT sources: ground in the document itself, no receipts.
+const SOURCELESS_TAIL =
+  'Return ONLY the JSON object defined by the schema (a "proposals" array). For each proposal: original_text MUST be an exact verbatim substring of the MASTER_DOCUMENT. There are NO source documents — ground each proposal in the MASTER_DOCUMENT itself per the INSTRUCTION, put your justification in rationale, and leave source_id and verbatim_source_quote empty. Do not invent quotations.';
+
 /**
  * Compose the task instruction + DIRECTIVE + MASTER_DOCUMENT + (sources | instruction).
- * Sourced mode appends the SOURCE_DOCUMENTS block and the verbatim-receipt demand;
- * sourceless mode appends the INSTRUCTION block and tells the model to ground in
- * the document itself with no source to cite.
+ * Three shapes: sourceless revision grounds in the document itself (INSTRUCTION
+ * block, no receipts); sourced revision is a mixed pass (SOURCE_DOCUMENTS block,
+ * per-proposal receipts, role-aware); strictly-receipted modes (Assembly /
+ * Citations) demand a receipt on every proposal.
  */
 const buildUserPrompt = (
   task: string,
   input: GenerateRevisionsInput,
-  sourceless: boolean,
+  hasSources: boolean,
+  receiptRequired: boolean,
   instruction: string,
 ): string => {
   const head = [
@@ -106,21 +124,15 @@ const buildUserPrompt = (
     input.sectionText,
     '',
   ];
-  if (sourceless) {
-    return [
-      ...head,
-      '### INSTRUCTION ###',
-      instruction,
-      '',
-      'Return ONLY the JSON object defined by the schema (a "proposals" array). For each proposal: original_text MUST be an exact verbatim substring of the MASTER_DOCUMENT. There are NO source documents — ground each proposal in the MASTER_DOCUMENT itself per the INSTRUCTION, put your justification in rationale, and leave source_id and verbatim_source_quote empty. Do not invent quotations.',
-    ].join('\n');
+  if (!hasSources) {
+    return [...head, '### INSTRUCTION ###', instruction, '', SOURCELESS_TAIL].join('\n');
   }
   return [
     ...head,
     '### SOURCE_DOCUMENTS ###',
     formatSources(input.sources),
     '',
-    'Return ONLY the JSON object defined by the schema (a "proposals" array). For each proposal: original_text MUST be an exact verbatim substring of the MASTER_DOCUMENT; verbatim_source_quote MUST be copied exactly from one SOURCE_DOCUMENT, and source_id MUST be that source\'s ID.',
+    receiptRequired ? STRICT_RECEIPT_TAIL : MIXED_RECEIPT_TAIL,
   ].join('\n');
 };
 
@@ -148,20 +160,25 @@ export async function generateRevisions(
   thinkingBudget: number | undefined,
   input: GenerateRevisionsInput,
 ): Promise<RevisionProposal[]> {
-  // Sourceless = no sources to cite. Assembly + Citations always work FROM sources
-  // (UI-gated), so sourceless only changes the standard revision task; the receipt
-  // relaxes either way (see normalizeRevisions / revisionsJsonSchema).
-  const sourceless = input.sources.length === 0;
+  // Two ORTHOGONAL flags, split apart so a mixed revision pass works:
+  //  - hasSources drives PROMPT ASSEMBLY (SOURCE_DOCUMENTS vs INSTRUCTION block,
+  //    and which task .md — sourced vs sourceless).
+  //  - receiptRequired drives the RECEIPT CONTRACT (schema `required` set + the
+  //    normalizer's drop rule). Only Assembly + Citations are strict; revision mode
+  //    is per-proposal (intrinsic edits carry no receipt) whether or not sources
+  //    are present.
+  const hasSources = input.sources.length > 0;
+  const receiptRequired = input.mode === 'assembly' || input.mode === 'citations';
   const instruction = input.instruction?.trim() || getPromptText('revisionInstructionDefault');
   const systemInstruction = systemInstructionFor(input);
-  const task = taskFor(input, sourceless);
+  const task = taskFor(input, !hasSources);
 
   const text = await client.generateText({
     model,
-    prompt: buildUserPrompt(task, input, sourceless, instruction),
+    prompt: buildUserPrompt(task, input, hasSources, receiptRequired, instruction),
     systemInstruction,
     json: true,
-    responseJsonSchema: revisionsJsonSchema(sourceless),
+    responseJsonSchema: revisionsJsonSchema(receiptRequired),
     thinkingBudget,
     maxTokens: MAX_OUTPUT_TOKENS,
   });
@@ -169,7 +186,7 @@ export async function generateRevisions(
   const proposals = normalizeRevisions(safeJsonParse(text || '', null), {
     sectionLabel: input.sectionTitle,
     fallbackSourceId: input.sources.length === 1 ? input.sources[0].id : undefined,
-    sourceless,
+    receiptRequired,
   });
   if (proposals === null) {
     // Surface the raw response so an unparseable shape is diagnosable in devtools.

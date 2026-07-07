@@ -12,7 +12,7 @@ const eyebrow = 'font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted
 const SOURCE_HINT: Record<string, string> = {
   assembly: 'to assemble from',
   citations: 'to check against',
-  revision: 'to cite from · optional',
+  revision: 'reference works, notes, style · optional',
 };
 
 /** The "no more, no less" config core: sources → directive → one lit Generate. */
