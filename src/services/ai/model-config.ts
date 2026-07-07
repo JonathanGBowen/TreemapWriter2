@@ -66,6 +66,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   refreshGistSpan: g(HEAVY, THINK),
   refitGist: g(HEAVY, THINK),
   suggestDirectives: g(HEAVY, THINK),
+  // Close exegesis of one source — faithful reconstruction is reasoning-heavy.
+  exegeteSource: g(HEAVY, THINK),
   // Heavy reasoning over two whole drafts.
   compareVersions: g(HEAVY, THINK),
   // Spec test — part: move-by-move A/B against the held rubric for one section.

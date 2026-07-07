@@ -6,6 +6,7 @@ import { makeSourceId } from '../../state/document-state';
 import { parseCslJson, referenceToSourceContent } from '../../lib/bibImport';
 import { SOURCE_ACCEPT, extractSourceText } from '../../lib/docExtract';
 import { roleGlyph, roleLabel, sourceRoleMeta } from '../../lib/source-roles';
+import { isExegesisStale } from '../../lib/source-edit';
 import type { SourceRole } from '../../types';
 import { Pip } from '../shared/Pip';
 import { AddSourceForm } from './RolePicker';
@@ -162,6 +163,11 @@ export function SourcePicker() {
                 {s.origin === 'upload' && s.fileName ? s.fileName.split('.').pop()?.toUpperCase() : roleLabel(s.role)}
               </span>
               <span className="text-[8px] opacity-55">{wordCount(s.content)}</span>
+              {s.exegesis && !isExegesisStale(s) && (
+                <span className="text-[8px] opacity-55" title="Has a current exegesis">
+                  ◈
+                </span>
+              )}
               <Pip status={on ? 'cyan' : 'idle'} size="sm" />
               <button
                 type="button"

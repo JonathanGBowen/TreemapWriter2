@@ -2,8 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '../../state';
 import { ModalShell } from './ModalShell';
 import { RolePicker } from '../revision/RolePicker';
+import { useSourceExegesis } from '../revision/use-source-exegesis';
 import { sourceRoleMeta } from '../../lib/source-roles';
+import { isExegesisStale } from '../../lib/source-edit';
 import { countWords } from '../../lib/utils';
+import type { SourceDocument } from '../../types';
 
 const inputCls =
   'w-full bg-hld-bg border border-hld-border focus:border-hld-cyan outline-none text-hld-text font-mono text-[12px] px-2.5 py-2';
@@ -99,7 +102,63 @@ export function SourceEditorModal() {
             .filter(Boolean)
             .join(' · ')}
         </div>
+
+        <ExegesisZone source={source} />
       </div>
     </ModalShell>
+  );
+}
+
+/**
+ * The source's exegetical reconstruction: generate (streamed live), read, and
+ * regenerate when the source text has drifted since it was reconstructed. Stale
+ * is annotated, never auto-deleted — regenerating is the writer's call.
+ */
+function ExegesisZone({ source }: { source: SourceDocument }) {
+  const { run, running, streaming } = useSourceExegesis();
+  const stale = isExegesisStale(source);
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-hld-border pt-3 mt-1">
+      <div className="flex items-center justify-between">
+        <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text">
+          ◈ exegesis — the argument reconstructed
+        </div>
+        {!running && (
+          <button
+            type="button"
+            onClick={() => void run(source)}
+            className="px-2 py-1 border border-hld-cyan/40 text-hld-cyan hover:bg-hld-cyan/10 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors"
+          >
+            {source.exegesis ? '⟲ Reconstruct again' : '◈ Reconstruct'}
+          </button>
+        )}
+      </div>
+
+      {running ? (
+        <div className="border border-hld-border bg-hld-bg px-2.5 py-2 max-h-64 overflow-y-auto font-mono text-[11px] leading-[1.6] text-hld-text whitespace-pre-wrap">
+          {streaming || <span className="text-hld-muted-text">reading the source…</span>}
+        </div>
+      ) : source.exegesis ? (
+        <>
+          <div className="border border-hld-border bg-hld-bg px-2.5 py-2 max-h-64 overflow-y-auto font-mono text-[11px] leading-[1.6] text-hld-text whitespace-pre-wrap">
+            {source.exegesis.content}
+          </div>
+          <div
+            className={`font-mono text-[8.5px] uppercase tracking-[0.08em] ${
+              stale ? 'text-hld-muted-text-2' : 'text-hld-muted'
+            }`}
+          >
+            {stale
+              ? '⟲ source changed since reconstruction'
+              : `reconstructed ${new Date(source.exegesis.createdAt).toLocaleDateString()}`}
+          </div>
+        </>
+      ) : (
+        <div className="font-mono text-[8.5px] text-hld-muted uppercase tracking-[0.08em]">
+          none yet — a faithful reconstruction of this source's moves, commitments, and terms
+        </div>
+      )}
+    </div>
   );
 }

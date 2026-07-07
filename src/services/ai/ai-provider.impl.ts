@@ -63,6 +63,7 @@ import type {
   RefreshGistSpanInput,
   RefitGistInput,
   SuggestDirectivesInput,
+  ExegeteSourceInput,
   GenerateSprintPlanInput,
   CoachSprintTurnInput,
   DecomposeSprintStepInput,
@@ -609,6 +610,26 @@ export class MultiProviderAIProvider implements AIProvider {
     const stream = this.dispatch(choice, 'streamCoachAdvice').streamText({
       model: choice.model,
       prompt: buildCoachPrompt(input),
+      thinkingBudget: choice.thinkingBudget,
+      maxTokens: MAX_OUTPUT_TOKENS,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * Close exegesis of one source — streamed, like streamCoachAdvice. The contract
+   * (reconstruct moves/commitments/terms; never summarize) is the locked
+   * `sourceExegesisPrompt`; the user turn carries only the source itself.
+   */
+  async *exegeteSource(input: ExegeteSourceInput): AsyncIterable<string> {
+    const prompt = `[Source: ${input.label} — role: ${input.role}]\n\n${input.content}`;
+    const choice = this.choose('exegeteSource', input);
+    const stream = this.dispatch(choice, 'exegeteSource').streamText({
+      model: choice.model,
+      prompt,
+      systemInstruction: getPromptText('sourceExegesisPrompt'),
       thinkingBudget: choice.thinkingBudget,
       maxTokens: MAX_OUTPUT_TOKENS,
     });

@@ -12,6 +12,7 @@ import type {
   RevisionMode,
   AssemblySubMode,
   SourceDocument,
+  SourceRole,
   ReverseOutlineBullet,
   ParagraphKind,
   SegmentMode,
@@ -110,6 +111,14 @@ export interface AIProvider {
    */
   refitGist(input: RefitGistInput): Promise<GistSpan[] | null>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
+  /**
+   * Close exegesis of ONE source document: a concise, faithful reconstruction of
+   * its argument — moves, commitments, terms — per the VISION summary-vs-exegesis
+   * thesis (never a summary). Streamed token-by-token (the app's preferred
+   * visible-progress idiom); the caller accumulates and persists the result on
+   * the source (`SourceDocument.exegesis`).
+   */
+  exegeteSource(input: ExegeteSourceInput): AsyncIterable<string>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
   /**
    * Streaming coach turn for the sprint start protocol (the chat / hybrid
@@ -610,6 +619,18 @@ export interface SuggestDirectivesInput {
   /** Active persona name + instruction, to flavor the strategic directives. */
   personaName: string;
   personaInstruction: string;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ExegeteSourceInput {
+  /** The source's chip label (names the work in the prompt header). */
+  label: string;
+  /** The source's role, for the prompt header (a bibliographic entry reads differently). */
+  role: SourceRole;
+  /** The full source text to reconstruct. */
+  content: string;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;
