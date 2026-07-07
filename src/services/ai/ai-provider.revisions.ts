@@ -39,7 +39,7 @@ const REVISION_TYPES = [
  * revision mode it is optional per-proposal (intrinsic edits carry no receipt; see
  * normalizeRevisions), so those two fields drop out of `required`.
  */
-const revisionsJsonSchema = (receiptRequired: boolean) => {
+export const revisionsJsonSchema = (receiptRequired: boolean) => {
   const required = [
     'section',
     'revision_type',
@@ -74,7 +74,7 @@ const revisionsJsonSchema = (receiptRequired: boolean) => {
   };
 };
 
-const formatSources = (sources: SourceDocument[]): string =>
+export const formatSources = (sources: SourceDocument[]): string =>
   sources.length
     ? sources
         .map(
@@ -86,7 +86,7 @@ const formatSources = (sources: SourceDocument[]): string =>
 
 // The verbatim-receipt demand for a strictly-receipted pass (Assembly / Citations):
 // EVERY proposal must carry a source receipt.
-const STRICT_RECEIPT_TAIL =
+export const STRICT_RECEIPT_TAIL =
   'Return ONLY the JSON object defined by the schema (a "proposals" array). For each proposal: original_text MUST be an exact verbatim substring of the MASTER_DOCUMENT; verbatim_source_quote MUST be copied exactly from one SOURCE_DOCUMENT, and source_id MUST be that source\'s ID.';
 
 // Revision mode WITH sources: a mixed pass. Each source carries a ROLE (see the

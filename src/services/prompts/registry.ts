@@ -64,6 +64,7 @@ import citationsTask from './citations-task.md?raw';
 import suggestDirectivesTemplate from './suggest-directives.md?raw';
 import revisionAgentPreamble from './revision-agent.md?raw';
 import sourceExegesisPrompt from './source-exegesis.md?raw';
+import citationsAuditTask from './citations-audit-task.md?raw';
 import directiveDialoguePrompt from './directive-dialogue.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
@@ -690,6 +691,17 @@ export const PROMPT_REGISTRY = [
       'Glass Box deep pass: the system preamble for the bounded local agent — gather cross-section / manuscript-search / history context, then emit RevisionProposal[] JSON for the unchanged accept gate. Engine internal — not user-editable.',
     category: 'revision-engine',
     flow: 'runAgent',
+    editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'citationsAuditTask',
+    defaultText: strip(citationsAuditTask),
+    label: 'Citations Audit Task',
+    description:
+      'Per-source audit task: read ONE source rigorously, then assess the document\'s usage — and non-usage — of it, proposing only surgical, definite-improvement edits. The batch audit loops this. Engine internal — not user-editable.',
+    category: 'revision-engine',
+    flow: 'auditSourceUsage',
     editability: 'locked',
     variables: [],
   },

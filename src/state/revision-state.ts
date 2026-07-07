@@ -6,6 +6,13 @@ import type {
   RevisionMode,
   RevisionProposal,
 } from '../types';
+import {
+  initAuditQueue,
+  patchAuditQueue,
+  settleRemaining,
+  type AuditItem,
+  type AuditItemStatus,
+} from '../lib/audit-helpers';
 
 /**
  * The Glass Box revision workflow, as an ephemeral slice. The source *documents*
@@ -19,7 +26,10 @@ import type {
  * Pure state only: async orchestration (the AI call, accept→write+snapshot) lives
  * in features/revision/use-revision-actions.ts, mirroring use-analysis-actions.
  */
-export type RevisionPhase = 'config' | 'generating' | 'review';
+export type RevisionPhase = 'config' | 'generating' | 'auditing' | 'review';
+
+/** How the batch audit paces itself between sources. */
+export type AuditPacing = 'continuous' | 'stepped';
 
 /** A proposal plus its review status within the session. */
 export type SessionProposal = RevisionProposal & { _status: ProposalStatus };
@@ -36,6 +46,14 @@ export interface RevisionSlice {
   /** Pending proposals currently shown inline in the master document. */
   previewIds: string[];
   previewAll: boolean;
+  /** The per-source batch audit's queue; empty = no audit this pass. */
+  auditQueue: AuditItem[];
+  /** Continuous by default; 'stepped' pauses for review after each source. */
+  auditPacing: AuditPacing;
+  /** True while a stepped run waits for "continue" between sources. */
+  auditAwaiting: boolean;
+  /** Stop requested — takes effect at the next source boundary. */
+  auditCancelled: boolean;
 
   openRevisionWorkspace: () => void;
   closeRevisionWorkspace: () => void;
@@ -52,6 +70,18 @@ export interface RevisionSlice {
   setRevisionSubMode: (subMode: AssemblySubMode) => void;
   setRevisionPhase: (phase: RevisionPhase) => void;
   setProposals: (proposals: SessionProposal[]) => void;
+  /** Accumulate proposals mid-audit (statuses of earlier ones are preserved). */
+  appendProposals: (proposals: SessionProposal[]) => void;
+  /** Begin a batch audit: fresh queue in selection order, cleared review state. */
+  startAudit: (sourceIds: string[]) => void;
+  /** Patch one audit item's status/count/note by source id. */
+  patchAuditItem: (sourceId: string, patch: Partial<Omit<AuditItem, 'sourceId'>>) => void;
+  /** Settle every still-queued item (the cancel path). */
+  settleAuditRemaining: (status: AuditItemStatus, note?: string) => void;
+  setAuditPacing: (pacing: AuditPacing) => void;
+  setAuditAwaiting: (awaiting: boolean) => void;
+  /** Request a stop; honored at the next source boundary. */
+  requestAuditCancel: () => void;
   setActiveProposal: (id: string | null) => void;
   resolveProposal: (id: string, status: ProposalStatus) => void;
   toggleProposalPreview: (id: string) => void;
@@ -59,13 +89,16 @@ export interface RevisionSlice {
   resetRevision: () => void;
 }
 
-/** Cleared review state for a fresh pass (keeps selection/directive/mode). */
+/** Cleared review state for a fresh pass (keeps selection/directive/mode/pacing). */
 const CLEARED_PASS = {
   revisionPhase: 'config' as RevisionPhase,
   proposals: [] as SessionProposal[],
   activeProposalId: null as string | null,
   previewIds: [] as string[],
   previewAll: false,
+  auditQueue: [] as AuditItem[],
+  auditAwaiting: false,
+  auditCancelled: false,
 };
 
 export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> = (set) => ({
@@ -74,6 +107,7 @@ export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> 
   revisionSubMode: 'woven',
   selectedSourceIds: [],
   directive: '',
+  auditPacing: 'continuous',
   ...CLEARED_PASS,
 
   openRevisionWorkspace: () => set({ revisionWorkspaceOpen: true }),
@@ -101,6 +135,24 @@ export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> 
   setRevisionSubMode: (revisionSubMode) => set({ revisionSubMode }),
   setRevisionPhase: (revisionPhase) => set({ revisionPhase }),
   setProposals: (proposals) => set({ proposals, activeProposalId: proposals[0]?.id ?? null }),
+  appendProposals: (incoming) =>
+    set((s) => ({
+      proposals: [...s.proposals, ...incoming],
+      activeProposalId: s.activeProposalId ?? incoming[0]?.id ?? null,
+    })),
+  startAudit: (sourceIds) =>
+    set({
+      ...CLEARED_PASS,
+      auditQueue: initAuditQueue(sourceIds),
+      revisionPhase: 'auditing',
+    }),
+  patchAuditItem: (sourceId, patch) =>
+    set((s) => ({ auditQueue: patchAuditQueue(s.auditQueue, sourceId, patch) })),
+  settleAuditRemaining: (status, note) =>
+    set((s) => ({ auditQueue: settleRemaining(s.auditQueue, status, note) })),
+  setAuditPacing: (auditPacing) => set({ auditPacing }),
+  setAuditAwaiting: (auditAwaiting) => set({ auditAwaiting }),
+  requestAuditCancel: () => set({ auditCancelled: true }),
   setActiveProposal: (activeProposalId) => set({ activeProposalId }),
   resolveProposal: (id, status) =>
     set((s) => ({

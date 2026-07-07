@@ -85,3 +85,64 @@ describe('revision slice', () => {
     expect(st.revisionPhase).toBe('config');
   });
 });
+
+describe('batch audit state', () => {
+  let store: ReturnType<typeof makeStore>;
+  beforeEach(() => {
+    store = makeStore();
+  });
+
+  it('startAudit builds the queue in order, clears review state, and enters auditing', () => {
+    const s = store.getState();
+    s.setProposals([proposal('old')]);
+    s.startAudit(['a', 'b']);
+    const st = store.getState();
+    expect(st.revisionPhase).toBe('auditing');
+    expect(st.proposals).toEqual([]);
+    expect(st.auditQueue.map((i) => i.sourceId)).toEqual(['a', 'b']);
+    expect(st.auditQueue.every((i) => i.status === 'queued')).toBe(true);
+    expect(st.auditAwaiting).toBe(false);
+    expect(st.auditCancelled).toBe(false);
+  });
+
+  it('appendProposals accumulates and preserves earlier statuses + active id', () => {
+    const s = store.getState();
+    s.setProposals([proposal('p1')]);
+    store.getState().resolveProposal('p1', 'accepted');
+    store.getState().appendProposals([proposal('p2')]);
+    const st = store.getState();
+    expect(st.proposals.map((p) => p.id)).toEqual(['p1', 'p2']);
+    expect(st.proposals[0]._status).toBe('accepted');
+    expect(st.activeProposalId).toBe('p1');
+  });
+
+  it('appendProposals seeds the active id when none is set', () => {
+    store.getState().appendProposals([proposal('p1')]);
+    expect(store.getState().activeProposalId).toBe('p1');
+  });
+
+  it('patchAuditItem + settleAuditRemaining + requestAuditCancel round-trip', () => {
+    const s = store.getState();
+    s.startAudit(['a', 'b', 'c']);
+    store.getState().patchAuditItem('a', { status: 'done', proposalCount: 2 });
+    store.getState().requestAuditCancel();
+    store.getState().settleAuditRemaining('skipped', 'stopped');
+    const st = store.getState();
+    expect(st.auditCancelled).toBe(true);
+    expect(st.auditQueue.map((i) => i.status)).toEqual(['done', 'skipped', 'skipped']);
+    expect(st.auditQueue[1].note).toBe('stopped');
+  });
+
+  it('resetRevision clears the audit run but keeps the pacing preference', () => {
+    const s = store.getState();
+    s.setAuditPacing('stepped');
+    s.startAudit(['a']);
+    store.getState().setAuditAwaiting(true);
+    store.getState().resetRevision();
+    const st = store.getState();
+    expect(st.auditQueue).toEqual([]);
+    expect(st.auditAwaiting).toBe(false);
+    expect(st.auditCancelled).toBe(false);
+    expect(st.auditPacing).toBe('stepped');
+  });
+});

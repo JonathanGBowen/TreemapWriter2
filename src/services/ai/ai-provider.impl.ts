@@ -56,6 +56,7 @@ import type {
   RefactorAnalysisInput,
   ContinueDialogueInput,
   GenerateRevisionsInput,
+  AuditSourceUsageInput,
   GenerateReverseOutlineInput,
   RegenerateParagraphInput,
   AnalyzeGistInput,
@@ -105,6 +106,7 @@ import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provide
 import { segmentSpan, type SegmentSpanResult } from './ai-provider.segment';
 import { discoverStructuralParts } from './ai-provider.structural-parts';
 import { generateRevisions } from './ai-provider.revisions';
+import { auditSourceUsage } from './ai-provider.audit';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
 import { reconstructWhole, proposeRecenterings } from './ai-provider.gestalt';
@@ -743,6 +745,16 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('generateRevisions', input);
     return generateRevisions(
       this.dispatch(choice, 'generateRevisions'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async auditSourceUsage(input: AuditSourceUsageInput): Promise<RevisionProposal[]> {
+    const choice = this.choose('auditSourceUsage', input);
+    return auditSourceUsage(
+      this.dispatch(choice, 'auditSourceUsage'),
       choice.model,
       choice.thinkingBudget,
       input,

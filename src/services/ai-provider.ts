@@ -78,6 +78,14 @@ export interface AIProvider {
   continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
   /**
+   * Per-source citation audit — the batch audit's unit call. Reads ONE source
+   * rigorously, then assesses the whole document's usage (and non-usage) of it,
+   * proposing only surgical, strictly-receipted edits. An empty array is a good
+   * outcome ("used well, or genuinely irrelevant"), not an error. The batch loop
+   * lives in the caller (use-source-audit); this is one focused engine pass.
+   */
+  auditSourceUsage(input: AuditSourceUsageInput): Promise<RevisionProposal[]>;
+  /**
    * Parallel Editor flow #1. Distills each input paragraph block to one faithful
    * sentence (a reverse outline), returned 1:1 in document order. Non-prose blocks
    * (headings/lists/code) are echoed; the caller re-aligns by `index`.
@@ -627,6 +635,20 @@ export interface SuggestDirectivesInput {
   /** Active persona name + instruction, to flavor the strategic directives. */
   personaName: string;
   personaInstruction: string;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface AuditSourceUsageInput {
+  /** Human label for the audited text (usually the document root title). */
+  documentTitle: string;
+  /** The whole master document — usage is assessed against the whole. */
+  documentText: string;
+  /** The ONE source this call reads and audits. */
+  source: SourceDocument;
+  /** Optional per-pass focus (narrows the audit, never widens it). */
+  directive?: string;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

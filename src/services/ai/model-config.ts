@@ -58,6 +58,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   refactorAnalysis: g(HEAVY, THINK),
   continueDialogue: g(HEAVY, THINK),
   generateRevisions: g(HEAVY, THINK),
+  // One deep source-read + whole-document usage assessment per call.
+  auditSourceUsage: g(HEAVY, THINK),
   // Distillation is reasoning-heavy but bounded; same heavy tier.
   generateReverseOutline: g(HEAVY, THINK),
   // A careful per-paragraph analogical rewrite — heavy tier.

@@ -9,6 +9,7 @@ import { SettingsSection, ModelKindRows } from './FeatureSettingsShell';
 
 const MODEL_KINDS: { kind: AICallKind; label: string }[] = [
   { kind: 'generateRevisions', label: 'Revision engine' },
+  { kind: 'auditSourceUsage', label: 'Source audit' },
   { kind: 'suggestDirectives', label: 'Directive suggester' },
   { kind: 'directiveDialogueTurn', label: 'Directive dialogue' },
   { kind: 'exegeteSource', label: 'Source exegesis' },
