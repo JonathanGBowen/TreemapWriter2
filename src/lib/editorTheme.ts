@@ -89,6 +89,10 @@ export const hldTheme = EditorView.theme({
     color: "var(--color-hld-muted)",
     border: "none",
   },
+  /* Active-line styling is INTENTIONALLY INERT by default: the writing-surface
+     factory omits `highlightActiveLine()` (an always-on tint read as too much
+     ambient noise). These rules are kept ready so a future feature that wants a
+     deliberate line emphasis can re-enable the class without re-styling. */
   ".cm-activeLine": {
     backgroundColor: "color-mix(in srgb, var(--color-hld-cyan) 4%, transparent) !important",
   },

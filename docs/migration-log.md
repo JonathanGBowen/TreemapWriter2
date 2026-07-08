@@ -5569,3 +5569,20 @@ unfocused); paste round-trip, confined delete, and the undo storm stay
 byte-identical.
 
 **Rollback.** One commit; `git revert` restores the dimmed surround + serif.
+
+## 2026-07-08 — Editor active-line highlight off by default
+
+The writing-surface repair wave had wired `highlightActiveLine()` into the
+shared editor factory (it was inert theme CSS before). In real use the always-on
+tint on the cursor's paragraph read as too much ambient noise. Removed the one
+`highlightActiveLine()` line (and its import) from `writingSurfaceExtensions`, so
+no prose surface (main / focus / Gist / Sprint) shows it by default. The
+`.cm-activeLine` / `.cm-activeLineGutter` theme rules are kept — now marked
+intentionally inert — ready for a future feature that wants a deliberate,
+transient line emphasis rather than an ambient one.
+
+**Verify.** `npm test` (761), `npm run typecheck`, `npm run build` green;
+browser check confirms zero `.cm-activeLine` elements render while the cursor
+sits in a paragraph; the focus-mode Playwright suite still passes 13/13.
+
+**Rollback.** Re-add `highlightActiveLine()` (import + the one factory line).

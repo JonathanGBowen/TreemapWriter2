@@ -14,7 +14,6 @@ import {
   keymap,
   drawSelection,
   highlightSpecialChars,
-  highlightActiveLine,
   dropCursor,
   rectangularSelection,
   crosshairCursor,
@@ -76,8 +75,9 @@ export const resetEditorHistory = (view: EditorView): void => {
 /**
  * The full writable prose surface: base + editing affordances + the layers
  * every writing surface owes the writer — live preview widgets, the durable
- * AI-provenance tint, the landing pulse, an active-line anchor, and native
- * spellcheck over the prose.
+ * AI-provenance tint, the landing pulse, and native spellcheck over the prose.
+ * (No ambient active-line highlight — it read as too much always-on noise; the
+ * `.cm-activeLine` theme rule is kept inert for a future opt-in emphasis.)
  */
 export const writingSurfaceExtensions = (extra: Extension[] = []): Extension[] => [
   ...baseMarkdownExtensions(),
@@ -91,7 +91,6 @@ export const writingSurfaceExtensions = (extra: Extension[] = []): Extension[] =
   autocompletion(),
   rectangularSelection(),
   crosshairCursor(),
-  highlightActiveLine(),
   highlightSelectionMatches(),
   EditorView.contentAttributes.of({
     spellcheck: 'true',

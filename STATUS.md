@@ -74,7 +74,7 @@ behavior: nothing before/after the section renders or scrolls — restored per u
 testing after a brief dimmed experiment), edit confinement, focus-scoped Mod-a) and the write-side section math in one round-trip-tested home
 (`lib/section-edit.ts` — also fixing the sprint-save last-line duplication). All five
 prose surfaces now share one extension factory (`features/editor/extensions.ts`:
-provenance tint, live preview, active-line, list continuation, stable-identity props —
+provenance tint, live preview, list continuation, stable-identity props —
 the uiw wrapper reconfigures on handler identity, which the 1s ticker was triggering
 every second). Revision/parallel accepts splice **section-scoped** with offset-pinned
 provenance; diagnostics read the live buffer; `parseMarkdown` id reuse is
