@@ -1,7 +1,9 @@
 import { Check, Loader2, RotateCcw } from 'lucide-react';
 import type { ParallelRow } from '../../state/parallel-state';
 
-const PROSE = 'font-serif text-[13px] leading-[1.6] whitespace-pre-wrap break-words';
+// Rides the shared --font-serif token (Tailwind's bare font-serif falls back to
+// an uncontrolled default stack) so all prose surfaces read as one system.
+const PROSE = 'font-[family-name:var(--font-serif)] text-[13px] leading-[1.6] whitespace-pre-wrap break-words';
 
 /** Column 1 — the original paragraph, read-only reference. */
 export function OriginalCell({ text }: { text: string }) {

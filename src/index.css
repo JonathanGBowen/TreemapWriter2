@@ -43,6 +43,9 @@
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  /* The manuscript voice (VISION: "a serif for the prose surface") — a system
+     serif stack, no webfont dependency. Chrome stays mono; UI stays sans. */
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
 
   /* UI type scale — Scale A, floor 8px. Keeps mono/uppercase/tracking voice. */
   --text-ui-label: 9px;   /* section dividers, eyebrow labels */
@@ -278,24 +281,26 @@
   .hld-border {
     border-color: var(--color-hld-border-strong);
   }
+  /* Glows ride the tokens via color-mix — the retired #00f0ff and the
+     off-token magenta/purple literals had silently outlived the palette. */
   .hld-border:hover {
-    border-color: #00f0ff;
-    box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+    border-color: var(--color-hld-cyan);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-hld-cyan) 30%, transparent);
   }
   .hld-glow-cyan {
-    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-cyan) 20%, transparent);
   }
   .hld-glow-magenta {
-    box-shadow: 0 0 10px rgba(255, 0, 85, 0.2);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-magenta) 20%, transparent);
   }
   .hld-glow-pink {
-    box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-magenta) 20%, transparent);
   }
   .hld-glow-purple {
-    box-shadow: 0 0 10px rgba(176, 0, 255, 0.2);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-purple) 20%, transparent);
   }
   .hld-text-glow {
-    text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-hld-cyan) 50%, transparent);
   }
 
   /* Living Sprints — the runner's reactive ambient hue (Direction D). The hue
@@ -341,16 +346,11 @@
   border-bottom: 1px solid rgba(170, 0, 255, 0.28);
 }
 
-/* Focus mode's hidden-surround boundary (lib/focusRange.ts): the quiet `· · ·`
-   marker standing in for the manuscript above/below the focused section. */
-.cm-focus-surround {
-  color: var(--color-hld-muted-text);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.5em;
-  text-align: center;
-  padding: 6px 0;
-  user-select: none;
+/* Focus mode's dimmed surround (lib/focusRange.ts): the manuscript around the
+   focused section stays visible — the part sits in its whole — but recedes.
+   Edits there are blocked by the focus filter; clicking re-scopes focus. */
+.cm-focus-dim {
+  opacity: 0.3;
 }
 
 /* Visible keyboard focus — the one missing a11y affordance (was suppressed

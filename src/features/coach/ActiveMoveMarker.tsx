@@ -61,7 +61,7 @@ export const ActiveMoveMarker: React.FC = () => {
           </span>
           <span className="text-[11px] leading-[1.35] text-hld-text">{cue.text}</span>
           {cue.detail && (
-            <span className="font-mono text-[8.5px] tracking-[0.04em] text-hld-muted leading-[1.4]">
+            <span className="font-mono text-[8.5px] tracking-[0.04em] text-hld-muted-text leading-[1.4]">
               {cue.detail}
             </span>
           )}

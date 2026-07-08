@@ -503,7 +503,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           here, the single structural fact worth a glance while writing.
           Self-gates to nothing when there is no outgoing commitment yet. */}
       {!isEmptyState && !needsProject && nextExpects && (
-        <div className="shrink-0 w-full max-w-[800px] mx-auto px-[64px] pt-[10px] pb-[6px]">
+        <div className="shrink-0 w-full max-w-[700px] mx-auto px-[64px] pt-[10px] pb-[6px]">
           <div className="flex items-baseline gap-[11px] min-w-0">
             <span className="font-mono text-[8.5px] tracking-[0.14em] uppercase text-hld-muted-text whitespace-nowrap shrink-0">Next expects →</span>
             <span className="text-[13px] leading-[1.5] italic text-hld-muted-text-2 min-w-0 truncate" title={nextExpects}>{nextExpects}</span>
@@ -523,7 +523,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         <div className="h-full relative">
 
           {focusMode && currentSection && currentSection.id !== 'root' && (
-            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-hld-bg z-10 w-full max-w-[800px] mx-auto">
+            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-hld-bg z-10 w-full max-w-[700px] mx-auto">
               <div className="w-[7px] h-[7px] bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />
               <span className="text-ui-label tracking-[0.14em] uppercase text-hld-cyan font-mono">{currentSection.title} — Focus Mode Active</span>
             </div>
@@ -558,7 +558,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               undo history, and decorations persist across toggles. Only the
               desktop preview (needsProject) withholds it. */}
           {!needsProject && (
-            <div className="flex-1 h-full max-w-[800px] mx-auto overflow-hidden">
+            <div className="flex-1 h-full max-w-[700px] mx-auto overflow-hidden">
               <CodeMirror
                 ref={cmRef}
                 value={localContent}

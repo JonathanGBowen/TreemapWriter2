@@ -6,7 +6,7 @@
 // EditorPanel owns computing the range (from a fresh parse of the live doc)
 // and dispatching it here.
 
-import { Decoration, type DecorationSet, EditorView, WidgetType, keymap } from '@codemirror/view';
+import { Decoration, type DecorationSet, EditorView, keymap } from '@codemirror/view';
 import {
   EditorSelection,
   EditorState,
@@ -55,34 +55,17 @@ export const focusRangeField = StateField.define<FocusRange | null>({
   },
 });
 
-/** The `· · ·` boundary marker standing in for the hidden surround. */
-class SurroundWidget extends WidgetType {
-  constructor(readonly side: 'before' | 'after') {
-    super();
-  }
-  eq(other: SurroundWidget) {
-    return this.side === other.side;
-  }
-  toDOM() {
-    const el = document.createElement('div');
-    el.className = 'cm-focus-surround';
-    el.textContent = '· · ·';
-    el.setAttribute('aria-label', this.side === 'before' ? 'Text above the focused section (hidden)' : 'Text below the focused section (hidden)');
-    return el;
-  }
-  get estimatedHeight() {
-    return 24;
-  }
-  ignoreEvent() {
-    return true;
-  }
-}
-
 /**
- * Hide everything outside the focused range: at most two block replace
- * decorations, snapped to line boundaries. Recomputed from the field, so it
- * follows the mapped range with no independent state of its own.
+ * Dim everything outside the focused range: at most two mark decorations
+ * carrying `.cm-focus-dim` (src/index.css). The surround stays VISIBLE — the
+ * part sits in its whole, per the Gestalt brief — while the dim + the edit
+ * confinement below make the focused section unmistakably the working area.
+ * Clicking into dimmed prose re-scopes focus there (the caret→selection
+ * channel), so the dim is also an affordance, not a wall. Recomputed from the
+ * field, so it follows the mapped range with no state of its own.
  */
+const dimMark = Decoration.mark({ class: 'cm-focus-dim' });
+
 const buildSurroundDeco = (state: EditorState): DecorationSet => {
   const range = state.field(focusRangeField);
   if (!range) return Decoration.none;
@@ -90,23 +73,11 @@ const buildSurroundDeco = (state: EditorState): DecorationSet => {
   const from = Math.max(0, Math.min(range.from, doc.length));
   const to = Math.max(from, Math.min(range.to, doc.length));
 
-  const deco: { from: number; to: number; side: 'before' | 'after' }[] = [];
-  const firstLine = doc.lineAt(from);
-  if (firstLine.number > 1) {
-    // Hide from the doc start through the newline before the section.
-    deco.push({ from: 0, to: firstLine.from - 1, side: 'before' });
-  }
-  const lastLine = doc.lineAt(to);
-  if (lastLine.number < doc.lines) {
-    // Hide from the newline after the section through the doc end.
-    deco.push({ from: lastLine.to + 1, to: doc.length, side: 'after' });
-  }
+  const deco = [];
+  if (from > 0) deco.push(dimMark.range(0, from));
+  if (to < doc.length) deco.push(dimMark.range(to, doc.length));
   if (!deco.length) return Decoration.none;
-  return Decoration.set(
-    deco.map((d) =>
-      Decoration.replace({ widget: new SurroundWidget(d.side), block: true }).range(d.from, d.to),
-    ),
-  );
+  return Decoration.set(deco);
 };
 
 const surroundDecoField = StateField.define<DecorationSet>({
@@ -142,9 +113,6 @@ const confineToFocus = EditorState.transactionFilter.of((tr) => {
   return inside ? tr : [];
 });
 
-/** Arrow/Home/End navigation skips over the hidden surround. */
-const atomicSurround = EditorView.atomicRanges.of((view) => view.state.field(surroundDecoField));
-
 /**
  * Select-all inside focus selects the SECTION, not the hidden whole document —
  * so Mod-a + Delete clears exactly what's on screen (and passes the confinement
@@ -171,6 +139,5 @@ export const focusModeExtension: Extension = [
   focusRangeField,
   surroundDecoField,
   confineToFocus,
-  atomicSurround,
   focusKeymap,
 ];

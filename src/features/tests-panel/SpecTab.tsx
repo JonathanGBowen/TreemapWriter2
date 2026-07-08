@@ -92,6 +92,17 @@ const COMMITMENT_KIND_LABEL: Record<CommitmentFinding['kind'], string> = {
   'center-of-gravity': 'center of gravity',
 };
 
+/** Navigate to the section a commitment finding names (title-matched against
+ *  the live tree) — a dangling commitment is one click from the section that
+ *  must satisfy it, via the same selection channel the treemap uses. */
+function jumpToSectionByTitle(title: string) {
+  const st = useStore.getState();
+  const target = flatten(st.sections).find((s) => s.title.trim() === title.trim());
+  if (!target) return;
+  st.setSelectedId(target.id);
+  st.requestEditorFocus();
+}
+
 /** Commitment-mesh breaks — this section judged as a PART in its whole. Shown
  *  (unfolded) only when the diagnostic found a real break; absent otherwise. */
 function CommitmentMeshCard({ findings }: { findings: CommitmentFinding[] }) {
@@ -106,7 +117,19 @@ function CommitmentMeshCard({ findings }: { findings: CommitmentFinding[] }) {
           <div key={i} className="pl-[9px] border-l border-hld-magenta/30">
             <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text mb-[3px]">
               {COMMITMENT_KIND_LABEL[f.kind]}
-              {f.relatedSectionTitle && <span className="text-hld-muted-text-2 normal-case tracking-normal"> · {f.relatedSectionTitle}</span>}
+              {f.relatedSectionTitle && (
+                <>
+                  {' · '}
+                  <button
+                    type="button"
+                    onClick={() => jumpToSectionByTitle(f.relatedSectionTitle!)}
+                    className="text-hld-muted-text-2 normal-case tracking-normal hover:text-hld-cyan underline decoration-hld-border underline-offset-2 transition-colors"
+                    title={`Go to “${f.relatedSectionTitle}”`}
+                  >
+                    {f.relatedSectionTitle}
+                  </button>
+                </>
+              )}
             </div>
             <div className="text-[13px] leading-relaxed font-sans text-hld-text">{f.detail}</div>
           </div>

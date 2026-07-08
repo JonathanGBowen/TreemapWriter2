@@ -51,7 +51,7 @@ export const EditorEmptyState: React.FC<EditorEmptyStateProps> = ({
          {needsProject ? (
            <>
              <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Start a Project</h2>
-             <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">{isEmptyState ? 'Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.' : 'This is a read-only preview — nothing here is saved. Your writing lives in a project folder on disk, with version history. Create or open one to begin.'}</p>
+             <p className="text-[13px] text-hld-muted-text-2 mb-8 leading-[1.65]">{isEmptyState ? 'Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.' : 'This is a read-only preview — nothing here is saved. Your writing lives in a project folder on disk, with version history. Create or open one to begin.'}</p>
              <div className="space-y-3">
                <button onClick={() => { void createNewProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
                  <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
@@ -71,7 +71,7 @@ export const EditorEmptyState: React.FC<EditorEmptyStateProps> = ({
          ) : (
            <>
              <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Ready to Write?</h2>
-             <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Import a markdown file to visualize its structure, or just start typing.</p>
+             <p className="text-[13px] text-hld-muted-text-2 mb-8 leading-[1.65]">Import a markdown file to visualize its structure, or just start typing.</p>
              <div className="space-y-3">
                <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
                  <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
