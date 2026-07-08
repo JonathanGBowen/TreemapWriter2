@@ -532,13 +532,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         {!needsProject && !isEmptyState && !focusMode && <ActiveMoveMarker />}
         <div className="h-full relative">
 
-          {focusMode && currentSection && currentSection.id !== 'root' && (
-            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-hld-bg z-10 w-full max-w-[800px] mx-auto">
-              <div className="w-[7px] h-[7px] bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />
-              <span className="text-ui-label tracking-[0.14em] uppercase text-hld-cyan font-mono">{currentSection.title} — Focus Mode Active</span>
-            </div>
-          )}
-
+          {/* No focus-mode banner: the lit Focus toggle + the toolbar breadcrumb
+              (which already names the section) carry the mode — a header strip
+              above the prose was one more line of chrome than the page needs. */}
           {(isEmptyState || needsProject) && (
             <EditorEmptyState
               needsProject={needsProject}
