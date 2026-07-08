@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
-import { applyProposal, normalizeRevisions, parseAgentProposals } from '../../lib/revision-helpers';
+import { applyProposalAt, normalizeRevisions, parseAgentProposals } from '../../lib/revision-helpers';
+import { sectionRangeInDoc } from '../../lib/section-edit';
 import { makeProvenanceMark } from '../../lib/provenance';
 import { resolveActiveInstruction } from '../../lib/defaultInstructions';
 import { revisionBudgetText } from './revision-budget';
@@ -226,12 +227,31 @@ export const useRevisionActions = () => {
       } catch {
         /* non-fatal */
       }
-      // Literal first-occurrence replace — the engine's "never assume" contract.
-      setLocalContent((prev) => applyProposal(prev, proposal));
-      // Durable provenance (F2): record this span as AI-introduced, anchored to the
-      // inserted text. Never touches project.md — only the .twriter sidecar.
-      const mark = makeProvenanceMark(proposal.proposed_text, 'revision', Date.now());
-      if (mark) useStore.getState().addProvenanceMark(mark);
+      // Literal replace, CONFINED to the section the engine and the preview
+      // resolved against — a duplicate of the phrase in an earlier section must
+      // never be the one rewritten. Both the range and the splice are computed
+      // inside the updater so they read one consistent buffer. If the section
+      // id no longer resolves (renamed mid-flight), fall back to the legacy
+      // whole-document first occurrence rather than silently dropping the edit.
+      let acceptedAt = -1;
+      setLocalContent((prev) => {
+        const range =
+          sectionId === 'root'
+            ? null
+            : sectionRangeInDoc(prev, sectionId, useStore.getState().sections);
+        const res = applyProposalAt(prev, proposal, range ?? undefined);
+        if (!res) return prev;
+        acceptedAt = res.at;
+        return res.next;
+      });
+      // Durable provenance (F2): record this span as AI-introduced, pinned to the
+      // splice position. Never touches project.md — only the .twriter sidecar.
+      // Skipped when the splice no-opped (the span was gone) — a mark for text
+      // that never landed would misattribute whatever matches its anchor.
+      if (acceptedAt >= 0) {
+        const mark = makeProvenanceMark(proposal.proposed_text, 'revision', Date.now(), acceptedAt);
+        if (mark) useStore.getState().addProvenanceMark(mark);
+      }
       resolveProposal(proposal.id, 'accepted');
       try {
         await saveCurrentState();

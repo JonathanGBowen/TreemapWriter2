@@ -59,4 +59,23 @@ describe('buildProvenanceDeco', () => {
     const ranges = collect(buildProvenanceDeco(doc, [mark]));
     expect(ranges).toEqual([{ from: doc.indexOf('AI'), to: doc.length }]);
   });
+
+  it('pins a mark to its recorded offset over an earlier duplicate of the anchor', () => {
+    // The same inserted phrase appears twice; the accept wrote the SECOND one.
+    const doc = 'AI phrase in section one. Later: AI phrase in section three.';
+    const second = doc.lastIndexOf('AI phrase');
+    const mark = makeProvenanceMark('AI phrase in section three.', 'revision', 1, second)!;
+    expect(mark.offset).toBe(second);
+    const ranges = collect(buildProvenanceDeco(doc, [mark]));
+    expect(ranges).toEqual([{ from: second, to: second + 'AI phrase in section three.'.length }]);
+  });
+
+  it('falls back to indexOf when the recorded offset no longer matches', () => {
+    const doc = 'moved: AI SENTENCE here.';
+    const mark = makeProvenanceMark('AI SENTENCE here.', 'revision', 1, 0)!; // stale offset
+    const from = doc.indexOf('AI SENTENCE here.');
+    expect(collect(buildProvenanceDeco(doc, [mark]))).toEqual([
+      { from, to: from + 'AI SENTENCE here.'.length },
+    ]);
+  });
 });

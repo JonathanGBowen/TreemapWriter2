@@ -20,6 +20,13 @@ export interface SectionCaret {
 
 export interface EditorStateSlice {
   localContent: string;
+  /**
+   * True once the DRAFT has been edited this session (any setLocalContent).
+   * Distinguishes a deliberately-emptied document (persist it) from a transient
+   * empty buffer mid project-load/switch (never let it blank a saved document —
+   * the guard in saveCurrentState). Reset wherever localContent is seeded.
+   */
+  draftDirty: boolean;
   selectedId: string | null;
   activeLineIndex: number | null;
   /** sectionId → the caret last left there. Ephemeral (per session). */
@@ -33,6 +40,7 @@ export interface EditorStateSlice {
 
 export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateSlice> = (set) => ({
   localContent: '',
+  draftDirty: false,
   selectedId: null,
   activeLineIndex: null,
   sectionCaret: {},
@@ -40,6 +48,7 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
   setLocalContent: (content) =>
     set((state) => ({
       localContent: typeof content === 'function' ? content(state.localContent) : content,
+      draftDirty: true,
     })),
   setSelectedId: (id) =>
     set((state) => ({

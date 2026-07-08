@@ -8,7 +8,8 @@ import { type Command } from "./features/modals/CommandPaletteModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
-import { parseMarkdown, flattenSectionsForIndex } from "./lib/utils";
+import { parseMarkdown, flattenSectionsForIndex, buildRootSection } from "./lib/utils";
+import { replaceSectionContent } from "./lib/section-edit";
 import { repository } from "./services/repository-registry";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -46,12 +47,13 @@ const findSection = (nodes: Section[], id: string): Section | null => {
   return null;
 };
 
+// Deepest section CONTAINING the line — the selection-retention fallback when a
+// derived id dies (heading rename, undo past a structural edit). Containment
+// (not exact heading-line match) so the caret's position always names a home.
 const findSectionByLine = (nodes: Section[], line: number): Section | null => {
   for (const node of nodes) {
-    if (node.startLine === line) return node;
-    if (node.children) {
-      const found = findSectionByLine(node.children, line);
-      if (found) return found;
+    if (line >= node.startLine && line <= node.endLine) {
+      return findSectionByLine(node.children, line) || node;
     }
   }
   return null;
@@ -63,7 +65,7 @@ export const App = () => {
   // so App no longer over-subscribes (and no longer re-renders on their churn).
   const {
     activeProjectId, hasOpenProject, markdown, projectName, testSuite,
-    localContent, sections, selectedId, activeLineIndex, runTutorial,
+    localContent, sections, selectedId, runTutorial,
     activePersonaId, customPersonas, promptsConfig,
 
     setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite,
@@ -80,7 +82,6 @@ export const App = () => {
     localContent: state.localContent,
     sections: state.sections,
     selectedId: state.selectedId,
-    activeLineIndex: state.activeLineIndex,
     runTutorial: state.runTutorial,
     activePersonaId: state.activePersonaId,
     customPersonas: state.customPersonas,
@@ -104,12 +105,6 @@ export const App = () => {
     saveCurrentState: state.saveCurrentState,
     createSnapshot: state.createSnapshot,
   })));
-
-  const activeLineIndexRef = useRef<number | null>(activeLineIndex);
-  
-  useEffect(() => {
-    activeLineIndexRef.current = activeLineIndex;
-  }, [activeLineIndex]);
 
   useEffect(() => {
     hasSeenTutorial().then(seen => {
@@ -231,13 +226,16 @@ export const App = () => {
     const handler = setTimeout(() => {
         const tree = parseMarkdown(localContent, sections);
         
-        // Selection retention logic
+        // Selection retention logic. When a heading rename kills the derived id,
+        // fall back to the caret's live line (reported by the editor), which sits
+        // on the renamed heading in exactly that case.
         setSelectedId(prev => {
            if (prev) {
               const exists = findSection(tree, prev);
-              if (!exists && activeLineIndexRef.current !== null) {
-                 const candidate = findSectionByLine(tree, activeLineIndexRef.current);
-                 return candidate ? candidate.id : null;
+              if (!exists && prev !== 'root') {
+                 const caretLine = useStore.getState().activeLineIndex;
+                 const candidate = caretLine !== null ? findSectionByLine(tree, caretLine) : null;
+                 return candidate ? candidate.id : tree[0]?.id ?? null;
               }
               return prev;
            } else if (tree.length > 0) {
@@ -343,7 +341,7 @@ export const App = () => {
         setLocalContent(markdown);
         setTestSuite(newTestSuite);
         setHiddenSectionIds([]);
-        activeLineIndexRef.current = null;
+        useStore.getState().setActiveLineIndex(null);
         if (activeProjectId) saveCurrentState();
         toast.success(`Imported "${targetName}".`);
     });
@@ -447,8 +445,23 @@ export const App = () => {
 ) => {
   setShowRunModal(false);
   if (!currentSection) return;
-  
+
   const testId = currentSection.id;
+
+  // Read the LIVE buffer at call time and parse it fresh. The closure's
+  // `markdown` is the committed copy (up to 60s stale) and `sections` is the
+  // 300ms-debounced parse — an expensive AI verdict must never be computed on
+  // text that isn't what's on screen. One parse feeds everything below.
+  const liveDoc = useStore.getState().localContent;
+  const liveSections = parseMarkdown(liveDoc, sections);
+  const liveSection =
+    testId === 'root'
+      ? buildRootSection(liveDoc, liveSections, projectName?.trim() || 'Whole Document')
+      : findSection(liveSections, testId);
+  if (!liveSection) {
+    toast.error("Couldn't locate that section — it may have just been renamed.");
+    return;
+  }
 
   // Whole-document evaluation forces full scope. The diagnostic sends the scoped
   // content whole (no per-section cap), so pre-flight the exact text the provider
@@ -456,11 +469,11 @@ export const App = () => {
   let effectiveScope: 'segment' | 'parent' | 'full' = scope;
   if (testId === 'root') effectiveScope = 'full';
 
-  let diagContent = currentSection.fullContent;
+  let diagContent = liveSection.fullContent;
   if (effectiveScope === 'full') {
-    diagContent = markdown;
-  } else if (effectiveScope === 'parent' && currentSection.parentId) {
-    const parent = findSection(sections, currentSection.parentId);
+    diagContent = liveDoc;
+  } else if (effectiveScope === 'parent' && liveSection.parentId) {
+    const parent = findSection(liveSections, liveSection.parentId);
     if (parent) diagContent = parent.fullContent;
   }
   if (
@@ -508,14 +521,14 @@ export const App = () => {
     const specs = selectSpecMap(testSuite);
 
     const diagnostic = await aiProvider.runDiagnostic({
-      section: currentSection,
+      section: liveSection,
       spec,
       scope: effectiveScope,
       modelChoice: choice,
       persona: activePersona,
       customInstruction: instruction,
-      fullDocument: markdown,
-      sections,
+      fullDocument: liveDoc,
+      sections: liveSections,
       config: promptsConfig,
       findSection,
       specs,
@@ -622,41 +635,21 @@ export const App = () => {
 
   const handleSaveContent = (sectionId: string, newContent: string) => {
     // Read the live buffer fresh (not a possibly-stale closure) so the line math
-    // matches what is actually on screen.
+    // matches what is actually on screen. The splice itself lives in
+    // lib/section-edit (round-trip tested: saving a section's own content back
+    // unchanged is byte-identity, childless sections included).
     const prev = useStore.getState().localContent;
-    const currSections = parseMarkdown(prev);
-    const flattenSections = (nodes: Section[]): Section[] => {
-      const result: Section[] = [];
-      const tr = (nx: Section[]) => {
-        nx.forEach(n => { result.push(n); tr(n.children); });
-      };
-      tr(nodes);
-      return result;
-    };
-
-    const sec = flattenSections(currSections).find(s => s.id === sectionId);
-    if (!sec) {
+    const next = replaceSectionContent(prev, sectionId, newContent, useStore.getState().sections);
+    if (next === null) {
       toast.error("Couldn't locate that section to save — it may have been renamed.");
       return;
     }
-
-    const lines = prev.split('\n');
-    // `newContent` includes the section's own heading line (matching node.content),
-    // so we replace from this section's start up to its first child (or its end).
-    const childStartIndex = sec.children.length > 0 ? sec.children[0].startLine : sec.endLine;
-    const before = lines.slice(0, sec.startLine);
-    const after = lines.slice(childStartIndex);
-    const next = [...before, newContent, ...after].join('\n');
 
     setLocalContent(next);
     // Persist immediately rather than waiting up to 60s for the next autosave —
     // a sprint edit must survive a crash/close in that window.
     if (activeProjectId) void saveCurrentState();
   };
-
-  const handleLineFocus = useCallback((index: number | null) => {
-    activeLineIndexRef.current = index;
-  }, []);
 
   // Command palette entries — the named, searchable door to every primary action
   // (the consolidation of the Coach/Generate-specs/Revise glyphs). Built each

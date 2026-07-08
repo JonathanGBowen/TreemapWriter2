@@ -163,18 +163,40 @@ export const findProposalOffset = (doc: string, original: string): number =>
   original ? doc.indexOf(original) : -1;
 
 /**
- * Apply a proposal: a single literal `original_text → proposed_text` replace of
- * the first occurrence. Uses slice (not String.replace) so `$` in the proposed
- * text is never interpreted as a replacement pattern. No-op if the span is gone.
+ * Apply a proposal — a single literal `original_text → proposed_text` replace —
+ * and report WHERE it landed. When `range` is given (the section the engine and
+ * the preview resolved against), the match is confined to it and there is
+ * deliberately NO whole-document fallback: falling back is exactly how an
+ * accept once rewrote an earlier section's duplicate of the same phrase.
+ * Returns null when the span is gone (the accept becomes a no-op).
+ * Uses slice (not String.replace) so `$` in the proposed text is never
+ * interpreted as a replacement pattern.
  */
+export const applyProposalAt = (
+  content: string,
+  p: Pick<RevisionProposal, 'original_text' | 'proposed_text'>,
+  range?: { from: number; to: number },
+): { next: string; at: number } | null => {
+  if (!p.original_text) return null;
+  let at: number;
+  if (range) {
+    at = content.indexOf(p.original_text, range.from);
+    if (at >= 0 && at + p.original_text.length > range.to) at = -1;
+  } else {
+    at = content.indexOf(p.original_text);
+  }
+  if (at < 0) return null;
+  return {
+    next: content.slice(0, at) + p.proposed_text + content.slice(at + p.original_text.length),
+    at,
+  };
+};
+
+/** Whole-document convenience wrapper over `applyProposalAt` (legacy contract). */
 export const applyProposal = (
   content: string,
   p: Pick<RevisionProposal, 'original_text' | 'proposed_text'>,
-): string => {
-  const at = findProposalOffset(content, p.original_text);
-  if (at < 0) return content;
-  return content.slice(0, at) + p.proposed_text + content.slice(at + p.original_text.length);
-};
+): string => applyProposalAt(content, p)?.next ?? content;
 
 /**
  * Parse a deep-revision AGENT's final answer into something `normalizeRevisions` can

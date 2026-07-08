@@ -87,6 +87,109 @@ const sha256Hex = async (str: string): Promise<string> => {
     .join('');
 };
 
+/**
+ * The in-flight save chain — `saveCurrentState` queues behind it so two writes
+ * to the same project file can never interleave (autosave vs. manual snapshot
+ * vs. sprint persist vs. restore). Per-store (the factory closes over it in
+ * spirit; a module-level chain also serializes across test stores, which is
+ * harmless — writes are per-projectId anyway).
+ */
+let saveQueue: Promise<void> = Promise.resolve();
+
+/** The actual save body — see saveCurrentState (which serializes calls to this). */
+async function performSave(
+  get: () => AppState,
+  set: (partial: Partial<AppState>) => void,
+): Promise<void> {
+  const state = get();
+  if (!state.activeProjectId) return;
+  // Desktop: the demo preview has no on-disk handle; writing would fail with
+  // "no project is currently open". Skip until a real project is created/opened.
+  if (isTauri() && !state.hasOpenProject) return;
+  // Phase 5: while a merge awaits in-app resolution, suppress disk writes so
+  // the working tree stays clean (a dirty tree trips resolve()'s Stale guard).
+  // In-progress edits remain in editor-state and flush once the merge resolves.
+  if (state.pendingMerge) return;
+
+  // The live editor buffer is the source of truth for the prose. Persist IT
+  // (not the lagging committed `markdown`, which only advanced on manual
+  // save) so the 60s autosave durably writes — and git-commits — what the
+  // user is actually typing. Before this fix a reload re-hydrated from a
+  // frozen project.md and silently reverted hours of work (migration-log
+  // 2026-06-16).
+  const liveProse = state.localContent;
+
+  // Safety guard: never let a TRANSIENT empty buffer (mid project-switch or
+  // load — draftDirty false) blank a non-empty saved document. A deliberately
+  // emptied draft (the user edited this session) persists like any other edit;
+  // git history keeps it one restore away.
+  if (liveProse.trim() === '' && state.markdown.trim() !== '' && !state.draftDirty) return;
+
+  const data = {
+    projectName: state.projectName,
+    markdown: liveProse,
+    localDraft: liveProse,
+    testSuite: state.testSuite,
+    hiddenSectionIds: state.hiddenSectionIds,
+    activePersonaId: state.activePersonaId,
+    customPersonas: state.customPersonas,
+    // Persist the SPARSE per-project override (not the resolved effective
+    // config), so global-tier edits keep flowing into untouched fields.
+    promptsConfig: state.projectPromptsOverride,
+    modelsConfig: state.modelConfig,
+    reverseOutlines: state.reverseOutlines,
+    gist: state.gist,
+    provenance: { marks: state.provenanceMarks },
+    structuralParts: state.structuralParts,
+    sources: state.sources,
+    cachedCoachAdvice: state.cachedCoachAdvice,
+    revisions: state.revisions,
+    lastModified: Date.now(),
+    uiState: {
+      sidebarWidth: state.sidebarWidth,
+      testsPanelWidth: state.testsPanelWidth,
+      revisionRailWidth: state.revisionRailWidth,
+      revisionProposalsWidth: state.revisionProposalsWidth,
+      compareReportWidth: state.compareReportWidth,
+      focusMode: state.focusMode,
+      selectedSectionId: state.selectedId,
+      activeLineIndex: state.activeLineIndex,
+    },
+  };
+
+  await repo.setProject(state.activeProjectId, data);
+
+  // The durable write succeeded — clear any standing save-failure warning.
+  // Done here (right after the write, before the convergence guard) so EVERY
+  // save path — autosave, manual, analysis, project-switch — dismisses the
+  // banner the moment a save lands, not just the autosave loop.
+  if (get().saveError) set({ saveError: null });
+
+  // If the user switched projects while the write was in flight, the captured
+  // `state` now describes a different project than is active. Persisting the
+  // data above was correct (it targeted the captured id), but converging the
+  // in-memory store below would stamp the old project's prose onto the newly
+  // opened one. Abort the convergence in that case.
+  if (get().activeProjectId !== state.activeProjectId) return;
+
+  const wordCount = liveProse.trim() === '' ? 0 : liveProse.trim().split(/\s+/).length;
+  const metaEntry: ProjectMeta = {
+    id: state.activeProjectId,
+    name: state.projectName,
+    lastModified: Date.now(),
+    wordCount,
+  };
+
+  const currentList = Array.isArray(state.projectList) ? state.projectList : [];
+  const others = currentList.filter((p) => p.id !== state.activeProjectId);
+  const updated = [metaEntry, ...others];
+  // Converge the in-memory committed copy so `markdown` consumers (AI
+  // fullDocument, the sidebar word count) reflect current text, not a frozen
+  // snapshot.
+  set({ markdown: liveProse, projectList: updated, lastAutoSave: new Date() });
+  repo.setMeta(updated).catch(console.error);
+}
+
 /** Derive a project name from the trailing segment of a folder path. */
 const folderName = (p: string): string =>
   p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'Untitled Project';
@@ -208,6 +311,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       projectName: newName,
       markdown: defaultProjectData.markdown || '',
       localContent: defaultProjectData.localDraft || defaultProjectData.markdown || '',
+      draftDirty: false,
       testSuite: (defaultProjectData.testSuite as TestSuite) || {},
       hiddenSectionIds: defaultProjectData.hiddenSectionIds || [],
       activePersonaId: defaultProjectData.activePersonaId || 'default',
@@ -288,6 +392,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       projectName: 'Untitled Project',
       markdown: '',
       localContent: '',
+      draftDirty: false,
       testSuite: {},
       reverseOutlines: [],
       gist: null,
@@ -383,6 +488,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         projectName: data.projectName || 'Untitled',
         markdown: data.markdown || '',
         localContent: data.localDraft !== undefined ? data.localDraft : data.markdown || '',
+        draftDirty: false,
         testSuite: loadedTestSuite,
         hiddenSectionIds: data.hiddenSectionIds || [],
         lastAutoSave: data.lastModified ? new Date(data.lastModified) : null,
@@ -482,92 +588,18 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     }
   },
 
-  saveCurrentState: async () => {
-    const state = get();
-    if (!state.activeProjectId) return;
-    // Desktop: the demo preview has no on-disk handle; writing would fail with
-    // "no project is currently open". Skip until a real project is created/opened.
-    if (isTauri() && !state.hasOpenProject) return;
-    // Phase 5: while a merge awaits in-app resolution, suppress disk writes so
-    // the working tree stays clean (a dirty tree trips resolve()'s Stale guard).
-    // In-progress edits remain in editor-state and flush once the merge resolves.
-    if (state.pendingMerge) return;
-
-    // The live editor buffer is the source of truth for the prose. Persist IT
-    // (not the lagging committed `markdown`, which only advanced on manual
-    // save) so the 60s autosave durably writes — and git-commits — what the
-    // user is actually typing. Before this fix a reload re-hydrated from a
-    // frozen project.md and silently reverted hours of work (migration-log
-    // 2026-06-16).
-    const liveProse = state.localContent;
-
-    // Safety guard: never let a transient empty buffer (mid project-switch or
-    // load) blank a non-empty saved document. git history is the only backstop.
-    if (liveProse.trim() === '' && state.markdown.trim() !== '') return;
-
-    const data = {
-      projectName: state.projectName,
-      markdown: liveProse,
-      localDraft: liveProse,
-      testSuite: state.testSuite,
-      hiddenSectionIds: state.hiddenSectionIds,
-      activePersonaId: state.activePersonaId,
-      customPersonas: state.customPersonas,
-      // Persist the SPARSE per-project override (not the resolved effective
-      // config), so global-tier edits keep flowing into untouched fields.
-      promptsConfig: state.projectPromptsOverride,
-      modelsConfig: state.modelConfig,
-      reverseOutlines: state.reverseOutlines,
-      gist: state.gist,
-      provenance: { marks: state.provenanceMarks },
-      structuralParts: state.structuralParts,
-      sources: state.sources,
-      cachedCoachAdvice: state.cachedCoachAdvice,
-      revisions: state.revisions,
-      lastModified: Date.now(),
-      uiState: {
-        sidebarWidth: state.sidebarWidth,
-        testsPanelWidth: state.testsPanelWidth,
-        revisionRailWidth: state.revisionRailWidth,
-        revisionProposalsWidth: state.revisionProposalsWidth,
-        compareReportWidth: state.compareReportWidth,
-        focusMode: state.focusMode,
-        selectedSectionId: state.selectedId,
-        activeLineIndex: state.activeLineIndex,
-      },
-    };
-
-    await repo.setProject(state.activeProjectId, data);
-
-    // The durable write succeeded — clear any standing save-failure warning.
-    // Done here (right after the write, before the convergence guard) so EVERY
-    // save path — autosave, manual, analysis, project-switch — dismisses the
-    // banner the moment a save lands, not just the autosave loop.
-    if (get().saveError) set({ saveError: null });
-
-    // If the user switched projects while the write was in flight, the captured
-    // `state` now describes a different project than is active. Persisting the
-    // data above was correct (it targeted the captured id), but converging the
-    // in-memory store below would stamp the old project's prose onto the newly
-    // opened one. Abort the convergence in that case.
-    if (get().activeProjectId !== state.activeProjectId) return;
-
-    const wordCount = liveProse.trim() === '' ? 0 : liveProse.trim().split(/\s+/).length;
-    const metaEntry: ProjectMeta = {
-      id: state.activeProjectId,
-      name: state.projectName,
-      lastModified: Date.now(),
-      wordCount,
-    };
-
-    const currentList = Array.isArray(state.projectList) ? state.projectList : [];
-    const others = currentList.filter((p) => p.id !== state.activeProjectId);
-    const updated = [metaEntry, ...others];
-    // Converge the in-memory committed copy so `markdown` consumers (AI
-    // fullDocument, the sidebar word count) reflect current text, not a frozen
-    // snapshot.
-    set({ markdown: liveProse, projectList: updated, lastAutoSave: new Date() });
-    repo.setMeta(updated).catch(console.error);
+  saveCurrentState: () => {
+    // Serialize EVERY save behind one in-flight chain — not just autosave-vs-
+    // autosave (useAutosave's guard): a manual snapshot, sprint persist,
+    // restore, or import landing during an in-flight write must queue, not
+    // interleave writes to the same project file.
+    const run = () => performSave(get, set);
+    const next = saveQueue.then(run, run);
+    saveQueue = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
   },
 
   createSnapshot: async (trigger, affectedScope = 'all', configOverride) => {
@@ -589,6 +621,10 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     const prev = state.revisions;
     const last = prev.length > 0 ? prev[0] : null;
     if (last && last.contentHash === contentHash) {
+      // Nothing new to snapshot, but still persist (draft/uiState/lastAutoSave
+      // cadence): the autosave loop rides this one call, so the dedupe branch
+      // must not silently skip the disk write it used to make separately.
+      await get().saveCurrentState();
       return;
     }
 
@@ -632,6 +668,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     set({
       localContent: snapshot.markdown,
       markdown: snapshot.markdown,
+      draftDirty: false,
       testSuite: snapshot.testSuite || {},
     });
     if (snapshot.interpolationConfig) {

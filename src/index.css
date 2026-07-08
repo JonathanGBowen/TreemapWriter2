@@ -341,6 +341,18 @@
   border-bottom: 1px solid rgba(170, 0, 255, 0.28);
 }
 
+/* Focus mode's hidden-surround boundary (lib/focusRange.ts): the quiet `· · ·`
+   marker standing in for the manuscript above/below the focused section. */
+.cm-focus-surround {
+  color: var(--color-hld-muted-text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5em;
+  text-align: center;
+  padding: 6px 0;
+  user-select: none;
+}
+
 /* Visible keyboard focus — the one missing a11y affordance (was suppressed
    everywhere). Canonical on the button/tool primitives; a narrow global fallback
    covers every other interactive so nothing is keyboard-unreachable. Unlayered so
