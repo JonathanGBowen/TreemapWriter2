@@ -5335,3 +5335,127 @@ a divergent pull opens the conflict modal → resolve → merge commit lands, no
 
 **Rollback.** `git revert`. Pure serde-attribute + guard change; no schema/persistence change.
 Reverting restores the (buggy) snake_case wire format.
+
+## 2026-07-07 — Glass Box workbench wave: editable sources, exegesis, directive dialogue, per-source audit, live Zotero
+
+**What changed.** Five independently-landed slices (one commit each, oldest first —
+revert per-commit to roll back a single slice) deepening the revision workbench's
+source-material half. Owner decisions recorded in the plan: live Zotero local-API
+picker (deliberately overturning the STATUS.md non-goal), batch pacing continuous
+with a pause-after-each-source toggle, exegesis as a standalone action only.
+
+- **Editable sources** (`feat(revision): editable sources`). Every source chip gains
+  a pencil opening `SourceEditorModal` (label · role · content, auto-saved per
+  keystroke, debounced write-through + flush on close). A role change recomputes the
+  derived `kind`/`glyph` (pure `lib/source-edit.ts` `applySourcePatch`);
+  `document-state.updateSource` lands beside add/remove. `SourceDocument` gains
+  optional `zoteroKey` + `exegesis` + the `'zotero'` origin — **no Rust change**
+  (`.twriter/sources.json` is an opaque `Value`; TS owns the shape).
+- **Per-source exegesis** (`feat(revision): per-source exegesis`). A standalone
+  action in the source editor: reconstruct one source's argument (thesis, moves,
+  commitments, the author's terms verbatim, sparing exact quotes) — exegesis, never
+  summary, with reporting-frame verbs banned in the locked `source-exegesis.md`
+  (mirroring the gist prompts' discipline). Streams live; persists
+  `SourceDocument.exegesis {content, createdAt, sourceHash}`; staleness by
+  normalized content hash (annotated, never auto-deleted); a dim `◈` on the chip
+  marks a current reconstruction. New call kind `exegeteSource` (heavy tier).
+- **Socratic directive dialogue** (`feat(revision): Socratic directive dialogue`).
+  `⟡ Find the directive` beside the suggester opens a short streaming inquiry-rule
+  dialogue inline in the config column (ephemeral by design). The partner's final
+  turn emits a fenced `{directive}` JSON block (`extractDirectiveFromTurn`);
+  confirming fills the directive box, optionally saving to the Instruction library.
+  New **editable** prompt `directive-dialogue.md` (the `PromptsConfig` key derives
+  from the registry) + streaming kind `directiveDialogueTurn` (interactive tier,
+  in `AGENT_DEFAULT_KINDS`).
+- **Per-source batch citation audit** (`feat(revision): batch per-source citation
+  audit`). Citations mode gains a "per-source audit" run mode: one focused pass per
+  selected source — read THAT source rigorously, then assess the document's usage
+  *and non-usage* of it, proposing surgical, strictly-receipted edits with
+  new-citation additions held to a definite-improvement bar; an empty result is a
+  good outcome, surfaced as such. New locked `citations-audit-task.md` + kind
+  `auditSourceUsage` + `ai-provider.audit.ts` (reuses `citationsSystem`, the strict
+  schema, and the now-exported `formatSources`/`STRICT_RECEIPT_TAIL`/
+  `revisionsJsonSchema`). `revision-state` gains phase `'auditing'` + an honest
+  queue (`queued/auditing/done/error/skipped` + note), pacing, boundary-grained
+  stop, `appendProposals`; orchestration in `use-source-audit.ts` (per-item
+  try/catch + continue; over-window sources skip with a note; the `isProcessing`
+  lock is held per call so a stepped pause never locks the app). UI: `AuditRun`
+  (pip row + continue/stop) + `GroupedProposals` (by-source grouping surviving into
+  review; silent outcomes get caption rows). The accept gate is untouched.
+- **Live Zotero picker** (`feat(revision): live Zotero picker`, desktop only). A
+  "Zotero" affordance opens a picker over Zotero 7's local API
+  (`http://localhost:23119/api/users/0/…`): collections, title/creator/year search,
+  multi-select, then import as bibliographic chips (same shape as the CSL-JSON file
+  import — `bibImport` gained the exported `cslItemToReference`) or as full-text
+  reference sources (Zotero's own fulltext index first, then the raw attachment
+  through the existing pdf/docx extractors). Re-import updates in place (dedupe by
+  `zoteroKey`+role) — which naturally marks an exegesis stale. Unreachable Zotero
+  degrades to one quiet hint + retry. **New dependency (owner-approved):**
+  `tauri-plugin-http` + `@tauri-apps/plugin-http`, capability-scoped to
+  `http://localhost:23119/*` / `http://127.0.0.1:23119/*` ONLY (Zotero sends no
+  CORS headers, so webview fetch cannot reach it); `src/services/zotero.ts` is the
+  single caller (dynamic import — never in the browser bundle), sending
+  `Zotero-Allowed-Request: true`.
+
+**Verify.** Per slice: `npm test` (682 → 720 passing; new suites: `source-edit`,
+`audit-helpers`, `zoteroImport`, `ai-provider.audit` characterization, plus
+`extractDirectiveFromTurn` / `cslItemToReference` / state-slice cases),
+`npm run typecheck`, `npm run build` all green. `cargo` not runnable here (no GTK
+libs); `cargo metadata` validates the manifest and the plugin registration runs on
+PR CI (`cargo test`). **The Zotero slice touches Rust (plugin + capability), so it
+takes effect only after a desktop rebuild**; end-to-end needs Zotero 7 running with
+"Allow other applications…" enabled — without it the picker shows its hint state
+(also reachable in browser dev, where the button is hidden and the service throws
+"desktop-only").
+
+**Rollback.** Each slice is one `git revert`-able commit. No data migrations: the
+new `SourceDocument` fields are optional (older sidecars load unchanged; a reverted
+build simply ignores them — serde/TS both tolerate unknown/missing optionals).
+
+## 2026-07-08 — Glass Box wave: adversarial-review fixes (five findings)
+
+An adversarial review of the wave's diff surfaced five defects, each verified
+against the code before fixing:
+
+1. **Stale audit text.** The batch-audit loop captured the document text once at
+   run start, so sources audited after a mid-run accept were checked against
+   pre-accept text (their proposals could silently no-op at accept). The run now
+   pins its *target* (`auditTargetId`, set by `startAudit`) and re-derives that
+   target's **live** text every iteration (`resolveAuditTarget` in
+   `use-source-audit.ts` — `localContent` first for the whole document, since the
+   editor buffer is the source of truth for the prose).
+2. **Reopenable close guard.** In-flight guards checked `revisionWorkspaceOpen`,
+   which close-then-reopen restores — a resolving call could resurrect a cleared
+   pass's proposals. Replaced with a monotonic **`revisionPassEpoch`**
+   (revision-state), bumped by `closeRevisionWorkspace` / `resetRevision` /
+   `startAudit`; the audit loop and both single-pass flows (`generate`,
+   `generateDeep`) drop results whose epoch has moved.
+3. **Exegesis duplicate runs.** The one-run guard was a hook-instance ref, lost
+   when the source editor closed while the run continued — a reopened editor
+   offered a duplicate run. The guard is now the reactive **`exegesisRunning`**
+   registry in ui-state (`beginExegesisRun`/`endExegesisRun`); a reopened editor
+   shows a quiet "reconstructing…" caption instead of the button. (The live
+   stream deliberately doesn't reattach across the remount — the result lands via
+   `updateSource` when the run completes.)
+4. **Duplicate `## References` creation.** Every per-source audit call could
+   propose *creating* a References section anchored on the same trailing text —
+   accepting two duplicated the heading. `citations-audit-task.md` rule 5 now
+   restricts the per-source audit to entries **within an existing** section;
+   creating the section stays with the whole-document Citations pass (one
+   canonical owner), with the absence noted in the citation proposal's rationale.
+5. **Fabricated exegesis of metadata-only sources.** `exegeteSource` accepted a
+   `bibliographic` source (APA entry + abstract) under a prompt demanding full
+   argument reconstruction — inviting a prior-knowledge fabrication persisted as
+   a faithful stand-in. Gated at the affordance: the editor shows a
+   "metadata-only source" caption instead of the Reconstruct button, and the hook
+   refuses with an info toast.
+
+**Verify.** `npm test` (723 passing, incl. new epoch + registry cases),
+`npm run typecheck`, `npm run build` all green. Manual: accept a proposal
+mid-audit and confirm the next source's proposals anchor to the post-accept text;
+close + reopen the workspace during a call and confirm no proposals appear in the
+fresh config phase; close + reopen the source editor mid-exegesis and confirm the
+caption (no second Reconstruct).
+
+**Rollback.** One commit; `git revert` restores the pre-fix wave behavior. No
+data or schema changes.

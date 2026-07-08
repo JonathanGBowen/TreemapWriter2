@@ -30,6 +30,7 @@ export type AICallKind =
   | 'refactorAnalysis'
   | 'continueDialogue'
   | 'generateRevisions'
+  | 'auditSourceUsage'
   | 'generateReverseOutline'
   | 'regenerateParagraph'
   | 'analyzeGist'
@@ -37,6 +38,8 @@ export type AICallKind =
   | 'refreshGistSpan'
   | 'refitGist'
   | 'suggestDirectives'
+  | 'directiveDialogueTurn'
+  | 'exegeteSource'
   | 'generateSprintPlan'
   | 'coachSprintTurn'
   | 'decomposeSprintStep'
@@ -65,6 +68,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'refactorAnalysis',
   'continueDialogue',
   'generateRevisions',
+  'auditSourceUsage',
   'generateReverseOutline',
   'regenerateParagraph',
   'analyzeGist',
@@ -72,6 +76,8 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'refreshGistSpan',
   'refitGist',
   'suggestDirectives',
+  'directiveDialogueTurn',
+  'exegeteSource',
   'generateSprintPlan',
   'coachSprintTurn',
   'decomposeSprintStep',
@@ -101,6 +107,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   refactorAnalysis: 'Refactor analysis',
   continueDialogue: 'Dialogue',
   generateRevisions: 'Generate revisions',
+  auditSourceUsage: 'Audit source usage',
   generateReverseOutline: 'Reverse outline',
   regenerateParagraph: 'Regenerate paragraph',
   analyzeGist: 'Gist analysis',
@@ -108,6 +115,8 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   refreshGistSpan: 'Gist span refresh',
   refitGist: 'Gist re-fit',
   suggestDirectives: 'Suggest directives',
+  directiveDialogueTurn: 'Directive dialogue (live)',
+  exegeteSource: 'Source exegesis',
   generateSprintPlan: 'Generate sprint plan',
   coachSprintTurn: 'Sprint coach (live)',
   decomposeSprintStep: 'Break down step',

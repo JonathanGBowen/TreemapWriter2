@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-06-28.** Update this file whenever a feature ships or is
+> **Current as of 2026-07-07.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -39,6 +39,44 @@ serialized snake_case because an enum's `rename_all` doesn't reach struct-varian
 ref flags an actionable "update the app" error instead of hard-crashing the resolve). Requires
 a desktop rebuild to take effect. *Deferred:* in-app reconciliation of **unrelated** histories
 (the remote-seeded-separately migration case) — still punted to the CLI.
+
+**Glass Box workbench wave** shipped 2026-07-07 (five slices; see
+[`docs/migration-log.md`](docs/migration-log.md)): **editable sources** (every chip
+gains a pencil → `SourceEditorModal`; label/role/content editable in place, a role
+change recomputing the derived kind/glyph — so a mis-ingested upload can be
+reclassified, e.g. rough draft notes from `reference` to `guidance`); a standalone
+**per-source exegesis** (a streamed, faithful reconstruction of one source's
+argument — moves/commitments/terms, never a summary — persisted on the source with
+hash-based staleness, annotated not auto-deleted); a **Socratic directive dialogue**
+(`⟡ Find the directive` — a short inquiry-rule exchange converging on one
+engine-ready directive, ephemeral by design, optional save-to-Instruction-library);
+a **per-source batch citation audit** in Citations mode (one deep read per selected
+source assessing usage *and non-usage*, surgical strictly-receipted proposals with a
+definite-improvement bar for new citations, honest per-source statuses, continuous
+or pause-after-each-source pacing, by-source grouped review — the accept gate
+unchanged); and a **live Zotero picker** (desktop-only; local API at
+`localhost:23119` via a capability-scoped `tauri-plugin-http`, since Zotero sends no
+CORS headers; import bibliography metadata or attachment full text — Zotero's own
+fulltext index first; re-import updates in place by `zoteroKey`). *Deliberate
+limits:* the batch audit reads raw source text, never the exegesis (owner decision);
+audit stop is source-boundary-grained (no mid-call abort through the `LLMClient`
+seam) and statuses are honest one-shot states (no fake reading/proposing split); the
+dialogue transcript is ephemeral; the Zotero collection list is flat (no nesting)
+and Web-API sync / BibTeX-RIS remain out of scope (below).
+
+**Hardened 2026-07-08 — adversarial-review fixes** (five verified findings; see
+[`docs/migration-log.md`](docs/migration-log.md)): the batch audit pins its target
+and re-reads the **live** document text each source (a mid-run accept no longer
+strands later proposals on stale anchors); a monotonic `revisionPassEpoch` replaces
+the reopenable open-flag as the in-flight dead-pass guard (audit loop +
+`generate`/`generateDeep`); the exegesis one-run guard moved to a reactive
+`exegesisRunning` registry so a reopened editor sees the run instead of offering a
+duplicate (the stream doesn't reattach across remount — the result lands on
+completion); the per-source audit corrects References **entries only within an
+existing section** — creating the section stays with the whole-document Citations
+pass (else N parallel audits could each create one); and exegesis of a
+`bibliographic` (metadata-only) source is gated off at the affordance — a
+reconstruction of it could only be fabricated from prior knowledge.
 
 **Gestalt segmentation — "Articulation"** shipped 2026-06-29 (see
 [`docs/migration-log.md`](docs/migration-log.md)). A top-down, recursive walk that
@@ -635,14 +673,15 @@ streams keep their own inline indicators rather than the pill.
   `useColumnResize`/`ResizeHandle` primitive is ready to apply to any other
   column workspace (Climate/Sprint) if they grow resizable columns.
 
-- **Role-aware revision follow-ups.** Shipped 2026-07-06. Deliberate limits, by
-  mood: `role` is set at ingestion and not editable after a source is added (remove +
-  re-add to change it — a per-chip role dropdown is the trivial lift); sources remain
-  ephemeral, so `role` is never persisted; the revision-mode `## References` proposal
+- **Role-aware revision follow-ups.** Shipped 2026-07-06; the 2026-07-07 workbench
+  wave resolved the two ingestion-rigidity limits (`role` — and the text itself — are
+  now editable in place via the source editor, and sources persist with the project).
+  Remaining deliberate limits, by mood: the revision-mode `## References` proposal
   reuses the Citations-mode append heuristic (unique trailing substring) rather than a
   structured reference-list model; and APA Author/Year still rides source-label/content
-  inference (the Zotero bridge is the reliable feed). The per-proposal receipt relaxation
-  is revision-mode only — Assembly and Citations stay strict by design.
+  inference (the Zotero bridge — now including the live picker — is the reliable feed).
+  The per-proposal receipt relaxation is revision-mode only — Assembly and Citations
+  stay strict by design.
 
 ## Non-goals (out of scope by design — do not pre-build)
 
@@ -655,12 +694,14 @@ Unless requirements genuinely change:
   CLI, then the standard project-open flow.
 - **Y.js / Automerge real-time collaboration.** Only if a co-author is ever
   invited. Otherwise out of scope.
-- **Deep Zotero integration.** The Glass-Box bridge is file-import only (CSL-JSON /
-  `.md` / PDF / DOCX). Imported sources now **persist** with the project (2026-07-06),
-  but a live **local-API picker** (`localhost:23119`, read-only, Zotero-7+ — would need
-  the "Allow other applications…" toggle, a CORS/Tauri-command path, and a picker modal),
-  **Web-API sync** (key in keyring), and **BibTeX/RIS** parsing are all deferred — revisit
-  only if file import proves too manual in real use.
+- **Zotero beyond the local API.** The live **local-API picker shipped 2026-07-07**
+  (owner decision — file import had proven too manual in real use): desktop-only,
+  read-only GET against `localhost:23119` through a capability-scoped
+  `tauri-plugin-http`, with file import kept as the fallback and the browser path.
+  Still out of scope: **Web-API sync** (`api.zotero.org`, key in keyring — would make
+  imports work without Zotero running), **BibTeX/RIS** parsing, nested collection
+  trees, and storing the original attachment binary. Revisit only if the local picker
+  proves insufficient in real use.
 
 (The permanent non-goals — accounts, billing, telemetry, i18n, feature flags —
 are a matter of project *identity* and live in [`docs/VISION.md`](docs/VISION.md),

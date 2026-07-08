@@ -30,6 +30,7 @@ export const AGENT_DEFAULT_KINDS: ReadonlySet<AICallKind> = new Set<AICallKind>(
   'streamCoachAdvice',
   'getCoachAdvice',
   'coachSprintTurn',
+  'directiveDialogueTurn',
   'generateSprintPlan',
   'decomposeSprintStep',
   'developSpecLevel',

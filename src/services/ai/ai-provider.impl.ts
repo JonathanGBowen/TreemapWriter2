@@ -56,6 +56,7 @@ import type {
   RefactorAnalysisInput,
   ContinueDialogueInput,
   GenerateRevisionsInput,
+  AuditSourceUsageInput,
   GenerateReverseOutlineInput,
   RegenerateParagraphInput,
   AnalyzeGistInput,
@@ -63,6 +64,8 @@ import type {
   RefreshGistSpanInput,
   RefitGistInput,
   SuggestDirectivesInput,
+  DirectiveDialogueTurnInput,
+  ExegeteSourceInput,
   GenerateSprintPlanInput,
   CoachSprintTurnInput,
   DecomposeSprintStepInput,
@@ -103,6 +106,7 @@ import { generateSpecs, generateSpecLevel, buildStagePrompt } from './ai-provide
 import { segmentSpan, type SegmentSpanResult } from './ai-provider.segment';
 import { discoverStructuralParts } from './ai-provider.structural-parts';
 import { generateRevisions } from './ai-provider.revisions';
+import { auditSourceUsage } from './ai-provider.audit';
 import { generateReverseOutline } from './ai-provider.reverse-outline';
 import { regenerateParagraph } from './ai-provider.regenerate';
 import { reconstructWhole, proposeRecenterings } from './ai-provider.gestalt';
@@ -617,6 +621,26 @@ export class MultiProviderAIProvider implements AIProvider {
     }
   }
 
+  /**
+   * Close exegesis of one source — streamed, like streamCoachAdvice. The contract
+   * (reconstruct moves/commitments/terms; never summarize) is the locked
+   * `sourceExegesisPrompt`; the user turn carries only the source itself.
+   */
+  async *exegeteSource(input: ExegeteSourceInput): AsyncIterable<string> {
+    const prompt = `[Source: ${input.label} — role: ${input.role}]\n\n${input.content}`;
+    const choice = this.choose('exegeteSource', input);
+    const stream = this.dispatch(choice, 'exegeteSource').streamText({
+      model: choice.model,
+      prompt,
+      systemInstruction: getPromptText('sourceExegesisPrompt'),
+      thinkingBudget: choice.thinkingBudget,
+      maxTokens: MAX_OUTPUT_TOKENS,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
   async getContentSuggestions(input: ContentSuggestionsInput): Promise<string> {
     const prompt = `\n${input.config.suggestContentPrompt}\n\nCONTEXT:\nSection Title: "${input.sectionTitle}"\nParent Section Goals: "${input.parentGoals || 'N/A'}"\nSection Goals: "${input.currentGoals}"\nCurrent Content:\n---\n${input.fullSectionContent}\n---\n      `;
 
@@ -721,6 +745,16 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('generateRevisions', input);
     return generateRevisions(
       this.dispatch(choice, 'generateRevisions'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async auditSourceUsage(input: AuditSourceUsageInput): Promise<RevisionProposal[]> {
+    const choice = this.choose('auditSourceUsage', input);
+    return auditSourceUsage(
+      this.dispatch(choice, 'auditSourceUsage'),
       choice.model,
       choice.thinkingBudget,
       input,
@@ -909,6 +943,43 @@ export class MultiProviderAIProvider implements AIProvider {
 
     const choice = this.choose('coachSprintTurn', input);
     const stream = this.dispatch(choice, 'coachSprintTurn').streamText({
+      model: choice.model,
+      messages,
+      systemInstruction,
+      thinkingBudget: choice.thinkingBudget,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * Socratic directive extraction — a streaming inquiry-rule turn, mirroring
+   * coachSprintTurn (full history each turn, stateless provider). The system
+   * instruction is the editable directive-dialogue contract + the pass framing
+   * (mode, section, selected source labels, any directive draft) + the prose
+   * under revision, so the partner can point at the text rather than generalize.
+   */
+  async *directiveDialogueTurn(input: DirectiveDialogueTurnInput): AsyncIterable<string> {
+    const sourceLines = input.sourceSummaries.length
+      ? `SELECTED SOURCES:\n${input.sourceSummaries.map((s) => `- ${s.label} (role: ${s.role})`).join('\n')}`
+      : '';
+    const systemInstruction = [
+      input.config.directiveDialoguePrompt,
+      `CONTEXT:\nREVISION MODE: ${input.mode}\nSECTION: "${input.sectionTitle}"`,
+      sourceLines,
+      input.currentDirective?.trim()
+        ? `CURRENT DIRECTIVE DRAFT (refine or replace):\n${input.currentDirective.trim()}`
+        : '',
+      `THE TEXT UNDER REVISION:\n---\n${input.sectionText}\n---`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
+
+    const choice = this.choose('directiveDialogueTurn', input);
+    const stream = this.dispatch(choice, 'directiveDialogueTurn').streamText({
       model: choice.model,
       messages,
       systemInstruction,

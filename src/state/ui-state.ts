@@ -98,6 +98,12 @@ export interface UIStateSlice {
   activeOps: ActiveOp[];
   /** True while the per-minute throttle is making a call wait (shown as "queued"). */
   throttleWaiting: boolean;
+  /**
+   * Source ids with an exegesis run in flight. Lives HERE (not in the hook)
+   * because the run outlives the source-editor modal: a closed-and-reopened
+   * editor must still see the run and not offer a duplicate. Ephemeral.
+   */
+  exegesisRunning: string[];
 
   /**
    * Set when a persist (`saveCurrentState` / autosave) fails — i.e. the latest
@@ -145,6 +151,12 @@ export interface UIStateSlice {
   showRemoteProjectModal: boolean;
   /** Revision feature settings (instruction · model · token preview · prompts). */
   showRevisionSettingsModal: boolean;
+  /** Edit one source document (label · role · content · exegesis). */
+  showSourceEditorModal: boolean;
+  /** Which source the editor modal targets (set by openSourceEditor). */
+  editingSourceId: string | null;
+  /** Zotero live local-API picker (desktop only). */
+  showZoteroPickerModal: boolean;
   /** Parallel Editor settings (voice · model · token preview · prompts). */
   showParallelSettingsModal: boolean;
   /** Gist Editor settings (model depth · prompts). */
@@ -183,6 +195,10 @@ export interface UIStateSlice {
   beginOp: (op: { label: string; workspace?: OpWorkspace }) => string;
   /** Deregister an op (call in a finally so it clears on every path). */
   endOp: (id: string) => void;
+  /** Mark a source's exegesis run in flight (guards duplicates across modal remounts). */
+  beginExegesisRun: (sourceId: string) => void;
+  /** Release the in-flight mark (call in a finally so it clears on every path). */
+  endExegesisRun: (sourceId: string) => void;
   setThrottleWaiting: (waiting: boolean) => void;
   /**
    * Bring a workspace forward (the activity pill's jump-back). Non-destructive: it
@@ -214,6 +230,10 @@ export interface UIStateSlice {
   setShowConflictModal: (show: boolean) => void;
   setShowRemoteProjectModal: (show: boolean) => void;
   setShowRevisionSettingsModal: (show: boolean) => void;
+  /** Open the source editor targeting one source. */
+  openSourceEditor: (id: string) => void;
+  setShowSourceEditorModal: (show: boolean) => void;
+  setShowZoteroPickerModal: (show: boolean) => void;
   setShowParallelSettingsModal: (show: boolean) => void;
   setShowGistSettingsModal: (show: boolean) => void;
   setShowAgentTraceModal: (show: boolean) => void;
@@ -241,6 +261,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   isProcessing: false,
   activeOps: [],
   throttleWaiting: false,
+  exegesisRunning: [],
   saveError: null,
 
   syncStatus: 'no-remote',
@@ -268,6 +289,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showConflictModal: false,
   showRemoteProjectModal: false,
   showRevisionSettingsModal: false,
+  showSourceEditorModal: false,
+  editingSourceId: null,
+  showZoteroPickerModal: false,
   showParallelSettingsModal: false,
   showGistSettingsModal: false,
   showAgentTraceModal: false,
@@ -329,6 +353,14 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
     return id;
   },
   endOp: (id) => set((s) => ({ activeOps: s.activeOps.filter((o) => o.id !== id) })),
+  beginExegesisRun: (sourceId) =>
+    set((s) => ({
+      exegesisRunning: s.exegesisRunning.includes(sourceId)
+        ? s.exegesisRunning
+        : [...s.exegesisRunning, sourceId],
+    })),
+  endExegesisRun: (sourceId) =>
+    set((s) => ({ exegesisRunning: s.exegesisRunning.filter((id) => id !== sourceId) })),
   setThrottleWaiting: (throttleWaiting) => set({ throttleWaiting }),
   focusWorkspace: (workspace) =>
     set({ [WORKSPACE_OPEN_FLAG[workspace]]: true } as unknown as Partial<AppState>),
@@ -356,6 +388,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowConflictModal: (show) => set({ showConflictModal: show }),
   setShowRemoteProjectModal: (show) => set({ showRemoteProjectModal: show }),
   setShowRevisionSettingsModal: (show) => set({ showRevisionSettingsModal: show }),
+  openSourceEditor: (id) => set({ editingSourceId: id, showSourceEditorModal: true }),
+  setShowSourceEditorModal: (show) => set({ showSourceEditorModal: show }),
+  setShowZoteroPickerModal: (show) => set({ showZoteroPickerModal: show }),
   setShowParallelSettingsModal: (show) => set({ showParallelSettingsModal: show }),
   setShowGistSettingsModal: (show) => set({ showGistSettingsModal: show }),
   setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),

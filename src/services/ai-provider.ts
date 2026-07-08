@@ -12,6 +12,7 @@ import type {
   RevisionMode,
   AssemblySubMode,
   SourceDocument,
+  SourceRole,
   ReverseOutlineBullet,
   ParagraphKind,
   SegmentMode,
@@ -77,6 +78,14 @@ export interface AIProvider {
   continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
   /**
+   * Per-source citation audit — the batch audit's unit call. Reads ONE source
+   * rigorously, then assesses the whole document's usage (and non-usage) of it,
+   * proposing only surgical, strictly-receipted edits. An empty array is a good
+   * outcome ("used well, or genuinely irrelevant"), not an error. The batch loop
+   * lives in the caller (use-source-audit); this is one focused engine pass.
+   */
+  auditSourceUsage(input: AuditSourceUsageInput): Promise<RevisionProposal[]>;
+  /**
    * Parallel Editor flow #1. Distills each input paragraph block to one faithful
    * sentence (a reverse outline), returned 1:1 in document order. Non-prose blocks
    * (headings/lists/code) are echoed; the caller re-aligns by `index`.
@@ -110,6 +119,22 @@ export interface AIProvider {
    */
   refitGist(input: RefitGistInput): Promise<GistSpan[] | null>;
   suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
+  /**
+   * Socratic directive extraction — a short, streaming inquiry-rule dialogue
+   * (one probing question per turn) that converges on the writer's primary
+   * revision intent and emits it as a fenced ```json``` `{directive}` block the
+   * caller parses (`extractDirectiveFromTurn`). Mirrors `coachSprintTurn`: the
+   * full history travels each turn; the transcript is ephemeral by design.
+   */
+  directiveDialogueTurn(input: DirectiveDialogueTurnInput): AsyncIterable<string>;
+  /**
+   * Close exegesis of ONE source document: a concise, faithful reconstruction of
+   * its argument — moves, commitments, terms — per the VISION summary-vs-exegesis
+   * thesis (never a summary). Streamed token-by-token (the app's preferred
+   * visible-progress idiom); the caller accumulates and persists the result on
+   * the source (`SourceDocument.exegesis`).
+   */
+  exegeteSource(input: ExegeteSourceInput): AsyncIterable<string>;
   generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
   /**
    * Streaming coach turn for the sprint start protocol (the chat / hybrid
@@ -610,6 +635,49 @@ export interface SuggestDirectivesInput {
   /** Active persona name + instruction, to flavor the strategic directives. */
   personaName: string;
   personaInstruction: string;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface AuditSourceUsageInput {
+  /** Human label for the audited text (usually the document root title). */
+  documentTitle: string;
+  /** The whole master document — usage is assessed against the whole. */
+  documentText: string;
+  /** The ONE source this call reads and audits. */
+  source: SourceDocument;
+  /** Optional per-pass focus (narrows the audit, never widens it). */
+  directive?: string;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface DirectiveDialogueTurnInput {
+  sectionTitle: string;
+  /** The prose under revision (the whole document when scope is 'root'). */
+  sectionText: string;
+  mode: RevisionMode;
+  /** Selected sources by label + role only — orientation, not content. */
+  sourceSummaries: { label: string; role: SourceRole }[];
+  /** Whatever is already in the directive box, as a starting point. */
+  currentDirective?: string;
+  /** Full history; the last message is the new user turn. */
+  messages: DialogueMessage[];
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ExegeteSourceInput {
+  /** The source's chip label (names the work in the prompt header). */
+  label: string;
+  /** The source's role, for the prompt header (a bibliographic entry reads differently). */
+  role: SourceRole;
+  /** The full source text to reconstruct. */
+  content: string;
   modelId?: string;
   thinkingBudget?: number;
   modelChoice?: ModelChoice;

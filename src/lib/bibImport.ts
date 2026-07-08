@@ -15,14 +15,14 @@
  */
 
 /** A CSL-JSON name: structured (family/given) or an organisation `literal`. */
-interface CslName {
+export interface CslName {
   family?: string;
   given?: string;
   literal?: string;
 }
 
 /** The subset of CSL-JSON fields we read. Everything else is ignored. */
-interface CslItem {
+export interface CslItem {
   author?: CslName[];
   editor?: CslName[];
   issued?: { 'date-parts'?: Array<Array<string | number>> };
@@ -132,6 +132,29 @@ function stemOf(item: CslItem, names: CslName[]): string {
 }
 
 /**
+ * Normalise ONE CSL item into a reference, or null for a malformed entry. The
+ * per-item body of `parseCslJson`, exported so the Zotero live picker (which
+ * receives CSL items over the local API instead of from a file) reuses the
+ * exact same APA/stem/abstract shaping.
+ */
+export function cslItemToReference(entry: unknown): ParsedReference | null {
+  try {
+    if (!entry || typeof entry !== 'object') return null;
+    const item = entry as CslItem;
+    const names = (item.author?.length ? item.author : item.editor) ?? [];
+    const year = yearOf(item);
+    return {
+      labelStem: stemOf(item, names),
+      year,
+      apa: formatApa(item, names, year),
+      abstract: str(item.abstract) || str(item.abstractNote) || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parse a CSL-JSON export (an array of items, or a single item) into normalised
  * references. Tolerant by design: invalid JSON yields `[]`, and a malformed item
  * is skipped rather than sinking the whole import.
@@ -146,20 +169,8 @@ export function parseCslJson(raw: string): ParsedReference[] {
 
   const refs: ParsedReference[] = [];
   for (const entry of toItems(data)) {
-    try {
-      if (!entry || typeof entry !== 'object') continue;
-      const item = entry as CslItem;
-      const names = (item.author?.length ? item.author : item.editor) ?? [];
-      const year = yearOf(item);
-      refs.push({
-        labelStem: stemOf(item, names),
-        year,
-        apa: formatApa(item, names, year),
-        abstract: str(item.abstract) || str(item.abstractNote) || undefined,
-      });
-    } catch {
-      // Skip a malformed item rather than fail the whole import.
-    }
+    const ref = cslItemToReference(entry);
+    if (ref) refs.push(ref);
   }
   return refs;
 }

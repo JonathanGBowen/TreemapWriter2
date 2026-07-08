@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyProposal,
+  extractDirectiveFromTurn,
   findProposalOffset,
   normalizeDirectiveSuggestions,
   normalizeRevisions,
@@ -232,5 +233,38 @@ describe('normalizeDirectiveSuggestions', () => {
   it('returns null when no array is recoverable', () => {
     expect(normalizeDirectiveSuggestions(null)).toBeNull();
     expect(normalizeDirectiveSuggestions({ nope: 1 })).toBeNull();
+  });
+});
+
+describe('extractDirectiveFromTurn', () => {
+  it('pulls the directive out of a fenced json block amid prose', () => {
+    const turn = `Good — that's clear now.\n\n\`\`\`json\n{ "directive": "Tighten the opening; preserve the Dewey framing." }\n\`\`\``;
+    expect(extractDirectiveFromTurn(turn)).toBe(
+      'Tighten the opening; preserve the Dewey framing.',
+    );
+  });
+
+  it('takes the LAST fenced block when the model shows drafts', () => {
+    const turn = `\`\`\`json\n{ "directive": "draft" }\n\`\`\`\nActually, sharper:\n\`\`\`json\n{ "directive": "final" }\n\`\`\``;
+    expect(extractDirectiveFromTurn(turn)).toBe('final');
+  });
+
+  it('tolerates a bare unfenced JSON object', () => {
+    expect(extractDirectiveFromTurn('{ "directive": "Do it." }')).toBe('Do it.');
+  });
+
+  it('tolerates key variance', () => {
+    expect(extractDirectiveFromTurn('```json\n{ "text": "Via text key." }\n```')).toBe(
+      'Via text key.',
+    );
+  });
+
+  it('returns null for a mid-dialogue prose turn', () => {
+    expect(extractDirectiveFromTurn('What feels unfinished about the closing move?')).toBeNull();
+  });
+
+  it('returns null for a fenced block with no directive-like key', () => {
+    expect(extractDirectiveFromTurn('```json\n{ "goal": 1 }\n```')).toBeNull();
+    expect(extractDirectiveFromTurn('```json\n[1,2]\n```')).toBeNull();
   });
 });

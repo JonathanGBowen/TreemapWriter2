@@ -23,6 +23,10 @@ tauri = { version = "2.11.1", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+# Zotero live picker — a fetch-alike routed through Rust because Zotero's local
+# API (localhost:23119) sends no CORS headers, so the webview's own fetch is
+# blocked. Capability-scoped in capabilities/default.json to that origin ONLY.
+tauri-plugin-http = "2"
 
 # Phase 3 — persistence backbone.
 # The dissertation lives as plain markdown + YAML sidecars + a real

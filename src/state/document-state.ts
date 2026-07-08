@@ -10,6 +10,7 @@ import type {
   SectionSpec,
   Snapshot,
   SourceDocument,
+  SourceExegesis,
   StoredGist,
   StructuralPart,
   TestSuite,
@@ -24,6 +25,7 @@ import {
   withDialogue,
   withDialogueContext,
 } from '../lib/analysis-helpers';
+import { applySourcePatch, type SourcePatch } from '../lib/source-edit';
 
 const blankEntry = (): TestSuiteEntry => ({
   goals: '',
@@ -125,6 +127,13 @@ export interface DocumentStateSlice {
   setSources: (sources: SourceDocument[]) => void;
   /** Add one source document (append). */
   addSource: (source: SourceDocument) => void;
+  /**
+   * Edit one source in place. Editable fields (label/content/role) go through
+   * `applySourcePatch` (a role change recomputes the derived kind/glyph); an
+   * `exegesis` patch attaches/replaces the source's reconstruction. Unknown id
+   * is a no-op.
+   */
+  updateSource: (id: string, patch: SourcePatch & { exegesis?: SourceExegesis }) => void;
   /** Remove one source document by id. */
   removeSource: (id: string) => void;
   setLastAutoSave: (date: Date | null) => void;
@@ -236,6 +245,14 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   setStructuralParts: (parts) => set({ structuralParts: parts }),
   setSources: (sources) => set({ sources }),
   addSource: (source) => set((state) => ({ sources: [...state.sources, source] })),
+  updateSource: (id, { exegesis, ...patch }) =>
+    set((state) => ({
+      sources: state.sources.map((s) =>
+        s.id === id
+          ? { ...applySourcePatch(s, patch), ...(exegesis !== undefined ? { exegesis } : {}) }
+          : s,
+      ),
+    })),
   removeSource: (id) => set((state) => ({ sources: state.sources.filter((s) => s.id !== id) })),
   setLastAutoSave: (date) => set({ lastAutoSave: date }),
 

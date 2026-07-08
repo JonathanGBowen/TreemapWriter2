@@ -64,4 +64,17 @@ describe('ui-state slice', () => {
     store.getState().setShowCommandPalette(true);
     expect(store.getState().showCommandPalette).toBe(true);
   });
+
+  it('the exegesis in-flight registry marks, dedupes, and releases source ids', () => {
+    const s = store.getState();
+    expect(s.exegesisRunning).toEqual([]);
+    s.beginExegesisRun('src1');
+    store.getState().beginExegesisRun('src1'); // duplicate begin is a no-op
+    store.getState().beginExegesisRun('src2');
+    expect(store.getState().exegesisRunning).toEqual(['src1', 'src2']);
+    store.getState().endExegesisRun('src1');
+    expect(store.getState().exegesisRunning).toEqual(['src2']);
+    store.getState().endExegesisRun('missing'); // releasing an unknown id is a no-op
+    expect(store.getState().exegesisRunning).toEqual(['src2']);
+  });
 });

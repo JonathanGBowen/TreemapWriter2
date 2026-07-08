@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the main window. Filesystem and git access happen through purpose-built Tauri commands in src-tauri/src/commands/, NOT through tauri-plugin-fs — the architectural rule 'components never call invoke() directly' is enforced by typed wrappers in src/services/tauri-repository.ts. The dialog permission is for the system folder picker used in project open/create flows.",
+  "description": "Default capabilities for the main window. Filesystem and git access happen through purpose-built Tauri commands in src-tauri/src/commands/, NOT through tauri-plugin-fs — the architectural rule 'components never call invoke() directly' is enforced by typed wrappers in src/services/tauri-repository.ts. The dialog permission is for the system folder picker used in project open/create flows. The scoped http permission exists solely for the Zotero local API (localhost:23119) — Zotero sends no CORS headers, so the webview's own fetch cannot reach it; src/services/zotero.ts is the only caller.",
   "windows": [
     "main"
   ],
@@ -11,7 +11,22 @@
     "fs:allow-read-text-file",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "**/*" }]
+      "allow": [
+        {
+          "path": "**/*"
+        }
+      ]
+    },
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "http://localhost:23119/*"
+        },
+        {
+          "url": "http://127.0.0.1:23119/*"
+        }
+      ]
     }
   ]
 }

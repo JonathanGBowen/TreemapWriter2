@@ -13,6 +13,9 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 /** File extensions the source picker accepts, as an `<input accept>` string. */
 export const SOURCE_ACCEPT = '.pdf,.docx,.md,.markdown,.txt';
 
+/** ~4 chars/token; warn when one source alone eats a big chunk of any window. */
+export const LARGE_SOURCE_CHARS = 120_000;
+
 /** Lower-cased extension of a filename, without the dot (''.md'' -> 'md'). */
 const extOf = (name: string): string => {
   const m = /\.([a-z0-9]+)$/i.exec(name.trim());

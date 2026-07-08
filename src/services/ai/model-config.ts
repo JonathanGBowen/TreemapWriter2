@@ -48,6 +48,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   coachSprintTurn: g(INTERACTIVE, NO_THINK),
   // A single-step breakdown is tiny and must feel instant.
   decomposeSprintStep: g(INTERACTIVE, NO_THINK),
+  // Socratic directive extraction — a live dialogue turn; must feel instant.
+  directiveDialogueTurn: g(INTERACTIVE, NO_THINK),
 
   // --- A: heavy reasoning (top flash, maximum thinking) ---
   estimateDependencies: g(HEAVY, THINK),
@@ -56,6 +58,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   refactorAnalysis: g(HEAVY, THINK),
   continueDialogue: g(HEAVY, THINK),
   generateRevisions: g(HEAVY, THINK),
+  // One deep source-read + whole-document usage assessment per call.
+  auditSourceUsage: g(HEAVY, THINK),
   // Distillation is reasoning-heavy but bounded; same heavy tier.
   generateReverseOutline: g(HEAVY, THINK),
   // A careful per-paragraph analogical rewrite — heavy tier.
@@ -66,6 +70,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   refreshGistSpan: g(HEAVY, THINK),
   refitGist: g(HEAVY, THINK),
   suggestDirectives: g(HEAVY, THINK),
+  // Close exegesis of one source — faithful reconstruction is reasoning-heavy.
+  exegeteSource: g(HEAVY, THINK),
   // Heavy reasoning over two whole drafts.
   compareVersions: g(HEAVY, THINK),
   // Spec test — part: move-by-move A/B against the held rubric for one section.

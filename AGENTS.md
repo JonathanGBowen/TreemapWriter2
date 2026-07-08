@@ -7,7 +7,7 @@
 > [`docs/VISION.md`](docs/VISION.md) first. For what is being worked on next, see
 > [`STATUS.md`](STATUS.md).
 >
-> **Current as of 2026-06-15.** This describes conventions and the shape of the
+> **Current as of 2026-07-07.** This describes conventions and the shape of the
 > system, not an exact file inventory. Exact file trees, counts, and line numbers
 > live in the code — trust the code over any list here.
 
@@ -175,6 +175,7 @@ the name as historical; do not "simplify" the structure.
 | A Tauri command that takes a model- or user-supplied path | Resolve it through `crate::fs_io::resolve_within(root, rel)` (rejects `..`, absolute, NUL, and symlink escapes; canonicalizes + re-checks containment) and confine writes to a hardcoded `Layout` root — never a caller-chosen directory. See `src-tauri/src/commands/agent_fs.rs` (the local agent's reader/scoped-writer, write root `Layout::agent_output_dir()` = `.twriter/agent-output/`). |
 | A new OS-keyring secret | Add a `SecretService` literal in `src/services/credentials.ts`; the Rust side (`src-tauri/src/commands/credentials.rs`) is generic over the service name. AI keys also get an env fallback so `src-tauri/.env.local` works without re-entry. |
 | A new sync trigger | Extend `src/services/sync-policy.ts`. Don't add network calls outside it — sync-policy owns the debounce / throttle invariants. |
+| An integration with an external **local HTTP API** (today: Zotero at `localhost:23119`) | A dedicated service module under `src/services/` (exemplar: `zotero.ts`) — the ONLY file that talks to that API. If the server sends CORS headers (Ollama with `OLLAMA_ORIGINS`), plain webview `fetch` from the service is fine; if not (Zotero), route through `tauri-plugin-http`'s fetch, **imported dynamically** (never in the browser bundle) and **capability-scoped to that exact origin** in `src-tauri/capabilities/default.json`. Never widen an http scope beyond the one origin; never fetch from components. |
 | A new persisted field | Update the `Repository` interface **first** (`src/services/repository.ts`), then **both** implementations, then the matching slice. For Tauri, "both implementations" includes the Rust mirror (`types.rs`), an on-disk path (`layout.rs`), and read/write in `document.rs` — serde silently drops unknown fields, so land Rust + TS together (e.g. `modelsConfig` ↔ `.twriter/models.json`). Global, non-project settings go in `services/preferences.ts`, not the project file. |
 | A new IPC wire type that's an **externally-tagged enum with struct variants** (like `PullOutcome`) | Put `rename_all_fields = "camelCase"` on the enum **in addition to** `rename_all = "camelCase"`. On an enum, `rename_all` renames only the *variant names*, NOT the fields inside a struct variant — so a multi-word field (`their_commit`) silently serializes snake_case and the TS side reads `undefined` (this crashed `sync_resolve_merge`; see migration-log 2026-07-06). Pin the wire keys with a serde-contract test, like the opaque-`Value` lesson (2026-06-24). |
 | A new domain mutation (testSuite, document, etc.) | An action on the appropriate state slice, NOT a `useCallback` in a component. |
