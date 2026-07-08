@@ -117,10 +117,9 @@ export function GistPanel() {
             className="font-mono uppercase"
             style={{
               fontSize: 8, letterSpacing: '0.1em', padding: '3px 7px', cursor: 'pointer',
-              border: `1px solid ${describe ? 'rgba(255,16,96,0.5)' : 'rgba(0,232,245,0.4)'}`,
-              background: describe ? 'rgba(255,16,96,0.08)' : 'rgba(0,232,245,0.06)',
-              // eslint-disable-next-line no-restricted-syntax
-              color: describe ? '#ff5d86' : 'var(--color-hld-cyan)',
+              border: `1px solid ${describe ? 'rgba(255,230,0,0.5)' : 'rgba(0,232,245,0.4)'}`,
+              background: describe ? 'rgba(255,230,0,0.08)' : 'rgba(0,232,245,0.06)',
+              color: describe ? 'var(--color-hld-yellow)' : 'var(--color-hld-cyan)',
             }}
           >
             {describe ? '✕ describes' : '✓ performs'}

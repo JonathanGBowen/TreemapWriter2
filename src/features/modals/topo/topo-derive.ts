@@ -93,7 +93,7 @@ export const STATUS_PALETTE: Record<Status, { c: string; label: string }> = {
   idle: { c: '#3d5570', label: 'IDLE' }, // --color-hld-muted
   running: { c: '#00e8f5', label: 'WORK' }, // --color-hld-cyan
   success: { c: '#00e870', label: 'SOLID' }, // --color-hld-green
-  fail: { c: '#ff1060', label: 'BREAK' }, // --color-hld-magenta
+  fail: { c: '#ffe600', label: 'BREAK' }, // --color-hld-yellow (palette 3C: magenta is content, not failure)
   stale: { c: '#ffe600', label: 'STALE' }, // --color-hld-yellow
 };
 export const statusMeta = (status: Status | null | undefined) =>
@@ -119,12 +119,6 @@ export const READINESS_LABEL: Record<ReadinessLevel, string> = {
   solid: 'SOLID',
 };
 export const READINESS_ORDER: ReadinessLevel[] = ['draft', 'developing', 'nearly-there', 'solid'];
-export const READINESS_COLOR: Record<ReadinessLevel, string> = {
-  draft: '#ff1060', // magenta
-  developing: '#ffe600', // yellow
-  'nearly-there': '#00e8f5', // cyan
-  solid: '#00e870', // green
-};
 
 // Trim a title for compact in-canvas labels (full title lives on the Station).
 function shortTitle(title: string, n = 30): string {

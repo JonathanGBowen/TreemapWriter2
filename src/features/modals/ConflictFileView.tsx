@@ -170,7 +170,7 @@ export const ConflictFileView: React.FC<Props> = ({ file, onChange }) => {
           >
             Keep file
           </button>
-          <button onClick={acceptDelete} className={sideBtn(selected === 'delete', 'bg-hld-magenta border-hld-magenta')}>
+          <button onClick={acceptDelete} className={sideBtn(selected === 'delete', 'bg-hld-yellow border-hld-yellow')}>
             Delete file
           </button>
         </div>

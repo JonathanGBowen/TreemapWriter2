@@ -75,7 +75,7 @@ function StrainRow({ s, selected, onSelect, onDismiss }: {
           onClick={() => onDismiss(s.sectionId)}
           aria-label={`Dismiss structural tension for ${s.title}`}
           title="Dismiss (returns on reload)"
-          className="text-hld-muted hover:text-hld-magenta shrink-0 mt-[2px] transition-colors"
+          className="text-hld-muted hover:text-hld-yellow shrink-0 mt-[2px] transition-colors"
         >
           <X size={11} />
         </button>

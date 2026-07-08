@@ -30,7 +30,7 @@ export const AgentTraceTicker: React.FC<{ kinds?: string[]; className?: string }
       aria-live="polite"
       title={run.label}
     >
-      <span className="inline-block w-1.5 h-1.5 rounded-full bg-hld-magenta animate-pulse shrink-0" />
+      <span className="inline-block w-1.5 h-1.5 rounded-full bg-hld-cyan animate-pulse shrink-0" />
       <span className="truncate">{latestLine(run)}</span>
     </div>
   );

@@ -136,7 +136,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
           </div>
           <button 
             onClick={onClose}
-            className="text-hld-muted hover:text-hld-magenta transition-colors"
+            className="text-hld-muted hover:text-hld-cyan transition-colors"
           >
             <X size={16} />
           </button>
@@ -188,9 +188,9 @@ export const CoachModal: React.FC<CoachModalProps> = ({
           )}
 
           {error && (
-            <div className="bg-hld-magenta/10 border border-hld-magenta/30 p-4 flex gap-2 items-start mt-2">
-              <AlertCircle className="w-4 h-4 text-hld-magenta shrink-0 mt-0.5" />
-              <div className="text-[12px] text-hld-red">{error}</div>
+            <div className="bg-hld-yellow/10 border border-hld-yellow/30 p-4 flex gap-2 items-start mt-2">
+              <AlertCircle className="w-4 h-4 text-hld-yellow shrink-0 mt-0.5" />
+              <div className="text-[12px] text-hld-yellow">{error}</div>
             </div>
           )}
 

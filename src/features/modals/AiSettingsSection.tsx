@@ -354,7 +354,7 @@ const CatalogEditor: React.FC<{
                 <button
                   onClick={() => onChange(catalog.filter((c) => !(c.provider === m.provider && c.id === m.id)))}
                   disabled={builtin}
-                  className="text-hld-muted hover:text-hld-magenta shrink-0 disabled:opacity-30 disabled:hover:text-hld-muted disabled:cursor-not-allowed"
+                  className="text-hld-muted hover:text-hld-yellow shrink-0 disabled:opacity-30 disabled:hover:text-hld-muted disabled:cursor-not-allowed"
                   title="Remove from catalog"
                 >
                   <Trash2 size={14} />

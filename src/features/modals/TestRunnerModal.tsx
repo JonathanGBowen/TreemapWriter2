@@ -160,7 +160,6 @@ export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({
 
   return (
     <ModalShell
-      accent="magenta"
       eyebrow="AI · Evaluation"
       title={`Run Diagnostic — ${sectionTitle}`}
       onClose={onClose}

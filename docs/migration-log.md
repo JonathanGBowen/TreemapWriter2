@@ -5522,3 +5522,121 @@ headings); H2's block border reads as a magenta tint, not cyan.
 **Rollback.** One commit; `git revert` restores the pre-3C token/heading state.
 No persisted data or schema changes — this PR touches only CSS tokens, the
 editor's CodeMirror theme, and one Living Sprints color map.
+
+---
+
+## 2026-07-08 — Palette 3C "dual-signature" (PR2: signatures, readiness bar, purple retirement)
+
+**What changed.** Second and final PR of the 3C adoption (PR1 above landed the
+token layer + heading collapse). This PR re-points the two signature hues across
+components (brief Step 2), collapses the 4-diamond readiness meter to one teal
+bar (Step 4), demotes `purple` to the opt-in `feat-running` feature hue, and
+confirms the denoise carried (Step 5) — closing out all five brief steps.
+
+- **Readiness → one teal bar + word (Step 4).** `PanelHeader.tsx`'s `ReadinessMeter`
+  and the topo `Inspector.tsx`'s `Readiness` component both replaced their 4-hue
+  ladder (magenta→yellow→cyan→green) with a single teal fill (`--readiness-fill`/
+  `--readiness-track` tokens added to `index.css`), varying only in fill count —
+  never hue. `diagnostic-config.ts`'s `ReadinessInfo`/`ReadinessSummary` dropped
+  the per-level `pip` field entirely (the bar is always teal); `topo-derive.ts`'s
+  `READINESS_COLOR` hue-ladder constant is deleted. `Treemap.tsx`'s *own*,
+  previously-undiscovered readiness ladder (tile fill/border by draft→solid) got
+  the same treatment — one teal hue, intensity/border-width scaling with the
+  step count, matching the bar exactly. `Treemap.tsx`'s `summarizeReadiness(...).label`
+  consumption (the `sr-only` text) is untouched.
+- **`purple` → `feat-running` (Step 1 tail).** Renamed every Tailwind utility
+  (`hld-purple` → `hld-feat-running`) across `SprintPlanReview.tsx`,
+  `GestaltActions.tsx`, `Spinner.tsx`, `DirectiveSuggestions.tsx`,
+  `revisionTypeColors.ts`; repointed `.hld-pip-purple`/`.hld-glow-purple`'s
+  `var()` refs; deleted `--color-hld-purple`. Left the raw-hex `#aa00ff` feature
+  literals alone (`tk.ts`, `sprintRoles.ts` synthesize/bridge — relabeled to
+  `feat-running` in their comments — `Treemap.tsx`, `.cm-ai-prose`,
+  `DependencyGraphModal.tsx`, `TopoParts.tsx`) — 3C explicitly keeps purple as an
+  opt-in feature sub-palette hue, just not a core accent.
+- **Failing/error/missing/broken/stale → yellow, the one alert (Step 2).**
+  Magenta no longer doubles as the failure hue. Recolored: the diagnostic
+  `MOVE_STATUS_PIP`/`statusPip` maps, `SectionRow`'s fail square, `sync-status.ts`'s
+  error/conflict pip, `ActiveMoveMarker`'s missing-move marker, `GestaltActions`'s
+  "adrift" alignment, error boxes across `CoachModal`/`RemoteProjectModal`/
+  `SyncConfigModal`/`ConflictResolutionModal`/`ExternalChangeModal`/
+  `AgentTraceModal`/`LocalAgentSettingsSection`/`ZoteroPickerModal`, the
+  `segment`/`interpolate`/`revision` rail error states, `livePreview`'s "Mermaid
+  Error", `editorTheme.ts`'s `.cm-nonmatchingBracket`, the whole topo
+  broken/backward/cycle/orphan cluster (`tk.ts` consumers, `topo-derive.ts`'s
+  `STATUS_PALETTE.fail`, `topo-marks.tsx`, `TopoMap.tsx`, `LegendKey.tsx`,
+  `StructuralReadout.tsx`, `Inspector.tsx`), the spec-test/compare "regressed"/
+  "introduced breaks"/"commitment joins severed" verdicts (`spec-test-config.ts`'s
+  `TRUTH_PIP`/`DIR_PIP`, `SpecTestSectionCard.tsx`, `SpecTestWholeVerdict.tsx`,
+  `SpecTab.tsx`, `CompareReport.tsx`), `Treemap.tsx`'s `status === 'fail'` tile
+  colour and `EditorPanel.tsx`'s "✕ Failing" chip, `GenerateButton.tsx`'s gist
+  "overflow" state, and `RevisionTokenPreview.tsx`'s token-budget overflow.
+  `spec-test-config.ts`'s `DELTA_PIP.removed` is the one deliberate exception —
+  kept magenta, since it's a diff-removal mark (below), not a failure verdict.
+- **Next-action / active / focus → teal (Step 2).** The `.hld-lit-magenta`
+  primary actions in `PanelFooter.tsx` ("Run Diagnostic") and `DialogueTab.tsx`
+  ("Conclude → new version") are now `.hld-lit` (teal); `TestRunnerModal.tsx`
+  dropped its `accent="magenta"` (its `ModalShell`-rendered primary CTA is now
+  teal too); `ConflictResolutionModal`'s "Resolve & Merge" button; `TestsPanel`'s
+  "Active dialogue" pip; `AgentTraceTicker`'s live dot; `AgentSdkSettingsSection`'s
+  two on/off toggles ("Agent mode", "Save finished runs"). Fixed stray non-teal
+  focus rings: `ProjectFileModal`'s spec textarea, `BulletCell`'s outlineB column
+  (was green), and removed `SegControl`'s unused `accent="magenta"` branch
+  (selection is always teal — no call site ever used it). Five modal close ("✕")
+  buttons that hovered to magenta with no semantic reason now hover to cyan,
+  matching `ModalShell`'s own canonical close button.
+- **Destructive → yellow, no new confirms (Step 2).** `ConfirmModal.tsx` (the
+  shared confirm dialog) recolored magenta → yellow. Every `hover:text-hld-magenta`
+  on a delete/remove/clear/stop affordance recolored to yellow across ~18 call
+  sites (persona/spell/instruction/model/move/dependency/source/point/strain/
+  step deletes, "Clear all" traces, "Clear" dialogue, "stop" audit,
+  `ConflictFileView`'s "Delete file"). Per VISION.md's founding "undo, not
+  confirm" rule (echoed in AGENTS.md's anti-patterns), **no new confirm modals
+  were added** — only project delete confirms, as before; this PR changes the
+  destructive *hue*, not the confirm/undo policy, a deliberate documented
+  deviation from the bundle's literal "yellow + an explicit confirm" wording.
+- **Kept as-is (by design).** Content magenta (H1/heading ladder, the topo
+  "CONTROLLING CLAIM" block, `ProjectFileModal`'s spec content, blockquote/list/
+  code-keyword marks, `AnalysisTab`'s "Objections" — the argument's own content,
+  not a failure) and diff-polarity magenta (Compare/Spec-test/Parallel/Revision/
+  Version-history/Conflict "removed / version-A / theirs·REMOTE" marks) are
+  untouched — palette 3C's magenta-as-content mapping already covers them.
+  `GistPanel.tsx`'s "describe" pedagogical toggle and `DependencyGraphModal.tsx`'s
+  "ESTIMATE" action moved off magenta (the former to yellow — its own title says
+  "fails this reader" — the latter to teal, matching its sibling "organize"
+  action); `EditorPanel.tsx`'s empty-state "Open Project" button (previously
+  magenta) now matches its "New Project" sibling in teal, since both are equal
+  actions, not content.
+
+**Verify.** `git grep -n "hld-purple\|color-hld-purple" src` and
+`git grep -n "READINESS_COLOR" src` → 0 refs. `npm run typecheck`, `npm test`
+(723 passing, incl. the updated `diagnostic-config` readiness tests),
+`npm run build`, `npm run lint` (0 hard-coded-hex warnings) all green. Manual:
+the tests-panel and topo Inspector show a single teal readiness bar + word; a
+failing diagnostic / sync error / topo broken-arc shows yellow, not magenta;
+selection, caret, focus rings, and every surface's one next action are teal;
+the treemap's readiness-tinted tiles read as one hue at varying intensity, not
+a 4-hue rainbow.
+
+**Rollback.** One commit; `git revert` restores the pre-PR2 state. No persisted
+data or schema changes — CSS tokens, component class strings, and a few status/
+color maps only. The `diagnostic-config.ts` `ReadinessInfo`/`ReadinessSummary`
+shape change (dropped `pip` field) is TS-only, not a persisted field — no
+migration needed.
+
+---
+
+**Palette 3C "dual-signature" — program complete.** Both PRs (above) landed all
+five brief steps: the token layer + semantic `--color-accent-*` aliases (Step 1),
+component re-pointing so teal=you/navigation/selection/focus/next-action and
+magenta=the work/content, never danger (Step 2), the magenta-intensity heading
+ladder replacing the 6-hue rainbow (Step 3), the one-teal-bar readiness meter
+replacing the 4-diamond ladder — including a `Treemap.tsx` readiness ladder the
+original audit hadn't catalogued (Step 4), and confirmation that the denoise
+carried — flat pips, no ambient wash, one teal lit action, one alert hue (Step 5).
+Core accents: 11 → 4. **Two deliberate deviations from the bundle, both
+documented above:** the destructive hue changed (magenta → yellow) without
+adding new confirm modals (VISION.md's undo-not-confirm rule stands — only
+project delete confirms), and `theme.3c.tailwind.css` was applied for its
+*colour intent* rather than verbatim — this repo's already-declined `muted-text`
+inversion and custom `--spacing-*` scale (2026-06-26 remediation) were not
+revisited.

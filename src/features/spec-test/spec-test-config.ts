@@ -3,13 +3,14 @@
 import type { PipStatus } from '../shared/Pip';
 import type { ComparisonDirection, MoveDelta, SectionSpecTest, StructuralTruth, WholeSignatureAlignment } from '../../types';
 
-/** Structural-truth → pip. tF/whole-false are alarming (magenta); fT is a genuine
+/** Structural-truth → pip. tF/whole-false are alarming whole verdicts (palette
+ *  3C: the one alert, yellow — magenta is content, not danger); fT is a genuine
  *  good read from a rougher draft (cyan); whole-true is the clean win (green). */
 export const TRUTH_PIP: Record<StructuralTruth, PipStatus> = {
   'whole-true': 'green',
-  tF: 'magenta',
+  tF: 'yellow',
   fT: 'cyan',
-  'whole-false': 'magenta',
+  'whole-false': 'yellow',
   lateral: 'purple',
 };
 
@@ -23,7 +24,7 @@ export const TRUTH_LABEL: Record<StructuralTruth, string> = {
 
 export const DIR_PIP: Record<ComparisonDirection, PipStatus> = {
   improved: 'green',
-  regressed: 'magenta',
+  regressed: 'yellow',
   mixed: 'yellow',
   lateral: 'cyan',
 };
@@ -35,10 +36,13 @@ export const DIR_LABEL: Record<ComparisonDirection, string> = {
   lateral: 'Lateral',
 };
 
+/** `regressed` is a quality-decline verdict (palette 3C: yellow, the one alert).
+ *  `removed` stays magenta — the move/commitment was cut from the prose, and
+ *  palette 3C keeps magenta on diff removals (removed prose is still content). */
 export const DELTA_PIP: Record<MoveDelta['delta'], PipStatus> = {
   gained: 'green',
   added: 'green',
-  regressed: 'magenta',
+  regressed: 'yellow',
   removed: 'magenta',
   deflated: 'yellow',
   held: 'idle',

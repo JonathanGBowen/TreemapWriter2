@@ -131,7 +131,7 @@ function CardActions({
             e.stopPropagation();
             onReject(proposal.id);
           }}
-          className="px-2.5 py-1.5 border border-hld-magenta/30 text-hld-magenta hover:bg-hld-magenta/10 font-mono text-[10px] font-bold uppercase tracking-[0.12em] transition-all"
+          className="px-2.5 py-1.5 border border-hld-border text-hld-muted-text hover:text-hld-text hover:bg-hld-surface-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] transition-all"
         >
           ✕ Reject
         </button>

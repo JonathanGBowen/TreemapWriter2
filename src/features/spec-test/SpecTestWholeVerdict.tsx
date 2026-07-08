@@ -63,7 +63,7 @@ export function WholeVerdictPanel({
 
       {(whole.meshDelta.introduced.length > 0 || whole.meshDelta.healed.length > 0) && (
         <div className="mt-2">
-          <MeshFindings title="commitment joins severed (tF evidence)" findings={whole.meshDelta.introduced} color="text-hld-magenta" />
+          <MeshFindings title="commitment joins severed (tF evidence)" findings={whole.meshDelta.introduced} color="text-hld-yellow" />
           <MeshFindings title="commitment joins repaired" findings={whole.meshDelta.healed} color="text-hld-green" />
         </div>
       )}

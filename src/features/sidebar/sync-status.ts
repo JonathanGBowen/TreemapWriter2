@@ -10,16 +10,17 @@ export interface SyncSummary {
 
 /**
  * Collapse the raw sync state into one composite pip + label.
- * green = safe (local-only or synced clean) · yellow = saved but not pushed ·
- * cyan pulse = in-flight · magenta = error/conflict. Used by the sidebar header
- * pip and the project menu's SYNC row, so they always agree.
+ * green = safe (local-only or synced clean) · yellow = saved but not pushed, OR
+ * error/conflict (palette 3C: magenta is content, not danger — the one alert
+ * hue covers both) · cyan pulse = in-flight. Used by the sidebar header pip and
+ * the project menu's SYNC row, so they always agree.
  */
 export function summarizeSync(status: SyncStatus, error: string | null, ahead: number, behind: number): SyncSummary {
   switch (status) {
     case 'conflict':
-      return { pip: 'magenta', pulse: true, text: error || 'merge conflict' };
+      return { pip: 'yellow', pulse: true, text: error || 'merge conflict' };
     case 'error':
-      return { pip: 'magenta', pulse: false, text: error || 'sync error' };
+      return { pip: 'yellow', pulse: false, text: error || 'sync error' };
     case 'pulling':
       return { pip: 'cyan', pulse: true, text: 'pulling…' };
     case 'pushing':

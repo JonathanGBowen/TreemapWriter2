@@ -4,10 +4,12 @@ import { roundedCount } from "../../lib/magnitude";
 /** Status → the small filled square used in the section list. Glow = alive: a
  *  section's readiness is a static state, so success/fail/stale stay flat; only
  *  `running` (in-flight) animates. (The prior glows referenced the Tailwind-v3
- *  `--tw-colors-*` vars, undefined under v4, so they never rendered anyway.) */
+ *  `--tw-colors-*` vars, undefined under v4, so they never rendered anyway.)
+ *  Palette 3C: `fail` moves off magenta (content, not danger) onto yellow, the
+ *  one alert — the title label still distinguishes fail from stale. */
 const STATUS_SQUARE: Record<string, { color: string; live: string }> = {
   success: { color: 'bg-hld-green', live: '' },
-  fail: { color: 'bg-hld-magenta', live: '' },
+  fail: { color: 'bg-hld-yellow', live: '' },
   stale: { color: 'bg-hld-yellow', live: '' },
   running: { color: 'bg-hld-cyan', live: 'animate-pulse' },
 };

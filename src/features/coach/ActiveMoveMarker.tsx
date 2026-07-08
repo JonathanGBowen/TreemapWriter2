@@ -6,7 +6,7 @@ import { selectActiveMove } from './active-move';
 import type { MoveStatus } from '../../types';
 
 const PIP: Record<MoveStatus, PipStatus> = {
-  missing: 'magenta',
+  missing: 'yellow',
   partial: 'yellow',
   unclear: 'yellow',
   present: 'green',

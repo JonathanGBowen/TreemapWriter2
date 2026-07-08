@@ -35,8 +35,6 @@
   --color-hld-feat-confidence: #ffcc00;
   --color-hld-feat-tone: #7c8bff;
   --color-hld-feat-running: #aa00ff;
-  /* TODO(3C PR2): delete once every hld-purple utility/var() ref is migrated to feat-running. */
-  --color-hld-purple: #aa00ff;
 
   --color-hld-text: #c5d8e8;
   --color-hld-text-bright: #ffffff;
@@ -64,6 +62,11 @@
   --color-heading-4: var(--color-hld-text-bright);
   --color-heading-5: var(--color-hld-text);
   --color-heading-6: var(--color-hld-muted-text-2);
+
+  /* Readiness — a single teal-fill bar + a word, not a 4-hue diamond ladder
+     (palette 3C, Step 4). */
+  --readiness-fill: var(--color-hld-cyan);
+  --readiness-track: rgba(255, 255, 255, 0.06);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -204,9 +207,9 @@
     border-color: rgba(0, 232, 245, 0.35);
   }
 
-  /* diamond status pip — the ONE state vocabulary, everywhere.
-     green done/safe · yellow attention · magenta missing/failing ·
-     cyan active · hollow untouched. */
+  /* diamond status pip — the ONE state vocabulary, everywhere. Palette 3C:
+     green done/safe · yellow attention/missing/failing (the one alert) ·
+     cyan active/you · magenta content (never failing/danger) · hollow untouched. */
   .hld-pip {
     width: 6px; height: 6px;
     transform: rotate(45deg);
@@ -222,7 +225,7 @@
   .hld-pip-yellow  { background: var(--color-hld-yellow);  --pip-hue: var(--color-hld-yellow); }
   .hld-pip-magenta { background: var(--color-hld-magenta); --pip-hue: var(--color-hld-magenta); }
   .hld-pip-cyan    { background: var(--color-hld-cyan);    --pip-hue: var(--color-hld-cyan); }
-  .hld-pip-purple  { background: var(--color-hld-purple);  --pip-hue: var(--color-hld-purple); }
+  .hld-pip-purple  { background: var(--color-hld-feat-running);  --pip-hue: var(--color-hld-feat-running); }
   .hld-pip-dim     { background: var(--color-hld-muted); }
   .hld-pip-idle    { background: transparent; border: 1px solid var(--color-hld-muted); }
 
@@ -310,13 +313,13 @@
     box-shadow: 0 0 10px rgba(0, 232, 245, 0.2);
   }
   .hld-glow-magenta {
-    box-shadow: 0 0 10px rgba(255, 0, 85, 0.2);
+    box-shadow: 0 0 10px rgba(255, 16, 96, 0.2);
   }
   .hld-glow-pink {
     box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
   }
   .hld-glow-purple {
-    box-shadow: 0 0 10px rgba(176, 0, 255, 0.2);
+    box-shadow: 0 0 10px rgba(170, 0, 255, 0.2);
   }
   .hld-text-glow {
     text-shadow: 0 0 8px rgba(0, 232, 245, 0.5);

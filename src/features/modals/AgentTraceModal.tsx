@@ -31,7 +31,7 @@ export const AgentTraceModal: React.FC = () => {
             type="button"
             onClick={clearTraces}
             disabled={runs.length === 0}
-            className="flex items-center gap-1.5 bg-transparent border border-hld-border px-3 py-2 text-hld-muted hover:text-hld-magenta hover:border-hld-magenta/40 font-mono text-[9px] tracking-[0.12em] uppercase transition-colors disabled:opacity-40"
+            className="flex items-center gap-1.5 bg-transparent border border-hld-border px-3 py-2 text-hld-muted hover:text-hld-yellow hover:border-hld-yellow/40 font-mono text-[9px] tracking-[0.12em] uppercase transition-colors disabled:opacity-40"
           >
             <Trash2 size={12} /> Clear all
           </button>
@@ -64,7 +64,7 @@ export const AgentTraceModal: React.FC = () => {
 const STATUS_GLYPH: Record<TraceRun['status'], { g: string; cls: string }> = {
   running: { g: '◌', cls: 'text-hld-cyan animate-pulse' },
   success: { g: '✓', cls: 'text-hld-green' },
-  error: { g: '✕', cls: 'text-hld-magenta' },
+  error: { g: '✕', cls: 'text-hld-yellow' },
 };
 
 const RunRow: React.FC<{ run: TraceRun }> = ({ run }) => {
@@ -89,7 +89,7 @@ const RunRow: React.FC<{ run: TraceRun }> = ({ run }) => {
       {open && (
         <div className="border-t border-hld-border px-3 py-2 space-y-2 max-h-72 overflow-y-auto">
           {run.errorMessage && (
-            <p className="text-[11px] font-mono text-hld-magenta">{run.errorMessage}</p>
+            <p className="text-[11px] font-mono text-hld-yellow">{run.errorMessage}</p>
           )}
           {run.events.length === 0 && !run.errorMessage && (
             <p className="text-[11px] font-mono text-hld-muted">(no trace captured)</p>

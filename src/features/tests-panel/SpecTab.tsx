@@ -97,13 +97,13 @@ const COMMITMENT_KIND_LABEL: Record<CommitmentFinding['kind'], string> = {
 function CommitmentMeshCard({ findings }: { findings: CommitmentFinding[] }) {
   if (findings.length === 0) return null;
   return (
-    <div className="px-[15px] py-[13px] bg-[rgba(255,16,96,0.04)] border border-hld-magenta/25">
-      <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-hld-magenta mb-[9px] flex items-center gap-[7px]">
-        <Pip status="magenta" /> Part in whole
+    <div className="px-[15px] py-[13px] bg-[rgba(255,230,0,0.04)] border border-hld-yellow/25">
+      <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-hld-yellow mb-[9px] flex items-center gap-[7px]">
+        <Pip status="yellow" /> Part in whole
       </div>
       <div className="flex flex-col gap-[9px]">
         {findings.map((f, i) => (
-          <div key={i} className="pl-[9px] border-l border-hld-magenta/30">
+          <div key={i} className="pl-[9px] border-l border-hld-yellow/30">
             <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text mb-[3px]">
               {COMMITMENT_KIND_LABEL[f.kind]}
               {f.relatedSectionTitle && <span className="text-hld-muted-text-2 normal-case tracking-normal"> · {f.relatedSectionTitle}</span>}
@@ -173,8 +173,8 @@ function ReverseSummaryCard({ sentence }: { sentence: string }) {
 function LegacyResult({ status, critique }: { status: string; critique?: string }) {
   const pass = status === 'success';
   return (
-    <div className={`p-[10px] border ${pass ? 'border-hld-green bg-hld-green/5' : 'border-hld-magenta bg-hld-magenta/5'}`}>
-      <div className="font-mono text-[9px] font-bold tracking-[0.12em] uppercase mb-[4px]" style={{ color: pass ? 'var(--color-hld-green)' : 'var(--color-hld-magenta)' }}>
+    <div className={`p-[10px] border ${pass ? 'border-hld-green bg-hld-green/5' : 'border-hld-yellow bg-hld-yellow/5'}`}>
+      <div className="font-mono text-[9px] font-bold tracking-[0.12em] uppercase mb-[4px]" style={{ color: pass ? 'var(--color-hld-green)' : 'var(--color-hld-yellow)' }}>
         {pass ? 'Pass' : 'Needs revision'}
       </div>
       <p className="text-[13px] leading-relaxed font-sans text-hld-text">{critique}</p>

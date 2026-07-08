@@ -113,8 +113,8 @@ const DialogueComposer: React.FC<{
         <button
           onClick={onRefactor}
           disabled={!canRefactor}
-          className="w-full py-[13px] bracketed hld-lit-magenta font-mono uppercase tracking-[0.12em] text-[11px] font-bold flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed"
-          style={{ "--br-color": "var(--color-hld-magenta)" } as CSSProperties}
+          className="w-full py-[13px] bracketed hld-lit font-mono uppercase tracking-[0.12em] text-[11px] font-bold flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed"
+          style={{ "--br-color": "var(--color-hld-cyan)" } as CSSProperties}
           title="Synthesize this dialogue into a new analysis version"
         >
           {isProcessing ? <>Refactoring…</> : <><FlaskConical size={11} /> Conclude → new version</>}
@@ -125,7 +125,7 @@ const DialogueComposer: React.FC<{
           <button
             onClick={onClear}
             disabled={isStreaming}
-            className="px-[2px] py-[4px] font-mono uppercase tracking-[0.12em] text-[10px] text-hld-muted-text hover:text-hld-magenta transition-colors disabled:opacity-35"
+            className="px-[2px] py-[4px] font-mono uppercase tracking-[0.12em] text-[10px] text-hld-muted-text hover:text-hld-yellow transition-colors disabled:opacity-35"
             title="Clear this dialogue (recoverable from Version History)"
           >
             Clear

@@ -250,7 +250,7 @@ export const ProjectFileModal: React.FC<ProjectFileModalProps> = ({
                             <div>
                                <label className="block text-[10px] text-hld-magenta uppercase tracking-widest font-bold mb-2">Section Goal / Spec (Editable)</label>
                                <textarea
-                                 className="w-full bg-hld-surface-2 border border-hld-border/50 rounded p-4 text-sm text-hld-text font-mono focus:border-hld-magenta focus:outline-none focus:ring-1 focus:ring-hld-magenta transition-all min-h-[120px]"
+                                 className="w-full bg-hld-surface-2 border border-hld-border/50 rounded p-4 text-sm text-hld-text font-mono focus:border-hld-cyan focus:outline-none focus:ring-1 focus:ring-hld-cyan transition-all min-h-[120px]"
                                  value={localTestSuite[activeSection.id]?.goals || ''}
                                  onChange={(e) => handleUpdateSectionGoal(activeSection.id, e.target.value)}
                                  placeholder="Enter goals for this specific section..."

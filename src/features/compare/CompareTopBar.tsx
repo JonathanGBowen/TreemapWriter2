@@ -154,7 +154,6 @@ export function CompareTopBar() {
         <div title="Draft: treats stubs, placeholders and TODOs as intended scaffolding and weighs whether you're holding your throughline. Completed: judges both versions as finished work, where gaps count against them.">
           <SegControl
             ariaLabel="Comparison reading mode"
-            accent="cyan"
             value={compareMode === 'final' ? 1 : 0}
             onChange={(i) => setCompareMode(i === 1 ? 'final' : 'draft')}
             options={[{ glyph: '✎', label: 'Draft' }, { glyph: '✓', label: 'Completed' }]}

@@ -32,8 +32,8 @@ export function PanelFooter({ runDisabled }: { runDisabled: boolean }) {
           type="button"
           onClick={() => setShowRunModal(true)}
           disabled={runDisabled}
-          style={{ '--br-color': 'var(--color-hld-magenta)' } as CSSProperties}
-          className="bracketed hld-lit-magenta w-full py-[14px] flex items-center justify-center gap-2 font-mono text-[11px] font-bold tracking-[0.14em] uppercase disabled:opacity-35 disabled:cursor-not-allowed"
+          style={{ '--br-color': 'var(--color-hld-cyan)' } as CSSProperties}
+          className="bracketed hld-lit w-full py-[14px] flex items-center justify-center gap-2 font-mono text-[11px] font-bold tracking-[0.14em] uppercase disabled:opacity-35 disabled:cursor-not-allowed"
         >
           {isProcessing ? 'Evaluating…' : <><Play size={11} fill="currentColor" /> Run Diagnostic</>}
         </button>

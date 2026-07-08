@@ -28,7 +28,8 @@ Glass-Box revision workspace, Living Sprints (timed, move-based sessions), and t
 Version Compare workspace (an exegetical A/B evaluation of two saved versions —
 drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
-when synced, magenta on error) surfaces status without distraction.
+when synced, yellow on error — palette 3C, below) surfaces status without
+distraction.
 
 **Fixed 2026-07-06 — merge-resolve crash on old divergent projects** (see
 [`docs/migration-log.md`](docs/migration-log.md)). `sync_resolve_merge` failed with
@@ -399,26 +400,27 @@ streams keep their own inline indicators rather than the pill.
   bounded move-completion loop in a Living Sprint. Both reuse the same `runAgent` +
   accept-gate spine.
 
-- **Palette 3C "dual-signature" — PR1 shipped 2026-07-08 (PR2 in progress).**
-  A follow-on to the HLD remediation below: two signature hues now carry fixed
-  meaning — **teal = you** (nav/selection/cursor/focus/next-action), **magenta =
-  the work** (prose headings/claims/the argument) — with green=done and
-  yellow=the one alert; core accents collapse ~11 → 4. PR1 (see
-  [`docs/migration-log.md`](docs/migration-log.md)) landed the token layer
+- ~~**Palette 3C "dual-signature".**~~ **Complete (2026-07-08, two PRs — see
+  [`docs/migration-log.md`](docs/migration-log.md)).** A follow-on to the HLD
+  remediation below: two signature hues now carry fixed meaning — **teal = you**
+  (nav/selection/cursor/focus/next-action), **magenta = the work** (prose
+  headings/claims/the argument, never danger) — with green=done and yellow=the
+  one alert; core accents collapse ~11 → 4. PR1 landed the token layer
   (`--color-accent-{you,work,done,alert}`, the `--color-heading-1..6` ladder,
-  `--color-hld-feat-running`) and collapsed the editor's 6-hue heading rainbow
-  to a single magenta-intensity ladder in `src/lib/editorTheme.ts` (teal never
-  appears in a heading); `--color-hld-orange` is retired. **Deliberately kept**
-  two of this repo's own prior decisions rather than applying the 3C bundle's
-  token file verbatim: the `muted-text` values (re-inverting them would silently
-  re-contrast 328 sites — declined once already) and the plain Tailwind spacing
-  scale (no custom `--spacing-*` — also declined already, it shadows Tailwind
-  v4). **PR2 (not yet shipped)** carries the rest: re-pointing components (every
-  selection/active/focus/next-action affordance → teal, every failing/error/
-  missing mark → yellow, content + diff-removal magenta kept as-is), the
-  4-diamond readiness meter → one teal bar + word, and `purple` demoted to the
-  opt-in `feat-running` hue. Destructive affordances take the yellow hue but do
-  **not** gain new confirm modals — this repo's undo-not-confirm rule
+  `--color-hld-feat-running`) and collapsed the editor's 6-hue heading rainbow to
+  a single magenta-intensity ladder in `src/lib/editorTheme.ts`; `--color-hld-orange`
+  is retired. PR2 re-pointed every selection/active/focus/next-action affordance
+  to teal and every failing/error/missing/broken/stale mark to yellow (content +
+  diff-removal magenta kept as designed), collapsed the 4-diamond readiness meter
+  — including a `Treemap.tsx` readiness ladder the original audit hadn't
+  catalogued — to one teal bar, and demoted `purple` to the opt-in
+  `feat-running` feature hue. **Deliberately kept** two of this repo's own prior
+  decisions rather than applying the 3C bundle's token file verbatim: the
+  `muted-text` values (re-inverting them would silently re-contrast 328 sites —
+  declined once already) and the plain Tailwind spacing scale (no custom
+  `--spacing-*` — also declined already, it shadows Tailwind v4). Destructive
+  affordances (including the shared `ConfirmModal`) took the yellow hue but
+  gained **no new confirm modals** — this repo's undo-not-confirm rule
   (`VISION.md`) stands; only project delete confirms.
 
 - ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all

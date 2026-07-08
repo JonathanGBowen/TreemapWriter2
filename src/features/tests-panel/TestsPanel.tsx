@@ -17,9 +17,9 @@ const TABS = [
 ] as const;
 
 /**
- * The right panel shell: resize handle + the chrome row (magenta accent line,
- * the Spec | Analysis | Dialogue tab strip, and the persona ⚙). Each tab owns
- * its content; the shell renders the shared empty state when no section is set.
+ * The right panel shell: resize handle + the chrome row (the Spec | Analysis |
+ * Dialogue tab strip and the persona ⚙). Each tab owns its content; the shell
+ * renders the shared empty state when no section is set.
  */
 export const TestsPanel: React.FC = () => {
   const width = useStore((s) => s.testsPanelWidth);
@@ -52,7 +52,7 @@ export const TestsPanel: React.FC = () => {
           >
             {t.label}
             {t.id === 'dialogue' && dialogueActive && (
-              <Pip status="magenta" size="sm" className="ml-[7px] align-middle" title="Active dialogue" />
+              <Pip status="cyan" size="sm" className="ml-[7px] align-middle" title="Active dialogue" />
             )}
           </button>
         ))}

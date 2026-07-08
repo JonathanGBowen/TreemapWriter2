@@ -136,7 +136,7 @@ export const FallbackSettingsSection: React.FC = () => {
                     </button>
                     <button
                       onClick={() => remove(i)}
-                      className="text-hld-muted hover:text-hld-magenta"
+                      className="text-hld-muted hover:text-hld-yellow"
                       title="Remove from ladder"
                     >
                       <Trash2 size={13} />

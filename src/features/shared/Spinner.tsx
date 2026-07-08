@@ -12,7 +12,7 @@ type SpinnerHue = 'cyan' | 'purple' | 'green' | 'yellow' | 'magenta';
 // Literal class pairs so Tailwind's JIT sees them (no dynamic class names).
 const HUE_CLASS: Record<SpinnerHue, string> = {
   cyan: 'border-hld-cyan/25 border-t-hld-cyan',
-  purple: 'border-hld-purple/30 border-t-hld-purple',
+  purple: 'border-hld-feat-running/30 border-t-hld-feat-running',
   green: 'border-hld-green/25 border-t-hld-green',
   yellow: 'border-hld-yellow/25 border-t-hld-yellow',
   magenta: 'border-hld-magenta/25 border-t-hld-magenta',

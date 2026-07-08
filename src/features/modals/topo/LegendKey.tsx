@@ -124,7 +124,7 @@ export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' | 'parts' }
       <Row
         svg={
           <svg width="22" height="10">
-            <path d="M2 2 L8 8 M8 2 L2 8" stroke={TK.magenta} strokeWidth="1.6" />
+            <path d="M2 2 L8 8 M8 2 L2 8" stroke={TK.yellow} strokeWidth="1.6" />
           </svg>
         }
         label="BROKEN · source draft/fail"
@@ -158,7 +158,7 @@ export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' | 'parts' }
             <Dot c={TK.green} />
             <Dot c={TK.accent} />
             <Dot c={TK.yellow} />
-            <Dot c={TK.magenta} />
+            <Dot c={TK.yellow} />
             <Dot c={TK.dim} />
           </span>
         }
@@ -188,8 +188,8 @@ export const LegendKey: React.FC<{ mode: 'atlas' | 'spine' | 'radix' | 'parts' }
       <Row
         svg={
           <svg width="22" height="11">
-            <path d="M3 5.5 L19 5.5" stroke={TK.magenta} strokeWidth="1.4" />
-            <path d="M11 5.5 L5 2.5 L5 8.5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.3" />
+            <path d="M3 5.5 L19 5.5" stroke={TK.yellow} strokeWidth="1.4" />
+            <path d="M11 5.5 L5 2.5 L5 8.5 Z" fill="none" stroke={TK.yellow} strokeWidth="1.3" />
           </svg>
         }
         label="BACKWARD · prereq read late"

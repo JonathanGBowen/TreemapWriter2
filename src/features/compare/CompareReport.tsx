@@ -14,7 +14,7 @@ import type {
 
 const DIR_PIP: Record<ComparisonDirection, PipStatus> = {
   improved: 'green',
-  regressed: 'magenta',
+  regressed: 'yellow',
   mixed: 'yellow',
   lateral: 'cyan',
 };
@@ -223,7 +223,7 @@ export function CompareReport() {
             <ChangeBlock pip="green" title="Improvements" changes={comparison.improvements} />
             {comparison.mode === 'draft' && <OpenThreads threads={comparison.openThreads ?? []} />}
             <ChangeBlock
-              pip="magenta"
+              pip="yellow"
               title={comparison.mode === 'draft' ? 'Regressions / drift' : 'Possible losses'}
               changes={comparison.losses}
             />

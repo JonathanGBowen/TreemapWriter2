@@ -9,7 +9,7 @@ const STATUS_PIP: Record<string, PipStatus> = {
   idle: 'idle',
   stale: 'yellow',
   running: 'purple',
-  fail: 'magenta',
+  fail: 'yellow',
   success: 'green',
 };
 

@@ -76,7 +76,7 @@ const DepArc: React.FC<{
   const mid = depMidpoint(arc, pos);
   if (!geom || !mid) return null;
   const ref = arc.type === 'reference';
-  const base = health === 'broken' ? TK.magenta : health === 'weak' ? TK.yellow : TK.accent;
+  const base = health === 'solid' ? TK.accent : TK.yellow;
   const dash = ref ? '9 7' : health === 'weak' ? '3 7' : undefined;
   return (
     <g
@@ -113,15 +113,15 @@ const DepArc: React.FC<{
       </g>
       {backward && (
         <g transform={`translate(${mid.x},${mid.y}) rotate(${geom.arrow.angle})`}>
-          <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+          <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.yellow} strokeWidth="1.5" />
         </g>
       )}
       {health === 'broken' && (
         <g transform={`translate(${mid.x},${mid.y})`}>
-          <circle r="9" fill={TK.bg} stroke={TK.magenta} strokeWidth="1.6" />
+          <circle r="9" fill={TK.bg} stroke={TK.yellow} strokeWidth="1.6" />
           <path
             d="M-3.6,-3.6 L3.6,3.6 M3.6,-3.6 L-3.6,3.6"
-            stroke={TK.magenta}
+            stroke={TK.yellow}
             strokeWidth="2"
             strokeLinecap="round"
           />

@@ -10,7 +10,7 @@ const PIP_FOR: Record<AuditItemStatus, PipStatus> = {
   auditing: 'cyan',
   done: 'green',
   skipped: 'yellow',
-  error: 'magenta',
+  error: 'yellow',
 };
 
 /**
@@ -53,7 +53,7 @@ export function AuditRun({ large = false }: { large?: boolean }) {
             <button
               type="button"
               onClick={stopAudit}
-              className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-hld-muted-text hover:text-hld-magenta transition-colors"
+              className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-hld-muted-text hover:text-hld-yellow transition-colors"
             >
               ■ stop
             </button>

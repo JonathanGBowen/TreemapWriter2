@@ -100,11 +100,11 @@ export const hldTheme = EditorView.theme({
   ".cm-panels.cm-panels-top": { borderBottom: "1px solid var(--color-hld-border)" },
   ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--color-hld-border)" },
   ".cm-searchMatch": {
-    backgroundColor: "rgba(255, 16, 96, 0.4)",
-    outline: "1px solid var(--color-hld-magenta)"
+    backgroundColor: "rgba(0, 232, 245, 0.4)",
+    outline: "1px solid var(--color-hld-cyan)"
   },
   ".cm-searchMatch.cm-searchMatch-selected": {
-    backgroundColor: "rgba(255, 16, 96, 0.8)",
+    backgroundColor: "rgba(0, 232, 245, 0.8)",
   },
   ".cm-tooltip": {
     backgroundColor: "var(--color-hld-surface)",
@@ -125,8 +125,8 @@ export const hldTheme = EditorView.theme({
     outline: "1px solid rgba(0, 232, 245, 0.5)"
   },
   ".cm-nonmatchingBracket": {
-    backgroundColor: "rgba(255, 16, 96, 0.2)",
-    color: "var(--color-hld-magenta)"
+    backgroundColor: "rgba(255, 230, 0, 0.2)",
+    color: "var(--color-hld-yellow)"
   }
 }, { dark: true });
 

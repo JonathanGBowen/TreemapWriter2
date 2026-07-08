@@ -17,7 +17,7 @@ import { useZoteroImport } from '../revision/use-zotero-import';
 type Phase = 'probing' | 'unavailable' | 'ready';
 type ItemState = 'working' | 'done' | 'failed';
 
-const ITEM_PIP: Record<ItemState, PipStatus> = { working: 'cyan', done: 'green', failed: 'magenta' };
+const ITEM_PIP: Record<ItemState, PipStatus> = { working: 'cyan', done: 'green', failed: 'yellow' };
 
 export function ZoteroPickerModal() {
   const open = useStore((s) => s.showZoteroPickerModal);

@@ -38,7 +38,7 @@ function ProjRow({ project, active, onOpen, onDelete }: { project: ProjectMeta; 
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
         title="Delete project"
         aria-label={`Delete ${project.name}`}
-        className="w-[18px] text-center text-[11px] leading-none text-transparent group-hover:text-hld-muted-text hover:!text-hld-magenta focus:text-hld-magenta transition-colors shrink-0"
+        className="w-[18px] text-center text-[11px] leading-none text-transparent group-hover:text-hld-muted-text hover:!text-hld-yellow focus:text-hld-yellow transition-colors shrink-0"
       >
         ✕
       </button>
