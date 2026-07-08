@@ -5538,3 +5538,34 @@ kill within 60s, relaunch — the draft should survive).
 reverse order restores the two-editor design. The only persisted-schema
 touches are additive (`ProvenanceMark.offset` optional; `.twriter/draft.md`
 gitignored) — older builds ignore both.
+
+## 2026-07-08 — Focus-mode blinders restored + manuscript font reverted (user testing of PR #56)
+
+Real-use feedback on the writing-surface repair wave corrected two of its
+visual-pass decisions:
+
+1. **The hidden surround is an essential feature, not a style choice.** The
+   wave's P3 pass had softened focus mode's hidden surround into a *dim* — but
+   the blinders are the point: with the surround hidden there is nothing to
+   scroll into, so wandering is mechanically impossible for the ADHD writer.
+   `lib/focusRange.ts` returns to the P0 mechanism — widget-less block
+   `Decoration.replace` ranges (line-snapped) + `atomicRanges` — showing
+   NOTHING above or below the focused section (owner choice: no boundary glyph
+   either; the toolbar Focus toggle + header strip carry the mode). The
+   architecture is unchanged: the document stays whole underneath, so the
+   wave's undo/paste/confinement guarantees are untouched.
+2. **The manuscript face reverts to Inter 14px / 1.8 at the 800px column.**
+   The serif-at-16px experiment (VISION's "serif for prose" line) read worse
+   in real use; tested preference supersedes the canon here. The
+   `--font-serif` token stays (the Parallel editor's draft cells were always
+   serif); `editorTheme.ts` and the editor column are back to the pre-wave
+   typography. Calm headings and the color-mix token tints are kept.
+
+**Verify.** `npm test` (761), `npm run typecheck`, `npm run build` green. The
+Playwright focus suite (13/13) now asserts the blinders directly: with focus
+on, no other section's text renders anywhere in the scroller (both scroll
+extremes) and the scroll range collapses to the section (~5k px vs ~20k px
+unfocused); paste round-trip, confined delete, and the undo storm stay
+byte-identical.
+
+**Rollback.** One commit; `git revert` restores the dimmed surround + serif.

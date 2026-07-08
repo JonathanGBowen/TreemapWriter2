@@ -69,8 +69,9 @@ and Web-API sync / BibTeX-RIS remain out of scope (below).
 writing experience traced the reported copy/paste-within-a-section corruption to focus
 mode (the default surface) keeping a *second sliced copy* of the document. The cure is
 architectural: **one persistent CodeMirror**, with focus as a view concern
-(`lib/focusRange.ts` — mapped range, dimmed surround, edit confinement, focus-scoped
-Mod-a) and the write-side section math in one round-trip-tested home
+(`lib/focusRange.ts` — mapped range, HIDDEN surround (the blinders are the essential
+behavior: nothing before/after the section renders or scrolls — restored per user
+testing after a brief dimmed experiment), edit confinement, focus-scoped Mod-a) and the write-side section math in one round-trip-tested home
 (`lib/section-edit.ts` — also fixing the sprint-save last-line duplication). All five
 prose surfaces now share one extension factory (`features/editor/extensions.ts`:
 provenance tint, live preview, active-line, list continuation, stable-identity props —
@@ -83,8 +84,9 @@ empty-doc persistence, mid-move sprint autosave, and the **desktop crash draft**
 (`.twriter/draft.md` — the Rust half of the sub-60s item below). Plus: Continue-button
 re-entry, section-relative resume carets, accepted-edit reveal pulse, footnotes,
 heading nav (Mod-Alt-↑/↓), Mod-b/i, paste hygiene, ⌘K "Find in text", toolbar
-magnitude, clean export, money-safe math preview with reveal-on-enter, and the serif
-manuscript + calm headings the canon promised. *Remaining from the wave:* the desktop
+magnitude, clean export, money-safe math preview with reveal-on-enter, and calm headings. (The serif-manuscript experiment was
+reverted after real-use testing — Inter 14px reads better on this surface; the
+`--font-serif` token remains for the Parallel editor's draft cells.) *Remaining from the wave:* the desktop
 crash-draft restore needs one manual `tauri:dev` kill-within-60s check; true sub-60s
 coverage still wants a higher-frequency draft-only write (the 60s cadence now mirrors
 the draft file).

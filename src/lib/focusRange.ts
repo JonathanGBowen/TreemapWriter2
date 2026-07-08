@@ -56,15 +56,16 @@ export const focusRangeField = StateField.define<FocusRange | null>({
 });
 
 /**
- * Dim everything outside the focused range: at most two mark decorations
- * carrying `.cm-focus-dim` (src/index.css). The surround stays VISIBLE — the
- * part sits in its whole, per the Gestalt brief — while the dim + the edit
- * confinement below make the focused section unmistakably the working area.
- * Clicking into dimmed prose re-scopes focus there (the caret→selection
- * channel), so the dim is also an affordance, not a wall. Recomputed from the
- * field, so it follows the mapped range with no state of its own.
+ * HIDE everything outside the focused range: at most two widget-less block
+ * replace decorations, snapped to line boundaries, rendering NOTHING. This is
+ * the blinders behavior the feature exists for (user-tested, essential): the
+ * editor shows only the section — no text before or after, and nothing to
+ * scroll into, so it is mechanically impossible to wander. The document stays
+ * whole underneath (this is pure view), so undo/paste/confinement are
+ * untouched. Recomputed from the field, so it follows the mapped range with
+ * no state of its own.
  */
-const dimMark = Decoration.mark({ class: 'cm-focus-dim' });
+const hideBlock = Decoration.replace({ block: true });
 
 const buildSurroundDeco = (state: EditorState): DecorationSet => {
   const range = state.field(focusRangeField);
@@ -74,8 +75,16 @@ const buildSurroundDeco = (state: EditorState): DecorationSet => {
   const to = Math.max(from, Math.min(range.to, doc.length));
 
   const deco = [];
-  if (from > 0) deco.push(dimMark.range(0, from));
-  if (to < doc.length) deco.push(dimMark.range(to, doc.length));
+  const firstLine = doc.lineAt(from);
+  if (firstLine.number > 1) {
+    // Hide from the doc start through the end of the line above the section.
+    deco.push(hideBlock.range(0, firstLine.from - 1));
+  }
+  const lastLine = doc.lineAt(to);
+  if (lastLine.number < doc.lines) {
+    // Hide from the start of the line below the section through the doc end.
+    deco.push(hideBlock.range(lastLine.to + 1, doc.length));
+  }
   if (!deco.length) return Decoration.none;
   return Decoration.set(deco);
 };
@@ -87,6 +96,9 @@ const surroundDecoField = StateField.define<DecorationSet>({
   },
   provide: (f) => EditorView.decorations.from(f),
 });
+
+/** Arrow/Home/End navigation skips over the hidden surround. */
+const atomicSurround = EditorView.atomicRanges.of((view) => view.state.field(surroundDecoField));
 
 /** User-driven events that must stay inside the focus range. */
 const isConfinedUserEvent = (tr: Transaction): boolean => {
@@ -139,5 +151,6 @@ export const focusModeExtension: Extension = [
   focusRangeField,
   surroundDecoField,
   confineToFocus,
+  atomicSurround,
   focusKeymap,
 ];

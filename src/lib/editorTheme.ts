@@ -13,11 +13,12 @@ export const hldTheme = EditorView.theme({
   "&": {
     color: "var(--color-hld-text)",
     backgroundColor: "var(--color-hld-bg)",
-    // The manuscript is PROSE: serif at a long-form reading size (VISION —
-    // serif for the prose surface, mono for chrome).
-    fontFamily: "var(--font-serif)",
-    fontSize: "16px",
-    lineHeight: "1.75",
+    // Inter at 14px — user-tested as the more readable manuscript face (the
+    // serif experiment was reverted after real use; VISION's serif line is
+    // superseded by tested preference for this surface).
+    fontFamily: "'Inter', sans-serif",
+    fontSize: "14px",
+    lineHeight: "1.8",
   },
   "&.cm-editor": {
     backgroundColor: "var(--color-hld-bg)"
@@ -49,7 +50,7 @@ export const hldTheme = EditorView.theme({
   },
   ".cm-content": {
     caretColor: "var(--color-hld-cyan)",
-    fontFamily: "var(--font-serif)",
+    fontFamily: "'Inter', sans-serif",
     paddingBottom: "120px",
     paddingTop: "36px",
     paddingLeft: "64px",
@@ -57,7 +58,7 @@ export const hldTheme = EditorView.theme({
   },
   ".cm-line": {
     padding: "0 4px",
-    lineHeight: "1.75",
+    lineHeight: "1.8",
   },
   /* Precise block-level heading overrides targeting the spans. Depth reads as
      size/weight + a neutral hairline on H1/H2 — the saturated state hues are

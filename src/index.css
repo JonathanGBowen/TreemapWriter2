@@ -346,12 +346,6 @@
   border-bottom: 1px solid rgba(170, 0, 255, 0.28);
 }
 
-/* Focus mode's dimmed surround (lib/focusRange.ts): the manuscript around the
-   focused section stays visible — the part sits in its whole — but recedes.
-   Edits there are blocked by the focus filter; clicking re-scopes focus. */
-.cm-focus-dim {
-  opacity: 0.3;
-}
 
 /* Visible keyboard focus — the one missing a11y affordance (was suppressed
    everywhere). Canonical on the button/tool primitives; a narrow global fallback
