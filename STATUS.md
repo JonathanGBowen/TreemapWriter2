@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-07-07.** Update this file whenever a feature ships or is
+> **Current as of 2026-07-08.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -398,6 +398,28 @@ streams keep their own inline indicators rather than the pill.
   into Argument Topology) — and the **F3 "Good-Enough" gate** as a rubric-declared
   bounded move-completion loop in a Living Sprint. Both reuse the same `runAgent` +
   accept-gate spine.
+
+- **Palette 3C "dual-signature" — PR1 shipped 2026-07-08 (PR2 in progress).**
+  A follow-on to the HLD remediation below: two signature hues now carry fixed
+  meaning — **teal = you** (nav/selection/cursor/focus/next-action), **magenta =
+  the work** (prose headings/claims/the argument) — with green=done and
+  yellow=the one alert; core accents collapse ~11 → 4. PR1 (see
+  [`docs/migration-log.md`](docs/migration-log.md)) landed the token layer
+  (`--color-accent-{you,work,done,alert}`, the `--color-heading-1..6` ladder,
+  `--color-hld-feat-running`) and collapsed the editor's 6-hue heading rainbow
+  to a single magenta-intensity ladder in `src/lib/editorTheme.ts` (teal never
+  appears in a heading); `--color-hld-orange` is retired. **Deliberately kept**
+  two of this repo's own prior decisions rather than applying the 3C bundle's
+  token file verbatim: the `muted-text` values (re-inverting them would silently
+  re-contrast 328 sites — declined once already) and the plain Tailwind spacing
+  scale (no custom `--spacing-*` — also declined already, it shadows Tailwind
+  v4). **PR2 (not yet shipped)** carries the rest: re-pointing components (every
+  selection/active/focus/next-action affordance → teal, every failing/error/
+  missing mark → yellow, content + diff-removal magenta kept as-is), the
+  4-diamond readiness meter → one teal bar + word, and `purple` demoted to the
+  opt-in `feat-running` hue. Destructive affordances take the yellow hue but do
+  **not** gain new confirm modals — this repo's undo-not-confirm rule
+  (`VISION.md`) stands; only project delete confirms.
 
 - ~~**Design-system remediation (HLD audit).**~~ **Complete (2026-06-26)** — all
   three audit tiers shipped (see [`docs/migration-log.md`](docs/migration-log.md)). A

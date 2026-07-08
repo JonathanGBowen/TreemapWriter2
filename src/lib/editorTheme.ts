@@ -66,7 +66,7 @@ export const hldTheme = EditorView.theme({
   },
   ".cm-content .cm-heading2": {
     display: "block",
-    borderBottom: "1px solid rgba(0, 232, 245, 0.2)",
+    borderBottom: "1px solid rgba(255, 92, 138, 0.25)",
     paddingBottom: "6px",
     marginTop: "20px",
     marginBottom: "12px",
@@ -130,16 +130,17 @@ export const hldTheme = EditorView.theme({
   }
 }, { dark: true });
 
-// Custom Markdown & Code Highlight Style. Heading colours are the deliberate
-// per-depth "rainbow" (H1 magenta … H5 orange … H6 muted); sizes ride --text-h-*.
+// Custom Markdown & Code Highlight Style. Palette 3C: headings speak one hue
+// (magenta = "the work") fading by depth, not a 6-hue rainbow — teal never
+// appears here, it's reserved for "you." Sizes ride --text-h-* (unchanged).
 export const hldHighlightStyle = HighlightStyle.define([
-  // Markdown Headings
-  { tag: t.heading1, fontSize: 'var(--text-h-xl)', fontWeight: '800', color: 'var(--color-hld-magenta)', letterSpacing: '-0.02em' },
-  { tag: t.heading2, fontSize: 'var(--text-h-lg)', fontWeight: '700', color: 'var(--color-hld-cyan)', letterSpacing: '-0.01em' },
-  { tag: t.heading3, fontSize: 'var(--text-h-md)', fontWeight: '600', color: 'var(--color-hld-yellow)' },
-  { tag: t.heading4, fontSize: 'var(--text-h-sm)', fontWeight: '600', color: 'var(--color-hld-green)', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  { tag: t.heading5, fontSize: 'var(--text-h-xs)', fontWeight: '600', color: 'var(--color-hld-orange)' },
-  { tag: t.heading6, fontSize: 'var(--text-h-xs)', fontWeight: '600', color: 'var(--color-hld-text)', opacity: '0.7' },
+  // Markdown Headings — magenta-intensity ladder (--color-heading-1..6)
+  { tag: t.heading1, fontSize: 'var(--text-h-xl)', fontWeight: '800', color: 'var(--color-heading-1)', letterSpacing: '-0.02em' },
+  { tag: t.heading2, fontSize: 'var(--text-h-lg)', fontWeight: '700', color: 'var(--color-heading-2)', letterSpacing: '-0.01em' },
+  { tag: t.heading3, fontSize: 'var(--text-h-md)', fontWeight: '600', color: 'var(--color-heading-3)' },
+  { tag: t.heading4, fontSize: 'var(--text-h-sm)', fontWeight: '600', color: 'var(--color-heading-4)', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  { tag: t.heading5, fontSize: 'var(--text-h-xs)', fontWeight: '600', color: 'var(--color-heading-5)' },
+  { tag: t.heading6, fontSize: 'var(--text-h-xs)', fontWeight: '600', color: 'var(--color-heading-6)' },
 
   // Markdown Formatting
   { tag: t.quote, fontStyle: 'italic', color: 'var(--color-hld-muted-text-2)', borderLeft: '3px solid var(--color-hld-magenta)' },
@@ -156,7 +157,7 @@ export const hldHighlightStyle = HighlightStyle.define([
   { tag: t.punctuation, color: 'var(--color-hld-muted-text)', fontWeight: '400' },
   { tag: [t.keyword, t.operator, t.modifier], color: 'var(--color-hld-magenta)' },
   { tag: [t.string, t.regexp, t.special(t.string)], color: 'var(--color-hld-green)' },
-  { tag: [t.number, t.bool, t.null], color: 'var(--color-hld-orange)' },
+  { tag: [t.number, t.bool, t.null], color: 'var(--color-hld-yellow)' },
   { tag: t.variableName, color: 'var(--color-hld-text)' },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--color-hld-cyan)' },
   { tag: [t.propertyName], color: 'var(--color-hld-yellow)' },

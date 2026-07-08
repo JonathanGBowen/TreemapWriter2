@@ -3,8 +3,10 @@
    but must stay strings, not CSS `var()` references. */
 // Living Sprints — role → color. A move's role drives its accent and the
 // runner's ambient hue. Canonical map from the design handoff (ARGUMENT_SHAPES):
-// reinstate=green · frame=cyan · marshal=yellow · draft=cyan · stress=orange ·
-// synthesize=purple · bridge=purple. Values are the exact `hld-*` token hexes.
+// reinstate=green · frame=cyan · marshal=yellow · draft=cyan · stress=feat-tone
+// (palette 3C retired the core `orange`; feat-tone is the same "strain" hue
+// StrainRegister already uses) · synthesize=purple · bridge=purple. Values are
+// the exact `hld-*` token hexes.
 //
 // Pure data + helpers, no React — so the runner, the shape strip, and tests can
 // all share one source of truth for "what color is this move".
@@ -16,7 +18,7 @@ const ROLE_HUE: Record<SprintMoveRole, string> = {
   frame: '#00e8f5', // hld-cyan
   marshal: '#ffe600', // hld-yellow
   draft: '#00e8f5', // hld-cyan
-  stress: '#ff8800', // hld-orange
+  stress: '#7c8bff', // hld-feat-tone
   synthesize: '#aa00ff', // hld-purple
   bridge: '#aa00ff', // hld-purple
 };

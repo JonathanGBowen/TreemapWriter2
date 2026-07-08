@@ -5459,3 +5459,66 @@ caption (no second Reconstruct).
 
 **Rollback.** One commit; `git revert` restores the pre-fix wave behavior. No
 data or schema changes.
+
+---
+
+## 2026-07-08 — Palette 3C "dual-signature" (PR1: tokens + heading collapse)
+
+**What changed.** First of two PRs adopting palette 3C on top of the completed
+HLD remediation (above): two signature hues now carry fixed meaning — **teal =
+you** (nav/selection/cursor/focus/next-action), **magenta = the work** (prose
+headings/claims/the argument) — with green=done and yellow=the one alert. This
+PR lands the token layer + the editor's heading collapse (brief Steps 1 + 3, the
+biggest felt change for the least risk); re-pointing components (Step 2), the
+readiness bar (Step 4), and purple→feat-running follow in PR2.
+
+- **`src/index.css` `@theme`:** added semantic aliases
+  `--color-accent-{you,work,done,alert}` (naming the 3C meaning, not just the
+  hue); added the heading-ladder tokens `--color-heading-1..6` (magenta full →
+  magenta tint → pale magenta → text-bright → text → muted-text-2); added
+  `--color-hld-text-bright` (needed by the H4 rung); added
+  `--color-hld-feat-running` (purple's future home — `--color-hld-purple` stays
+  defined for now so existing utilities keep resolving; retired in PR2). Rewrote
+  the state-accent doc-comment to the 3C dual-signature meaning. **Dropped
+  `--color-hld-orange`** once its two consumers migrated (below) —
+  `git grep hld-orange` was zero before the def was deleted.
+- **Denoise residual (Step 5 tail):** normalized the last live refs to the
+  already-retired cyan-bright `#00f0ff` → the canonical `#00e8f5` /
+  `rgba(0,232,245,…)` — `.hld-border:hover`, `.hld-glow-cyan`, `.hld-text-glow`
+  in `index.css`, and the react-joyride tutorial theme (`Tutorial.tsx`, which
+  stays a deliberately literal off-palette scheme per its own comment — just
+  using the non-retired hex now).
+- **`src/lib/editorTheme.ts` (the heading rainbow → a ladder):** `hldHighlightStyle`
+  now maps H1→H6 to `--color-heading-1..6` instead of the old
+  magenta→cyan→yellow→green→orange→muted rainbow; weight/size still carry the
+  structural work, hue now only says "this is the work, and how deep." **Teal
+  never appears in a heading** — the `.cm-heading2` block border (previously
+  cyan) is now a magenta tint. The fenced-code `t.number/bool/null` triplet
+  (previously the retired orange) moved to `--color-hld-yellow` — a standard
+  code-syntax "warm numeric" choice, and the source of the second orange
+  consumer that had to move before the token could be dropped.
+- **`src/lib/sprintRoles.ts`:** the orphaned `stress: '#ff8800'` duplicate (dead
+  weight once orange retired) reassigned to `--color-hld-feat-tone` (`#7c8bff`)
+  — a deliberate conceptual fit, not an arbitrary pick: `stress` is Living
+  Sprints' strain-signaling move role, and `StrainRegister.tsx` already uses
+  `feat-tone` for exactly that "AI strain marker" meaning. Updated the pinned
+  contract test in `sprintRoles.test.ts`.
+- **Deliberate deviations from the bundle's `theme.3c.tailwind.css`** (kept
+  consistent with this repo's own prior, documented decisions — not applied
+  verbatim): did **not** re-invert `--color-hld-muted-text`/`-2` (the 2026-06-26
+  remediation explicitly declined that inversion — it would silently re-contrast
+  328 call sites) and did **not** add the bundle's custom `--spacing-*` scale
+  (also declined then — it shadows Tailwind v4's numeric spacing). The heading
+  ladder's H6 rung uses this repo's own `--color-hld-muted-text-2` rather than
+  re-deriving a new muted value.
+
+**Verify.** `git grep -n "hld-orange\|color-hld-orange" src` → 0 refs (checked
+before deleting the def). `npm run typecheck`, `npm test` (723 passing, incl. the
+updated `sprintRoles` contract test), `npm run build`, `npm run lint` (0
+hard-coded-hex warnings — the guardrail stays clean) all green. Manual: editor
+headings render the magenta-intensity ladder only (no cyan/green/orange
+headings); H2's block border reads as a magenta tint, not cyan.
+
+**Rollback.** One commit; `git revert` restores the pre-3C token/heading state.
+No persisted data or schema changes — this PR touches only CSS tokens, the
+editor's CodeMirror theme, and one Living Sprints color map.
