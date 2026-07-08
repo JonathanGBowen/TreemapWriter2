@@ -24,8 +24,9 @@ export function SprintEditor({ value, onChange, onSubmit }: SprintEditorProps) {
   submitRef.current = onSubmit;
 
   // AI-provenance tint renders here too — the marks anchor by text, so they
-  // resolve against the section slice this surface edits.
-  useProvenanceSync(cmRef);
+  // resolve against the section slice this surface edits. The returned seed
+  // runs at view creation (the change-driven effect can fire viewless).
+  const seedProvenance = useProvenanceSync(cmRef);
 
   // Stable per mount (a fresh history per sprint is correct — the sprint is
   // its own editing session over a seeded slice).
@@ -56,6 +57,7 @@ export function SprintEditor({ value, onChange, onSubmit }: SprintEditorProps) {
         ref={cmRef}
         value={value}
         onChange={onChange}
+        onCreateEditor={seedProvenance}
         extensions={extensions}
         theme="none"
         height="100%"

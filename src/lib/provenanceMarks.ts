@@ -22,16 +22,15 @@ const aiMark = Decoration.mark({ class: 'cm-ai-prose' });
 export const locateMark = (doc: string, mark: ProvenanceMark, hint?: number | null): number => {
   const anchor = mark.anchor;
   if (!anchor) return -1;
-  if (
-    hint != null &&
-    hint >= 0 &&
-    hint + anchor.length <= doc.length &&
-    doc.slice(hint, hint + anchor.length) === anchor
-  ) {
-    return hint;
-  }
+  if (anchorMatchesAt(doc, anchor, hint)) return hint as number;
   return doc.indexOf(anchor);
 };
+
+const anchorMatchesAt = (doc: string, anchor: string, pos?: number | null): boolean =>
+  pos != null &&
+  pos >= 0 &&
+  pos + anchor.length <= doc.length &&
+  doc.slice(pos, pos + anchor.length) === anchor;
 
 /** Build the decoration set for marks located at the given offsets. */
 const buildDeco = (docLength: number, marks: ProvenanceMark[], offsets: number[]): DecorationSet => {
@@ -89,8 +88,18 @@ export const provenanceField = StateField.define<ProvenanceState>({
       const doc = tr.state.doc.toString();
       offsets = marks.map((m, i) => {
         const prev = offsets[i];
-        const mapped = prev >= 0 ? tr.changes.mapPos(prev, 1) : -1;
-        return locateMark(doc, m, mapped);
+        if (prev >= 0) {
+          // A TRACKED span maps through the change and must still validate at
+          // its mapped position. If it doesn't, the writer rewrote the span's
+          // opening — the mark FALLS OFF (the prose is theirs now). No indexOf
+          // fallback here: that would jump the tint onto an earlier duplicate
+          // of the same opening, mis-attributing the writer's own prose.
+          const mapped = tr.changes.mapPos(prev, 1);
+          return anchorMatchesAt(doc, m.anchor, mapped) ? mapped : -1;
+        }
+        // An UNRESOLVED mark keeps trying a fresh resolve (offset hint, then
+        // indexOf) so an undo that restores the span re-lights its tint.
+        return locateMark(doc, m, m.offset);
       });
       changed = true;
     }

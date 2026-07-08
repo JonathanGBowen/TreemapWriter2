@@ -15,6 +15,7 @@ import { setProvenanceMarks } from '../../lib/provenanceMarks';
 import { focusModeExtension, focusRangeField, setFocusRange } from '../../lib/focusRange';
 import { pulseAt } from '../../lib/editorPulse';
 import { sectionRangeInDoc } from '../../lib/section-edit';
+import { findSectionById } from '../../lib/utils';
 import { ResumeMarker } from '../coach/ResumeMarker';
 import { ActiveMoveMarker } from '../coach/ActiveMoveMarker';
 import { EditorEmptyState } from './EditorEmptyState';
@@ -95,8 +96,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
 
   // Push durable provenance marks (F2) into the editor; the provenanceField
   // re-resolves anchors against the live doc, so the tint tracks edits and
-  // falls off a span the writer has overwritten.
-  useProvenanceSync(cmRef);
+  // falls off a span the writer has overwritten. The returned callback seeds
+  // the marks at view creation (wired in handleCreateEditor below).
+  const seedProvenance = useProvenanceSync(cmRef);
 
   // A project load/switch replaces the buffer via the controlled-value
   // reconcile, which would otherwise land in undo history — letting Cmd+Z
@@ -155,12 +157,26 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     };
     findMatch(st.sections);
 
-    // Remember the live caret for whatever section it now sits in (cheap ref
+    // While focused, a caret inside the focus window must not re-scope the
+    // selection to a child subsection (the window covers the whole section,
+    // children included). A caret OUTSIDE the window (a search jump into the
+    // dimmed surround) re-selects normally, and the focus window follows.
+    const focusRange = viewUpdate.state.field(focusRangeField, false);
+    const inFocusWindow = !!focusRange && pos >= focusRange.from && pos <= focusRange.to;
+
+    // Remember the live caret for the section it now sits in (cheap ref
     // write; the store commit happens on departure — see the section effect).
     // SECTION-RELATIVE, so edits elsewhere in the document can't strand the
-    // resume point at a stale absolute offset.
+    // resume point at a stale absolute offset. Inside the focus window the
+    // resume id is the FOCUSED section (selection never re-scopes to a child
+    // there), so record under it — the id the departure commit and
+    // handleResume will read — not under the deepest child match.
     if (match) {
-      const m = match as Section;
+      let m = match as Section;
+      if (inFocusWindow && st.selectedId && st.selectedId !== 'root') {
+        const focused = findSectionById(st.sections, st.selectedId);
+        if (focused) m = focused;
+      }
       const sel = viewUpdate.state.selection.main;
       caretRef.current[m.id] = {
         anchor: Math.max(0, sel.anchor - m.startOffset),
@@ -168,12 +184,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       };
     }
 
-    // While focused, a caret inside the focus window must not re-scope the
-    // selection to a child subsection (the window covers the whole section,
-    // children included). A caret OUTSIDE the window (a search jump into the
-    // hidden surround) re-selects normally, and the focus window follows.
-    const focusRange = viewUpdate.state.field(focusRangeField, false);
-    if (focusRange && pos >= focusRange.from && pos <= focusRange.to) return;
+    if (inFocusWindow) return;
 
     if (match && match.id !== st.selectedId) {
       // Mark that this change came from the editor, so we don't jump scroll
@@ -234,9 +245,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   syncFocusRangeRef.current = syncFocusRange;
   const handleCreateEditor = React.useCallback((view: EditorView) => {
     syncFocusRangeRef.current(view);
-    view.dispatch({
-      effects: setProvenanceMarks.of(useStore.getState().provenanceMarks),
-    });
+    seedProvenance(view);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Resume: land the caret at the section's remembered (section-relative)

@@ -64,8 +64,23 @@ pub async fn project_read_markdown_if_changed(
 fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
     let markdown = crate::fs_io::read_to_string_optional(&layout.project_md())?;
     // The gitignored working draft (the browser's draft/committed split,
-    // restored on desktop). Absent on older projects → the committed copy.
-    let local_draft = crate::fs_io::read_to_string_optional(&layout.draft_md())?;
+    // restored on desktop). The draft only counts while it is at least as new
+    // as project.md: git operations (pull/merge/checkout) and external editors
+    // advance project.md but never the gitignored draft, so a draft older than
+    // the committed copy is STALE — restoring it would shadow the merged /
+    // external content and let the next autosave silently clobber it. In-app
+    // saves write project.md then draft.md in one call, so a live draft's
+    // mtime is always >= the committed copy's.
+    let local_draft = match (
+        crate::fs_io::signature_optional(&layout.draft_md())?,
+        crate::fs_io::signature_optional(&layout.project_md())?,
+    ) {
+        (Some((draft_mtime, _)), Some((md_mtime, _))) if draft_mtime >= md_mtime => {
+            crate::fs_io::read_to_string_optional(&layout.draft_md())?
+        }
+        (Some(_), None) => crate::fs_io::read_to_string_optional(&layout.draft_md())?,
+        _ => None,
+    };
 
     // settings.json — { name, schemaVersion, activePersonaId }
     let settings_json: Option<serde_json::Value> =
@@ -395,6 +410,17 @@ mod tests {
             back.local_draft.as_deref(),
             Some("# Intro\n\ncommitted, plus unsaved keystrokes.")
         );
+
+        // A draft STALER than project.md is ignored: a git pull/merge or an
+        // external editor advances the committed copy but never the gitignored
+        // draft — restoring the old draft would shadow (and, via the next
+        // autosave, silently clobber) the merged content.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        crate::fs_io::atomic_write_str(&layout.project_md(), "# Intro\n\nmerged from remote.")
+            .unwrap();
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.markdown.as_deref(), Some("# Intro\n\nmerged from remote."));
+        assert_eq!(back.local_draft, None);
     }
 
     #[test]

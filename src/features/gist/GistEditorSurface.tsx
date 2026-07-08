@@ -54,8 +54,9 @@ export function GistEditorSurface() {
   const prevSelected = useRef<string | null>(selectedId);
 
   // Durable AI-provenance tint — the same buffer as the main editor, so the
-  // marks resolve identically here.
-  useProvenanceSync(cmRef);
+  // marks resolve identically here. The returned seed runs at view creation
+  // (the change-driven effect can fire before the view exists).
+  const seedProvenance = useProvenanceSync(cmRef);
 
   // Cursor → selectedId. Flag the change as editor-originated so the scroll effect
   // below doesn't yank the viewport while the writer is typing. STABLE identity
@@ -107,6 +108,7 @@ export function GistEditorSurface() {
       value={localContent}
       onChange={setLocalContent}
       onUpdate={onUpdate}
+      onCreateEditor={seedProvenance}
       theme="none"
       height="100%"
       className="h-full"

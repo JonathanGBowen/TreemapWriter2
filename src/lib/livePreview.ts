@@ -333,8 +333,9 @@ function buildDecorations(state: any): LivePreviewState {
   return { deco: Decoration.set(builder), zones };
 }
 
-/** Characters that can begin/end a widget zone (math, table pipe, fence). */
-const TRIGGER_CHARS = /[$|`]/;
+/** Characters that can begin/end a widget zone (math, table pipe, fence —
+ *  backtick AND tilde: CommonMark permits ~~~mermaid fences too). */
+const TRIGGER_CHARS = /[$|`~]/;
 
 /**
  * True when a document change can be applied by MAPPING the existing
