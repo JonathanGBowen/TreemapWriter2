@@ -243,6 +243,8 @@ export const useParallelActions = () => {
       if (acceptedAt >= 0) {
         const mark = makeProvenanceMark(row.draftB ?? '', 'parallel', Date.now(), acceptedAt);
         if (mark) useStore.getState().addProvenanceMark(mark);
+        // When the workspace closes, land the writer AT the accepted edit.
+        useStore.getState().setPendingEditorReveal({ offset: acceptedAt });
       }
       markRowAccepted(row.id);
       try {
@@ -283,6 +285,8 @@ export const useParallelActions = () => {
       const mark = makeProvenanceMark(row.draftB ?? '', 'parallel', at, offset);
       if (mark) useStore.getState().addProvenanceMark(mark);
     });
+    // Land the writer at the FIRST applied edit when the workspace closes.
+    if (applied.length) useStore.getState().setPendingEditorReveal({ offset: applied[0].at });
     targets.forEach((r) => markRowAccepted(r.id));
     try {
       await saveCurrentState();

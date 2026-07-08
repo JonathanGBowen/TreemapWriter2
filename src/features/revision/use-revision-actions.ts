@@ -251,6 +251,8 @@ export const useRevisionActions = () => {
       if (acceptedAt >= 0) {
         const mark = makeProvenanceMark(proposal.proposed_text, 'revision', Date.now(), acceptedAt);
         if (mark) useStore.getState().addProvenanceMark(mark);
+        // When the workspace closes, land the writer AT the accepted edit.
+        useStore.getState().setPendingEditorReveal({ offset: acceptedAt });
       }
       resolveProposal(proposal.id, 'accepted');
       try {

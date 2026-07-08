@@ -132,7 +132,6 @@ export const App = () => {
     });
   };
 
-  const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
 
   // The 60s autosave/snapshot loop (interval, overlap guard, error surfacing)
@@ -704,9 +703,14 @@ export const App = () => {
         <Sidebar
           onSelect={setSelectedId}
           onContinue={() => {
-            const targetId = selectedId ?? sections[0]?.id ?? null;
+            // Return to the cursor: select the last section (a no-op when
+            // unchanged) and ask the editor to focus + restore its resume
+            // caret — the store counter reaches it even when selection is
+            // already right, the case the old dead-ref wiring missed.
+            const s = useStore.getState();
+            const targetId = s.selectedId ?? s.sections[0]?.id ?? null;
             if (targetId) setSelectedId(targetId);
-            editorRef.current?.focus();
+            requestAnimationFrame(() => useStore.getState().requestEditorFocus());
           }}
           onImportMarkdown={handleImportMarkdown}
           onLoadProject={handleLoadFile}
@@ -721,7 +725,6 @@ export const App = () => {
         <div className="flex-1 min-w-0 flex flex-col h-full bg-hld-bg relative">
           <EditorPanel
             handleSave={handleManualSave}
-            editorRef={editorRef}
             onImportMarkdown={handleImportMarkdown}
             onLoadProject={handleLoadFile}
           />

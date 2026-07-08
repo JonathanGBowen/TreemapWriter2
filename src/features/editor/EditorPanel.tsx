@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Clock, FilePlus, FolderOpen, PenTool, History, GitBranch } from "lucide-react";
+import { Clock, History } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
 import { isTauri } from "../../services/tauri-environment";
@@ -15,11 +15,10 @@ import { pulseAt } from '../../lib/editorPulse';
 import { sectionRangeInDoc } from '../../lib/section-edit';
 import { ResumeMarker } from '../coach/ResumeMarker';
 import { ActiveMoveMarker } from '../coach/ActiveMoveMarker';
+import { EditorEmptyState } from './EditorEmptyState';
 
 interface EditorPanelProps {
   handleSave: () => void;
-  // The editor view ref is forwarded from App.tsx for cursor focus from outside.
-  editorRef: any;
   onImportMarkdown: (content: string) => void;
   onLoadProject: (content: string) => void;
 }
@@ -31,7 +30,6 @@ const editorExtensions = writingSurfaceExtensions([focusModeExtension]);
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
   handleSave,
-  editorRef: _editorRef,
   onImportMarkdown,
   onLoadProject,
 }) => {
@@ -55,9 +53,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   // is saved and no version history accrues — steer them to create/open a real
   // project rather than into the in-memory editor.
   const hasOpenProject = useStore(s => s.hasOpenProject);
-  const createNewProject = useStore(s => s.createNewProject);
-  const openExistingProject = useStore(s => s.openExistingProject);
-  const setShowRemoteProjectModal = useStore(s => s.setShowRemoteProjectModal);
   const needsProject = isTauri() && !hasOpenProject;
 
   const toggleFocusMode = () => setFocusMode(!focusMode);
@@ -75,8 +70,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   // the resume marker + caret-restore only ever name a place you can return to.
   const caretRef = useRef<Record<string, { anchor: number; head: number }>>({});
 
-  const mdInputRef = useRef<HTMLInputElement>(null);
-  const projectInputRef = useRef<HTMLInputElement>(null);
   const skipNextScroll = useRef(false);
   const lastReportedLine = useRef<number | null>(null);
 
@@ -156,9 +149,15 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
 
     // Remember the live caret for whatever section it now sits in (cheap ref
     // write; the store commit happens on departure — see the section effect).
+    // SECTION-RELATIVE, so edits elsewhere in the document can't strand the
+    // resume point at a stale absolute offset.
     if (match) {
+      const m = match as Section;
       const sel = viewUpdate.state.selection.main;
-      caretRef.current[(match as Section).id] = { anchor: sel.anchor, head: sel.head };
+      caretRef.current[m.id] = {
+        anchor: Math.max(0, sel.anchor - m.startOffset),
+        head: Math.max(0, sel.head - m.startOffset),
+      };
     }
 
     // While focused, a caret inside the focus window must not re-scope the
@@ -191,36 +190,61 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
-  const handleResume = () => {
-    if (!currentSection) return;
-    const pos = useStore.getState().sectionCaret[currentSection.id];
-    if (pos) restoreCaret(pos.anchor, pos.head);
-  };
-
-  const prevSectionId = useRef(currentSection?.id);
-
-  // The focus window: computed fresh from the LIVE editor buffer (never the
-  // debounced `sections` offsets — that staleness corrupted the old sliced
-  // editor) and dispatched into the focusRangeField, which maps itself through
-  // subsequent edits. The document itself is never touched by entering,
-  // leaving, or re-scoping focus — undo history and decorations persist.
-  const syncFocusRange = (view: EditorView) => {
-    if (!focusMode || !currentSection || currentSection.id === 'root') {
-      view.dispatch({ effects: setFocusRange.of(null) });
-      return null;
-    }
-    // Thread the store's sections so id continuity survives line shifts (ids
-    // embed the heading's original line index; parseMarkdown reuses by title).
-    const range = sectionRangeInDoc(
+  // The section's LIVE character span, computed fresh from the editor buffer
+  // (never the debounced `sections` offsets — that staleness corrupted the old
+  // sliced editor). Threads the store's sections so id continuity survives
+  // line shifts (ids embed the heading's original line index; parseMarkdown
+  // reuses by title). Null for root / unresolvable ids.
+  const liveSectionRange = (view: EditorView) => {
+    if (!currentSection || currentSection.id === 'root') return null;
+    return sectionRangeInDoc(
       view.state.doc.toString(),
       currentSection.id,
       useStore.getState().sections,
     );
+  };
+
+  // The focus window: dispatched into the focusRangeField, which maps itself
+  // through subsequent edits. The document itself is never touched by entering,
+  // leaving, or re-scoping focus — undo history and decorations persist.
+  const syncFocusRange = (view: EditorView) => {
+    const range = liveSectionRange(view);
     view.dispatch({
-      effects: setFocusRange.of(range ? { from: range.from, to: range.to } : null),
+      effects: setFocusRange.of(
+        focusMode && range ? { from: range.from, to: range.to } : null,
+      ),
     });
     return range;
   };
+
+  // Resume: land the caret at the section's remembered (section-relative)
+  // resume point — or its start when unvisited — against the section's LIVE
+  // span. Serves the margin ResumeMarker and the Dock's Continue button.
+  const handleResume = () => {
+    const view = cmRef.current?.view;
+    if (!view || !currentSection) return;
+    const range =
+      currentSection.id === 'root'
+        ? { from: 0, to: view.state.doc.length }
+        : liveSectionRange(view);
+    if (!range) return;
+    const rel = useStore.getState().sectionCaret[currentSection.id];
+    const clamp = (n: number) => Math.max(range.from, Math.min(n, range.to));
+    restoreCaret(clamp(range.from + (rel?.anchor ?? 0)), clamp(range.from + (rel?.head ?? 0)));
+  };
+
+  // Outside-in focus requests (Dock Continue): respond even when the selected
+  // section didn't change — exactly the re-entry case the old wiring missed.
+  const editorFocusSeq = useStore(s => s.editorFocusSeq);
+  const focusSeqRef = useRef(editorFocusSeq);
+  useEffect(() => {
+    if (editorFocusSeq === focusSeqRef.current) return;
+    focusSeqRef.current = editorFocusSeq;
+    handleResume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorFocusSeq]);
+
+  const prevSectionId = useRef(currentSection?.id);
 
   // Handle section changes (e.g., clicking a tree tile) and focus toggles. On
   // leaving a section, commit its last caret so a return restores it (the
@@ -240,13 +264,15 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       const sec = currentSection!;
       prevSectionId.current = sec.id;
       if (view && !skipNextScroll.current) {
-        // Restore the resume point for this section, or its start if unvisited.
+        // Restore the resume point (section-relative) against the section's
+        // LIVE span, or its start if unvisited.
         const remembered = useStore.getState().sectionCaret[sec.id];
+        const base = range?.from ?? sec.startOffset;
         const lo = range?.from ?? 0;
         const hi = range?.to ?? view.state.doc.length;
         const clamp = (n: number) => Math.max(lo, Math.min(n, hi));
-        const anchor = clamp(remembered?.anchor ?? sec.startOffset);
-        const head = clamp(remembered?.head ?? sec.startOffset);
+        const anchor = clamp(remembered ? base + remembered.anchor : base);
+        const head = clamp(remembered ? base + remembered.head : base);
         view.focus();
         try {
           // Dispatch selection and scroll effect together for atomicity
@@ -265,6 +291,32 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     skipNextScroll.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSection?.id, focusMode, setSectionCaret]);
+
+  // "Here is what just changed": when a revision/parallel accept recorded a
+  // splice offset and no workspace overlay is covering the editor anymore,
+  // scroll to it and pulse the landing line — the moment-of-consequence cue —
+  // then clear the request. The offset was recorded against the buffer at
+  // accept time; clamp defensively (an intervening edit only costs precision).
+  const pendingReveal = useStore(s => s.pendingEditorReveal);
+  const revisionWorkspaceOpen = useStore(s => s.revisionWorkspaceOpen);
+  const parallelOpen = useStore(s => s.parallelOpen);
+  useEffect(() => {
+    if (!pendingReveal || revisionWorkspaceOpen || parallelOpen) return;
+    const view = cmRef.current?.view;
+    if (!view) return;
+    const pos = Math.max(0, Math.min(pendingReveal.offset, view.state.doc.length));
+    try {
+      view.dispatch({
+        selection: { anchor: pos, head: pos },
+        effects: [EditorView.scrollIntoView(pos, { y: 'center' })],
+      });
+      view.focus();
+      pulseAt(view, pos);
+    } catch {
+      /* out-of-range mid-edit; the tint remains the fallback wayfinding */
+    }
+    useStore.getState().setPendingEditorReveal(null);
+  }, [pendingReveal, revisionWorkspaceOpen, parallelOpen]);
 
   // Drift correction for the focus window. The field maps itself exactly
   // through ordinary edits, but two events de-sync it from the true section
@@ -302,30 +354,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, focusMode, currentSection?.id]);
-
-  const handleMdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result;
-      if (typeof content === 'string') onImportMarkdown(content);
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  const handleProjectChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result;
-      if (typeof content === 'string') onLoadProject(content);
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
 
   return (
     <div className="editor-panel-step flex-1 flex flex-col h-full bg-hld-bg relative transition-colors duration-200 min-w-0">
@@ -456,62 +484,25 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           )}
 
           {(isEmptyState || needsProject) && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10 pointer-events-none opacity-100 animate-in fade-in duration-700">
-               <div className="text-center pointer-events-auto bg-hld-surface/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
-                 {needsProject ? (
-                   <>
-                     <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Start a Project</h2>
-                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">{isEmptyState ? 'Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.' : 'This is a read-only preview — nothing here is saved. Your writing lives in a project folder on disk, with version history. Create or open one to begin.'}</p>
-                     <div className="space-y-3">
-                       <button onClick={() => { void createNewProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
-                         <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
-                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">New Project</span>
-                       </button>
-                       <button onClick={() => { void openExistingProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(255,16,96,0.2)] text-hld-magenta hover:bg-[rgba(255,16,96,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(255,16,96,0.2)] hover:border-[rgba(255,16,96,0.4)]" style={{"--br-color": "var(--tw-colors-hld-magenta)"} as any}>
-                         <FolderOpen size={16} className="group-hover:scale-110 transition-transform"/>
-                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Open Project</span>
-                       </button>
-                       <div className="pt-4 text-center">
-                          <button onClick={() => setShowRemoteProjectModal(true)} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
-                             <GitBranch size={12} /> Clone from a remote
-                          </button>
-                       </div>
-                     </div>
-                   </>
-                 ) : (
-                   <>
-                     <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Ready to Write?</h2>
-                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Import a markdown file to visualize its structure, or just start typing.</p>
-                     <div className="space-y-3">
-                       <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
-                         <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
-                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Import Markdown</span>
-                       </button>
-                       <div className="pt-4 text-center">
-                          <button onClick={() => {
-                            // Seed a single heading so a treemap node + currentSection
-                            // appear immediately, then focus the (now-mounted) editor
-                            // on the next frame and drop the cursor at the end.
-                            setLocalContent('# ');
-                            requestAnimationFrame(() => {
-                              const view = cmRef.current?.view;
-                              if (view) {
-                                view.focus();
-                                const end = view.state.doc.length;
-                                view.dispatch({ selection: { anchor: end, head: end } });
-                              }
-                            });
-                          }} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
-                             <PenTool size={12} /> Start with a blank page
-                          </button>
-                       </div>
-                     </div>
-                   </>
-                 )}
-               </div>
-               <input type="file" ref={mdInputRef} className="hidden" accept=".md,.markdown,.txt" onChange={handleMdChange} />
-               <input type="file" ref={projectInputRef} className="hidden" accept=".json,.socratic" onChange={handleProjectChange} />
-            </div>
+            <EditorEmptyState
+              needsProject={needsProject}
+              onImportMarkdown={onImportMarkdown}
+              onLoadProject={onLoadProject}
+              onStartBlank={() => {
+                // Seed a single heading so a treemap node + currentSection
+                // appear immediately, then focus the (now-mounted) editor
+                // on the next frame and drop the cursor at the end.
+                setLocalContent('# ');
+                requestAnimationFrame(() => {
+                  const view = cmRef.current?.view;
+                  if (view) {
+                    view.focus();
+                    const end = view.state.doc.length;
+                    view.dispatch({ selection: { anchor: end, head: end } });
+                  }
+                });
+              }}
+            />
           )}
 
           {/* The ONE editor — mounted whenever a project is open (real or

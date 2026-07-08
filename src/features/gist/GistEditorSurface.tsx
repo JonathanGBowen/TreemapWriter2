@@ -6,54 +6,17 @@
 
 import { useEffect, useRef } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef, type ViewUpdate } from '@uiw/react-codemirror';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
-import { GFM, Table } from '@lezer/markdown';
-import {
-  EditorView, Decoration, type DecorationSet, keymap, drawSelection, highlightSpecialChars,
-  dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine,
-} from '@codemirror/view';
-import { StateEffect, StateField } from '@codemirror/state';
-import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
-import { indentOnInput, bracketMatching, foldKeymap } from '@codemirror/language';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { hldExtensions, hldTheme } from '../../lib/editorTheme';
-import { livePreviewPlugin } from '../../lib/livePreview';
+import { EditorView } from '@codemirror/view';
+import { writingSurfaceExtensions } from '../editor/extensions';
+import { useProvenanceSync } from '../editor/useProvenanceSync';
+import { pulseEffect } from '../../lib/editorPulse';
 import { useStore } from '../../state';
 import type { Section } from '../../types';
 
-// A one-shot "you arrived here" line pulse on navigation (the moment-of-consequence
-// the prototype draws as a paragraph fade; in a source editor it's the landing line).
-const pulseEffect = StateEffect.define<number | null>();
-const pulseField = StateField.define<DecorationSet>({
-  create: () => Decoration.none,
-  update(deco, tr) {
-    deco = deco.map(tr.changes);
-    for (const e of tr.effects) {
-      if (e.is(pulseEffect)) {
-        if (e.value == null) {
-          deco = Decoration.none;
-        } else {
-          const line = tr.state.doc.lineAt(Math.max(0, Math.min(e.value, tr.state.doc.length)));
-          deco = Decoration.set([Decoration.line({ class: 'gist-pulse-line' }).range(line.from)]);
-        }
-      }
-    }
-    return deco;
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
-
-const setup = [
-  highlightSpecialChars(), history(), drawSelection(), dropCursor(), EditorView.lineWrapping,
-  indentOnInput(), bracketMatching(), closeBrackets(), autocompletion(), rectangularSelection(),
-  crosshairCursor(), highlightActiveLine(), highlightSelectionMatches(),
-  keymap.of([
-    ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap,
-    ...foldKeymap, ...completionKeymap, indentWithTab,
-  ]),
-];
+// The shared writing stack (markdown + HLD theme + live preview + provenance
+// tint + the landing-pulse field, promoted to lib/editorPulse). Module-level so
+// the extension instances stay stable across renders.
+const gistEditorExtensions = writingSurfaceExtensions();
 
 /** The deepest section whose start offset is at or before `pos` (cursor → section). */
 const sectionAtOffset = (nodes: Section[], pos: number): Section | null => {
@@ -89,6 +52,10 @@ export function GistEditorSurface() {
   const cmRef = useRef<ReactCodeMirrorRef>(null);
   const skipNextScroll = useRef(false);
   const prevSelected = useRef<string | null>(selectedId);
+
+  // Durable AI-provenance tint — the same buffer as the main editor, so the
+  // marks resolve identically here.
+  useProvenanceSync(cmRef);
 
   // Cursor → selectedId. Flag the change as editor-originated so the scroll effect
   // below doesn't yank the viewport while the writer is typing.
@@ -136,17 +103,11 @@ export function GistEditorSurface() {
       value={localContent}
       onChange={setLocalContent}
       onUpdate={onUpdate}
-      theme={hldTheme}
+      theme="none"
       height="100%"
       className="h-full"
       basicSetup={false}
-      extensions={[
-        markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false, extensions: [Table, GFM] }),
-        ...hldExtensions,
-        ...setup,
-        pulseField,
-        livePreviewPlugin,
-      ]}
+      extensions={gistEditorExtensions}
     />
   );
 }
