@@ -4,7 +4,7 @@
 // and moving the cursor here lights the matching gist span. Mirrors EditorPanel's
 // CodeMirror config + section channel without dragging in the full editor chrome.
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef, type ViewUpdate } from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
 import { writingSurfaceExtensions } from '../editor/extensions';
@@ -58,16 +58,20 @@ export function GistEditorSurface() {
   useProvenanceSync(cmRef);
 
   // Cursor → selectedId. Flag the change as editor-originated so the scroll effect
-  // below doesn't yank the viewport while the writer is typing.
-  const onUpdate = (vu: ViewUpdate) => {
+  // below doesn't yank the viewport while the writer is typing. STABLE identity
+  // (live state via getState): the uiw wrapper reconfigures the whole editor
+  // when onUpdate changes identity, which an inline handler would trigger on
+  // every keystroke's re-render.
+  const onUpdate = useCallback((vu: ViewUpdate) => {
     if (!vu.selectionSet) return;
+    const st = useStore.getState();
     const pos = vu.state.selection.main.head;
-    const match = sectionAtOffset(sections, pos);
-    if (match && match.id !== useStore.getState().selectedId) {
+    const match = sectionAtOffset(st.sections, pos);
+    if (match && match.id !== st.selectedId) {
       skipNextScroll.current = true;
-      setSelectedId(match.id);
+      st.setSelectedId(match.id);
     }
-  };
+  }, []);
 
   // selectedId → scroll here + pulse the landing line (gist-span click / external select).
   useEffect(() => {

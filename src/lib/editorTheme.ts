@@ -1,6 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { footnoteTag } from './markdownFootnotes';
 
 // A "Hyper Light Drifter" infused dark/cool aesthetic.
 // Colours reference the `--color-hld-*` design tokens (src/index.css); heading
@@ -147,6 +148,9 @@ export const hldHighlightStyle = HighlightStyle.define([
   { tag: t.strong, fontWeight: 'bold', color: '#ffffff' },
   { tag: t.emphasis, fontStyle: 'italic', color: 'var(--color-hld-text)' },
   { tag: t.strikethrough, textDecoration: 'line-through', opacity: '0.5' },
+  // Footnote tokens ([^ref] and the [^ref]: definition opener) — quiet
+  // superscript, readable but out of the prose's way.
+  { tag: footnoteTag, color: 'var(--color-hld-muted-text-2)', fontSize: '0.78em', verticalAlign: 'super', fontFamily: "'JetBrains Mono', monospace" },
   { tag: t.link, color: 'var(--color-hld-cyan)', textDecoration: 'underline' },
   { tag: t.url, color: 'var(--color-hld-muted)', opacity: '0.6' },
   { tag: t.list, color: 'var(--color-hld-magenta)', fontWeight: 'bold' },

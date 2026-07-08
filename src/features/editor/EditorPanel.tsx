@@ -7,6 +7,8 @@ import { useCurrentSection } from "../tests-panel/use-current-section";
 import { Pip } from "../shared/Pip";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
+import { openSearchPanel } from '@codemirror/search';
+import { magnitudeBand } from '../../lib/magnitude';
 import { writingSurfaceExtensions, resetEditorHistory } from './extensions';
 import { useProvenanceSync } from './useProvenanceSync';
 import { setProvenanceMarks } from '../../lib/provenanceMarks';
@@ -40,7 +42,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const lastAutoSave = useStore(s => s.lastAutoSave);
   const focusMode = useStore(s => s.focusMode);
   const setFocusMode = useStore(s => s.setFocusMode);
-  const onLineFocus = useStore(s => s.setActiveLineIndex);
   const sections = useStore(s => s.sections);
   const onSectionChange = useStore(s => s.setSelectedId);
   const projectName = useStore(s => s.projectName);
@@ -116,14 +117,21 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   }, [activeProjectId]);
 
-  const handleMainChange = (val: string) => {
+  // STABLE identity (useCallback, live state via getState): the uiw wrapper
+  // fully RECONFIGURES the editor whenever onChange/onUpdate change identity —
+  // with inline handlers plus the 1-second save ticker that meant a root
+  // reconfigure every second, silently dropping appended config (the search
+  // panel vanished within a second of opening).
+  const handleMainChange = React.useCallback((val: string) => {
     setLocalContent(val);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSelectionMap = (viewUpdate: ViewUpdate) => {
+  const handleSelectionMap = React.useCallback((viewUpdate: ViewUpdate) => {
     // Only process if selection changed
     if (!viewUpdate.selectionSet) return;
 
+    const st = useStore.getState();
     const pos = viewUpdate.state.selection.main.head;
 
     // Report the caret's line so App's rename-recovery (selection retention by
@@ -132,7 +140,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     const line = viewUpdate.state.doc.lineAt(pos).number - 1;
     if (line !== lastReportedLine.current) {
       lastReportedLine.current = line;
-      onLineFocus(line);
+      st.setActiveLineIndex(line);
     }
 
     // Find what section the cursor is in based on character offset
@@ -145,7 +153,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         }
       }
     };
-    findMatch(sections);
+    findMatch(st.sections);
 
     // Remember the live caret for whatever section it now sits in (cheap ref
     // write; the store commit happens on departure — see the section effect).
@@ -167,12 +175,13 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     const focusRange = viewUpdate.state.field(focusRangeField, false);
     if (focusRange && pos >= focusRange.from && pos <= focusRange.to) return;
 
-    if (match && match.id !== currentSection?.id) {
+    if (match && match.id !== st.selectedId) {
       // Mark that this change came from the editor, so we don't jump scroll
       skipNextScroll.current = true;
-      onSectionChange(match.id);
+      st.setSelectedId(match.id);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Restore the caret a section was last left at (resume-marker click, and the
   // default on re-entry). Falls back to the section start when none is remembered.
@@ -217,6 +226,19 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     return range;
   };
 
+  // Stable onCreateEditor (identity matters — see handleMainChange note): the
+  // view mounts after first render, so sync the focus window immediately (a
+  // focus-default launch must not flash the whole document) and seed the
+  // provenance marks, whose change-driven sync may already have fired viewless.
+  const syncFocusRangeRef = useRef(syncFocusRange);
+  syncFocusRangeRef.current = syncFocusRange;
+  const handleCreateEditor = React.useCallback((view: EditorView) => {
+    syncFocusRangeRef.current(view);
+    view.dispatch({
+      effects: setProvenanceMarks.of(useStore.getState().provenanceMarks),
+    });
+  }, []);
+
   // Resume: land the caret at the section's remembered (section-relative)
   // resume point — or its start when unvisited — against the section's LIVE
   // span. Serves the margin ResumeMarker and the Dock's Continue button.
@@ -243,6 +265,20 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     handleResume();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorFocusSeq]);
+
+  // Outside-in search requests (⌘K → "Find in text"): open the in-editor
+  // find/replace panel, the discoverable door to ⌘F.
+  const editorSearchSeq = useStore(s => s.editorSearchSeq);
+  const searchSeqRef = useRef(editorSearchSeq);
+  useEffect(() => {
+    if (editorSearchSeq === searchSeqRef.current) return;
+    searchSeqRef.current = editorSearchSeq;
+    const view = cmRef.current?.view;
+    if (view) {
+      view.focus();
+      openSearchPanel(view);
+    }
+  }, [editorSearchSeq]);
 
   const prevSectionId = useRef(currentSection?.id);
 
@@ -378,6 +414,16 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
          </div>
 
          <div className="flex items-center gap-[6px] shrink-0">
+           {/* Approximate section magnitude (VISION principle 8 — orientation,
+               not false precision); the exact count waits on hover. */}
+           {currentSection && currentSection.wordCount > 0 && (
+              <span
+                className="mr-1 text-ui-meta font-mono uppercase tracking-[0.12em] text-hld-muted-text"
+                title={`${currentSection.wordCount} words`}
+              >
+                {magnitudeBand(currentSection.wordCount).label}
+              </span>
+           )}
            {/* Ambient save status — answers "is my work safe?" passively (autosave). */}
            {savedAgoLabel && (
               <div className="flex items-center gap-1.5 mr-1 text-ui-meta font-mono uppercase tracking-[0.12em] text-hld-muted-text" title="Autosaved continuously">
@@ -518,16 +564,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                 value={localContent}
                 onChange={handleMainChange}
                 onUpdate={handleSelectionMap}
-                onCreateEditor={(view) => {
-                  // The view mounts after first render: sync the focus window
-                  // immediately (a focus-default launch must not flash the
-                  // whole document) and seed the provenance marks, whose
-                  // change-driven sync may already have fired viewless.
-                  syncFocusRange(view);
-                  view.dispatch({
-                    effects: setProvenanceMarks.of(useStore.getState().provenanceMarks),
-                  });
-                }}
+                onCreateEditor={handleCreateEditor}
                 editable={!needsProject}
                 theme="none"
                 height="100%"

@@ -63,6 +63,9 @@ pub async fn project_read_markdown_if_changed(
 
 fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
     let markdown = crate::fs_io::read_to_string_optional(&layout.project_md())?;
+    // The gitignored working draft (the browser's draft/committed split,
+    // restored on desktop). Absent on older projects → the committed copy.
+    let local_draft = crate::fs_io::read_to_string_optional(&layout.draft_md())?;
 
     // settings.json — { name, schemaVersion, activePersonaId }
     let settings_json: Option<serde_json::Value> =
@@ -101,7 +104,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
     Ok(StoredProjectData {
         project_name,
         markdown,
-        local_draft: None, // The draft/committed split is browser-only post-Phase-3.
+        local_draft,
         test_suite: if test_suite.is_empty() {
             None
         } else {
@@ -129,6 +132,11 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     // markdown
     if let Some(md) = &data.markdown {
         crate::fs_io::atomic_write_str(&layout.project_md(), md)?;
+    }
+
+    // Working draft — gitignored (.twriter/draft.md), mirrors the live buffer.
+    if let Some(draft) = &data.local_draft {
+        crate::fs_io::atomic_write_str(&layout.draft_md(), draft)?;
     }
 
     // settings.json
@@ -352,6 +360,40 @@ mod tests {
         assert_eq!(
             back.prompts_config,
             Some(serde_json::json!({ "analysisPrompt": "my custom analysis" }))
+        );
+    }
+
+    #[test]
+    fn local_draft_round_trips_through_write_then_read_and_is_optional() {
+        // The desktop draft/committed split (STATUS: sub-60s crash draft): the
+        // working draft mirrors to gitignored .twriter/draft.md and is read
+        // back on load; a project without one loads with local_draft None.
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // Absent draft file → None (older projects).
+        let data = StoredProjectData {
+            markdown: Some("# Intro\n\ncommitted.".to_string()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+        assert!(!layout.draft_md().exists());
+        assert_eq!(read_from(&layout).unwrap().local_draft, None);
+
+        // Draft supplied → lands beside the committed copy and reads back.
+        let data = StoredProjectData {
+            markdown: Some("# Intro\n\ncommitted.".to_string()),
+            local_draft: Some("# Intro\n\ncommitted, plus unsaved keystrokes.".to_string()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+        assert!(layout.draft_md().is_file());
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.markdown.as_deref(), Some("# Intro\n\ncommitted."));
+        assert_eq!(
+            back.local_draft.as_deref(),
+            Some("# Intro\n\ncommitted, plus unsaved keystrokes.")
         );
     }
 

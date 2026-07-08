@@ -420,6 +420,21 @@ export const App = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Clean export: the prose exactly as written — no YAML frontmatter, no spec
+  // comments — ready for pandoc or a supervisor. (The annotated round-trip
+  // export keeps its own entry.)
+  const handleExportCleanMarkdown = () => {
+    const blob = new Blob([useStore.getState().localContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportSpecs = () => {
     const specsData: Record<string, SectionSpec> = {};
     for (const [id, entry] of Object.entries(testSuite)) {
@@ -662,6 +677,8 @@ export const App = () => {
     { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
     { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },
+    { id: 'find-text', label: 'Find in text', hint: 'Search & replace in the manuscript', glyph: '⌕', shortcut: '⌘F', run: () => useStore.getState().requestEditorSearch() },
+    { id: 'export-clean-md', label: 'Export clean markdown', hint: 'Prose only — no frontmatter or spec comments', glyph: '↧', run: handleExportCleanMarkdown },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },

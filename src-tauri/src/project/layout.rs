@@ -19,6 +19,13 @@ impl Layout {
         self.root.join("project.md")
     }
 
+    /// The gitignored working-draft mirror of the live buffer (the
+    /// draft/committed split the browser build keeps in IndexedDB). Read on
+    /// load so a crash restores the draft; never committed to history.
+    pub fn draft_md(&self) -> PathBuf {
+        self.twriter_dir().join("draft.md")
+    }
+
     pub fn twriter_dir(&self) -> PathBuf {
         self.root.join(".twriter")
     }

@@ -42,6 +42,9 @@ export interface EditorStateSlice {
    * when the selection didn't change (the case the old dead-ref wiring missed).
    */
   editorFocusSeq: number;
+  /** Like editorFocusSeq, but opens the in-editor find/replace panel (the ⌘K
+   *  "Find in text" door to CodeMirror's search — discoverability for ⌘F). */
+  editorSearchSeq: number;
   /**
    * "Here is what just changed": the character offset of the most recent
    * accepted AI splice. The main editor consumes it (scroll + landing pulse)
@@ -56,6 +59,7 @@ export interface EditorStateSlice {
   setActiveLineIndex: (idx: number | null) => void;
   setSectionCaret: (id: string, caret: SectionCaret) => void;
   requestEditorFocus: () => void;
+  requestEditorSearch: () => void;
   setPendingEditorReveal: (reveal: { offset: number } | null) => void;
 }
 
@@ -66,6 +70,7 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
   activeLineIndex: null,
   sectionCaret: {},
   editorFocusSeq: 0,
+  editorSearchSeq: 0,
   pendingEditorReveal: null,
 
   setLocalContent: (content) =>
@@ -81,5 +86,6 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
   setSectionCaret: (id, caret) =>
     set((state) => ({ sectionCaret: { ...state.sectionCaret, [id]: caret } })),
   requestEditorFocus: () => set((state) => ({ editorFocusSeq: state.editorFocusSeq + 1 })),
+  requestEditorSearch: () => set((state) => ({ editorSearchSeq: state.editorSearchSeq + 1 })),
   setPendingEditorReveal: (reveal) => set({ pendingEditorReveal: reveal }),
 });

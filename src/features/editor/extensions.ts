@@ -36,7 +36,11 @@ import { hldExtensions } from '../../lib/editorTheme';
 import { livePreviewPlugin } from '../../lib/livePreview';
 import { provenanceField } from '../../lib/provenanceMarks';
 import { pulseField } from '../../lib/editorPulse';
+import { Footnotes } from '../../lib/markdownFootnotes';
 import { formattingKeymap } from './commands/formatting';
+import { sectionNavKeymap } from './commands/section-nav';
+import { footnoteKeymap } from './commands/footnote-jump';
+import { pasteHygiene } from './commands/paste';
 
 /**
  * Language + theme + wrapping only — enough to *display* HLD-styled markdown.
@@ -49,7 +53,7 @@ export const baseMarkdownExtensions = (): Extension[] => [
     // Keymaps are registered once, explicitly, in writingSurfaceExtensions —
     // never implicitly by the language.
     addKeymap: false,
-    extensions: [Table, GFM],
+    extensions: [Table, GFM, Footnotes],
   }),
   ...hldExtensions,
   EditorView.lineWrapping,
@@ -97,6 +101,8 @@ export const writingSurfaceExtensions = (extra: Extension[] = []): Extension[] =
   keymap.of([
     ...closeBracketsKeymap,
     ...formattingKeymap, // Mod-b / Mod-i toggle
+    ...sectionNavKeymap, // Mod-Alt-↑/↓ previous/next heading
+    ...footnoteKeymap, // Mod-Alt-6 reference ⇄ definition
     ...markdownKeymap, // Enter continues lists / quotes; Backspace outdents
     ...defaultKeymap,
     ...searchKeymap,
@@ -105,6 +111,7 @@ export const writingSurfaceExtensions = (extra: Extension[] = []): Extension[] =
     ...completionKeymap,
     indentWithTab,
   ]),
+  pasteHygiene,
   livePreviewPlugin,
   provenanceField,
   pulseField,
