@@ -116,7 +116,12 @@ export function SourceEditorModal() {
  */
 function ExegesisZone({ source }: { source: SourceDocument }) {
   const { run, running, streaming } = useSourceExegesis();
+  // In flight ANYWHERE — a run started before this modal was closed and reopened
+  // is still this source's run; offering a second one would duplicate it.
+  const inFlight = useStore((s) => s.exegesisRunning.includes(source.id));
   const stale = isExegesisStale(source);
+  // Metadata only: an APA entry + abstract can't ground a faithful reconstruction.
+  const metadataOnly = source.role === 'bibliographic';
 
   return (
     <div className="flex flex-col gap-2 border-t border-hld-border pt-3 mt-1">
@@ -124,7 +129,7 @@ function ExegesisZone({ source }: { source: SourceDocument }) {
         <div className="font-mono uppercase tracking-[0.14em] text-[9px] text-hld-muted-text">
           ◈ exegesis — the argument reconstructed
         </div>
-        {!running && (
+        {!inFlight && !metadataOnly && (
           <button
             type="button"
             onClick={() => void run(source)}
@@ -138,6 +143,10 @@ function ExegesisZone({ source }: { source: SourceDocument }) {
       {running ? (
         <div className="border border-hld-border bg-hld-bg px-2.5 py-2 max-h-64 overflow-y-auto font-mono text-[11px] leading-[1.6] text-hld-text whitespace-pre-wrap">
           {streaming || <span className="text-hld-muted-text">reading the source…</span>}
+        </div>
+      ) : inFlight ? (
+        <div className="font-mono text-[8.5px] text-hld-muted-text uppercase tracking-[0.08em]">
+          reconstructing — the result will appear here when it lands
         </div>
       ) : source.exegesis ? (
         <>
@@ -154,6 +163,10 @@ function ExegesisZone({ source }: { source: SourceDocument }) {
               : `reconstructed ${new Date(source.exegesis.createdAt).toLocaleDateString()}`}
           </div>
         </>
+      ) : metadataOnly ? (
+        <div className="font-mono text-[8.5px] text-hld-muted uppercase tracking-[0.08em]">
+          metadata-only source — import the full text to reconstruct it
+        </div>
       ) : (
         <div className="font-mono text-[8.5px] text-hld-muted uppercase tracking-[0.08em]">
           none yet — a faithful reconstruction of this source's moves, commitments, and terms

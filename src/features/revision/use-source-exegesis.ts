@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
@@ -12,20 +13,30 @@ import type { SourceDocument } from '../../types';
  * into `streaming` while running (the visible-progress idiom); on completion the
  * result is persisted onto the source (`SourceDocument.exegesis`) with a content
  * hash for stale detection. A failure keeps any prior exegesis untouched.
+ *
+ * The duplicate-run guard is the store's `exegesisRunning` registry, NOT hook
+ * state: the run outlives a closed editor modal, and a reopened one must still
+ * see it (the live stream deliberately doesn't reattach across a remount — the
+ * result lands via `updateSource` when the run completes).
  */
 export const useSourceExegesis = () => {
   const [streaming, setStreaming] = useState('');
   const [running, setRunning] = useState(false);
-  // One run at a time per hook instance (the editor modal targets one source).
-  const busy = useRef(false);
 
   const run = useCallback(async (source: SourceDocument) => {
-    if (busy.current) return;
-    const { modelConfig, globalModelDefault, modelCatalog } = useStore.getState();
-    const choice = resolveModelChoice('exegeteSource', modelConfig, globalModelDefault);
+    const st = useStore.getState();
+    if (st.exegesisRunning.includes(source.id)) return;
+    // A bibliographic source is citation metadata (an APA entry + abstract) — a
+    // full argument reconstruction of it could only be fabricated from the
+    // model's prior knowledge of the work, then persist as a faithful stand-in.
+    if (source.role === 'bibliographic') {
+      toast.info('Metadata-only source — import the full text to reconstruct it.');
+      return;
+    }
+    const choice = resolveModelChoice('exegeteSource', st.modelConfig, st.globalModelDefault);
     if (
       !guardContextFit({
-        catalog: modelCatalog,
+        catalog: st.modelCatalog,
         choice,
         text: source.content,
         what: 'This source',
@@ -35,7 +46,7 @@ export const useSourceExegesis = () => {
       return;
     }
 
-    busy.current = true;
+    st.beginExegesisRun(source.id);
     setRunning(true);
     setStreaming('');
     const opId = useStore
@@ -64,7 +75,7 @@ export const useSourceExegesis = () => {
     } catch (e) {
       notifyAiError(e, 'Source exegesis failed — the existing reconstruction is untouched.');
     } finally {
-      busy.current = false;
+      useStore.getState().endExegesisRun(source.id);
       setRunning(false);
       setStreaming('');
       useStore.getState().endOp(opId);

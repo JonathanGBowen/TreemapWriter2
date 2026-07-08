@@ -92,6 +92,9 @@ export const useRevisionActions = () => {
 
     setRevisionPhase('generating');
     setIsProcessing(true);
+    // The pass this call belongs to — if it moves while the call is in flight
+    // (close / new pass), the results belong to a dead pass and are dropped.
+    const epoch = useStore.getState().revisionPassEpoch;
     const opId = useStore.getState().beginOp({ label: 'Generating revisions…', workspace: 'revision' });
     try {
       const proposals = await aiProvider.generateRevisions({
@@ -104,12 +107,13 @@ export const useRevisionActions = () => {
         instruction,
         config: promptsConfig,
       });
+      if (useStore.getState().revisionPassEpoch !== epoch) return;
       setProposals(proposals.map((p) => ({ ...p, _status: 'pending' as const })));
       setRevisionPhase('review');
       if (proposals.length === 0) toast.info('No well-grounded edits found for this directive.');
     } catch (e) {
       notifyAiError(e, `Revision failed: ${errMessage(e)}`);
-      setRevisionPhase('config');
+      if (useStore.getState().revisionPassEpoch === epoch) setRevisionPhase('config');
     } finally {
       setIsProcessing(false);
       useStore.getState().endOp(opId);
@@ -176,6 +180,8 @@ export const useRevisionActions = () => {
 
     setRevisionPhase('generating');
     setIsProcessing(true);
+    // Same dead-pass guard as `generate`: drop results if the pass moved mid-flight.
+    const epoch = useStore.getState().revisionPassEpoch;
     const opId = useStore.getState().beginOp({ label: 'Deep revision (agent)…', workspace: 'revision' });
     let answer = '';
     try {
@@ -189,6 +195,7 @@ export const useRevisionActions = () => {
       })) {
         answer += chunk;
       }
+      if (useStore.getState().revisionPassEpoch !== epoch) return;
       const proposals =
         normalizeRevisions(parseAgentProposals(answer), {
           sectionLabel: currentSection.title,
@@ -201,7 +208,7 @@ export const useRevisionActions = () => {
       if (proposals.length === 0) toast.info('The deep pass found no well-grounded edits.');
     } catch (e) {
       notifyAiError(e, `Deep revision failed: ${errMessage(e)}`);
-      setRevisionPhase('config');
+      if (useStore.getState().revisionPassEpoch === epoch) setRevisionPhase('config');
     } finally {
       setIsProcessing(false);
       useStore.getState().endOp(opId);

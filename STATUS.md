@@ -64,6 +64,20 @@ seam) and statuses are honest one-shot states (no fake reading/proposing split);
 dialogue transcript is ephemeral; the Zotero collection list is flat (no nesting)
 and Web-API sync / BibTeX-RIS remain out of scope (below).
 
+**Hardened 2026-07-08 — adversarial-review fixes** (five verified findings; see
+[`docs/migration-log.md`](docs/migration-log.md)): the batch audit pins its target
+and re-reads the **live** document text each source (a mid-run accept no longer
+strands later proposals on stale anchors); a monotonic `revisionPassEpoch` replaces
+the reopenable open-flag as the in-flight dead-pass guard (audit loop +
+`generate`/`generateDeep`); the exegesis one-run guard moved to a reactive
+`exegesisRunning` registry so a reopened editor sees the run instead of offering a
+duplicate (the stream doesn't reattach across remount — the result lands on
+completion); the per-source audit corrects References **entries only within an
+existing section** — creating the section stays with the whole-document Citations
+pass (else N parallel audits could each create one); and exegesis of a
+`bibliographic` (metadata-only) source is gated off at the affordance — a
+reconstruction of it could only be fabricated from prior knowledge.
+
 **Gestalt segmentation — "Articulation"** shipped 2026-06-29 (see
 [`docs/migration-log.md`](docs/migration-log.md)). A top-down, recursive walk that
 divides a long text into its natural parts (Wertheimer's division-by-articulation —

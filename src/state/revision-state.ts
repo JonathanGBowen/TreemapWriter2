@@ -48,12 +48,26 @@ export interface RevisionSlice {
   previewAll: boolean;
   /** The per-source batch audit's queue; empty = no audit this pass. */
   auditQueue: AuditItem[];
+  /**
+   * The section id the audit was launched against ('root' for whole document),
+   * pinned at start so the run's target never drifts with rail navigation —
+   * while its TEXT is re-read live each iteration (a mid-run accept rewrites
+   * the document, and later sources must be audited against what it says now).
+   */
+  auditTargetId: string | null;
   /** Continuous by default; 'stepped' pauses for review after each source. */
   auditPacing: AuditPacing;
   /** True while a stepped run waits for "continue" between sources. */
   auditAwaiting: boolean;
   /** Stop requested — takes effect at the next source boundary. */
   auditCancelled: boolean;
+  /**
+   * Monotonic pass identity. Incremented whenever the pass data is cleared or
+   * replaced (close / new pass / new audit), so a detached async loop or an
+   * in-flight call can tell that its results belong to a dead pass and drop
+   * them — the reopenable `revisionWorkspaceOpen` boolean cannot carry that.
+   */
+  revisionPassEpoch: number;
 
   openRevisionWorkspace: () => void;
   closeRevisionWorkspace: () => void;
@@ -72,8 +86,8 @@ export interface RevisionSlice {
   setProposals: (proposals: SessionProposal[]) => void;
   /** Accumulate proposals mid-audit (statuses of earlier ones are preserved). */
   appendProposals: (proposals: SessionProposal[]) => void;
-  /** Begin a batch audit: fresh queue in selection order, cleared review state. */
-  startAudit: (sourceIds: string[]) => void;
+  /** Begin a batch audit: fresh queue in selection order, cleared review state, pinned target. */
+  startAudit: (sourceIds: string[], targetId: string) => void;
   /** Patch one audit item's status/count/note by source id. */
   patchAuditItem: (sourceId: string, patch: Partial<Omit<AuditItem, 'sourceId'>>) => void;
   /** Settle every still-queued item (the cancel path). */
@@ -97,6 +111,7 @@ const CLEARED_PASS = {
   previewIds: [] as string[],
   previewAll: false,
   auditQueue: [] as AuditItem[],
+  auditTargetId: null as string | null,
   auditAwaiting: false,
   auditCancelled: false,
 };
@@ -108,12 +123,19 @@ export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> 
   selectedSourceIds: [],
   directive: '',
   auditPacing: 'continuous',
+  revisionPassEpoch: 0,
   ...CLEARED_PASS,
 
   openRevisionWorkspace: () => set({ revisionWorkspaceOpen: true }),
   // Close keeps the session's selection/directive (ephemeral) but drops the in-flight
-  // pass, so reopening lands back on a clean config screen.
-  closeRevisionWorkspace: () => set({ revisionWorkspaceOpen: false, ...CLEARED_PASS }),
+  // pass, so reopening lands back on a clean config screen. The epoch bump is what
+  // actually kills detached work: reopening restores the flag, never the epoch.
+  closeRevisionWorkspace: () =>
+    set((s) => ({
+      revisionWorkspaceOpen: false,
+      ...CLEARED_PASS,
+      revisionPassEpoch: s.revisionPassEpoch + 1,
+    })),
 
   toggleRevisionSource: (id) =>
     set((s) => ({
@@ -140,12 +162,15 @@ export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> 
       proposals: [...s.proposals, ...incoming],
       activeProposalId: s.activeProposalId ?? incoming[0]?.id ?? null,
     })),
-  startAudit: (sourceIds) =>
-    set({
+  startAudit: (sourceIds, targetId) =>
+    set((s) => ({
       ...CLEARED_PASS,
       auditQueue: initAuditQueue(sourceIds),
+      auditTargetId: targetId,
       revisionPhase: 'auditing',
-    }),
+      // A new audit replaces whatever pass came before it.
+      revisionPassEpoch: s.revisionPassEpoch + 1,
+    })),
   patchAuditItem: (sourceId, patch) =>
     set((s) => ({ auditQueue: patchAuditQueue(s.auditQueue, sourceId, patch) })),
   settleAuditRemaining: (status, note) =>
@@ -167,5 +192,6 @@ export const createRevisionSlice: StateCreator<AppState, [], [], RevisionSlice> 
         : [...s.previewIds, id],
     })),
   setPreviewAll: (previewAll) => set({ previewAll }),
-  resetRevision: () => set({ ...CLEARED_PASS }),
+  resetRevision: () =>
+    set((s) => ({ ...CLEARED_PASS, revisionPassEpoch: s.revisionPassEpoch + 1 })),
 });
