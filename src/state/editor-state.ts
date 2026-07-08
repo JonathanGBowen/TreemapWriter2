@@ -45,6 +45,18 @@ export interface EditorStateSlice {
   /** Like editorFocusSeq, but opens the in-editor find/replace panel (the ⌘K
    *  "Find in text" door to CodeMirror's search — discoverability for ⌘F). */
   editorSearchSeq: number;
+  /** Optional query to pre-fill the find panel with on the next editorSearchSeq
+   *  firing — the sidebar section-search's Enter handoff ("map found the
+   *  neighborhoods; editor search walks the instances"). Null = open blank. */
+  editorSearchPrefill: string | null;
+  /**
+   * One-shot request to land the caret on a phrase inside a section — the
+   * treemap relay: clicking a search-lit tile selects the section AND asks the
+   * editor to find the query within that section's live span (fall back to the
+   * section start when the literal string isn't present — FTS stems). Consumed
+   * and cleared by the editor.
+   */
+  pendingPhraseReveal: { query: string; sectionId: string } | null;
   /**
    * "Here is what just changed": the character offset of the most recent
    * accepted AI splice. The main editor consumes it (scroll + landing pulse)
@@ -59,8 +71,10 @@ export interface EditorStateSlice {
   setActiveLineIndex: (idx: number | null) => void;
   setSectionCaret: (id: string, caret: SectionCaret) => void;
   requestEditorFocus: () => void;
-  requestEditorSearch: () => void;
+  /** Open the in-editor find panel; `query` pre-fills it (sidebar handoff). */
+  requestEditorSearch: (query?: string) => void;
   setPendingEditorReveal: (reveal: { offset: number } | null) => void;
+  setPendingPhraseReveal: (reveal: { query: string; sectionId: string } | null) => void;
 }
 
 export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateSlice> = (set) => ({
@@ -71,7 +85,9 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
   sectionCaret: {},
   editorFocusSeq: 0,
   editorSearchSeq: 0,
+  editorSearchPrefill: null,
   pendingEditorReveal: null,
+  pendingPhraseReveal: null,
 
   setLocalContent: (content) =>
     set((state) => ({
@@ -86,6 +102,11 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
   setSectionCaret: (id, caret) =>
     set((state) => ({ sectionCaret: { ...state.sectionCaret, [id]: caret } })),
   requestEditorFocus: () => set((state) => ({ editorFocusSeq: state.editorFocusSeq + 1 })),
-  requestEditorSearch: () => set((state) => ({ editorSearchSeq: state.editorSearchSeq + 1 })),
+  requestEditorSearch: (query) =>
+    set((state) => ({
+      editorSearchSeq: state.editorSearchSeq + 1,
+      editorSearchPrefill: query?.trim() || null,
+    })),
   setPendingEditorReveal: (reveal) => set({ pendingEditorReveal: reveal }),
+  setPendingPhraseReveal: (reveal) => set({ pendingPhraseReveal: reveal }),
 });

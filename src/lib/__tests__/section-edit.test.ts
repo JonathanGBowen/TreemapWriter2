@@ -5,6 +5,7 @@ import {
   sectionRangeInDoc,
   replaceSectionContent,
   findInRange,
+  findInRangeInsensitive,
 } from '../section-edit';
 
 // A corpus exercising the boundary cases the write-back math has historically
@@ -149,5 +150,29 @@ describe('findInRange', () => {
     const range = sectionRangeInDoc(doc, a.id)!;
     expect(findInRange(doc, '', range)).toBe(-1);
     expect(findInRange(doc, 'nowhere-to-be-found', range)).toBe(-1);
+  });
+});
+
+describe('findInRangeInsensitive', () => {
+  const doc = '# One\nThe Traveler fares forth.\n# Two\nAnother TRAVELER appears.';
+  const sections = flattenSections(parseMarkdown(doc));
+
+  it('matches case-insensitively within the range only', () => {
+    const two = sections.find((s) => s.title === 'Two')!;
+    const range = sectionRangeInDoc(doc, two.id)!;
+    const at = findInRangeInsensitive(doc, 'traveler', range);
+    expect(at).toBe(doc.indexOf('TRAVELER'));
+  });
+
+  it('returns -1 when the phrase only occurs outside the range', () => {
+    const two = sections.find((s) => s.title === 'Two')!;
+    const range = sectionRangeInDoc(doc, two.id)!;
+    expect(findInRangeInsensitive(doc, 'fares forth', range)).toBe(-1);
+  });
+
+  it('trims and rejects blank needles', () => {
+    const one = sections.find((s) => s.title === 'One')!;
+    const range = sectionRangeInDoc(doc, one.id)!;
+    expect(findInRangeInsensitive(doc, '   ', range)).toBe(-1);
   });
 });

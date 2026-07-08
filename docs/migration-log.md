@@ -5586,3 +5586,33 @@ browser check confirms zero `.cm-activeLine` elements render while the cursor
 sits in a paragraph; the focus-mode Playwright suite still passes 13/13.
 
 **Rollback.** Re-add `highlightActiveLine()` (import + the one factory line).
+
+## 2026-07-08 — Search relay: the section search and the find panel linked
+
+The app had two unconnected searches: the sidebar FTS5 section search (a MAP
+query — "which sections concern X?", rendered as lit treemap tiles,
+desktop-only) and the in-editor find panel (a CURSOR operation — exact
+find/replace over the live buffer). Both stay; the gap was the HANDOFF — a lit
+tile landed the editor at the section start, not at the phrase (the deferred
+in-editor-highlight item; audit finding B10). Now:
+
+1. **Lit tile → phrase landing.** While a section search is live, clicking a
+   matched treemap tile (or section row) also lands the caret ON the query's
+   first occurrence inside that section — selected, centered, pulsed — via a
+   one-shot `pendingPhraseReveal` store channel consumed by the editor (new
+   case-insensitive locator `findInRangeInsensitive` in `lib/section-edit.ts`).
+   FTS matches are stemmed, so a missing literal occurrence quietly keeps the
+   ordinary section-start landing.
+2. **Enter in the search box → find-panel handoff.** Enter opens the editor's
+   find panel PRE-FILLED with the sidebar query and selects the first exact
+   hit (`requestEditorSearch(query)` grew an optional prefill;
+   `setSearchQuery` + `findNext` on the editor side), so find-next walks every
+   exact instance document-wide. The map finds the neighborhoods; the find
+   panel walks the instances.
+
+**Verify.** `npm test` (764, incl. the new locator cases), typecheck, build
+green; a live-browser pass asserts the caret lands selected on the phrase, the
+one-shot clears, the no-literal-match fallback degrades quietly, and the panel
+opens pre-filled with the first hit selected; the focus suite stays 14/14.
+
+**Rollback.** One commit; `git revert`. Store fields are ephemeral (no schema).

@@ -7,14 +7,14 @@ import { useCurrentSection } from "../tests-panel/use-current-section";
 import { Pip } from "../shared/Pip";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
-import { openSearchPanel } from '@codemirror/search';
+import { openSearchPanel, setSearchQuery, SearchQuery, findNext } from '@codemirror/search';
 import { magnitudeBand } from '../../lib/magnitude';
 import { writingSurfaceExtensions, resetEditorHistory } from './extensions';
 import { useProvenanceSync } from './useProvenanceSync';
 import { setProvenanceMarks } from '../../lib/provenanceMarks';
 import { focusModeExtension, focusRangeField, setFocusRange } from '../../lib/focusRange';
 import { pulseAt } from '../../lib/editorPulse';
-import { sectionRangeInDoc } from '../../lib/section-edit';
+import { sectionRangeInDoc, findInRangeInsensitive } from '../../lib/section-edit';
 import { findSectionById } from '../../lib/utils';
 import { ResumeMarker } from '../coach/ResumeMarker';
 import { ActiveMoveMarker } from '../coach/ActiveMoveMarker';
@@ -276,17 +276,25 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorFocusSeq]);
 
-  // Outside-in search requests (⌘K → "Find in text"): open the in-editor
-  // find/replace panel, the discoverable door to ⌘F.
+  // Outside-in search requests: ⌘K → "Find in text" opens the in-editor
+  // find/replace panel (the discoverable door to ⌘F); the sidebar section
+  // search's Enter handoff arrives with a PREFILL query — the map search found
+  // the neighborhoods, the find panel walks the exact instances.
   const editorSearchSeq = useStore(s => s.editorSearchSeq);
   const searchSeqRef = useRef(editorSearchSeq);
   useEffect(() => {
     if (editorSearchSeq === searchSeqRef.current) return;
     searchSeqRef.current = editorSearchSeq;
     const view = cmRef.current?.view;
-    if (view) {
-      view.focus();
-      openSearchPanel(view);
+    if (!view) return;
+    view.focus();
+    openSearchPanel(view); // creates the search state + panel if absent
+    const prefill = useStore.getState().editorSearchPrefill;
+    if (prefill) {
+      view.dispatch({
+        effects: setSearchQuery.of(new SearchQuery({ search: prefill, caseSensitive: false })),
+      });
+      findNext(view); // land on the first hit immediately
     }
   }, [editorSearchSeq]);
 
@@ -337,6 +345,38 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     skipNextScroll.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSection?.id, focusMode, setSectionCaret]);
+
+  // The treemap search relay: a click on a search-lit tile selected the section
+  // AND asked for the query's first occurrence inside it. Declared AFTER the
+  // section-change effect so, in the same commit, focus scoping + the
+  // section-start landing run first and this then lands the caret ON the
+  // phrase (selected, pulsed). FTS matches are stemmed, so a missing literal
+  // occurrence quietly keeps the section-start landing. One-shot: cleared here.
+  const pendingPhraseReveal = useStore(s => s.pendingPhraseReveal);
+  useEffect(() => {
+    if (!pendingPhraseReveal) return;
+    const view = cmRef.current?.view;
+    if (!view) return;
+    const { query, sectionId } = pendingPhraseReveal;
+    const docText = view.state.doc.toString();
+    const range = sectionRangeInDoc(docText, sectionId, useStore.getState().sections);
+    if (range) {
+      const at = findInRangeInsensitive(docText, query, range);
+      if (at >= 0) {
+        try {
+          view.dispatch({
+            selection: { anchor: at, head: at + query.trim().length },
+            effects: [EditorView.scrollIntoView(at, { y: 'center' })],
+          });
+          view.focus();
+          pulseAt(view, at);
+        } catch {
+          /* out-of-range mid-edit; the section-start landing stands */
+        }
+      }
+    }
+    useStore.getState().setPendingPhraseReveal(null);
+  }, [pendingPhraseReveal]);
 
   // "Here is what just changed": when a revision/parallel accept recorded a
   // splice offset and no workspace overlay is covering the editor anymore,

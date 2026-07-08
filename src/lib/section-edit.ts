@@ -115,3 +115,21 @@ export const findInRange = (
   if (at < 0 || at + needle.length > range.to) return -1;
   return at;
 };
+
+/**
+ * Case-insensitive first occurrence of `needle` inside `range`, or -1. The
+ * search-relay locator: a sidebar FTS hit names a section; this finds where the
+ * query actually sits in that section's live span so the editor can land the
+ * caret on it (the caller falls back to the section start when FTS's stemmed
+ * match has no literal occurrence).
+ */
+export const findInRangeInsensitive = (
+  doc: string,
+  needle: string,
+  range: { from: number; to: number },
+): number => {
+  const n = needle.trim().toLowerCase();
+  if (!n) return -1;
+  const at = doc.slice(range.from, range.to).toLowerCase().indexOf(n);
+  return at < 0 ? -1 : range.from + at;
+};

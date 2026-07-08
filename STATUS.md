@@ -556,7 +556,12 @@ streams keep their own inline indicators rather than the pill.
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and
   `CoachModal` streams token-by-token. `src/features/coach/` is now a real panel
   home, also hosting the ambient cue and the structural-surround rail (below).
-- ~~**FTS5-backed full-text search.**~~ Done 2026-06-23 (see
+- ~~**FTS5-backed full-text search.**~~ Done 2026-06-23; **linked to the editor
+  2026-07-08** (see [`docs/migration-log.md`](docs/migration-log.md)): clicking a
+  search-lit treemap tile now lands the caret on the phrase inside the section
+  (pulse; section-start fallback for stemmed matches), and Enter in the search box
+  hands off to the editor's find panel pre-filled with the query — closing the
+  formerly-deferred in-editor-highlight gap. Original entry: (see
   [`docs/migration-log.md`](docs/migration-log.md)). `index_sections` /
   `search_sections` commands ([`src-tauri/src/commands/search.rs`](src-tauri/src/commands/search.rs))
   over a content-storing `sections_fts`, plus a desktop sidebar search box that
