@@ -5459,3 +5459,82 @@ caption (no second Reconstruct).
 
 **Rollback.** One commit; `git revert` restores the pre-fix wave behavior. No
 data or schema changes.
+
+## 2026-07-08 — Writing-surface repair wave: the section-scoped editing corruption class deleted
+
+A six-dimension, adversarially-verified audit of the core writing experience
+(triggered by "bugs with copy/pasting when within a section") traced the report
+to focus mode — the DEFAULT surface — keeping a second sliced copy of the
+document and reconstructing the whole buffer by string concat on every
+keystroke. Four commits, sequenced correctness-first: `9db5902` (P0 corruption
+& data loss), `1cd27be` (P1 undo & navigation), `184eca1` (P2 feature
+completeness), `265a6ec` (P3 visual polish).
+
+**What changed.**
+
+- **Focus mode is now a view concern on ONE persistent CodeMirror**
+  (`src/lib/focusRange.ts`): a mapped focus-range StateField, a dimmed (not
+  hidden) surround, a transactionFilter confining user edits to the section,
+  and a focus-scoped Mod-a. Entering/leaving/re-scoping focus never touches
+  the document — the stale-slice corruption, frozen-surround clobbering of
+  external writes, blank-line gluing, and per-toggle undo destruction are
+  deleted rather than patched. Clicking into dimmed prose re-scopes focus.
+- **Write-side section math has one home**, `src/lib/section-edit.ts`
+  (`sectionRangeInDoc` / `replaceSectionContent` / `findInRange`), round-trip
+  property-tested against `parseMarkdown` with id continuity threaded through
+  re-parses. Fixes the sprint-save off-by-one that duplicated a leaf section's
+  last line on every content-sprint save.
+- **One shared editor stack**, `src/features/editor/extensions.ts` — the five
+  divergent CodeMirror configs converge; the provenance tint, active-line
+  anchor, live preview, landing pulse, spellcheck, list continuation
+  (`markdownKeymap`), and the new commands (below) now behave identically on
+  every prose surface. `history()` sits in a compartment reset at project-load
+  so Cmd+Z can't rewind past the load into an empty buffer. All CodeMirror
+  function props are identity-stable — the uiw wrapper reconfigures the editor
+  whenever onChange/onUpdate change identity, which the 1s save ticker was
+  triggering every second (dropping appended config, e.g. the search panel).
+- **Section-scoped accepts:** revision/parallel accepts splice CONFINED to the
+  section the engine and preview resolved against (`applyProposalAt` — no
+  whole-document first-occurrence hijack of a duplicated phrase), and
+  provenance marks pin to the actual splice offset (`ProvenanceMark.offset`,
+  additive) and map through edits.
+- **Fresh inputs:** diagnostics read the live buffer at call time (the closure
+  `markdown` lagged up to 60s); `parseMarkdown` id reuse is old-node-centric
+  with body affinity + proximity, so pasting a duplicate heading no longer
+  steals a distant section's id/spec.
+- **Durability:** every save serializes behind one in-flight chain; one disk
+  write per autosave tick; a deliberately-emptied document persists
+  (`draftDirty`); sprint prose autosaves ~4s after the last keystroke; the
+  desktop crash draft ships (`.twriter/draft.md` round-trip in `layout.rs` /
+  `document.rs`, gitignored — the STATUS sub-60s item's Rust half).
+- **Navigation & undo integration:** the Dock's Continue button works
+  (`requestEditorFocus` replaces a never-attached ref); resume carets are
+  section-relative and restore against live spans; accepted edits reveal
+  (scroll + pulse) when a workspace closes; heading rename recovery is live.
+- **New writing affordances** (no new dependencies): footnotes (`[^ref]`
+  parser + superscript styling + Mod-Alt-6 jump), Mod-Alt-↑/↓ heading nav,
+  Mod-b/Mod-i formatting, paste hygiene (zero-width/NBSP), a ⌘K "Find in
+  text" door to the search panel, approximate section magnitude in the
+  toolbar, "Export clean markdown", and a money-safe inline-math regex with
+  reveal-on-caret-enter for rendered widgets + a plain-prose fast path.
+- **Visuals:** the manuscript is serif (`--font-serif` token) at 16px/700px
+  measure; heading depth reads as size/weight (state hues reserved for
+  state); editorTheme tints derive from tokens via `color-mix`; retired
+  `#00f0ff` glows gone; ActiveMoveMarker AA contrast fix; readable
+  empty-state copy; spec-panel commitment findings link to their sections.
+- Dev-only: `window.__twStore` (gated on `import.meta.env.DEV`) exposes the
+  store for E2E verification scripts.
+
+**Verify.** `npm test` (759), `cargo test` (57), `npm run typecheck`,
+`npm run build` all green. Live-browser Playwright passes: 13/13 focus-mode
+checks (multi-line paste round-trips byte-identically, section delete
+confined, undo storm across focus toggles restores the initial document
+byte-identically) and 9/9 feature checks ($20-and-$30 stays prose, list
+continuation, formatting chords, heading nav, search panel via palette).
+Desktop-only manual check remaining: crash-draft restore (`tauri:dev`, type,
+kill within 60s, relaunch — the draft should survive).
+
+**Rollback.** Four commits, each independently revertable; `git revert` in
+reverse order restores the two-editor design. The only persisted-schema
+touches are additive (`ProvenanceMark.offset` optional; `.twriter/draft.md`
+gitignored) — older builds ignore both.

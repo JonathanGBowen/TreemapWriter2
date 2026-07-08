@@ -7,7 +7,7 @@
 > [`docs/VISION.md`](docs/VISION.md) first. For what is being worked on next, see
 > [`STATUS.md`](STATUS.md).
 >
-> **Current as of 2026-07-07.** This describes conventions and the shape of the
+> **Current as of 2026-07-08.** This describes conventions and the shape of the
 > system, not an exact file inventory. Exact file trees, counts, and line numbers
 > live in the code — trust the code over any list here.
 
@@ -164,7 +164,8 @@ the name as historical; do not "simplify" the structure.
 | If you're adding... | It goes in... |
 |---|---|
 | A new modal | `src/features/modals/<Name>Modal.tsx` (flat, one file per modal). Add a `showXModal` boolean + `setShowXModal` setter to `src/state/ui-state.ts`. The modal subscribes to its **own** openness flag via `useStore` — do not accept `isOpen`/`onClose` as props. Only orchestration handlers (`onRun`, `onConfirm`) are props. Wrap the body in `modals/ModalShell` (presentational HLD frame; owns no openness). Use `modals/SegControl` + `depth-choice.ts` for a model-depth control. A modal earns its **own folder** only when it grows a multi-component subtree (today: `modals/sprint/`, `modals/topo/`). |
-| A new editor command | `src/features/editor/commands/` |
+| A new editor command | `src/features/editor/commands/` (a `Command`/`KeyBinding` module; register it in the factory's keymap) |
+| A new prose editing surface (CodeMirror) | Compose `src/features/editor/extensions.ts` — `writingSurfaceExtensions(extra)` for writable surfaces, `baseMarkdownExtensions()` for read-only — plus the `useProvenanceSync` hook, and pass `theme="none"`. **Never hand-assemble the stack** (five copies once drifted: tint/active-line/keymaps diverged per surface). Keep every function prop identity-STABLE (`useCallback` + `getState()` reads): the uiw wrapper fully reconfigures the editor when `onChange`/`onUpdate` change identity, which silently drops appended config. Focus-mode scoping is a pure extension (`lib/focusRange.ts`); write-side section math goes through `lib/section-edit.ts` — never hand-splice by cached offsets. |
 | A new Tauri IPC command | `#[tauri::command]` fn in the right `src-tauri/src/commands/<area>.rs`, register in `lib.rs::run`'s `tauri::generate_handler![...]`, expose a typed wrapper as a method on `tauriRepository` (`src/services/tauri-repository.ts`) or a sibling service. Components never call `invoke()` directly. |
 | A new on-disk file in a project | Path goes in `src-tauri/src/project/layout.rs`. Read/write via `crate::fs_io::*` helpers (atomic write). If it should be gitignored, update the `.gitignore` written by `project_create` in `src-tauri/src/commands/project.rs`. A *collection* that updates independently of the document save cycle (e.g. `.twriter/sessions/`) gets its own `*_list` / `*_save` commands instead of riding the `project_write` bulk path — see `src-tauri/src/commands/session.rs`. |
 | A new git local / remote operation | Local: `src-tauri/src/git/mod.rs`. Remote: `src-tauri/src/git/remote.rs`. Nothing outside `src-tauri/src/git/` touches `git2::*` directly. |
