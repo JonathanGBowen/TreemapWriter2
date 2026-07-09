@@ -52,6 +52,13 @@ export type AICallKind =
   | 'discoverStructuralParts'
   | 'reconstructWhole'
   | 'proposeRecenterings'
+  | 'runDoctorOutline'
+  | 'runDoctorParagraph'
+  | 'distillThesis'
+  | 'runDoctorReport'
+  | 'diagnoseStructure'
+  | 'proposeRoadmaps'
+  | 'generateDoctorChecklist'
   | 'runAgent';
 
 /** Every call kind, in display order. The single source of truth for "what is configurable". */
@@ -90,6 +97,13 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'discoverStructuralParts',
   'reconstructWhole',
   'proposeRecenterings',
+  'runDoctorOutline',
+  'runDoctorParagraph',
+  'distillThesis',
+  'runDoctorReport',
+  'diagnoseStructure',
+  'proposeRoadmaps',
+  'generateDoctorChecklist',
   'runAgent',
 ];
 
@@ -129,6 +143,13 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   discoverStructuralParts: 'Discover parts',
   reconstructWhole: 'Whole from part',
   proposeRecenterings: 'Recenter',
+  runDoctorOutline: 'Doctor outline',
+  runDoctorParagraph: 'Says vs does (¶)',
+  distillThesis: 'Distill thesis',
+  runDoctorReport: 'Doctor report',
+  diagnoseStructure: 'Diagnose structure (live)',
+  proposeRoadmaps: 'Rescue roadmaps',
+  generateDoctorChecklist: 'Revision checklist',
   runAgent: 'Local agent',
 };
 
