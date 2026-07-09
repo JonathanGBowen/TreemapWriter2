@@ -165,7 +165,6 @@ export function SpecTestTopBar() {
         <div title="Changed: deep-read only sections whose prose changed, plus their commitment-mesh neighbours. All: deep-read every section with a rubric.">
           <SegControl
             ariaLabel="Spec test scope"
-            accent="cyan"
             value={scope === 'all' ? 1 : 0}
             onChange={(i) => setScope(i === 1 ? 'all' : 'changed')}
             options={[{ glyph: '◐', label: 'Changed' }, { glyph: '◉', label: 'All' }]}
@@ -174,7 +173,6 @@ export function SpecTestTopBar() {
         <div title="Live spec: test both versions against the spec you hold NOW (the TDD reading). Snapshot A: against the spec frozen when version A was saved.">
           <SegControl
             ariaLabel="Held rubric source"
-            accent="cyan"
             value={rubricSource === 'snapshot-a' ? 1 : 0}
             onChange={(i) => setRubricSource(i === 1 ? 'snapshot-a' : 'live')}
             options={[{ glyph: '◈', label: 'Live spec' }, { glyph: '◇', label: 'Snapshot A' }]}
@@ -183,7 +181,6 @@ export function SpecTestTopBar() {
         <div title="Draft: a still-missing move is scaffolding, and a deflated move is a cut opportunity. Completed: judges both versions as finished work.">
           <SegControl
             ariaLabel="Spec test reading mode"
-            accent="cyan"
             value={mode === 'final' ? 1 : 0}
             onChange={(i) => setMode(i === 1 ? 'final' : 'draft')}
             options={[{ glyph: '✎', label: 'Draft' }, { glyph: '✓', label: 'Completed' }]}

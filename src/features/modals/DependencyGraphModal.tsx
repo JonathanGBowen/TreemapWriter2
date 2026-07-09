@@ -145,8 +145,8 @@ const Header: React.FC<{
       </div>
       <ProjectionToggle mode={mode} setMode={setMode} />
       {canEstimate && (
-        <button onClick={onEstimate} disabled={estimating} style={{ ...actBtn(TK.magenta), opacity: estimating ? 0.5 : 1 }} title="Auto-estimate dependencies via AI">
-          ESTIMATE <WandGlyph c={TK.magenta} />
+        <button onClick={onEstimate} disabled={estimating} style={{ ...actBtn(TK.accent), opacity: estimating ? 0.5 : 1 }} title="Auto-estimate dependencies via AI">
+          ESTIMATE <WandGlyph c={TK.accent} />
         </button>
       )}
       <button
@@ -646,7 +646,7 @@ export const DependencyGraphModal: React.FC<DependencyGraphModalProps> = ({
               </div>
             )}
 
-            {estimating && <WorkingOverlay color={TK.magenta} label="ANALYSING DEPENDENCIES…" />}
+            {estimating && <WorkingOverlay color={TK.accent} label="ANALYSING DEPENDENCIES…" />}
             {optimizing && <WorkingOverlay color={TK.accent} label="OPTIMISING TOPOLOGY…" />}
           </main>
 

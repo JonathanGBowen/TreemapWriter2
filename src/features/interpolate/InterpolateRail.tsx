@@ -9,7 +9,7 @@ const PIP_FOR: Record<StageStatus, PipStatus> = {
   streaming: 'cyan',
   proposed: 'yellow',
   accepted: 'green',
-  error: 'magenta',
+  error: 'yellow',
 };
 
 /**

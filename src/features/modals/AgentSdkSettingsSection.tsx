@@ -52,7 +52,7 @@ export const AgentSdkSettingsSection: React.FC = () => {
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <FlaskConical size={13} className="text-hld-magenta" />
         Experimental — Claude Agent SDK
-        {enabled && <span className="text-hld-magenta normal-case tracking-normal">· on</span>}
+        {enabled && <span className="text-hld-cyan normal-case tracking-normal">· on</span>}
       </button>
 
       {open && (
@@ -75,7 +75,7 @@ export const AgentSdkSettingsSection: React.FC = () => {
               onClick={() => setEnabled(!enabled)}
               className={`px-3 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest font-bold transition-colors ${
                 enabled
-                  ? 'bg-hld-magenta text-hld-bg hover:bg-hld-magenta/80'
+                  ? 'bg-hld-cyan text-hld-bg hover:bg-hld-cyan/80'
                   : 'bg-hld-surface border border-hld-border text-hld-muted hover:text-hld-text'
               }`}
             >
@@ -128,7 +128,7 @@ export const AgentSdkSettingsSection: React.FC = () => {
                     <X size={11} /> reachable · no Max token
                   </span>
                 ) : (
-                  <span className="text-hld-magenta inline-flex items-center gap-1">
+                  <span className="text-hld-yellow inline-flex items-center gap-1">
                     <X size={11} /> unreachable
                   </span>
                 )}
@@ -162,7 +162,7 @@ export const AgentSdkSettingsSection: React.FC = () => {
                 title="Save finished runs for later auditing"
                 className={`px-3 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest font-bold transition-colors ${
                   traceSavingEnabled
-                    ? 'bg-hld-magenta text-hld-bg hover:bg-hld-magenta/80'
+                    ? 'bg-hld-cyan text-hld-bg hover:bg-hld-cyan/80'
                     : 'bg-hld-surface border border-hld-border text-hld-muted hover:text-hld-text'
                 }`}
               >

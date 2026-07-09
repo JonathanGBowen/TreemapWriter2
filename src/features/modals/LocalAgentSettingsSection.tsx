@@ -158,7 +158,7 @@ export const LocalAgentSettingsSection: React.FC = () => {
                 </button>
               </div>
 
-              {error && <p className="text-[10px] font-mono text-hld-magenta">{error}</p>}
+              {error && <p className="text-[10px] font-mono text-hld-yellow">{error}</p>}
 
               <button
                 type="button"

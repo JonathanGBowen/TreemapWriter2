@@ -1,10 +1,11 @@
 import type { CSSProperties } from 'react';
 
 /**
- * The one state vocabulary, as a single component.
- * green = done/safe · yellow = attention · magenta = missing/failing ·
- * cyan = active · purple = secondary · idle = untouched (hollow) · dim = inert.
- * Backed by the `.hld-pip*` primitives in index.css.
+ * The one state vocabulary, as a single component. Palette 3C: green = done/safe
+ * · yellow = attention/missing/failing (the one alert) · cyan = active/you ·
+ * magenta = content (never a failing/danger state under 3C) · purple = feature/
+ * secondary (opt-in, backed by the feat-running hue) · idle = untouched
+ * (hollow) · dim = inert. Backed by the `.hld-pip*` primitives in index.css.
  */
 export type PipStatus = 'idle' | 'green' | 'yellow' | 'magenta' | 'cyan' | 'purple' | 'dim';
 

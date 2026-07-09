@@ -47,7 +47,7 @@ class MermaidWidget extends WidgetType {
         view.requestMeasure();
       })
       .catch((e) => {
-        div.innerHTML = `<div class="text-hld-magenta font-mono text-sm max-w-full overflow-hidden text-left">Mermaid Error:<br/>${e.message}</div>`;
+        div.innerHTML = `<div class="text-hld-yellow font-mono text-sm max-w-full overflow-hidden text-left">Mermaid Error:<br/>${e.message}</div>`;
         view.requestMeasure();
       });
       

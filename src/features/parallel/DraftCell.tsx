@@ -72,7 +72,7 @@ export function DraftBCell({
   if (row.status === 'error') {
     return (
       <div className={cell}>
-        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-hld-magenta/70">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-hld-yellow/70">
           regeneration failed — left unchanged
         </p>
         <Controls accent="magenta" hideAccept onReset={() => onReset(row.id)} />

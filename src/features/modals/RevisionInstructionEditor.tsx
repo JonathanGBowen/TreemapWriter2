@@ -110,7 +110,7 @@ export function RevisionInstructionEditor() {
           <button
             type="button"
             onClick={() => remove(active.id)}
-            className="flex items-center gap-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-hld-muted-text hover:text-hld-magenta"
+            className="flex items-center gap-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-hld-muted-text hover:text-hld-yellow"
           >
             <Trash2 size={11} /> Delete
           </button>

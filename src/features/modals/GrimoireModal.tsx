@@ -167,7 +167,7 @@ export const GrimoireModal: React.FC = () => {
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(spell.id); }}
                   title="Delete"
-                  className="text-hld-muted hover:text-hld-magenta opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                  className="text-hld-muted hover:text-hld-yellow opacity-0 group-hover:opacity-100 transition-opacity p-1"
                 >
                   <Trash2 size={15} />
                 </button>

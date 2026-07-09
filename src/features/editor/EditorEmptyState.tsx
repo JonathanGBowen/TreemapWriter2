@@ -57,7 +57,7 @@ export const EditorEmptyState: React.FC<EditorEmptyStateProps> = ({
                  <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
                  <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">New Project</span>
                </button>
-               <button onClick={() => { void openExistingProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(255,16,96,0.2)] text-hld-magenta hover:bg-[rgba(255,16,96,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(255,16,96,0.2)] hover:border-[rgba(255,16,96,0.4)]" style={{"--br-color": "var(--tw-colors-hld-magenta)"} as any}>
+               <button onClick={() => { void openExistingProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
                  <FolderOpen size={16} className="group-hover:scale-110 transition-transform"/>
                  <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Open Project</span>
                </button>

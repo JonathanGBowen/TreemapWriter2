@@ -61,7 +61,7 @@ export const Tutorial: React.FC<TutorialProps> = ({ run, onFinish }) => {
       onEvent={handleJoyrideCallback}
       options={{
         zIndex: 10000,
-        primaryColor: '#00f0ff',
+        primaryColor: '#00e8f5',
         backgroundColor: '#0d0d12',
         textColor: '#e2e8f0',
         arrowColor: '#0d0d12',
@@ -82,7 +82,7 @@ export const Tutorial: React.FC<TutorialProps> = ({ run, onFinish }) => {
           marginBottom: '8px'
         },
         buttonPrimary: {
-          backgroundColor: '#00f0ff',
+          backgroundColor: '#00e8f5',
           color: '#050505',
           borderRadius: '4px',
           padding: '8px 16px',

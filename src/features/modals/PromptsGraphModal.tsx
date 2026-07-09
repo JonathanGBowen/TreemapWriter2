@@ -233,7 +233,7 @@ export const PromptsGraphModal: React.FC = () => {
               <button onClick={handleSave} className="text-hld-cyan hover:text-white" title="Save Configuration">
                 <Save size={16} />
               </button>
-              <button onClick={onClose} className="text-hld-muted hover:text-hld-magenta ml-2">
+              <button onClick={onClose} className="text-hld-muted hover:text-hld-cyan ml-2">
                 <X size={20} />
               </button>
             </div>

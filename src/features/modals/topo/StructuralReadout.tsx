@@ -30,7 +30,7 @@ export const StructuralReadout: React.FC<{ centering: Centering; land: Metrics; 
       style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, paddingRight: 2 }}
       title="The structural centre, read off the direction of the arrows. BACKWARD = a prerequisite placed after its dependent (read-ahead). RANK SPAN = depth of the dependency order. MISCENTER = share of dependencies fighting reading order. Route metrics are cosmetic and secondary."
     >
-      <Cell label="BACKWARD" val={back} c={back > 0 ? TK.magenta : TK.green} />
+      <Cell label="BACKWARD" val={back} c={back > 0 ? TK.yellow : TK.green} />
       <Cell label="RANK SPAN" val={centering.maxRank} c={TK.purple} />
       <Cell label="MISCENTER" val={miscPct + '%'} c={miscPct > 0 ? TK.yellow : TK.green} />
       {atlas && (

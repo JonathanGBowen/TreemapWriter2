@@ -8,7 +8,7 @@ const PIP_FOR: Record<SegmentLevelStatus, PipStatus> = {
   proposed: 'yellow',
   accepted: 'green',
   empty: 'dim',
-  error: 'magenta',
+  error: 'yellow',
 };
 
 const depthLabel = (depth: number, targetLevel: number): string =>

@@ -36,9 +36,11 @@ function AutoTextarea({
   );
 }
 
+/* Palette 3C: focus is always teal/cyan, regardless of column identity — a
+ * per-column focus hue would compete with the one "you" signature. */
 const ACCENT = {
   a: 'focus:border-hld-cyan focus:shadow-[0_0_10px_rgba(0,232,245,0.15)]',
-  b: 'focus:border-hld-green focus:shadow-[0_0_10px_rgba(0,232,117,0.15)]',
+  b: 'focus:border-hld-cyan focus:shadow-[0_0_10px_rgba(0,232,245,0.15)]',
 } as const;
 
 /**
@@ -106,7 +108,7 @@ export function BulletCell({
             type="button"
             title="Delete this point (and its paragraph)"
             onClick={onDelete}
-            className="w-[18px] h-[18px] flex items-center justify-center border border-hld-border bg-hld-surface-2 text-hld-muted-text hover:text-hld-magenta hover:border-hld-magenta/40 transition-colors"
+            className="w-[18px] h-[18px] flex items-center justify-center border border-hld-border bg-hld-surface-2 text-hld-muted-text hover:text-hld-yellow hover:border-hld-yellow/40 transition-colors"
           >
             <X size={11} />
           </button>

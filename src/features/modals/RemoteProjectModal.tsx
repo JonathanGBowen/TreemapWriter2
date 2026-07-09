@@ -76,7 +76,7 @@ export const RemoteProjectModal: React.FC = () => {
           <button
             onClick={onClose}
             disabled={busy}
-            className="text-hld-muted hover:text-hld-magenta transition-colors disabled:opacity-50"
+            className="text-hld-muted hover:text-hld-cyan transition-colors disabled:opacity-50"
           >
             <X size={16} />
           </button>
@@ -133,9 +133,9 @@ export const RemoteProjectModal: React.FC = () => {
           </div>
 
           {error && (
-            <div className="bg-hld-magenta/10 border border-hld-magenta/30 p-3 flex gap-2 items-start">
-              <AlertCircle className="w-4 h-4 text-hld-magenta shrink-0 mt-0.5" />
-              <div className="text-[12px] text-hld-magenta font-mono break-all">
+            <div className="bg-hld-yellow/10 border border-hld-yellow/30 p-3 flex gap-2 items-start">
+              <AlertCircle className="w-4 h-4 text-hld-yellow shrink-0 mt-0.5" />
+              <div className="text-[12px] text-hld-yellow font-mono break-all">
                 {error}
               </div>
             </div>

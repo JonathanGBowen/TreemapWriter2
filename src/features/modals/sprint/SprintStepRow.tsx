@@ -131,7 +131,7 @@ function IconBtn({
       aria-label={label}
       title={label}
       className={`w-[24px] h-[24px] flex items-center justify-center border border-hld-border text-hld-muted-text transition-colors disabled:opacity-25 disabled:cursor-not-allowed ${
-        danger ? 'hover:text-hld-magenta hover:border-hld-magenta/40' : 'hover:text-hld-cyan hover:border-hld-cyan/40'
+        danger ? 'hover:text-hld-yellow hover:border-hld-yellow/40' : 'hover:text-hld-cyan hover:border-hld-cyan/40'
       }`}
     >
       {children}

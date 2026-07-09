@@ -25,7 +25,7 @@ export function DirectiveSuggestions({ onPick }: { onPick: (directive: string) =
         type="button"
         onClick={run}
         disabled={loading}
-        className="self-start flex items-center gap-1.5 px-2 py-1 border border-hld-purple/40 text-hld-purple hover:bg-hld-purple/10 disabled:opacity-40 disabled:cursor-not-allowed font-mono text-[9px] uppercase tracking-[0.1em] transition-all"
+        className="self-start flex items-center gap-1.5 px-2 py-1 border border-hld-feat-running/40 text-hld-feat-running hover:bg-hld-feat-running/10 disabled:opacity-40 disabled:cursor-not-allowed font-mono text-[9px] uppercase tracking-[0.1em] transition-all"
       >
         {loading && (
           <Spinner hue="purple" size={10} />
@@ -37,9 +37,9 @@ export function DirectiveSuggestions({ onPick }: { onPick: (directive: string) =
           key={i}
           type="button"
           onClick={() => onPick(s.directive)}
-          className="text-left border border-hld-border hover:border-hld-purple/40 bg-hld-bg p-2 transition-colors group"
+          className="text-left border border-hld-border hover:border-hld-feat-running/40 bg-hld-bg p-2 transition-colors group"
         >
-          <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-hld-purple mb-1">
+          <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-hld-feat-running mb-1">
             {s.title}
           </div>
           <div className="font-mono text-[10px] leading-[1.5] text-hld-muted-text group-hover:text-hld-text line-clamp-3">

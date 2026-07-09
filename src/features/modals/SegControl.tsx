@@ -3,9 +3,10 @@ import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
 
 /**
  * Shared HLD segmented control (the modal "DEPTH" / "SCOPE" instrument).
- * One bordered row, hairline separators; the selected option is cyan/magenta
- * with a tinted bg + bracketed corners. Arrow keys move the selection
- * (roving tabindex, radiogroup semantics).
+ * One bordered row, hairline separators; the selected option is cyan (palette
+ * 3C: selection is always "you," never content-magenta) with a tinted bg +
+ * bracketed corners. Arrow keys move the selection (roving tabindex, radiogroup
+ * semantics).
  */
 export interface SegOption {
   glyph: ReactNode;
@@ -18,14 +19,13 @@ interface SegControlProps {
   value: number;
   onChange: (index: number) => void;
   ariaLabel?: string;
-  accent?: 'cyan' | 'magenta';
 }
 
-export function SegControl({ options, value, onChange, ariaLabel, accent = 'cyan' }: SegControlProps) {
+export function SegControl({ options, value, onChange, ariaLabel }: SegControlProps) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const onColor = accent === 'magenta' ? 'var(--color-hld-magenta)' : 'var(--color-hld-cyan)';
-  const onBg = accent === 'magenta' ? 'rgba(255,16,96,0.08)' : 'rgba(0,232,245,0.08)';
-  const onInset = accent === 'magenta' ? 'inset 0 0 14px rgba(255,16,96,0.06)' : 'inset 0 0 14px rgba(0,232,245,0.06)';
+  const onColor = 'var(--color-hld-cyan)';
+  const onBg = 'rgba(0,232,245,0.08)';
+  const onInset = 'inset 0 0 14px rgba(0,232,245,0.06)';
 
   const onKey = (e: KeyboardEvent, i: number) => {
     let next = i;

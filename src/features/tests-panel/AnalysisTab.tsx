@@ -52,7 +52,6 @@ function AnalysisModeToggle() {
     <div title="Draft: reconstruct the argument as it stands, treating stubs and gaps as scaffolding, not flaws. Completed: read it as finished work.">
       <SegControl
         ariaLabel="Analysis reading mode"
-        accent="cyan"
         value={mode === 'final' ? 1 : 0}
         onChange={(i) => setMode(i === 1 ? 'final' : 'draft')}
         options={[{ glyph: '✎', label: 'Draft' }, { glyph: '✓', label: 'Completed' }]}

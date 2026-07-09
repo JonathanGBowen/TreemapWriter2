@@ -35,7 +35,7 @@ export function DependencyChips({
             <span key={dep.id} className={`inline-flex items-center gap-[6px] px-[8px] py-[4px] border text-[9px] ${isMet ? 'border-hld-green/25 text-hld-green' : 'border-hld-border text-hld-muted-text'}`}>
               <Pip status={isMet ? 'green' : 'idle'} size="sm" />
               <span className="truncate max-w-[140px]">{sec?.title ?? 'Unknown'}</span>
-              <button type="button" onClick={() => remove(dep.id)} aria-label="Remove dependency" className="text-hld-muted hover:text-hld-magenta transition-colors">
+              <button type="button" onClick={() => remove(dep.id)} aria-label="Remove dependency" className="text-hld-muted hover:text-hld-yellow transition-colors">
                 <X size={9} />
               </button>
             </span>

@@ -11,7 +11,6 @@ import {
   FN_LABELS,
   READINESS_LABEL,
   READINESS_ORDER,
-  READINESS_COLOR,
 } from './topo-derive';
 import { TK } from './tk';
 import { ArrowRightGlyph } from './icons';
@@ -108,7 +107,7 @@ const DepList: React.FC<{
         const other = model.stationById[otherId];
         if (!other) return null;
         const health = model.health(d);
-        const hc = health === 'broken' ? TK.magenta : health === 'weak' ? TK.yellow : TK.accent;
+        const hc = health === 'solid' ? TK.accent : TK.yellow;
         const ref = d.type === 'reference';
         return (
           <div
@@ -134,7 +133,7 @@ const DepList: React.FC<{
             <button onClick={() => onToggle(d.id)} title="Toggle type" style={iconBtn()}>
               ⇄
             </button>
-            <button onClick={() => onRemove(d.id)} title="Remove" style={iconBtn(TK.magenta)}>
+            <button onClick={() => onRemove(d.id)} title="Remove" style={iconBtn(TK.yellow)}>
               ✕
             </button>
           </div>
@@ -144,17 +143,18 @@ const DepList: React.FC<{
   );
 };
 
+/* Palette 3C, Step 4: readiness is one teal-fill bar + a word, not a per-level
+   hue ladder — TK.accent (teal, "you") is the only fill colour regardless of level. */
 const Readiness: React.FC<{ level: ReadinessLevel }> = ({ level }) => {
   const idx = READINESS_ORDER.indexOf(level);
-  const c = READINESS_COLOR[level] || TK.magenta;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ display: 'flex', gap: 3, flex: 1 }}>
         {READINESS_ORDER.map((_, i) => (
-          <div key={i} style={{ flex: 1, height: 5, background: i <= idx ? c : TK.border }} />
+          <div key={i} style={{ flex: 1, height: 5, background: i <= idx ? TK.accent : TK.border }} />
         ))}
       </div>
-      <span style={{ fontFamily: mono, fontSize: 8, fontWeight: 800, letterSpacing: '0.12em', color: c }}>
+      <span style={{ fontFamily: mono, fontSize: 8, fontWeight: 800, letterSpacing: '0.12em', color: TK.accent }}>
         {(READINESS_LABEL[level] || level || '').toUpperCase()}
       </span>
     </div>
@@ -260,7 +260,7 @@ const StationInspector: React.FC<{
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
                 {c.isRadix && <CenterBadge label="◆ RADIX" c={TK.purple} />}
                 {c.isTelos && <CenterBadge label="◎ TELOS" c={TK.purple} />}
-                {c.inCycle && <CenterBadge label="⟲ CYCLE" c={TK.magenta} />}
+                {c.inCycle && <CenterBadge label="⟲ CYCLE" c={TK.yellow} />}
                 <span style={{ fontFamily: mono, fontSize: 7, color: TK.muted, letterSpacing: '0.1em' }}>
                   RANK {c.rank}/{centering.maxRank} · RESTS ON {restsOn} · {c.centrality} REST ON THIS · POS {Math.round(c.position * 100)}%
                 </span>
@@ -368,7 +368,7 @@ const DepInspector: React.FC<{
   const t = model.stationById[arc.target];
   if (!s || !t) return <EmptyInspector />;
   const health = model.health(arc);
-  const hc = health === 'broken' ? TK.magenta : health === 'weak' ? TK.yellow : TK.accent;
+  const hc = health === 'solid' ? TK.accent : TK.yellow;
   const ref = arc.type === 'reference';
   return (
     <>
@@ -412,7 +412,7 @@ const DepInspector: React.FC<{
         <button onClick={() => onToggle(arc.id)} style={{ padding: '9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.accent}`, color: TK.accent, fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em' }}>
           ⇄ TOGGLE TYPE → {ref ? 'PREREQUISITE' : 'REFERENCE'}
         </button>
-        <button onClick={() => onRemove(arc.id)} style={{ padding: '9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.magenta}`, color: TK.magenta, fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em' }}>
+        <button onClick={() => onRemove(arc.id)} style={{ padding: '9px', cursor: 'pointer', background: 'transparent', border: `1px solid ${TK.yellow}`, color: TK.yellow, fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em' }}>
           ✕ REMOVE DEPENDENCY
         </button>
         <div style={{ fontFamily: mono, fontSize: 7.5, color: TK.dim, letterSpacing: '0.08em', lineHeight: 1.7, marginTop: 4 }}>
@@ -425,8 +425,8 @@ const DepInspector: React.FC<{
 
 // The PARTS projection's inspector: a selected StructuralPart's claim, kind, the
 // sections it maps onto (live), the divergences the heading grid cannot express,
-// and — when merely stale — a no-AI RE-ANCHOR button. Orphan/stale reuse the
-// dependency health palette (magenta = broken/orphan, yellow = weak/stale).
+// and — when merely stale — a no-AI RE-ANCHOR button. Orphan/stale both read as
+// the one alert hue (palette 3C: yellow), distinguished by the status label.
 const PartInspector: React.FC<{
   model: TopoModel;
   part: StructuralPart;
@@ -437,7 +437,7 @@ const PartInspector: React.FC<{
   onReanchor: (id: string) => void;
   onOpen: (id: string) => void;
 }> = ({ model, part, divergence, sectionIds, stale, orphan, onReanchor, onOpen }) => {
-  const statusColor = orphan ? TK.magenta : stale ? TK.yellow : TK.purple;
+  const statusColor = orphan || stale ? TK.yellow : TK.purple;
   const statusLabel = orphan ? 'ORPHAN · anchors lost' : stale ? 'STALE · source changed' : 'ANCHORED';
   const live = sectionIds.map((sid) => model.stationById[sid]).filter((s): s is Station => !!s);
   return (

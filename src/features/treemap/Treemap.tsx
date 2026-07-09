@@ -117,8 +117,10 @@ export const Treemap: React.FC<TreemapProps> = ({
         lineColor = 'rgba(255,230,0,0.6)';
         lineWidth = 2;
       } else if (status === 'fail') {
-        bgColor = 'rgba(255,16,96,0.08)'; // tc-3 mag dim
-        lineColor = 'rgba(255,16,96,0.7)';
+        // Palette 3C: fail is the one alert (yellow), not content-magenta —
+        // same hue as stale, distinguished by the section's status label.
+        bgColor = 'rgba(255,230,0,0.08)';
+        lineColor = 'rgba(255,230,0,0.7)';
         lineWidth = 2;
       } else if (status === 'running') {
         bgColor = 'rgba(170,0,255,0.06)'; // tc-6 purple dim
@@ -127,25 +129,25 @@ export const Treemap: React.FC<TreemapProps> = ({
       } else if (status === 'success') {
         const readiness = testSuite[id]?.lastDiagnostic?.overallReadiness;
         
+        // Palette 3C: readiness is a single teal-fill signal, not a 4-hue
+        // ladder — draft→solid stays one hue (--color-hld-cyan), fading in and
+        // thickening border-width as the readiness step count rises (mirrors
+        // the --readiness-fill bar elsewhere; never a rainbow).
         if (readiness === 'draft') {
-          // Draft: Look unfinished, muted red/magenta bg, thin distinct border
-          bgColor = 'rgba(255,16,96,0.03)';
-          lineColor = 'rgba(255,16,96,0.4)';
+          bgColor = 'rgba(0,232,245,0.04)';
+          lineColor = 'rgba(0,232,245,0.4)';
           lineWidth = 1;
         } else if (readiness === 'developing') {
-          // Developing: Amber/yellow, slightly thicker border
-          bgColor = 'rgba(255,230,0,0.05)';
-          lineColor = 'rgba(255,230,0,0.6)';
+          bgColor = 'rgba(0,232,245,0.07)';
+          lineColor = 'rgba(0,232,245,0.55)';
           lineWidth = 2;
         } else if (readiness === 'nearly-there') {
-          // Nearly There: Cyan/blue, thicker confident border
           bgColor = 'rgba(0,232,245,0.1)';
           lineColor = 'rgba(0,232,245,0.7)';
           lineWidth = 3;
         } else if (readiness === 'solid') {
-          // Solid: Bright Green, strong thick border
-          bgColor = 'rgba(0,232,112,0.15)';
-          lineColor = 'rgba(0,232,112,0.9)';
+          bgColor = 'rgba(0,232,245,0.15)';
+          lineColor = 'rgba(0,232,245,0.9)';
           lineWidth = 4;
         } else {
           // Fallback (e.g. legacy test result without diagnostic)

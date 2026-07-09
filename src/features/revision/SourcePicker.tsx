@@ -186,7 +186,7 @@ export function SourcePicker() {
                   e.stopPropagation();
                   remove(s.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 text-hld-muted-text hover:text-hld-magenta transition-opacity"
+                className="opacity-0 group-hover:opacity-100 text-hld-muted-text hover:text-hld-yellow transition-opacity"
               >
                 <X size={10} />
               </button>

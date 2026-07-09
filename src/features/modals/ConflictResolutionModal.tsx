@@ -95,7 +95,7 @@ const ConflictBody: React.FC<{ merge: PendingMerge }> = ({ merge }) => {
           <button
             onClick={onClose}
             disabled={busy}
-            className="text-hld-muted-text hover:text-hld-magenta transition-colors disabled:opacity-50"
+            className="text-hld-muted-text hover:text-hld-cyan transition-colors disabled:opacity-50"
           >
             <X size={16} />
           </button>
@@ -115,9 +115,9 @@ const ConflictBody: React.FC<{ merge: PendingMerge }> = ({ merge }) => {
           ))}
 
           {error && (
-            <div className="bg-hld-magenta/10 border border-hld-magenta/30 p-3 flex gap-2 items-start">
-              <AlertCircle className="w-4 h-4 text-hld-magenta shrink-0 mt-0.5" />
-              <div className="text-[12px] text-hld-magenta font-mono break-all">{error}</div>
+            <div className="bg-hld-yellow/10 border border-hld-yellow/30 p-3 flex gap-2 items-start">
+              <AlertCircle className="w-4 h-4 text-hld-yellow shrink-0 mt-0.5" />
+              <div className="text-[12px] text-hld-yellow font-mono break-all">{error}</div>
             </div>
           )}
         </div>
@@ -138,7 +138,7 @@ const ConflictBody: React.FC<{ merge: PendingMerge }> = ({ merge }) => {
             <button
               onClick={handleSubmit}
               disabled={!allResolved || busy}
-              className="px-4 py-2 bg-hld-magenta text-hld-bg text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-magenta/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-hld-cyan text-hld-bg text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-cyan/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {busy ? 'Merging…' : 'Resolve & Merge'}

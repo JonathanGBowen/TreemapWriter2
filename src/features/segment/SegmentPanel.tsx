@@ -156,8 +156,8 @@ export function SegmentPanel() {
   if (level.status === 'error') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6">
-        <Pip status="magenta" />
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-hld-magenta">Articulation failed</p>
+        <Pip status="yellow" />
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-hld-yellow">Articulation failed</p>
         <button type="button" onClick={() => void generateLevel(cursor)} className="hld-lit px-3 py-[9px] font-mono text-[10px] uppercase tracking-[0.12em]">
           ↻ Try again
         </button>

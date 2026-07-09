@@ -38,7 +38,7 @@ function PersonaRow({ persona, isActive, onSelect, onDelete }: { persona: Person
           type="button"
           onClick={onDelete}
           aria-label={`Delete ${persona.name}`}
-          className="absolute right-[14px] top-1/2 -translate-y-1/2 text-hld-muted hover:text-hld-magenta opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute right-[14px] top-1/2 -translate-y-1/2 text-hld-muted hover:text-hld-yellow opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <Trash2 size={14} />
         </button>

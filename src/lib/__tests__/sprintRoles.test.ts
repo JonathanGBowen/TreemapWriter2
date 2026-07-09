@@ -14,7 +14,7 @@ describe('sprintRoles', () => {
     expect(roleHue('frame')).toBe('#00e8f5'); // cyan
     expect(roleHue('marshal')).toBe('#ffe600'); // yellow
     expect(roleHue('draft')).toBe('#00e8f5'); // cyan
-    expect(roleHue('stress')).toBe('#ff8800'); // orange
+    expect(roleHue('stress')).toBe('#7c8bff'); // feat-tone
     expect(roleHue('synthesize')).toBe('#aa00ff'); // purple
     expect(roleHue('bridge')).toBe('#aa00ff'); // purple
   });

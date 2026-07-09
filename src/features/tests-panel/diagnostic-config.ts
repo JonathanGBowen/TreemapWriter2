@@ -1,11 +1,12 @@
 import type { MoveStatus, ReadinessLevel } from "../../types";
 import type { PipStatus } from "../shared/Pip";
 
-/** Move verdict → the one pip vocabulary. */
+/** Move verdict → the one pip vocabulary. Palette 3C: magenta is content, not a
+ *  failing state, so `missing` moves to yellow (the one alert). */
 export const MOVE_STATUS_PIP: Record<MoveStatus, PipStatus> = {
   present: 'green',
   partial: 'yellow',
-  missing: 'magenta',
+  missing: 'yellow',
   unclear: 'purple',
 };
 
@@ -17,17 +18,18 @@ export const MOVE_STATUS_LABEL: Record<MoveStatus, string> = {
 };
 
 export interface ReadinessInfo {
-  /** Filled-pip count out of four. */
+  /** Filled-step count out of four. */
   level: number;
-  pip: PipStatus;
   label: string;
 }
 
+/** Palette 3C: readiness is one teal-fill bar, not a per-level hue ladder — so
+ *  each level carries only its fill count + label now. */
 export const READINESS: Record<ReadinessLevel, ReadinessInfo> = {
-  draft: { level: 1, pip: 'magenta', label: 'Draft' },
-  developing: { level: 2, pip: 'yellow', label: 'Developing' },
-  'nearly-there': { level: 3, pip: 'cyan', label: 'Nearly there' },
-  solid: { level: 4, pip: 'green', label: 'Solid' },
+  draft: { level: 1, label: 'Draft' },
+  developing: { level: 2, label: 'Developing' },
+  'nearly-there': { level: 3, label: 'Nearly there' },
+  solid: { level: 4, label: 'Solid' },
 };
 
 /** The number of steps in the readiness meter (draft → solid). */
@@ -37,8 +39,6 @@ export interface ReadinessSummary {
   /** How many of the four steps are filled (0 when undiagnosed). */
   filled: number;
   total: number;
-  /** Hue for the filled steps; `idle` when undiagnosed. */
-  pip: PipStatus;
   /** Human label — the readiness name, or "Undiagnosed" when there is no diagnostic. */
   label: string;
   diagnosed: boolean;
@@ -46,22 +46,24 @@ export interface ReadinessSummary {
 
 /**
  * Normalise a section's readiness into ONE labelled ordinal summary — the single
- * status encoder the 4-step meter renders (replaces the ad-hoc per-surface
- * diamond rows). `null`/`undefined` = undiagnosed (all steps hollow). Pure.
+ * status encoder the readiness bar renders (replaces the ad-hoc per-surface
+ * diamond rows). `null`/`undefined` = undiagnosed (bar empty). Pure.
  */
 export function summarizeReadiness(level: ReadinessLevel | null | undefined): ReadinessSummary {
   if (level == null) {
-    return { filled: 0, total: READINESS_TOTAL, pip: 'idle', label: 'Undiagnosed', diagnosed: false };
+    return { filled: 0, total: READINESS_TOTAL, label: 'Undiagnosed', diagnosed: false };
   }
   const info = READINESS[level];
-  return { filled: info.level, total: READINESS_TOTAL, pip: info.pip, label: info.label, diagnosed: true };
+  return { filled: info.level, total: READINESS_TOTAL, label: info.label, diagnosed: true };
 }
 
-/** Section overall status (testSuite entry) → header pip. */
+/** Section overall status (testSuite entry) → header pip. Palette 3C: `fail`
+ *  moves off magenta (content, not danger) onto yellow, the one alert — the
+ *  status label still distinguishes fail from stale. */
 export function statusPip(status: string): PipStatus {
   switch (status) {
     case 'success': return 'green';
-    case 'fail': return 'magenta';
+    case 'fail': return 'yellow';
     case 'stale': return 'yellow';
     case 'running': return 'cyan';
     default: return 'idle';

@@ -102,7 +102,7 @@ export function SpecTestSectionCard({ section }: { section: SectionSpecTest }) {
             </div>
             {section.commitmentDelta && (
               <>
-                <Findings title="introduced breaks" findings={section.commitmentDelta.introduced} color="text-hld-magenta" />
+                <Findings title="introduced breaks" findings={section.commitmentDelta.introduced} color="text-hld-yellow" />
                 <Findings title="healed breaks" findings={section.commitmentDelta.healed} color="text-hld-green" />
               </>
             )}

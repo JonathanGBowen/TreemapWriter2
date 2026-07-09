@@ -9,7 +9,7 @@ import { useGestaltActions } from "./use-gestalt-actions";
 const ALIGNMENT: Record<WholeFromPart['alignment'], { pip: PipStatus; label: string }> = {
   aligned: { pip: 'green', label: 'aligned' },
   partial: { pip: 'yellow', label: 'center shifted' },
-  adrift: { pip: 'magenta', label: 'adrift' },
+  adrift: { pip: 'yellow', label: 'adrift' },
   'no-baseline': { pip: 'idle', label: 'no baseline' },
 };
 
@@ -55,14 +55,14 @@ function WholeFromPartCard({ result, stale, documentClaim }: { result: WholeFrom
 /** The recentering result: alternative centers of gravity + question-the-goal. */
 function RecenteringsCard({ result, stale }: { result: Recenterings; stale: boolean }) {
   return (
-    <div className="px-[15px] py-[13px] bg-[rgba(170,0,255,0.05)] border border-hld-purple/30">
-      <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-hld-purple mb-[9px] flex items-center gap-[7px]">
+    <div className="px-[15px] py-[13px] bg-[rgba(170,0,255,0.05)] border border-hld-feat-running/30">
+      <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-hld-feat-running mb-[9px] flex items-center gap-[7px]">
         <Pip status="purple" /> Recenter
         <StaleHint stale={stale} />
       </div>
       <div className="flex flex-col gap-[10px]">
         {result.options.map((o, i) => (
-          <div key={i} className="pl-[9px] border-l border-hld-purple/30">
+          <div key={i} className="pl-[9px] border-l border-hld-feat-running/30">
             <div className="text-[13px] leading-relaxed font-sans text-hld-text font-semibold">{o.center}</div>
             <div className="text-[12px] leading-relaxed font-sans text-hld-muted-text-2 mt-[2px]">{o.rationale}</div>
             <div className="text-[12px] leading-relaxed font-sans text-hld-muted-text-2 mt-[2px]">
@@ -116,7 +116,7 @@ export function GestaltActions() {
           onClick={runRecenter}
           disabled={isProcessing}
           title="Propose alternative centerings of this section, and question its goal"
-          className="flex items-center gap-[5px] font-mono text-[10px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-purple disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-[5px] font-mono text-[10px] tracking-[0.12em] uppercase text-hld-muted-text hover:text-hld-feat-running disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
         >
           <span className="text-[11px]">⟳</span> Recenter
         </button>

@@ -11,7 +11,8 @@ const fmtK = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
  * Make the context-fit pre-flight visible BEFORE Generate: estimated tokens for
  * exactly what the pass will send (section + active instruction + selected
  * sources) against the chosen model's window. Surfaces state by color + a fill
- * bar (green within budget, magenta on overflow) — the glass-box payoff.
+ * bar (green within budget, yellow — the one alert — on overflow) — the
+ * glass-box payoff.
  */
 export function RevisionTokenPreview() {
   const current = useCurrentSection();
@@ -45,11 +46,11 @@ export function RevisionTokenPreview() {
 
   const ratio = fit.usableTokens ? Math.min(1, fit.estimatedTokens / fit.usableTokens) : 0;
   const tone = fit.overflow
-    ? 'text-hld-magenta'
+    ? 'text-hld-yellow'
     : fit.unknownWindow
       ? 'text-hld-muted-text'
       : 'text-hld-green';
-  const barColor = fit.overflow ? 'bg-hld-magenta' : 'bg-hld-green';
+  const barColor = fit.overflow ? 'bg-hld-yellow' : 'bg-hld-green';
 
   return (
     <div className="flex flex-col gap-2">

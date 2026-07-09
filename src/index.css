@@ -9,24 +9,35 @@
   /* Inset wells — inputs, search box, deeper panels. */
   --color-hld-surface-3: #080d13;
 
-  /* State accents — each is ONE fixed meaning: cyan=active/selection/focus ·
-     green=done/safe · yellow=attention/developing · magenta=missing/failing ·
-     purple=running/secondary. (The audit retired the warm-accent inflation.) */
+  /* PALETTE 3C "dual-signature" — each of the four core accents is ONE fixed
+     meaning, directional: cyan = YOU (navigation · selection · cursor · focus ·
+     the one next action) · magenta = THE WORK (prose headings · claims · the
+     argument) · green = done/solid/saved · yellow = the single ALERT (stale ·
+     attention · destructive-warning). Purple survives only as the opt-in
+     feat-running hue below — never read as core state. */
   --color-hld-cyan: #00e8f5;
   --color-hld-magenta: #ff1060;
   --color-hld-green: #00e870;
   --color-hld-yellow: #ffe600;
-  --color-hld-purple: #aa00ff;
-  /* Orange is retained for ONE use only — the H5 prose heading. Never a general accent. */
-  --color-hld-orange: #ff8800;
+
+  /* Semantic aliases — prefer these in new code; they name the 3C meaning
+     directly instead of the raw hue. */
+  --color-accent-you: var(--color-hld-cyan);
+  --color-accent-work: var(--color-hld-magenta);
+  --color-accent-done: var(--color-hld-green);
+  --color-accent-alert: var(--color-hld-yellow);
 
   /* Feature accents — NAMESPACED (feat-*) so they never read as core state.
      confidence = Glass-Box confidence numerals + citation chips (was `gold`);
-     tone = the Tone-Adjustment chip + AI strain marker (was `indigo`). */
+     tone = the Tone-Adjustment chip + AI strain marker (was `indigo`);
+     running = rare in-flight/secondary marks (was the core `purple`, retired
+     under 3C — core accents are four, not five). */
   --color-hld-feat-confidence: #ffcc00;
   --color-hld-feat-tone: #7c8bff;
+  --color-hld-feat-running: #aa00ff;
 
   --color-hld-text: #c5d8e8;
+  --color-hld-text-bright: #ffffff;
   /* Decorative only — dividers, idle status squares, rules. ~2.6:1: NEVER as text
      (use --color-hld-muted-text). The audit names this `decor`; the legacy name
      `muted` is kept until the decorative call sites migrate (Tier 2). */
@@ -40,6 +51,22 @@
   /* Visible rule — collapses the retired border-2 (#1e293b), grid, and the
      scrollbar slates (#22364e/#2a4258) into one strong-border token. */
   --color-hld-border-strong: #1f3050;
+
+  /* Heading ladder — magenta INTENSITY, not a 6-hue rainbow (palette 3C).
+     Depth reads as fade, so the editor's markdown headings speak one hue ("the
+     work") + neutrals; teal never appears here — it's reserved for "you." Sizes
+     ride the existing --text-h-* scale above (unchanged). */
+  --color-heading-1: #ff1060;
+  --color-heading-2: #ff5c8a;
+  --color-heading-3: #ffa6c0;
+  --color-heading-4: var(--color-hld-text-bright);
+  --color-heading-5: var(--color-hld-text);
+  --color-heading-6: var(--color-hld-muted-text-2);
+
+  /* Readiness — a single teal-fill bar + a word, not a 4-hue diamond ladder
+     (palette 3C, Step 4). */
+  --readiness-fill: var(--color-hld-cyan);
+  --readiness-track: rgba(255, 255, 255, 0.06);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -183,9 +210,9 @@
     border-color: rgba(0, 232, 245, 0.35);
   }
 
-  /* diamond status pip — the ONE state vocabulary, everywhere.
-     green done/safe · yellow attention · magenta missing/failing ·
-     cyan active · hollow untouched. */
+  /* diamond status pip — the ONE state vocabulary, everywhere. Palette 3C:
+     green done/safe · yellow attention/missing/failing (the one alert) ·
+     cyan active/you · magenta content (never failing/danger) · hollow untouched. */
   .hld-pip {
     width: 6px; height: 6px;
     transform: rotate(45deg);
@@ -201,7 +228,7 @@
   .hld-pip-yellow  { background: var(--color-hld-yellow);  --pip-hue: var(--color-hld-yellow); }
   .hld-pip-magenta { background: var(--color-hld-magenta); --pip-hue: var(--color-hld-magenta); }
   .hld-pip-cyan    { background: var(--color-hld-cyan);    --pip-hue: var(--color-hld-cyan); }
-  .hld-pip-purple  { background: var(--color-hld-purple);  --pip-hue: var(--color-hld-purple); }
+  .hld-pip-purple  { background: var(--color-hld-feat-running);  --pip-hue: var(--color-hld-feat-running); }
   .hld-pip-dim     { background: var(--color-hld-muted); }
   .hld-pip-idle    { background: transparent; border: 1px solid var(--color-hld-muted); }
 
@@ -297,7 +324,7 @@
     box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-magenta) 20%, transparent);
   }
   .hld-glow-purple {
-    box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-purple) 20%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-hld-feat-running) 20%, transparent);
   }
   .hld-text-glow {
     text-shadow: 0 0 8px color-mix(in srgb, var(--color-hld-cyan) 50%, transparent);

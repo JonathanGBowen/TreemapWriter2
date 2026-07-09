@@ -43,7 +43,7 @@ function MoveRow({
             <span className={`inline-block text-[10px] transition-transform ${expanded ? 'rotate-90' : ''}`}>▸</span>
           </button>
         )}
-        <button type="button" onClick={() => onRemove(index)} aria-label="Remove move" className="text-transparent group-hover:text-hld-muted-text hover:!text-hld-magenta shrink-0 mt-[4px] transition-colors">
+        <button type="button" onClick={() => onRemove(index)} aria-label="Remove move" className="text-transparent group-hover:text-hld-muted-text hover:!text-hld-yellow shrink-0 mt-[4px] transition-colors">
           <X size={10} />
         </button>
       </div>

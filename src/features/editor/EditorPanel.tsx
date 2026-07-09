@@ -492,7 +492,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
               </span>
            )}
            {currentSection && testSuite[currentSection.id]?.status === 'fail' && (
-              <span className="bg-hld-magenta/10 text-hld-magenta border border-hld-magenta/20 text-ui-meta uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
+              <span className="bg-hld-yellow/10 text-hld-yellow border border-hld-yellow/20 text-ui-meta uppercase font-bold px-[7px] py-[3px] tracking-[0.1em] font-mono flex items-center gap-1">
                 ✕ Failing
               </span>
            )}

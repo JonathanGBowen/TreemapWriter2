@@ -44,7 +44,7 @@ export const Route: React.FC<{
   const b = m[arc.target];
   if (!a || !b) return null;
   const ref = arc.type === 'reference';
-  const base = health === 'broken' ? TK.magenta : health === 'weak' ? TK.yellow : TK.accent;
+  const base = health === 'solid' ? TK.accent : TK.yellow;
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const d = Math.hypot(dx, dy) || 1;
@@ -88,13 +88,13 @@ export const Route: React.FC<{
         // reading-order violation: a back-chevron near the midpoint, pointing the
         // way the dependency actually flows (earlier in the document).
         <g transform={`translate(${mx},${my}) rotate(${ang})`}>
-          <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.magenta} strokeWidth="1.5" />
+          <path d="M0,0 L11,-5 L11,5 Z" fill="none" stroke={TK.yellow} strokeWidth="1.5" />
         </g>
       )}
       {health === 'broken' && (
         <g transform={`translate(${mx},${my})`}>
-          <circle r="8.5" fill={TK.bg} stroke={TK.magenta} strokeWidth="1.6" />
-          <path d="M-3.4,-3.4 L3.4,3.4 M3.4,-3.4 L-3.4,3.4" stroke={TK.magenta} strokeWidth="2" strokeLinecap="round" />
+          <circle r="8.5" fill={TK.bg} stroke={TK.yellow} strokeWidth="1.6" />
+          <path d="M-3.4,-3.4 L3.4,3.4 M3.4,-3.4 L-3.4,3.4" stroke={TK.yellow} strokeWidth="2" strokeLinecap="round" />
         </g>
       )}
     </g>

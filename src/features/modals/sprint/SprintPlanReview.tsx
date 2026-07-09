@@ -222,8 +222,8 @@ export function SprintPlanReview(props: SprintPlanReviewProps) {
 
         {/* The plan. */}
         <div className="border border-hld-border bg-hld-bgDeep min-h-[80px]">
-          <div className="flex items-center justify-between px-[12px] py-[9px] border-b border-hld-border bg-hld-purple/[0.06]">
-            <span className={`font-mono text-[9px] tracking-[0.14em] uppercase ${isFallback ? 'text-hld-yellow' : 'text-hld-purple'}`}>
+          <div className="flex items-center justify-between px-[12px] py-[9px] border-b border-hld-border bg-hld-feat-running/[0.06]">
+            <span className={`font-mono text-[9px] tracking-[0.14em] uppercase ${isFallback ? 'text-hld-yellow' : 'text-hld-feat-running'}`}>
               {processing ? 'Generating…' : isFallback ? 'Default plan · coach offline' : 'Generated plan'}
             </span>
             <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-hld-cyan">
@@ -273,7 +273,7 @@ export function SprintPlanReview(props: SprintPlanReviewProps) {
         )}
 
         <div className="flex items-center gap-[7px] font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text">
-          <Pip status="magenta" size="sm" /> Plan locks when the sprint starts.{' '}
+          <Pip status="yellow" size="sm" /> Plan locks when the sprint starts.{' '}
           {plan && <Sparkles size={11} className="inline opacity-60" />}
         </div>
       </div>
