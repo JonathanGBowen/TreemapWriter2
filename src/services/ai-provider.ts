@@ -1,6 +1,7 @@
 import type {
   Section,
   SectionAnalysis,
+  AnalysisLens,
   SectionSpec,
   DialogueMessage,
   DiagnosticResult,
@@ -120,6 +121,8 @@ export interface AnalyzeSectionInput {
   sectionTitle: string;
   /** section.fullContent (whole subtree), captured at call time. */
   sectionText: string;
+  /** The analytical lens (persona + instructions) to read the text through. */
+  lens: AnalysisLens;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;
@@ -131,6 +134,8 @@ export interface RefactorAnalysisInput {
   sectionText: string;
   /** The analysis version the dialogue interrogated. */
   analysis: SectionAnalysis;
+  /** The lens of the version being refined — the refactor stays in its frame. */
+  lens: AnalysisLens;
   dialogue: DialogueMessage[];
   dialogueContext: string | null;
   config: PromptsConfig;

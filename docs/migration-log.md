@@ -1485,3 +1485,48 @@ on the provider-agnostic `LLMRequest` is a deliberate pragmatic leak.
 Content Suggestions → they now use it (previously stuck on the boot default).
 
 **Rollback.** Revert this commit; the feature commit above stands on its own.
+
+---
+
+## 2026-06-14 — Feature: analytical lenses (ScribesGambit spells) for analysis
+
+**What changed.** The Analysis tab now reads a section through a selectable
+**analytical lens** — ScribesGambit's five "spells", ported verbatim:
+Classical Logic (default), Deconstructionist Lens, Rhetorical Crucible,
+Historical Materialist, Mythopoeic Synthesis. The prior single generic
+analysis prompt is replaced; the lens supplies the interpretive frame.
+
+1. **Lenses.** New `AnalysisLens` type (`{ id, name, persona, instructions }`)
+   and `DEFAULT_ANALYSIS_LENSES` + `findLens` + `DEFAULT_LENS_ID` in
+   [lib/analysis-lenses.ts](../src/lib/analysis-lenses.ts). Built-in constants
+   (not promptsConfig — no schema/Rust churn). The lens `persona` is sent as
+   the model's system instruction and `instructions` as content, mirroring
+   ScribesGambit's `performExegeticalAnalysis(text, persona, instructions)`.
+2. **Shared contract.** `services/prompts/analysis.md` is now the shared
+   JSON/format contract (schema + premise-flexibility + fragmentary clause)
+   that every lens fills — still user-editable via `PromptsGraphModal`. The
+   premise-count softening the user asked for lives here, so it applies to
+   every lens.
+3. **Versions record the lens.** `AnalysisVersion` gains optional
+   `lensId`/`lensName`; analyses are labeled by lens ("Classical Logic 1",
+   numbered per lens), refactors stay in their source version's lens
+   (persona re-asserted via a "maintain lens" line). The Analysis tab has a
+   lens picker by the Analyze button (defaults to the active version's lens,
+   else Classical Logic) and a "Lens · <name>" caption on the active version.
+   No Rust change: the lens fields ride the existing `analysis` JSON blob.
+4. **Provider.** `AnalyzeSectionInput`/`RefactorAnalysisInput` gain `lens`;
+   `analyzeSection` sets `systemInstruction` from the persona.
+
+**What to verify.** `npm test` (54 pass), `npm run typecheck`, `npm run lint`
+(0 errors), `npm run build`. Manual: Analysis tab shows a lens dropdown
+defaulting to Classical Logic; picking a different lens and analyzing labels
+the version by that lens and shows the "Lens ·" caption; re-analyze keeps the
+last lens; refactor keeps the source lens.
+
+**Rollback.** Revert the commit. `analysis.md` returns to the standalone
+prompt; `lensId`/`lensName` on old versions are ignored by the prior build
+(optional fields). Additive; no data migration.
+
+**Current state.** Analysis is lens-driven (five ScribesGambit lenses,
+Classical Logic default); the shared JSON contract remains the one editable
+analysis prompt.

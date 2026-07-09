@@ -81,7 +81,7 @@ export const PromptsGraphModal: React.FC<PromptsGraphModalProps> = ({
     generatePersonasPrompt: "The creative engine that generates AI reviewer personas based on document sampling.",
     suggestContentPrompt: "The ghostwriter persona used when generating specific content suggestions based on section specs.",
     dependenciesPrompt: "Logic for identifying structural prerequisites and references between different document sections.",
-    analysisPrompt: "Exegetical reconstruction of a section's argument: thesis, key concepts, premises, conclusion, objections.",
+    analysisPrompt: "Shared output contract for analysis: the JSON schema every analytical lens fills (thesis, concepts, premises, conclusion, objections). The lenses themselves are built-in.",
     refactorAnalysisPrompt: "Synthesizes a Socratic dialogue back into a refined analysis version.",
     dialoguePrompt: "The Socratic partner persona that interrogates parts of an analysis with the author.",
   };

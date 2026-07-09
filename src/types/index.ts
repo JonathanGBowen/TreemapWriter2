@@ -115,16 +115,32 @@ export interface DialogueMessage {
   text: string;
 }
 
+/**
+ * An analytical lens (ScribesGambit's "spell"): a persona (the model's
+ * system-instruction voice) plus instructions (the interpretive frame).
+ * All lenses yield the same SectionAnalysis shape; they differ only in how
+ * they read the text. Built-in set lives in lib/analysis-lenses.ts.
+ */
+export interface AnalysisLens {
+  id: string;
+  name: string;
+  persona: string;
+  instructions: string;
+}
+
 export interface AnalysisVersion {
   id: string;
   timestamp: number;
-  /** Generated, terse: "analysis 1", "refactor 2" */
+  /** Generated, terse: "Classical Logic 1", "refactor 2" */
   label: string;
   kind: 'analysis' | 'refactor';
   result: SectionAnalysis;
   /** Hash of section.fullContent at generation time — drives the stale badge. */
   inputHash: string;
   modelId?: string;
+  /** The analytical lens that produced this version. */
+  lensId?: string;
+  lensName?: string;
   /** The dialogue that produced this version (refactors only). */
   sourceDialogue?: DialogueMessage[];
 }

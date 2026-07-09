@@ -122,10 +122,28 @@ export const withDialogueContext = (
 export const withClearedDialogue = (suite: TestSuite, sectionId: string): TestSuite =>
   withAnalysisState(suite, sectionId, (s) => ({ ...s, dialogue: [], dialogueContext: null }));
 
+/** A lens's display identity, enough to label and re-frame a version. */
+export interface LensRef {
+  id: string;
+  name: string;
+}
+
+/**
+ * Analyses are numbered per lens ("Classical Logic 1", "Classical Logic 2",
+ * "Deconstructionist Lens 1"); refactors are numbered across all refactors.
+ */
 export const makeVersionLabel = (
   versions: AnalysisVersion[],
   kind: 'analysis' | 'refactor',
-): string => `${kind} ${versions.filter((v) => v.kind === kind).length + 1}`;
+  lens?: LensRef,
+): string => {
+  if (kind === 'refactor') {
+    return `refactor ${versions.filter((v) => v.kind === 'refactor').length + 1}`;
+  }
+  const name = lens?.name ?? 'analysis';
+  const n = versions.filter((v) => v.kind === 'analysis' && v.lensId === lens?.id).length + 1;
+  return `${name} ${n}`;
+};
 
 // Monotonic per-session counter so two versions created in the same
 // millisecond still get distinct ids — `av_${Date.now()}` alone can collide,
@@ -137,14 +155,16 @@ export const makeAnalysisVersion = (args: {
   prevVersions: AnalysisVersion[];
   result: SectionAnalysis;
   inputHash: string;
+  lens?: LensRef;
   sourceDialogue?: DialogueMessage[];
 }): AnalysisVersion => ({
   id: `av_${Date.now()}_${versionSeq++}`,
   timestamp: Date.now(),
-  label: makeVersionLabel(args.prevVersions, args.kind),
+  label: makeVersionLabel(args.prevVersions, args.kind, args.lens),
   kind: args.kind,
   result: args.result,
   inputHash: args.inputHash,
+  ...(args.lens ? { lensId: args.lens.id, lensName: args.lens.name } : {}),
   ...(args.sourceDialogue ? { sourceDialogue: args.sourceDialogue } : {}),
 });
 
@@ -158,14 +178,29 @@ export const formatTranscript = (
   return [context ? `FOCUS: ${context}` : null, ...lines].filter(Boolean).join('\n');
 };
 
-export const buildAnalysisRequestText = (
-  sectionTitle: string,
-  sectionText: string,
-  prompt: string,
-): string =>
-  [prompt, '', `SECTION: "${sectionTitle}"`, '', 'TEXT TO ANALYZE:', '---', sectionText, '---'].join(
-    '\n',
-  );
+/**
+ * Assemble the analysis request: the lens's interpretive instructions, then
+ * the shared JSON/format contract, then the section text. The lens persona
+ * travels separately as the model's system instruction.
+ */
+export const buildAnalysisRequestText = (args: {
+  sectionTitle: string;
+  sectionText: string;
+  lensInstructions: string;
+  contract: string;
+}): string =>
+  [
+    args.lensInstructions,
+    '',
+    args.contract,
+    '',
+    `SECTION: "${args.sectionTitle}"`,
+    '',
+    'TEXT TO ANALYZE:',
+    '---',
+    args.sectionText,
+    '---',
+  ].join('\n');
 
 export const buildRefactorRequestText = (args: {
   sectionTitle: string;
@@ -173,9 +208,14 @@ export const buildRefactorRequestText = (args: {
   analysisJson: string;
   transcript: string;
   prompt: string;
+  /** Keeps the refined version in the same interpretive frame as its source. */
+  lens?: { name: string; persona: string };
 }): string =>
   [
     args.prompt,
+    ...(args.lens
+      ? ['', `ANALYTICAL LENS TO MAINTAIN: "${args.lens.name}" — ${args.lens.persona}`]
+      : []),
     '',
     `SECTION: "${args.sectionTitle}"`,
     '',

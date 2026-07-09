@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import type { DialogueMessage, SectionAnalysisState } from '../../types';
+import type { AnalysisLens, DialogueMessage, SectionAnalysisState } from '../../types';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { computeHash } from '../../lib/utils';
 import { makeAnalysisVersion } from '../../lib/analysis-helpers';
+import { findLens } from '../../lib/analysis-lenses';
 import { useCurrentSection } from './use-current-section';
 
 /**
@@ -86,7 +87,7 @@ export const useAnalysisActions = () => {
   /** In-flight model turn for the live bubble; null when nothing streams. */
   const [streaming, setStreaming] = useState<{ sectionId: string; text: string } | null>(null);
 
-  const runAnalysis = useCallback(async () => {
+  const runAnalysis = useCallback(async (lens: AnalysisLens) => {
     if (!currentSection) return;
     // Capture at call time: edits or a section switch mid-flight must not
     // redirect where the result lands or what the inputHash describes.
@@ -102,6 +103,7 @@ export const useAnalysisActions = () => {
       const result = await aiProvider.analyzeSection({
         sectionTitle,
         sectionText,
+        lens,
         config: promptsConfig,
       });
       const version = makeAnalysisVersion({
@@ -109,6 +111,7 @@ export const useAnalysisActions = () => {
         prevVersions,
         result,
         inputHash: computeHash(sectionText),
+        lens: { id: lens.id, name: lens.name },
       });
       addAnalysisVersion(sectionId, version);
     } catch (e) {
@@ -212,12 +215,17 @@ export const useAnalysisActions = () => {
     const dialogue = state.dialogue;
     if (!dialogue.some((m) => m.role === 'user') || !dialogue.some((m) => m.role === 'model')) return;
 
+    // Refactors stay in the source version's interpretive frame (default
+    // lens for pre-lens versions).
+    const lens = findLens(active.lensId);
+
     setIsProcessing(true);
     try {
       const result = await aiProvider.refactorAnalysis({
         sectionTitle,
         sectionText,
         analysis: active.result,
+        lens,
         dialogue,
         dialogueContext: state.dialogueContext,
         config: promptsConfig,
@@ -227,6 +235,7 @@ export const useAnalysisActions = () => {
         prevVersions: state.versions,
         result,
         inputHash: computeHash(sectionText),
+        lens: { id: lens.id, name: lens.name },
         sourceDialogue: dialogue,
       });
       addAnalysisVersion(sectionId, version);

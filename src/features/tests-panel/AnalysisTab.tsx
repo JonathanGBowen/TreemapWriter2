@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
-import { ChevronRight, MessageSquareQuote, Network, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquareQuote, Network, RefreshCw } from "lucide-react";
 import type { AnalysisVersion, DialogueMessage, SectionAnalysis } from "../../types";
 import { useStore } from "../../state";
 import { computeHash } from "../../lib/utils";
 import { interrogateContextFor } from "../../lib/analysis-helpers";
+import { DEFAULT_ANALYSIS_LENSES, DEFAULT_LENS_ID, findLens } from "../../lib/analysis-lenses";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
 
@@ -140,19 +141,88 @@ const BulletList: React.FC<{ items: string[]; marker: string }> = ({ items, mark
   </div>
 );
 
-const AnalyzeButton: React.FC<{ hasVersion: boolean; busy: boolean; onRun: () => void }> = ({ hasVersion, busy, onRun }) => (
-  <button
-    onClick={onRun}
-    disabled={busy}
-    className="w-full p-[11px] bg-transparent border border-[rgba(0,232,245,0.3)] text-hld-cyan font-mono uppercase tracking-[0.14em] text-[8px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[rgba(0,232,245,0.06)] hover:shadow-[0_0_20px_rgba(0,232,245,0.25)] bracketed"
-    style={{"--br-color": "var(--tw-colors-hld-cyan)"} as React.CSSProperties}
-  >
-    {busy
-      ? <>Analyzing...</>
-      : hasVersion
-        ? <><RefreshCw size={10} /> Re-analyze</>
-        : <><Network size={10} /> Analyze</>}
-  </button>
+/** The five analysis cards, each with its own interrogate affordance. */
+const AnalysisCards: React.FC<{
+  result: SectionAnalysis;
+  onInterrogate: (context: string) => void;
+}> = ({ result, onInterrogate }) => (
+  <>
+    <AnalysisCard label="Thesis" accent="text-hld-cyan" onAsk={() => onInterrogate(interrogateContextFor.thesis(result))}>
+      <p className="text-[10px] text-hld-text font-sans leading-[1.6]">{result.centralThesis}</p>
+    </AnalysisCard>
+
+    {result.keyConcepts.length > 0 && (
+      <AnalysisCard label="Concepts" accent="text-hld-yellow" onAsk={() => onInterrogate(interrogateContextFor.concepts(result))}>
+        <div className="space-y-[4px]">
+          {result.keyConcepts.map((c, i) => (
+            <div key={i} className="text-[10px] font-sans leading-[1.6]">
+              <span className="font-bold text-hld-cyan">{c.term}</span>
+              <span className="text-hld-text"> — {c.definition}</span>
+            </div>
+          ))}
+        </div>
+      </AnalysisCard>
+    )}
+
+    <AnalysisCard label="Argument" accent="text-hld-magenta" onAsk={() => onInterrogate(interrogateContextFor.argument(result))}>
+      <ArgumentBody argument={result.argument} />
+    </AnalysisCard>
+
+    {result.supportingArguments.length > 0 && (
+      <AnalysisCard label="Support" accent="text-hld-green" onAsk={() => onInterrogate(interrogateContextFor.support(result))}>
+        <BulletList items={result.supportingArguments} marker="bg-hld-green" />
+      </AnalysisCard>
+    )}
+
+    {result.potentialObjections.length > 0 && (
+      <AnalysisCard label="Objections" accent="text-hld-purple" onAsk={() => onInterrogate(interrogateContextFor.objections(result))}>
+        <BulletList items={result.potentialObjections} marker="bg-hld-magenta" />
+      </AnalysisCard>
+    )}
+  </>
+);
+
+/** Lens selector + Analyze button. The lens frames the next analysis. */
+const AnalyzeFooter: React.FC<{
+  hasVersion: boolean;
+  busy: boolean;
+  lensId: string;
+  onLensChange: (id: string) => void;
+  onRun: () => void;
+}> = ({ hasVersion, busy, lensId, onLensChange, onRun }) => (
+  <div className="space-y-[6px]">
+    <div className="flex items-center gap-[6px]">
+      <span className="text-[7px] font-mono uppercase tracking-[0.15em] text-hld-muted shrink-0">Lens</span>
+      <div className="relative flex-1">
+        <select
+          value={lensId}
+          disabled={busy}
+          onChange={(e) => onLensChange(e.target.value)}
+          className="w-full pl-2 pr-6 py-1.5 text-[8px] font-mono uppercase tracking-[0.14em] bg-hld-surface2 border border-hld-border rounded-none text-hld-text outline-none focus:border-hld-cyan appearance-none cursor-pointer disabled:opacity-35"
+          title="Analytical lens for the next analysis"
+        >
+          {DEFAULT_ANALYSIS_LENSES.map((l) => (
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
+        <div className="absolute right-[6px] top-1/2 -translate-y-1/2 pointer-events-none text-hld-muted">
+          <ChevronDown size={10} />
+        </div>
+      </div>
+    </div>
+    <button
+      onClick={onRun}
+      disabled={busy}
+      className="w-full p-[11px] bg-transparent border border-[rgba(0,232,245,0.3)] text-hld-cyan font-mono uppercase tracking-[0.14em] text-[8px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[rgba(0,232,245,0.06)] hover:shadow-[0_0_20px_rgba(0,232,245,0.25)] bracketed"
+      style={{"--br-color": "var(--tw-colors-hld-cyan)"} as React.CSSProperties}
+    >
+      {busy
+        ? <>Analyzing...</>
+        : hasVersion
+          ? <><RefreshCw size={10} /> Re-analyze</>
+          : <><Network size={10} /> Analyze</>}
+    </button>
+  </div>
 );
 
 export const AnalysisTab: React.FC = () => {
@@ -168,6 +238,9 @@ export const AnalysisTab: React.FC = () => {
     () => computeHash(currentSection?.fullContent ?? ''),
     [currentSection?.fullContent],
   );
+  // null = "not explicitly chosen": fall back to the active version's lens,
+  // so Re-analyze repeats it and the picker reflects what you're looking at.
+  const [chosenLensId, setChosenLensId] = useState<string | null>(null);
 
   if (!currentSection) return null;
 
@@ -177,7 +250,16 @@ export const AnalysisTab: React.FC = () => {
   // Surfaced, never auto-invalidated: versions are history, not cache.
   const edited = !!active && active.inputHash !== contentHash;
 
-  const analyzeButton = <AnalyzeButton hasVersion={!!active} busy={isProcessing} onRun={runAnalysis} />;
+  const effectiveLensId = chosenLensId ?? active?.lensId ?? DEFAULT_LENS_ID;
+  const analyzeFooter = (
+    <AnalyzeFooter
+      hasVersion={!!active}
+      busy={isProcessing}
+      lensId={effectiveLensId}
+      onLensChange={setChosenLensId}
+      onRun={() => runAnalysis(findLens(effectiveLensId))}
+    />
+  );
 
   if (!active) {
     return (
@@ -186,12 +268,10 @@ export const AnalysisTab: React.FC = () => {
           <Network size={32} className="mb-2 opacity-50" />
           <p className="font-mono uppercase tracking-[0.14em] text-[8px]">No analysis</p>
         </div>
-        {analyzeButton}
+        {analyzeFooter}
       </div>
     );
   }
-
-  const result = active.result;
 
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-[10px] bg-[#080d13]">
@@ -200,48 +280,24 @@ export const AnalysisTab: React.FC = () => {
         active={active}
         edited={edited}
         onSelect={(versionId) => setActiveAnalysisVersion(currentSection.id, versionId)}
-        onAskEntire={() => interrogate(interrogateContextFor.entire(result))}
+        onAskEntire={() => interrogate(interrogateContextFor.entire(active.result))}
       />
 
-      <AnalysisCard label="Thesis" accent="text-hld-cyan" onAsk={() => interrogate(interrogateContextFor.thesis(result))}>
-        <p className="text-[10px] text-hld-text font-sans leading-[1.6]">{result.centralThesis}</p>
-      </AnalysisCard>
-
-      {result.keyConcepts.length > 0 && (
-        <AnalysisCard label="Concepts" accent="text-hld-yellow" onAsk={() => interrogate(interrogateContextFor.concepts(result))}>
-          <div className="space-y-[4px]">
-            {result.keyConcepts.map((c, i) => (
-              <div key={i} className="text-[10px] font-sans leading-[1.6]">
-                <span className="font-bold text-hld-cyan">{c.term}</span>
-                <span className="text-hld-text"> — {c.definition}</span>
-              </div>
-            ))}
-          </div>
-        </AnalysisCard>
+      {active.lensName && (
+        <div className="flex items-center gap-[4px] text-[7px] font-mono uppercase tracking-[0.15em] text-hld-muted-text">
+          <div className="w-[3px] h-[3px] rotate-45 bg-hld-cyan shadow-[0_0_5px_var(--tw-colors-hld-cyan)]" />
+          Lens · {active.lensName}
+        </div>
       )}
 
-      <AnalysisCard label="Argument" accent="text-hld-magenta" onAsk={() => interrogate(interrogateContextFor.argument(result))}>
-        <ArgumentBody argument={result.argument} />
-      </AnalysisCard>
-
-      {result.supportingArguments.length > 0 && (
-        <AnalysisCard label="Support" accent="text-hld-green" onAsk={() => interrogate(interrogateContextFor.support(result))}>
-          <BulletList items={result.supportingArguments} marker="bg-hld-green" />
-        </AnalysisCard>
-      )}
-
-      {result.potentialObjections.length > 0 && (
-        <AnalysisCard label="Objections" accent="text-hld-purple" onAsk={() => interrogate(interrogateContextFor.objections(result))}>
-          <BulletList items={result.potentialObjections} marker="bg-hld-magenta" />
-        </AnalysisCard>
-      )}
+      <AnalysisCards result={active.result} onInterrogate={interrogate} />
 
       {/* Source dialogue (refactor provenance) */}
       {active.sourceDialogue && active.sourceDialogue.length > 0 && (
         <SourceDialogue dialogue={active.sourceDialogue} />
       )}
 
-      {analyzeButton}
+      {analyzeFooter}
     </div>
   );
 };

@@ -14,6 +14,7 @@ import {
   withDialogue,
   withDialogueContext,
 } from '../analysis-helpers';
+import { DEFAULT_ANALYSIS_LENSES, DEFAULT_LENS_ID, findLens } from '../analysis-lenses';
 import type { AnalysisVersion, SectionAnalysis, TestSuite } from '../../types';
 
 const validPayload = {
@@ -156,39 +157,81 @@ describe('testSuite updaters', () => {
 });
 
 describe('makeVersionLabel', () => {
-  it('counts each kind independently', () => {
+  const classical = { id: 'lens-classical-logic', name: 'Classical Logic' };
+  const decon = { id: 'lens-deconstruction', name: 'Deconstructionist Lens' };
+
+  it('labels analyses by lens name, numbered per lens', () => {
+    expect(makeVersionLabel([], 'analysis', classical)).toBe('Classical Logic 1');
     const versions = [
-      makeVersion({ kind: 'refactor' }),
-      makeVersion({ kind: 'analysis' }),
-      makeVersion({ kind: 'analysis' }),
+      makeVersion({ kind: 'analysis', lensId: classical.id }),
+      makeVersion({ kind: 'analysis', lensId: decon.id }),
+      makeVersion({ kind: 'analysis', lensId: classical.id }),
     ];
+    expect(makeVersionLabel(versions, 'analysis', classical)).toBe('Classical Logic 3');
+    expect(makeVersionLabel(versions, 'analysis', decon)).toBe('Deconstructionist Lens 2');
+  });
+
+  it('numbers refactors across all refactors regardless of lens', () => {
+    const versions = [makeVersion({ kind: 'refactor' }), makeVersion({ kind: 'analysis' })];
+    expect(makeVersionLabel(versions, 'refactor', classical)).toBe('refactor 2');
+  });
+
+  it('falls back to "analysis" when no lens is given', () => {
     expect(makeVersionLabel([], 'analysis')).toBe('analysis 1');
-    expect(makeVersionLabel(versions, 'analysis')).toBe('analysis 3');
-    expect(makeVersionLabel(versions, 'refactor')).toBe('refactor 2');
   });
 });
 
 describe('makeAnalysisVersion', () => {
-  it('builds a labeled version and attaches sourceDialogue only for refactors', () => {
+  const lens = { id: 'lens-classical-logic', name: 'Classical Logic' };
+
+  it('records the lens and labels the analysis by it', () => {
     const analysis = makeAnalysisVersion({
       kind: 'analysis',
       prevVersions: [],
       result: validPayload as SectionAnalysis,
       inputHash: 'h1',
+      lens,
     });
-    expect(analysis.label).toBe('analysis 1');
+    expect(analysis.label).toBe('Classical Logic 1');
+    expect(analysis.lensId).toBe('lens-classical-logic');
+    expect(analysis.lensName).toBe('Classical Logic');
     expect(analysis.id).toMatch(/^av_/);
     expect(analysis.sourceDialogue).toBeUndefined();
+  });
 
+  it('carries the lens onto a refactor and attaches sourceDialogue', () => {
+    const analysis = makeAnalysisVersion({
+      kind: 'analysis', prevVersions: [], result: validPayload as SectionAnalysis, inputHash: 'h1', lens,
+    });
     const refactor = makeAnalysisVersion({
       kind: 'refactor',
       prevVersions: [analysis],
       result: validPayload as SectionAnalysis,
       inputHash: 'h2',
+      lens,
       sourceDialogue: [{ role: 'user', text: 'q' }],
     });
     expect(refactor.label).toBe('refactor 1');
+    expect(refactor.lensName).toBe('Classical Logic');
     expect(refactor.sourceDialogue).toEqual([{ role: 'user', text: 'q' }]);
+  });
+});
+
+describe('findLens', () => {
+  it('returns the requested lens, or the default for unknown/missing ids', () => {
+    expect(findLens('lens-rhetoric').name).toBe('Rhetorical Crucible');
+    expect(findLens(undefined).id).toBe(DEFAULT_LENS_ID);
+    expect(findLens('nonexistent').id).toBe(DEFAULT_LENS_ID);
+  });
+
+  it('ships all five ScribesGambit lenses with Classical Logic default', () => {
+    expect(DEFAULT_ANALYSIS_LENSES).toHaveLength(5);
+    expect(DEFAULT_ANALYSIS_LENSES[0].id).toBe(DEFAULT_LENS_ID);
+    expect(DEFAULT_ANALYSIS_LENSES[0].name).toBe('Classical Logic');
+    for (const lens of DEFAULT_ANALYSIS_LENSES) {
+      expect(lens.persona.length).toBeGreaterThan(0);
+      expect(lens.instructions).toContain('Central Thesis');
+    }
   });
 });
 
@@ -206,11 +249,30 @@ describe('prompt assembly', () => {
     );
   });
 
-  it('buildAnalysisRequestText contains prompt, title, and text', () => {
-    const out = buildAnalysisRequestText('Intro', 'Body text.', 'PROMPT');
-    expect(out).toContain('PROMPT');
+  it('buildAnalysisRequestText contains lens instructions, contract, title, and text', () => {
+    const out = buildAnalysisRequestText({
+      sectionTitle: 'Intro',
+      sectionText: 'Body text.',
+      lensInstructions: 'LENS INSTRUCTIONS',
+      contract: 'JSON CONTRACT',
+    });
+    expect(out).toContain('LENS INSTRUCTIONS');
+    expect(out).toContain('JSON CONTRACT');
     expect(out).toContain('SECTION: "Intro"');
     expect(out).toContain('Body text.');
+  });
+
+  it('buildRefactorRequestText injects the lens continuity line when given a lens', () => {
+    const out = buildRefactorRequestText({
+      sectionTitle: 'Intro',
+      sectionText: 'Original body.',
+      analysisJson: '{}',
+      transcript: 'user: q',
+      prompt: 'REFACTOR PROMPT',
+      lens: { name: 'Classical Logic', persona: 'A strict logician.' },
+    });
+    expect(out).toContain('ANALYTICAL LENS TO MAINTAIN: "Classical Logic"');
+    expect(out).toContain('A strict logician.');
   });
 
   it('buildRefactorRequestText contains all four blocks', () => {

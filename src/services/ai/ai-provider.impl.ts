@@ -275,12 +275,19 @@ export class MultiProviderAIProvider implements AIProvider {
   }
 
   async analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis> {
-    const prompt = buildAnalysisRequestText(
-      input.sectionTitle,
-      input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
-      input.config.analysisPrompt,
-    );
-    return this.generateAnalysis('analyzeSection', input, prompt);
+    const { lens } = input;
+    const prompt = buildAnalysisRequestText({
+      sectionTitle: input.sectionTitle,
+      sectionText: input.sectionText.slice(0, ANALYSIS_INPUT_CAP),
+      lensInstructions: lens.instructions,
+      contract: input.config.analysisPrompt,
+    });
+    // The lens persona travels as the system instruction (mirrors ScribesGambit).
+    const systemInstruction =
+      `You are a renowned philosopher and critical-thinking expert performing an exegetical ` +
+      `reconstruction (not a summary). Adopt this analytical lens: "${lens.persona}". Analyze the ` +
+      `provided text through that lens and respond only with a valid JSON object matching the schema.`;
+    return this.generateAnalysis('analyzeSection', input, prompt, undefined, systemInstruction);
   }
 
   async refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis> {
@@ -290,6 +297,8 @@ export class MultiProviderAIProvider implements AIProvider {
       analysisJson: JSON.stringify(input.analysis, null, 2),
       transcript: formatTranscript(input.dialogue, input.dialogueContext),
       prompt: input.config.refactorAnalysisPrompt,
+      // Keep the refined version in the source version's interpretive frame.
+      lens: { name: input.lens.name, persona: input.lens.persona },
     });
     return this.generateAnalysis(
       'refactorAnalysis',
@@ -305,11 +314,13 @@ export class MultiProviderAIProvider implements AIProvider {
     input: OverrideFields,
     prompt: string,
     parseError = 'Analysis response could not be parsed.',
+    systemInstruction?: string,
   ): Promise<SectionAnalysis> {
     const choice = this.choose(kind, input);
     const text = await this.clientFor(choice.provider).generateText({
       model: choice.model,
       prompt,
+      systemInstruction,
       json: true,
       thinkingBudget: choice.thinkingBudget,
       maxTokens: MAX_OUTPUT_TOKENS,
