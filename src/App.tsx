@@ -8,7 +8,8 @@ import { type Command } from "./features/modals/CommandPaletteModal";
 import { ConfirmModal } from "./features/modals/ConfirmModal";
 import { Tutorial } from "./features/tutorial/Tutorial";
 import { useLegacyMigration } from "./features/migration/use-legacy-migration";
-import { parseMarkdown, flattenSectionsForIndex } from "./lib/utils";
+import { parseMarkdown, flattenSectionsForIndex, buildRootSection } from "./lib/utils";
+import { replaceSectionContent } from "./lib/section-edit";
 import { repository } from "./services/repository-registry";
 import { selectSpecMap } from "./lib/spec-map";
 import { createMarkdownExport } from "./lib/markdownExport";
@@ -46,12 +47,13 @@ const findSection = (nodes: Section[], id: string): Section | null => {
   return null;
 };
 
+// Deepest section CONTAINING the line — the selection-retention fallback when a
+// derived id dies (heading rename, undo past a structural edit). Containment
+// (not exact heading-line match) so the caret's position always names a home.
 const findSectionByLine = (nodes: Section[], line: number): Section | null => {
   for (const node of nodes) {
-    if (node.startLine === line) return node;
-    if (node.children) {
-      const found = findSectionByLine(node.children, line);
-      if (found) return found;
+    if (line >= node.startLine && line <= node.endLine) {
+      return findSectionByLine(node.children, line) || node;
     }
   }
   return null;
@@ -63,7 +65,7 @@ export const App = () => {
   // so App no longer over-subscribes (and no longer re-renders on their churn).
   const {
     activeProjectId, hasOpenProject, markdown, projectName, testSuite,
-    localContent, sections, selectedId, activeLineIndex, runTutorial,
+    localContent, sections, selectedId, runTutorial,
     activePersonaId, customPersonas, promptsConfig,
 
     setLocalContent, setSections, setMarkdown, setProjectName, setTestSuite,
@@ -80,7 +82,6 @@ export const App = () => {
     localContent: state.localContent,
     sections: state.sections,
     selectedId: state.selectedId,
-    activeLineIndex: state.activeLineIndex,
     runTutorial: state.runTutorial,
     activePersonaId: state.activePersonaId,
     customPersonas: state.customPersonas,
@@ -104,12 +105,6 @@ export const App = () => {
     saveCurrentState: state.saveCurrentState,
     createSnapshot: state.createSnapshot,
   })));
-
-  const activeLineIndexRef = useRef<number | null>(activeLineIndex);
-  
-  useEffect(() => {
-    activeLineIndexRef.current = activeLineIndex;
-  }, [activeLineIndex]);
 
   useEffect(() => {
     hasSeenTutorial().then(seen => {
@@ -137,7 +132,6 @@ export const App = () => {
     });
   };
 
-  const editorRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef(true);
 
   // The 60s autosave/snapshot loop (interval, overlap guard, error surfacing)
@@ -231,13 +225,16 @@ export const App = () => {
     const handler = setTimeout(() => {
         const tree = parseMarkdown(localContent, sections);
         
-        // Selection retention logic
+        // Selection retention logic. When a heading rename kills the derived id,
+        // fall back to the caret's live line (reported by the editor), which sits
+        // on the renamed heading in exactly that case.
         setSelectedId(prev => {
            if (prev) {
               const exists = findSection(tree, prev);
-              if (!exists && activeLineIndexRef.current !== null) {
-                 const candidate = findSectionByLine(tree, activeLineIndexRef.current);
-                 return candidate ? candidate.id : null;
+              if (!exists && prev !== 'root') {
+                 const caretLine = useStore.getState().activeLineIndex;
+                 const candidate = caretLine !== null ? findSectionByLine(tree, caretLine) : null;
+                 return candidate ? candidate.id : tree[0]?.id ?? null;
               }
               return prev;
            } else if (tree.length > 0) {
@@ -343,7 +340,7 @@ export const App = () => {
         setLocalContent(markdown);
         setTestSuite(newTestSuite);
         setHiddenSectionIds([]);
-        activeLineIndexRef.current = null;
+        useStore.getState().setActiveLineIndex(null);
         if (activeProjectId) saveCurrentState();
         toast.success(`Imported "${targetName}".`);
     });
@@ -423,6 +420,21 @@ export const App = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Clean export: the prose exactly as written — no YAML frontmatter, no spec
+  // comments — ready for pandoc or a supervisor. (The annotated round-trip
+  // export keeps its own entry.)
+  const handleExportCleanMarkdown = () => {
+    const blob = new Blob([useStore.getState().localContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportSpecs = () => {
     const specsData: Record<string, SectionSpec> = {};
     for (const [id, entry] of Object.entries(testSuite)) {
@@ -447,8 +459,23 @@ export const App = () => {
 ) => {
   setShowRunModal(false);
   if (!currentSection) return;
-  
+
   const testId = currentSection.id;
+
+  // Read the LIVE buffer at call time and parse it fresh. The closure's
+  // `markdown` is the committed copy (up to 60s stale) and `sections` is the
+  // 300ms-debounced parse — an expensive AI verdict must never be computed on
+  // text that isn't what's on screen. One parse feeds everything below.
+  const liveDoc = useStore.getState().localContent;
+  const liveSections = parseMarkdown(liveDoc, sections);
+  const liveSection =
+    testId === 'root'
+      ? buildRootSection(liveDoc, liveSections, projectName?.trim() || 'Whole Document')
+      : findSection(liveSections, testId);
+  if (!liveSection) {
+    toast.error("Couldn't locate that section — it may have just been renamed.");
+    return;
+  }
 
   // Whole-document evaluation forces full scope. The diagnostic sends the scoped
   // content whole (no per-section cap), so pre-flight the exact text the provider
@@ -456,11 +483,11 @@ export const App = () => {
   let effectiveScope: 'segment' | 'parent' | 'full' = scope;
   if (testId === 'root') effectiveScope = 'full';
 
-  let diagContent = currentSection.fullContent;
+  let diagContent = liveSection.fullContent;
   if (effectiveScope === 'full') {
-    diagContent = markdown;
-  } else if (effectiveScope === 'parent' && currentSection.parentId) {
-    const parent = findSection(sections, currentSection.parentId);
+    diagContent = liveDoc;
+  } else if (effectiveScope === 'parent' && liveSection.parentId) {
+    const parent = findSection(liveSections, liveSection.parentId);
     if (parent) diagContent = parent.fullContent;
   }
   if (
@@ -508,14 +535,14 @@ export const App = () => {
     const specs = selectSpecMap(testSuite);
 
     const diagnostic = await aiProvider.runDiagnostic({
-      section: currentSection,
+      section: liveSection,
       spec,
       scope: effectiveScope,
       modelChoice: choice,
       persona: activePersona,
       customInstruction: instruction,
-      fullDocument: markdown,
-      sections,
+      fullDocument: liveDoc,
+      sections: liveSections,
       config: promptsConfig,
       findSection,
       specs,
@@ -622,41 +649,21 @@ export const App = () => {
 
   const handleSaveContent = (sectionId: string, newContent: string) => {
     // Read the live buffer fresh (not a possibly-stale closure) so the line math
-    // matches what is actually on screen.
+    // matches what is actually on screen. The splice itself lives in
+    // lib/section-edit (round-trip tested: saving a section's own content back
+    // unchanged is byte-identity, childless sections included).
     const prev = useStore.getState().localContent;
-    const currSections = parseMarkdown(prev);
-    const flattenSections = (nodes: Section[]): Section[] => {
-      const result: Section[] = [];
-      const tr = (nx: Section[]) => {
-        nx.forEach(n => { result.push(n); tr(n.children); });
-      };
-      tr(nodes);
-      return result;
-    };
-
-    const sec = flattenSections(currSections).find(s => s.id === sectionId);
-    if (!sec) {
+    const next = replaceSectionContent(prev, sectionId, newContent, useStore.getState().sections);
+    if (next === null) {
       toast.error("Couldn't locate that section to save — it may have been renamed.");
       return;
     }
-
-    const lines = prev.split('\n');
-    // `newContent` includes the section's own heading line (matching node.content),
-    // so we replace from this section's start up to its first child (or its end).
-    const childStartIndex = sec.children.length > 0 ? sec.children[0].startLine : sec.endLine;
-    const before = lines.slice(0, sec.startLine);
-    const after = lines.slice(childStartIndex);
-    const next = [...before, newContent, ...after].join('\n');
 
     setLocalContent(next);
     // Persist immediately rather than waiting up to 60s for the next autosave —
     // a sprint edit must survive a crash/close in that window.
     if (activeProjectId) void saveCurrentState();
   };
-
-  const handleLineFocus = useCallback((index: number | null) => {
-    activeLineIndexRef.current = index;
-  }, []);
 
   // Command palette entries — the named, searchable door to every primary action
   // (the consolidation of the Coach/Generate-specs/Revise glyphs). Built each
@@ -670,6 +677,8 @@ export const App = () => {
     { id: 'revise', label: 'Revise', hint: 'Glass Box revision workspace', glyph: '⟐', run: () => useStore.getState().openRevisionWorkspace() },
     { id: 'parallel', label: 'Parallel', hint: 'Reverse-outline revision', glyph: '▥', run: () => useStore.getState().openParallel(false) },
     { id: 'gist', label: 'Gist', hint: 'Whole-at-once re-entry surface', glyph: '◊', run: () => useStore.getState().openGist() },
+    { id: 'find-text', label: 'Find in text', hint: 'Search & replace in the manuscript', glyph: '⌕', shortcut: '⌘F', run: () => useStore.getState().requestEditorSearch() },
+    { id: 'export-clean-md', label: 'Export clean markdown', hint: 'Prose only — no frontmatter or spec comments', glyph: '↧', run: handleExportCleanMarkdown },
     { id: 'run-diagnostic', label: 'Run diagnostic', hint: 'Evaluate current section', glyph: '▶', shortcut: '⌘⏎', run: () => useStore.getState().setShowRunModal(true) },
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
@@ -711,9 +720,14 @@ export const App = () => {
         <Sidebar
           onSelect={setSelectedId}
           onContinue={() => {
-            const targetId = selectedId ?? sections[0]?.id ?? null;
+            // Return to the cursor: select the last section (a no-op when
+            // unchanged) and ask the editor to focus + restore its resume
+            // caret — the store counter reaches it even when selection is
+            // already right, the case the old dead-ref wiring missed.
+            const s = useStore.getState();
+            const targetId = s.selectedId ?? s.sections[0]?.id ?? null;
             if (targetId) setSelectedId(targetId);
-            editorRef.current?.focus();
+            requestAnimationFrame(() => useStore.getState().requestEditorFocus());
           }}
           onImportMarkdown={handleImportMarkdown}
           onLoadProject={handleLoadFile}
@@ -728,7 +742,6 @@ export const App = () => {
         <div className="flex-1 min-w-0 flex flex-col h-full bg-hld-bg relative">
           <EditorPanel
             handleSave={handleManualSave}
-            editorRef={editorRef}
             onImportMarkdown={handleImportMarkdown}
             onLoadProject={handleLoadFile}
           />

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { DecorationSet } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
 import { makeProvenanceMark, PROVENANCE_ANCHOR_LEN } from '../provenance';
-import { buildProvenanceDeco } from '../provenanceMarks';
+import { buildProvenanceDeco, provenanceField, setProvenanceMarks } from '../provenanceMarks';
 import type { ProvenanceMark } from '../../types';
 
 describe('makeProvenanceMark', () => {
@@ -58,5 +59,55 @@ describe('buildProvenanceDeco', () => {
     const mark: ProvenanceMark = { id: 'p', anchor: 'AI', length: 999, source: 'revision', at: 1 };
     const ranges = collect(buildProvenanceDeco(doc, [mark]));
     expect(ranges).toEqual([{ from: doc.indexOf('AI'), to: doc.length }]);
+  });
+
+  it('pins a mark to its recorded offset over an earlier duplicate of the anchor', () => {
+    // The same inserted phrase appears twice; the accept wrote the SECOND one.
+    const doc = 'AI phrase in section one. Later: AI phrase in section three.';
+    const second = doc.lastIndexOf('AI phrase');
+    const mark = makeProvenanceMark('AI phrase in section three.', 'revision', 1, second)!;
+    expect(mark.offset).toBe(second);
+    const ranges = collect(buildProvenanceDeco(doc, [mark]));
+    expect(ranges).toEqual([{ from: second, to: second + 'AI phrase in section three.'.length }]);
+  });
+
+  it('falls back to indexOf when the recorded offset no longer matches', () => {
+    const doc = 'moved: AI SENTENCE here.';
+    const mark = makeProvenanceMark('AI SENTENCE here.', 'revision', 1, 0)!; // stale offset
+    const from = doc.indexOf('AI SENTENCE here.');
+    expect(collect(buildProvenanceDeco(doc, [mark]))).toEqual([
+      { from, to: from + 'AI SENTENCE here.'.length },
+    ]);
+  });
+});
+
+describe('provenanceField (live tracking)', () => {
+  it('drops a tracked mark whose opening the writer rewrote — never jumps to an earlier duplicate', () => {
+    // The same opening exists at offset 0 (the writer's own prose) and later
+    // (the accepted AI span). The mark is pinned to the LATER occurrence.
+    const opening = 'The results show something interesting about the case at hand.';
+    const doc = `${opening} More writer prose.\n\n${opening} AI continuation.`;
+    const aiAt = doc.lastIndexOf(opening);
+    const mark = makeProvenanceMark(`${opening} AI continuation.`, 'revision', 1, aiAt)!;
+
+    const s0 = EditorState.create({ doc, extensions: [provenanceField] });
+    const s1 = s0.update({ effects: setProvenanceMarks.of([mark]) }).state;
+    expect(s1.field(provenanceField).offsets).toEqual([aiAt]);
+
+    // Editing inside the AI span's anchor invalidates it at the tracked spot.
+    // The tint must FALL OFF (the prose is the writer's now), not relocate to
+    // the duplicate opening at offset 0.
+    const s2 = s1.update({ changes: { from: aiAt + 4, to: aiAt + 11, insert: 'findings' } }).state;
+    expect(s2.field(provenanceField).offsets).toEqual([-1]);
+  });
+
+  it('keeps tracking a mark through edits elsewhere in the document', () => {
+    const doc = 'Writer intro.\n\nAI SENTENCE that was accepted here, long enough to matter.';
+    const aiAt = doc.indexOf('AI SENTENCE');
+    const mark = makeProvenanceMark(doc.slice(aiAt), 'revision', 1, aiAt)!;
+    const s0 = EditorState.create({ doc, extensions: [provenanceField] });
+    const s1 = s0.update({ effects: setProvenanceMarks.of([mark]) }).state;
+    const s2 = s1.update({ changes: { from: 0, insert: 'New first line.\n' } }).state;
+    expect(s2.field(provenanceField).offsets).toEqual([aiAt + 'New first line.\n'.length]);
   });
 });

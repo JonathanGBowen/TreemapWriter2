@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 import { useStore } from '../../state';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { getPromptText } from '../../services/prompts';
-import { applyProposal } from '../../lib/revision-helpers';
+import { applyProposalAt } from '../../lib/revision-helpers';
+import { findInRange, sectionRangeInDoc } from '../../lib/section-edit';
 import { makeProvenanceMark } from '../../lib/provenance';
 import { segmentParagraphs } from '../../lib/paragraph-helpers';
 import { sourceHashOf } from '../../lib/parallel-helpers';
@@ -32,24 +33,42 @@ const runPooled = async <T>(items: T[], cap: number, fn: (item: T) => Promise<vo
 };
 
 /**
- * Apply one accepted row to the document string. Edited/deleted rows are a literal
- * draftA→draftB splice (deletion is draftB ''); an inserted row's draftB is spliced
- * in after the nearest preceding real paragraph (or prepended if none). Mirrors the
- * Glass Box "first literal occurrence" contract — a no-op if the anchor is gone.
+ * Apply one accepted row to the document string, reporting where the new text
+ * landed. Edited/deleted rows are a literal draftA→draftB splice (deletion is
+ * draftB ''); an inserted row's draftB is spliced in after the nearest preceding
+ * real paragraph (or prepended if none). Matching is CONFINED to `range` (the
+ * scope the outline was built against) when one resolves, so a duplicate of the
+ * paragraph in an earlier section can't hijack the splice. Null when the anchor
+ * is gone (a no-op accept).
  */
-const applyRowToDoc = (doc: string, row: ParallelRow, rows: ParallelRow[]): string => {
+const applyRowToDoc = (
+  doc: string,
+  row: ParallelRow,
+  rows: ParallelRow[],
+  range?: { from: number; to: number },
+): { next: string; at: number } | null => {
   if (row.status === 'inserted') {
     const text = (row.draftB ?? '').trim();
-    if (!text) return doc;
+    if (!text) return null;
     const idx = rows.findIndex((r) => r.id === row.id);
     const prev = rows.slice(0, idx).reverse().find((r) => r.draftA && r.status !== 'deleted');
-    if (!prev) return `${text}\n\n${doc}`;
-    const at = doc.indexOf(prev.draftA);
-    if (at < 0) return doc;
-    const end = at + prev.draftA.length;
-    return `${doc.slice(0, end)}\n\n${text}${doc.slice(end)}`;
+    if (!prev) {
+      const at = range?.from ?? 0;
+      return { next: `${doc.slice(0, at)}${text}\n\n${doc.slice(at)}`, at };
+    }
+    const anchorAt = range ? findInRange(doc, prev.draftA, range) : doc.indexOf(prev.draftA);
+    if (anchorAt < 0) return null;
+    const end = anchorAt + prev.draftA.length;
+    return { next: `${doc.slice(0, end)}\n\n${text}${doc.slice(end)}`, at: end + 2 };
   }
-  return applyProposal(doc, { original_text: row.draftA, proposed_text: row.draftB ?? '' });
+  return applyProposalAt(doc, { original_text: row.draftA, proposed_text: row.draftB ?? '' }, range);
+};
+
+/** The live character span of the parallel scope in `doc` (undefined = whole doc). */
+const scopeRangeInDoc = (doc: string, scopeKey: string): { from: number; to: number } | undefined => {
+  if (scopeKey === 'root') return undefined;
+  const range = sectionRangeInDoc(doc, scopeKey, useStore.getState().sections);
+  return range ? { from: range.from, to: range.to } : undefined;
 };
 
 /**
@@ -212,10 +231,21 @@ export const useParallelActions = () => {
       } catch {
         /* non-fatal — the change is still autosaved + recoverable */
       }
-      setLocalContent((doc) => applyRowToDoc(doc, row, useStore.getState().rows));
-      // Durable provenance (F2): the regenerated paragraph (draftB) is AI-introduced.
-      const mark = makeProvenanceMark(row.draftB ?? '', 'parallel', Date.now());
-      if (mark) useStore.getState().addProvenanceMark(mark);
+      let acceptedAt = -1;
+      setLocalContent((doc) => {
+        const res = applyRowToDoc(doc, row, useStore.getState().rows, scopeRangeInDoc(doc, scope.scopeKey));
+        if (!res) return doc;
+        acceptedAt = res.at;
+        return res.next;
+      });
+      // Durable provenance (F2): the regenerated paragraph (draftB) is AI-introduced,
+      // pinned to the splice position. Skipped when the accept no-opped.
+      if (acceptedAt >= 0) {
+        const mark = makeProvenanceMark(row.draftB ?? '', 'parallel', Date.now(), acceptedAt);
+        if (mark) useStore.getState().addProvenanceMark(mark);
+        // When the workspace closes, land the writer AT the accepted edit.
+        useStore.getState().setPendingEditorReveal({ offset: acceptedAt });
+      }
       markRowAccepted(row.id);
       try {
         await saveCurrentState();
@@ -238,13 +268,25 @@ export const useParallelActions = () => {
     } catch {
       /* non-fatal */
     }
-    setLocalContent((doc) => targets.reduce((acc, r) => applyRowToDoc(acc, r, s.rows), doc));
-    // Durable provenance (F2): mark each regenerated paragraph as AI-introduced.
+    const applied: { row: ParallelRow; at: number }[] = [];
+    setLocalContent((doc) =>
+      targets.reduce((acc, r) => {
+        // Re-derive the scope range per step — each splice shifts offsets.
+        const res = applyRowToDoc(acc, r, s.rows, scopeRangeInDoc(acc, scope.scopeKey));
+        if (!res) return acc;
+        applied.push({ row: r, at: res.at });
+        return res.next;
+      }, doc),
+    );
+    // Durable provenance (F2): mark each regenerated paragraph that actually
+    // landed as AI-introduced, pinned to its splice position.
     const at = Date.now();
-    targets.forEach((r) => {
-      const mark = makeProvenanceMark(r.draftB ?? '', 'parallel', at);
+    applied.forEach(({ row, at: offset }) => {
+      const mark = makeProvenanceMark(row.draftB ?? '', 'parallel', at, offset);
       if (mark) useStore.getState().addProvenanceMark(mark);
     });
+    // Land the writer at the FIRST applied edit when the workspace closes.
+    if (applied.length) useStore.getState().setPendingEditorReveal({ offset: applied[0].at });
     targets.forEach((r) => markRowAccepted(r.id));
     try {
       await saveCurrentState();

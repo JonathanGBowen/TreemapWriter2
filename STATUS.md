@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-07-07.** Update this file whenever a feature ships or is
+> **Current as of 2026-07-08.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -63,6 +63,33 @@ audit stop is source-boundary-grained (no mid-call abort through the `LLMClient`
 seam) and statuses are honest one-shot states (no fake reading/proposing split); the
 dialogue transcript is ephemeral; the Zotero collection list is flat (no nesting)
 and Web-API sync / BibTeX-RIS remain out of scope (below).
+
+**Writing-surface repair wave shipped 2026-07-08** (four commits; see
+[`docs/migration-log.md`](docs/migration-log.md)). A six-dimension audit of the core
+writing experience traced the reported copy/paste-within-a-section corruption to focus
+mode (the default surface) keeping a *second sliced copy* of the document. The cure is
+architectural: **one persistent CodeMirror**, with focus as a view concern
+(`lib/focusRange.ts` — mapped range, HIDDEN surround (the blinders are the essential
+behavior: nothing before/after the section renders or scrolls — restored per user
+testing after a brief dimmed experiment), edit confinement, focus-scoped Mod-a) and the write-side section math in one round-trip-tested home
+(`lib/section-edit.ts` — also fixing the sprint-save last-line duplication). All five
+prose surfaces now share one extension factory (`features/editor/extensions.ts`:
+provenance tint, live preview, list continuation, stable-identity props —
+the uiw wrapper reconfigures on handler identity, which the 1s ticker was triggering
+every second). Revision/parallel accepts splice **section-scoped** with offset-pinned
+provenance; diagnostics read the live buffer; `parseMarkdown` id reuse is
+proximity+body-affinity (a pasted duplicate heading no longer steals a distant
+section's spec). Durability: serialized saves, one write per autosave tick, deliberate
+empty-doc persistence, mid-move sprint autosave, and the **desktop crash draft**
+(`.twriter/draft.md` — the Rust half of the sub-60s item below). Plus: Continue-button
+re-entry, section-relative resume carets, accepted-edit reveal pulse, footnotes,
+heading nav (Mod-Alt-↑/↓), Mod-b/i, paste hygiene, ⌘K "Find in text", toolbar
+magnitude, clean export, money-safe math preview with reveal-on-enter, and calm headings. (The serif-manuscript experiment was
+reverted after real-use testing — Inter 14px reads better on this surface; the
+`--font-serif` token remains for the Parallel editor's draft cells.) *Remaining from the wave:* the desktop
+crash-draft restore needs one manual `tauri:dev` kill-within-60s check; true sub-60s
+coverage still wants a higher-frequency draft-only write (the 60s cadence now mirrors
+the draft file).
 
 **Hardened 2026-07-08 — adversarial-review fixes** (five verified findings; see
 [`docs/migration-log.md`](docs/migration-log.md)): the batch audit pins its target
@@ -529,7 +556,12 @@ streams keep their own inline indicators rather than the pill.
   exists on the `AIProvider` (an `async *` mirroring `continueDialogue`), and
   `CoachModal` streams token-by-token. `src/features/coach/` is now a real panel
   home, also hosting the ambient cue and the structural-surround rail (below).
-- ~~**FTS5-backed full-text search.**~~ Done 2026-06-23 (see
+- ~~**FTS5-backed full-text search.**~~ Done 2026-06-23; **linked to the editor
+  2026-07-08** (see [`docs/migration-log.md`](docs/migration-log.md)): clicking a
+  search-lit treemap tile now lands the caret on the phrase inside the section
+  (pulse; section-start fallback for stemmed matches), and Enter in the search box
+  hands off to the editor's find panel pre-filled with the query — closing the
+  formerly-deferred in-editor-highlight gap. Original entry: (see
   [`docs/migration-log.md`](docs/migration-log.md)). `index_sections` /
   `search_sections` commands ([`src-tauri/src/commands/search.rs`](src-tauri/src/commands/search.rs))
   over a content-storing `sections_fts`, plus a desktop sidebar search box that
@@ -546,7 +578,12 @@ streams keep their own inline indicators rather than the pill.
   stored as YAML frontmatter `id:` per section, with a one-time migration that
   walks existing sections. Open question: garbage-collect orphan IDs on delete,
   or keep them so dependency edges survive an undo (default: keep). Trigger to
-  prioritize: any rename/reorder bug surfacing in real use.
+  prioritize: any rename/reorder bug surfacing in real use. **Note (2026-07-08):
+  that trigger arguably fired** — the writing-surface audit confirmed a pasted
+  duplicate heading stole a distant section's id (and its spec). The shipped
+  mitigation (old-node-centric proximity + body-affinity reuse in
+  `parseMarkdown`) closes the observed theft, but ULIDs remain the real cure;
+  this item is now the backlog's strongest candidate.
 
 ## Lingering (smaller debts, pick by mood or by which bug surfaces)
 
@@ -558,14 +595,14 @@ streams keep their own inline indicators rather than the pill.
   specs/goals/history. A complete fix (id-stable cleanup that can also reclaim
   data-bearing orphans) still depends on **stable section IDs** above.
 - **Crash-resilient unsaved draft on desktop** (follow-up to the 2026-06-16
-  autosave data-loss fix; see [`migration-log.md`](docs/migration-log.md)). The
-  desktop autosave now persists the live buffer to `project.md` every 60 s, so a
-  reload no longer silently reverts work. Still deferred: round-trip `local_draft`
-  to a gitignored `.twriter/draft.md` (Rust `document.rs` / `layout.rs` +
-  `.gitignore`) so the < 60 s window and a hard crash before the first autosave
-  are also covered — fully restoring the draft/committed split the browser already
-  has. The TS slice already sends and reads `localDraft`; only the Rust read/write
-  + the gitignore line are missing.
+  autosave data-loss fix). The Rust half **shipped 2026-07-08**: `local_draft`
+  round-trips to a gitignored `.twriter/draft.md` (`layout.rs` / `document.rs` +
+  the project-create `.gitignore` line), restoring the draft/committed split the
+  browser has. Still open, by mood: (a) one manual desktop verification
+  (`tauri:dev`, type, kill within 60 s, relaunch — the draft should survive);
+  (b) TRUE sub-60s coverage wants a lightweight higher-frequency draft-only
+  write (today the draft file mirrors the same 60 s autosave cadence, so it
+  protects reload-reverts and post-save crashes, not the last <60 s of typing).
 - ~~**`migration_import_legacy` stub.**~~ Resolved 2026-06-22 (UX second pass; see
   [`docs/migration-log.md`](docs/migration-log.md) and
   [`docs/ux-audit.md`](docs/ux-audit.md)). The dead Rust stub and its `mod.rs` /
@@ -595,8 +632,8 @@ streams keep their own inline indicators rather than the pill.
   confirms** as designed (wired 2026-06-22, UX second pass). Still to do: audit the
   remaining usages to verify they're destructive-only, and replace any
   non-destructive confirm with an undo affordance.
-- **Opportunistic 300-line decomposition.** `App.tsx` (~744 lines, target a thin
-  layout shell) plus other files exceed the cognitive-load target. The
+- **Opportunistic 300-line decomposition.** `App.tsx` (roughly 750–800 lines,
+  target a thin layout shell) plus other files exceed the cognitive-load target. The
   2026-06-26 audit-4.2 pass took App.tsx from 1034 → 744 by extracting the
   autosave loop (`features/shared/useAutosave.ts`) and the modal/workspace block
   (`features/modals/ModalLayer.tsx`), and trimming the over-subscribed

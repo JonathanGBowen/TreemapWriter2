@@ -153,13 +153,35 @@ function renderMarkdownTable(mdText: string): HTMLElement {
   return table;
 }
 
-function buildDecorations(state: any): DecorationSet {
+/**
+ * A candidate zone (table / fenced code / math span) whether or not it is
+ * currently rendered as a widget — cursor-inside zones stay as source. Kept in
+ * the field state so a pure SELECTION move into/out of a zone knows to rebuild
+ * (revealing the source under the caret / re-rendering on leave), which the
+ * old docChanged-only rebuild never did: arrowing into a table left the caret
+ * invisible inside a widget.
+ */
+interface PreviewZone {
+  from: number;
+  to: number;
+}
+
+interface LivePreviewState {
+  deco: DecorationSet;
+  zones: PreviewZone[];
+}
+
+const inZone = (zones: PreviewZone[], pos: number): boolean =>
+  zones.some((z) => pos >= z.from && pos <= z.to);
+
+function buildDecorations(state: any): LivePreviewState {
   const builder: Range<Decoration>[] = [];
+  const zones: PreviewZone[] = [];
   const selection = state.selection.main;
   const doc = state.doc;
   // Ensure the tree is as complete as possible for current viewport
   const tree = syntaxTree(state);
-  
+
   const skipRanges: {from: number, to: number}[] = [];
   
   // 1. First Pass: Find structural elements (Tables, Fenced Code / Mermaid)
@@ -170,9 +192,12 @@ function buildDecorations(state: any): DecorationSet {
         // Expand to full line boundaries for the table
         const startLine = doc.lineAt(node.from);
         const endLine = doc.lineAt(node.to);
-        
+
+        // A zone whether rendered or revealed — leaving it must re-render.
+        zones.push({from: startLine.from, to: endLine.to});
+
         const isCursorInside = selection.from <= endLine.to && selection.to >= startLine.from;
-        
+
         if (isCursorInside) {
           // If cursor is inside, we still mark it so inline math doesn't trigger inside it
           skipRanges.push({from: startLine.from, to: endLine.to});
@@ -195,13 +220,6 @@ function buildDecorations(state: any): DecorationSet {
       if (node.name === "FencedCode") {
         const startLine = doc.lineAt(node.from);
         const endLine = doc.lineAt(node.to);
-        
-        const isCursorInside = selection.from <= endLine.to && selection.to >= startLine.from;
-        
-        if (isCursorInside) {
-          skipRanges.push({from: startLine.from, to: endLine.to});
-          return false;
-        }
 
         let isMermaid = false;
         let codeText = "";
@@ -216,6 +234,17 @@ function buildDecorations(state: any): DecorationSet {
               codeText = doc.sliceString(cursor.from, cursor.to);
             }
           } while (cursor.nextSibling());
+        }
+
+        // Only a mermaid block ever renders as a widget, so only it needs the
+        // reveal-on-enter zone; plain fenced code always shows its source.
+        if (isMermaid) zones.push({from: startLine.from, to: endLine.to});
+
+        const isCursorInside = selection.from <= endLine.to && selection.to >= startLine.from;
+
+        if (isCursorInside) {
+          skipRanges.push({from: startLine.from, to: endLine.to});
+          return false;
         }
 
         if (isMermaid && codeText.trim()) {
@@ -252,13 +281,15 @@ function buildDecorations(state: any): DecorationSet {
   while ((match = blockMathRegex.exec(text)) !== null) {
     const startOffset = match.index + (match[0].startsWith('\n') ? 1 : 0);
     const endOffset = match.index + match[0].length;
-    
+
     if (isInsideSkipRange(startOffset, endOffset)) continue;
-    
+
     // Expand to full lines to avoid trailing artifacts
     const startLine = doc.lineAt(startOffset);
     const endLine = doc.lineAt(endOffset);
-    
+
+    zones.push({from: startLine.from, to: endLine.to});
+
     const isCursorInside = selection.from <= endLine.to && selection.to >= startLine.from;
     if (isCursorInside) continue;
 
@@ -266,21 +297,25 @@ function buildDecorations(state: any): DecorationSet {
       widget: new MathWidget(match[1].trim(), true),
       block: true
     }).range(startLine.from, endLine.to));
-    
+
     skipRanges.push({from: startLine.from, to: endLine.to});
   }
 
-  // Robust Inline Math: $ ... $
-  const inlineMathRegex = /([^\\]|^)\$([^\s$](?:[\s\S]*?[^\s$])?)\$/g;
+  // Robust Inline Math: $ ... $ — single-line content only, and the closing $
+  // must not be followed by a digit, so prose money ("$20 and $30") is never
+  // swallowed as a formula (the pandoc dollar-math convention).
+  const inlineMathRegex = /([^\\$]|^)\$([^\s$\n](?:[^\n$]*?[^\s$\n])?)\$(?!\d)/g;
   while ((match = inlineMathRegex.exec(text)) !== null) {
     const prefix = match[1];
     const mathContent = match[2];
-    
+
     const actualStart = match.index + prefix.length;
-    const actualEnd = actualStart + mathContent.length + 2; 
+    const actualEnd = actualStart + mathContent.length + 2;
 
     if (isInsideSkipRange(actualStart, actualEnd)) continue;
-    
+
+    zones.push({from: actualStart, to: actualEnd});
+
     const isCursorInside = selection.from <= actualEnd && selection.to >= actualStart;
     if (isCursorInside) continue;
 
@@ -295,18 +330,66 @@ function buildDecorations(state: any): DecorationSet {
   }
 
   builder.sort((a, b) => a.from - b.from || a.to - b.to);
-  return Decoration.set(builder);
+  return { deco: Decoration.set(builder), zones };
 }
 
-export const livePreviewPlugin = StateField.define<DecorationSet>({
+/** Characters that can begin/end a widget zone (math, table pipe, fence —
+ *  backtick AND tilde: CommonMark permits ~~~mermaid fences too). */
+const TRIGGER_CHARS = /[$|`~]/;
+
+/**
+ * True when a document change can be applied by MAPPING the existing
+ * decorations instead of a full rebuild — plain-prose typing, the 99% case.
+ * A rebuild is needed only when the change touches a known zone or involves
+ * trigger characters (in the inserted text, the deleted text, or the touched
+ * lines of the new document).
+ */
+const canSkipRebuild = (tr: any, zones: PreviewZone[]): boolean => {
+  let skip = true;
+  tr.changes.iterChanges((fromA: number, toA: number, fromB: number, toB: number, inserted: any) => {
+    if (!skip) return;
+    if (TRIGGER_CHARS.test(inserted.toString())) { skip = false; return; }
+    if (TRIGGER_CHARS.test(tr.startState.doc.sliceString(fromA, toA))) { skip = false; return; }
+    if (zones.some((z) => Math.max(fromA, z.from) <= Math.min(toA, z.to))) { skip = false; return; }
+    const lineFrom = tr.state.doc.lineAt(Math.min(fromB, tr.state.doc.length));
+    const lineTo = tr.state.doc.lineAt(Math.min(toB, tr.state.doc.length));
+    if (TRIGGER_CHARS.test(tr.state.doc.sliceString(lineFrom.from, lineTo.to))) skip = false;
+  });
+  return skip;
+};
+
+/** Index of the zone containing `pos`, or -1. */
+const zoneIndexAt = (zones: PreviewZone[], pos: number): number =>
+  zones.findIndex((z) => pos >= z.from && pos <= z.to);
+
+export const livePreviewPlugin = StateField.define<LivePreviewState>({
   create(state) {
     return buildDecorations(state);
   },
-  update(decorations, tr) {
+  update(value, tr) {
     if (tr.docChanged) {
+      // Fast path: plain-prose edits map the existing widgets instead of
+      // re-stringifying and re-scanning the whole document per keystroke.
+      if (canSkipRebuild(tr, value.zones)) {
+        return {
+          deco: value.deco.map(tr.changes),
+          zones: value.zones.map((z) => ({
+            from: tr.changes.mapPos(z.from, -1),
+            to: tr.changes.mapPos(z.to, 1),
+          })),
+        };
+      }
       return buildDecorations(tr.state);
     }
-    return decorations.map(tr.changes);
+    if (tr.selection) {
+      // Reveal-on-enter / re-render-on-leave: rebuild when the caret's zone
+      // membership changes (the old docChanged-only rebuild left the caret
+      // invisible inside a rendered table/math widget).
+      const before = zoneIndexAt(value.zones, tr.startState.selection.main.head);
+      const after = zoneIndexAt(value.zones, tr.state.selection.main.head);
+      if (before !== after) return buildDecorations(tr.state);
+    }
+    return value;
   },
-  provide: (f) => EditorView.decorations.from(f),
+  provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
 });

@@ -31,7 +31,7 @@ pub async fn project_create(
     // non-authoritative proposal area the user reviews, never dissertation history.
     crate::fs_io::atomic_write_str(
         &layout.gitignore(),
-        ".twriter/index.sqlite\n.twriter/index.sqlite-journal\n.twriter/index.sqlite-wal\n.twriter/index.sqlite-shm\n.twriter/diagnostics.json\n.twriter/agent-output/\n",
+        ".twriter/index.sqlite\n.twriter/index.sqlite-journal\n.twriter/index.sqlite-wal\n.twriter/index.sqlite-shm\n.twriter/diagnostics.json\n.twriter/agent-output/\n.twriter/draft.md\n",
     )?;
 
     // Empty markdown file. The user (or the importer) writes real prose later.

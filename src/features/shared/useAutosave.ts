@@ -44,7 +44,9 @@ export function useAutosave(): void {
       isAutoSavingRef.current = true;
       void (async () => {
         try {
-          await refs.saveCurrentState();
+          // ONE disk write per tick: createSnapshot saves internally (its
+          // dedupe branch saves too), so a separate saveCurrentState here
+          // would just double the disk/git churn.
           await refs.createSnapshot('autosave');
         } catch (e) {
           console.error('Autosave failed', e);

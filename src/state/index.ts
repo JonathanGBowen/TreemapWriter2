@@ -58,6 +58,13 @@ export type AppState =
   & TraceSlice
   & SessionSlice;
 
+// Dev-only escape hatch for E2E verification scripts (never in prod builds).
+declare global {
+  interface Window {
+    __twStore?: unknown;
+  }
+}
+
 export const useStore = create<AppState>()((...args) => ({
   ...createUIStateSlice(...args),
   ...createEditorStateSlice(...args),
@@ -75,6 +82,10 @@ export const useStore = create<AppState>()((...args) => ({
   ...createTraceSlice(...args),
   ...createSessionSlice(...args),
 }));
+
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  window.__twStore = useStore;
+}
 
 // Wire model resolution to live state without the registry importing the store
 // (avoids a cycle). The provider reads the active per-project + global config here.

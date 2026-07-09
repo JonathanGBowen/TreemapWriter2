@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
-import { GFM, Table } from '@lezer/markdown';
 import { EditorView } from '@codemirror/view';
-import { hldExtensions, hldTheme } from '../../lib/editorTheme';
+import { baseMarkdownExtensions } from '../editor/extensions';
 import { findProposalOffset } from '../../lib/revision-helpers';
 import { useStore } from '../../state';
 import { useCurrentSection } from '../tests-panel/use-current-section';
@@ -76,17 +73,7 @@ export function MasterDocument() {
   }, [activeId, proposals, value]);
 
   const extensions = useMemo(
-    () => [
-      markdown({
-        base: markdownLanguage,
-        codeLanguages: languages,
-        addKeymap: false,
-        extensions: [Table, GFM],
-      }),
-      ...hldExtensions,
-      EditorView.lineWrapping,
-      ...revisionPreviewExtensions,
-    ],
+    () => [...baseMarkdownExtensions(), ...revisionPreviewExtensions],
     [],
   );
 
@@ -107,7 +94,7 @@ export function MasterDocument() {
         <CodeMirror
           ref={cmRef}
           value={value}
-          theme={hldTheme}
+          theme="none"
           extensions={extensions}
           basicSetup={false}
           editable={false}

@@ -41,7 +41,9 @@ export const buildRootSection = (
   content: '',
   fullContent: md,
   startLine: 0,
-  endLine: md.split('\n').length,
+  // Inclusive last-line index, matching parseMarkdown's endLine convention
+  // (was one-past-the-end, an off-by-one against every other Section).
+  endLine: Math.max(0, md.split('\n').length - 1),
   startOffset: 0,
   wordCount: md.split(/\s+/).filter((w) => w.length > 0).length,
   children,
@@ -66,15 +68,52 @@ export const parseMarkdown = (
   };
   traverseOld(oldSections);
 
-  // Group old nodes by title for robust matching
-  const oldNodesByTitle: Record<string, Section[]> = {};
-  oldNodes.forEach(n => {
-    if (!oldNodesByTitle[n.title]) oldNodesByTitle[n.title] = [];
-    oldNodesByTitle[n.title].push(n);
+  // Id reuse is assigned OLD-NODE-CENTRICALLY: each old section claims the
+  // same-title new heading whose BODY matches its own (first non-blank line),
+  // then the nearest by line distance. Under the previous positional
+  // consumption, pasting a duplicate of a later section's heading ABOVE it
+  // stole that section's id — and with it its spec/goals/history in the
+  // testSuite; body affinity + proximity keeps an unmoved section's id with
+  // the section it has always named.
+  const newHeadingLinesByTitle: Record<string, number[]> = {};
+  lines.forEach((line, index) => {
+    const m = line.match(/^(#{1,6})\s+(.*)/);
+    if (m) (newHeadingLinesByTitle[m[2]] ??= []).push(index);
   });
-  
-  // Track how many we've consumed for each title
-  const consumedCounts: Record<string, number> = {};
+  const firstBodyLineAfter = (headingLine: number): string => {
+    for (let i = headingLine + 1; i < lines.length; i++) {
+      if (/^(#{1,6})\s+/.test(lines[i])) return '';
+      if (lines[i].trim()) return lines[i].trim();
+    }
+    return '';
+  };
+  const oldFirstBody = (n: Section): string => {
+    for (const l of n.content.split('\n').slice(1)) {
+      if (l.trim()) return l.trim();
+    }
+    return '';
+  };
+  const reusedIdByLine = new Map<number, string>();
+  const takenLines = new Set<number>();
+  oldNodes.forEach(n => {
+    const body = oldFirstBody(n);
+    let best = -1;
+    let bestScore = -Infinity;
+    for (const l of newHeadingLinesByTitle[n.title] || []) {
+      if (takenLines.has(l)) continue;
+      const bodyMatch = body !== '' && firstBodyLineAfter(l) === body;
+      // Body affinity dominates; distance breaks body ties.
+      const score = (bodyMatch ? 1_000_000 : 0) - Math.abs(l - n.startLine);
+      if (score > bestScore) {
+        best = l;
+        bestScore = score;
+      }
+    }
+    if (best >= 0) {
+      takenLines.add(best);
+      reusedIdByLine.set(best, n.id);
+    }
+  });
 
   // Calculate start offset for each line
   const lineOffsets: number[] = [];
@@ -103,14 +142,8 @@ export const parseMarkdown = (
       if (forcedMap && forcedMap[title] && forcedMap[title].length > 0) {
         id = forcedMap[title].shift(); // take the first matched ID from the forced map
       } else {
-        const titleMatches = oldNodesByTitle[title];
-        if (titleMatches && titleMatches.length > 0) {
-          const consumed = consumedCounts[title] || 0;
-          if (consumed < titleMatches.length) {
-            id = titleMatches[consumed].id;
-            consumedCounts[title] = consumed + 1;
-          }
-        }
+        const reused = reusedIdByLine.get(index);
+        if (reused) id = reused;
       }
 
       const newNode: Section = {
