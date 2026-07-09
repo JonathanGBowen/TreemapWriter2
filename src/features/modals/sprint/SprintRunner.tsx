@@ -59,6 +59,21 @@ export function SprintRunner({
     onDing: cues.ding,
   });
 
+  // Autosave-always, mid-move too: the sprint buffer lives in local state, so
+  // until it reaches onSave the 60s autosave loop can't see it — a crash during
+  // a long move would lose that move's prose. Persist ~4s after the last
+  // keystroke (move transitions, finish, and exit already save eagerly).
+  const savedText = useRef(initialText);
+  useEffect(() => {
+    if (text === savedText.current) return;
+    const t = setTimeout(() => {
+      savedText.current = text;
+      onSave(text);
+    }, 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
   const move = engine.move ?? plan.moves[0];
   const total = plan.moves.length;
   const isReinstate = move.role === 'reinstate';

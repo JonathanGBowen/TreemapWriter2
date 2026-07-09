@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyProposal,
+  applyProposalAt,
   extractDirectiveFromTurn,
   findProposalOffset,
   normalizeDirectiveSuggestions,
@@ -205,6 +206,44 @@ describe('applyProposal', () => {
     expect(applyProposal('cost is X', { original_text: 'X', proposed_text: '$5 (a $-amount)' })).toBe(
       'cost is $5 (a $-amount)',
     );
+  });
+});
+
+describe('applyProposalAt', () => {
+  const doc = '# One\nthe shared sentence here.\n# Three\nthe shared sentence here.';
+  const secondAt = doc.lastIndexOf('the shared sentence');
+
+  it('reports where the splice landed', () => {
+    const res = applyProposalAt('the cat sat', { original_text: 'cat', proposed_text: 'dog' })!;
+    expect(res).toEqual({ next: 'the dog sat', at: 4 });
+  });
+
+  it('confines the match to the given range — an earlier duplicate is never rewritten', () => {
+    // The scenario that motivated the range: identical sentence in sections One
+    // and Three; the accept is scoped to Three.
+    const res = applyProposalAt(
+      doc,
+      { original_text: 'the shared sentence here.', proposed_text: 'REVISED.' },
+      { from: doc.indexOf('# Three'), to: doc.length },
+    )!;
+    expect(res.at).toBe(secondAt);
+    // Section One is byte-identical.
+    expect(res.next.startsWith('# One\nthe shared sentence here.\n# Three\n')).toBe(true);
+    expect(res.next.endsWith('REVISED.')).toBe(true);
+  });
+
+  it('returns null (no whole-doc fallback) when the span is absent from the range', () => {
+    expect(
+      applyProposalAt(
+        doc,
+        { original_text: 'the shared sentence here.', proposed_text: 'X' },
+        { from: doc.indexOf('# Three'), to: doc.indexOf('# Three') + 8 },
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null for an absent span with no range', () => {
+    expect(applyProposalAt('abc', { original_text: 'zzz', proposed_text: 'x' })).toBeNull();
   });
 });
 

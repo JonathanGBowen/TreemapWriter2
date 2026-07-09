@@ -1,73 +1,38 @@
-import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import { Clock, FilePlus, FolderOpen, PenTool, History, GitBranch } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { Clock, History } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
 import { isTauri } from "../../services/tauri-environment";
 import { useCurrentSection } from "../tests-panel/use-current-section";
 import { Pip } from "../shared/Pip";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
-import { GFM, Table } from '@lezer/markdown';
-import { hldExtensions, hldTheme } from '../../lib/editorTheme';
-import { livePreviewPlugin } from '../../lib/livePreview';
-import { provenanceField, setProvenanceMarks } from '../../lib/provenanceMarks';
+import { EditorView } from '@codemirror/view';
+import { openSearchPanel, setSearchQuery, SearchQuery, findNext } from '@codemirror/search';
+import { magnitudeBand } from '../../lib/magnitude';
+import { writingSurfaceExtensions, resetEditorHistory } from './extensions';
+import { useProvenanceSync } from './useProvenanceSync';
+import { setProvenanceMarks } from '../../lib/provenanceMarks';
+import { focusModeExtension, focusRangeField, setFocusRange } from '../../lib/focusRange';
+import { pulseAt } from '../../lib/editorPulse';
+import { sectionRangeInDoc, findInRangeInsensitive } from '../../lib/section-edit';
+import { findSectionById } from '../../lib/utils';
 import { ResumeMarker } from '../coach/ResumeMarker';
 import { ActiveMoveMarker } from '../coach/ActiveMoveMarker';
-import { EditorView, keymap, drawSelection, highlightSpecialChars, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
-import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
-import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-
-const manualBasicSetup = [
-  highlightSpecialChars(),
-  history(),
-  drawSelection(),
-  dropCursor(),
-  EditorView.lineWrapping,
-  indentOnInput(),
-  bracketMatching(),
-  closeBrackets(),
-  autocompletion(),
-  rectangularSelection(),
-  crosshairCursor(),
-  highlightSelectionMatches(),
-  keymap.of([
-    ...closeBracketsKeymap,
-    ...defaultKeymap,
-    ...searchKeymap,
-    ...historyKeymap,
-    ...foldKeymap,
-    ...completionKeymap,
-    indentWithTab
-  ])
-];
+import { EditorEmptyState } from './EditorEmptyState';
 
 interface EditorPanelProps {
   handleSave: () => void;
-  // The editor view ref is forwarded from App.tsx for cursor focus from outside.
-  editorRef: any;
   onImportMarkdown: (content: string) => void;
   onLoadProject: (content: string) => void;
 }
 
-// Recursive helper to find the deepest section containing the line
-const findSectionForLine = (nodes: Section[], line: number): Section | null => {
-  for (const node of nodes) {
-    if (line >= node.startLine && line <= node.endLine) {
-       // Check children first for more specific match
-       const childMatch = findSectionForLine(node.children, line);
-       return childMatch || node;
-    }
-  }
-  return null;
-};
+// Module-level so the extension instances (history(), fields) are STABLE across
+// renders — a fresh array each render would make the uiw wrapper reconfigure
+// the editor and drop the undo history's state field every keystroke.
+const editorExtensions = writingSurfaceExtensions([focusModeExtension]);
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
   handleSave,
-  editorRef,
   onImportMarkdown,
   onLoadProject,
 }) => {
@@ -76,14 +41,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const localContent = useStore(s => s.localContent);
   const setLocalContent = useStore(s => s.setLocalContent);
   const lastAutoSave = useStore(s => s.lastAutoSave);
-  const activeTab = useStore(s => s.activeTab);
-  const setActiveTab = useStore(s => s.setActiveTab);
-  const hiddenSectionIds = useStore(s => s.hiddenSectionIds);
-  const toggleSectionVisibility = useStore(s => s.toggleSectionVisibility);
   const focusMode = useStore(s => s.focusMode);
   const setFocusMode = useStore(s => s.setFocusMode);
-  const initialLineIndex = useStore(s => s.activeLineIndex);
-  const onLineFocus = useStore(s => s.setActiveLineIndex);
   const sections = useStore(s => s.sections);
   const onSectionChange = useStore(s => s.setSelectedId);
   const projectName = useStore(s => s.projectName);
@@ -96,9 +55,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   // is saved and no version history accrues — steer them to create/open a real
   // project rather than into the in-memory editor.
   const hasOpenProject = useStore(s => s.hasOpenProject);
-  const createNewProject = useStore(s => s.createNewProject);
-  const openExistingProject = useStore(s => s.openExistingProject);
-  const setShowRemoteProjectModal = useStore(s => s.setShowRemoteProjectModal);
   const needsProject = isTauri() && !hasOpenProject;
 
   const toggleFocusMode = () => setFocusMode(!focusMode);
@@ -112,17 +68,13 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const currentEntry = currentSection ? testSuite[currentSection.id] : undefined;
   const nextExpects = currentEntry?.spec?.outgoingCommitments?.[0]?.trim() || '';
 
-  const [titleInput, setTitleInput] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
   // Live caret per section (no re-render); committed to the store on departure so
   // the resume marker + caret-restore only ever name a place you can return to.
   const caretRef = useRef<Record<string, { anchor: number; head: number }>>({});
-  
-  const mdInputRef = useRef<HTMLInputElement>(null);
-  const projectInputRef = useRef<HTMLInputElement>(null);
-  const contentRef = useRef(localContent);
+
   const skipNextScroll = useRef(false);
-  
+  const lastReportedLine = useRef<number | null>(null);
+
   const isEmptyState = localContent.trim() === '';
 
   // Ambient save status: tick once a second so "saved · 12s" stays relative.
@@ -140,80 +92,59 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
       : savedAgoSec < 3600 ? `${Math.floor(savedAgoSec / 60)}m`
       : `${Math.floor(savedAgoSec / 3600)}h`;
 
-  // Keep a ref of localContent to avoid stale closures during focus calculations
-  useEffect(() => {
-    contentRef.current = localContent;
-  }, [localContent]);
-
-  // --- Focus Mode State ---
-  const [beforeText, setBeforeText] = useState("");
-  const [focusText, setFocusText] = useState("");
-  const [afterText, setAfterText] = useState("");
-
-  // When focusMode toggles or currentSection changes, recalculate the slice
-  useEffect(() => {
-    if (focusMode && currentSection) {
-      const lines = contentRef.current.split('\n');
-      const before = lines.slice(0, currentSection.startLine).join('\n');
-      const focus = lines.slice(currentSection.startLine, currentSection.endLine + 1).join('\n');
-      const after = lines.slice(currentSection.endLine + 1).join('\n');
-      
-      setBeforeText(before ? before + '\n' : "");
-      setFocusText(focus);
-      setAfterText(after ? '\n' + after : "");
-    } else {
-      setFocusText("");
-    }
-  }, [focusMode, currentSection?.id]); // Re-run when section ID changes or we toggle focus
-
-  // Sync title input
-  useEffect(() => {
-    setTitleInput(currentSection ? currentSection.title : (isEmptyState ? 'New Document' : 'Full Document'));
-  }, [currentSection, isEmptyState]);
-
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVal = e.target.value;
-    setTitleInput(newVal);
-    
-    if (currentSection) {
-       const lines = contentRef.current.split('\n');
-       const hashes = '#'.repeat(currentSection.level);
-       lines[currentSection.startLine] = `${hashes} ${newVal}`;
-       setLocalContent(lines.join('\n'));
-    }
-  };
-
   const cmRef = useRef<ReactCodeMirrorRef>(null);
-  const focusCmRef = useRef<ReactCodeMirrorRef>(null);
 
-  // Push durable provenance marks (F2) into whichever editor is mounted; the
-  // provenanceField re-resolves anchors against the live doc, so the tint tracks
-  // edits and falls off a span the writer has overwritten.
-  const provenanceMarks = useStore((s) => s.provenanceMarks);
+  // Push durable provenance marks (F2) into the editor; the provenanceField
+  // re-resolves anchors against the live doc, so the tint tracks edits and
+  // falls off a span the writer has overwritten. The returned callback seeds
+  // the marks at view creation (wired in handleCreateEditor below).
+  const seedProvenance = useProvenanceSync(cmRef);
+
+  // A project load/switch replaces the buffer via the controlled-value
+  // reconcile, which would otherwise land in undo history — letting Cmd+Z
+  // rewind PAST the load into an empty document. Reset history at that hard
+  // boundary; everything within a project session stays undoable.
+  const activeProjectId = useStore(s => s.activeProjectId);
+  const historyBoundary = useRef(activeProjectId);
   useEffect(() => {
-    for (const ref of [cmRef, focusCmRef]) {
-      const view = ref.current?.view;
-      if (view) view.dispatch({ effects: setProvenanceMarks.of(provenanceMarks) });
+    if (activeProjectId === historyBoundary.current) return;
+    historyBoundary.current = activeProjectId;
+    const view = cmRef.current?.view;
+    if (view) {
+      // Let the value reconcile land first, then wipe.
+      requestAnimationFrame(() => {
+        const v = cmRef.current?.view;
+        if (v) resetEditorHistory(v);
+      });
     }
-  }, [provenanceMarks, focusMode]);
+  }, [activeProjectId]);
 
-  const handleMainChange = (val: string) => {
+  // STABLE identity (useCallback, live state via getState): the uiw wrapper
+  // fully RECONFIGURES the editor whenever onChange/onUpdate change identity —
+  // with inline handlers plus the 1-second save ticker that meant a root
+  // reconfigure every second, silently dropping appended config (the search
+  // panel vanished within a second of opening).
+  const handleMainChange = React.useCallback((val: string) => {
     setLocalContent(val);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleFocusChange = (val: string) => {
-    setFocusText(val);
-    setLocalContent(beforeText + val + afterText);
-  };
-
-  const handleSelectionMap = (viewUpdate: ViewUpdate) => {
-    if (focusMode) return;
-    
-    // Only process if selection changed 
+  const handleSelectionMap = React.useCallback((viewUpdate: ViewUpdate) => {
+    // Only process if selection changed
     if (!viewUpdate.selectionSet) return;
 
+    const st = useStore.getState();
     const pos = viewUpdate.state.selection.main.head;
-    
+
+    // Report the caret's line so App's rename-recovery (selection retention by
+    // line when a heading's derived id changes) has a live line to fall back
+    // to. Throttled to actual line changes; nothing subscribes reactively.
+    const line = viewUpdate.state.doc.lineAt(pos).number - 1;
+    if (line !== lastReportedLine.current) {
+      lastReportedLine.current = line;
+      st.setActiveLineIndex(line);
+    }
+
     // Find what section the cursor is in based on character offset
     let match: Section | null = null;
     const findMatch = (nodes: Section[]) => {
@@ -224,21 +155,44 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         }
       }
     };
-    findMatch(sections);
+    findMatch(st.sections);
 
-    // Remember the live caret for whatever section it now sits in (cheap ref
+    // While focused, a caret inside the focus window must not re-scope the
+    // selection to a child subsection (the window covers the whole section,
+    // children included). A caret OUTSIDE the window (a search-panel jump into
+    // the hidden surround) re-selects normally, and the focus window follows.
+    const focusRange = viewUpdate.state.field(focusRangeField, false);
+    const inFocusWindow = !!focusRange && pos >= focusRange.from && pos <= focusRange.to;
+
+    // Remember the live caret for the section it now sits in (cheap ref
     // write; the store commit happens on departure — see the section effect).
+    // SECTION-RELATIVE, so edits elsewhere in the document can't strand the
+    // resume point at a stale absolute offset. Inside the focus window the
+    // resume id is the FOCUSED section (selection never re-scopes to a child
+    // there), so record under it — the id the departure commit and
+    // handleResume will read — not under the deepest child match.
     if (match) {
+      let m = match as Section;
+      if (inFocusWindow && st.selectedId && st.selectedId !== 'root') {
+        const focused = findSectionById(st.sections, st.selectedId);
+        if (focused) m = focused;
+      }
       const sel = viewUpdate.state.selection.main;
-      caretRef.current[(match as Section).id] = { anchor: sel.anchor, head: sel.head };
+      caretRef.current[m.id] = {
+        anchor: Math.max(0, sel.anchor - m.startOffset),
+        head: Math.max(0, sel.head - m.startOffset),
+      };
     }
 
-    if (match && match.id !== currentSection?.id) {
+    if (inFocusWindow) return;
+
+    if (match && match.id !== st.selectedId) {
       // Mark that this change came from the editor, so we don't jump scroll
       skipNextScroll.current = true;
-      onSectionChange(match.id);
+      st.setSelectedId(match.id);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Restore the caret a section was last left at (resume-marker click, and the
   // default on re-entry). Falls back to the section start when none is remembered.
@@ -256,92 +210,250 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
-  const handleResume = () => {
-    if (!currentSection) return;
-    const pos = useStore.getState().sectionCaret[currentSection.id];
-    if (pos) restoreCaret(pos.anchor, pos.head);
+  // The section's LIVE character span, computed fresh from the editor buffer
+  // (never the debounced `sections` offsets — that staleness corrupted the old
+  // sliced editor). Threads the store's sections so id continuity survives
+  // line shifts (ids embed the heading's original line index; parseMarkdown
+  // reuses by title). Null for root / unresolvable ids.
+  const liveSectionRange = (view: EditorView) => {
+    if (!currentSection || currentSection.id === 'root') return null;
+    return sectionRangeInDoc(
+      view.state.doc.toString(),
+      currentSection.id,
+      useStore.getState().sections,
+    );
   };
+
+  // The focus window: dispatched into the focusRangeField, which maps itself
+  // through subsequent edits. The document itself is never touched by entering,
+  // leaving, or re-scoping focus — undo history and decorations persist.
+  const syncFocusRange = (view: EditorView) => {
+    const range = liveSectionRange(view);
+    view.dispatch({
+      effects: setFocusRange.of(
+        focusMode && range ? { from: range.from, to: range.to } : null,
+      ),
+    });
+    return range;
+  };
+
+  // Stable onCreateEditor (identity matters — see handleMainChange note): the
+  // view mounts after first render, so sync the focus window immediately (a
+  // focus-default launch must not flash the whole document) and seed the
+  // provenance marks, whose change-driven sync may already have fired viewless.
+  const syncFocusRangeRef = useRef(syncFocusRange);
+  syncFocusRangeRef.current = syncFocusRange;
+  const handleCreateEditor = React.useCallback((view: EditorView) => {
+    syncFocusRangeRef.current(view);
+    seedProvenance(view);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Resume: land the caret at the section's remembered (section-relative)
+  // resume point — or its start when unvisited — against the section's LIVE
+  // span. Serves the margin ResumeMarker and the Dock's Continue button.
+  const handleResume = () => {
+    const view = cmRef.current?.view;
+    if (!view || !currentSection) return;
+    const range =
+      currentSection.id === 'root'
+        ? { from: 0, to: view.state.doc.length }
+        : liveSectionRange(view);
+    if (!range) return;
+    const rel = useStore.getState().sectionCaret[currentSection.id];
+    const clamp = (n: number) => Math.max(range.from, Math.min(n, range.to));
+    restoreCaret(clamp(range.from + (rel?.anchor ?? 0)), clamp(range.from + (rel?.head ?? 0)));
+  };
+
+  // Outside-in focus requests (Dock Continue): respond even when the selected
+  // section didn't change — exactly the re-entry case the old wiring missed.
+  const editorFocusSeq = useStore(s => s.editorFocusSeq);
+  const focusSeqRef = useRef(editorFocusSeq);
+  useEffect(() => {
+    if (editorFocusSeq === focusSeqRef.current) return;
+    focusSeqRef.current = editorFocusSeq;
+    handleResume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorFocusSeq]);
+
+  // Outside-in search requests: ⌘K → "Find in text" opens the in-editor
+  // find/replace panel (the discoverable door to ⌘F); the sidebar section
+  // search's Enter handoff arrives with a PREFILL query — the map search found
+  // the neighborhoods, the find panel walks the exact instances.
+  const editorSearchSeq = useStore(s => s.editorSearchSeq);
+  const searchSeqRef = useRef(editorSearchSeq);
+  useEffect(() => {
+    if (editorSearchSeq === searchSeqRef.current) return;
+    searchSeqRef.current = editorSearchSeq;
+    const view = cmRef.current?.view;
+    if (!view) return;
+    view.focus();
+    openSearchPanel(view); // creates the search state + panel if absent
+    const prefill = useStore.getState().editorSearchPrefill;
+    if (prefill) {
+      view.dispatch({
+        effects: setSearchQuery.of(new SearchQuery({ search: prefill, caseSensitive: false })),
+      });
+      findNext(view); // land on the first hit immediately
+    }
+  }, [editorSearchSeq]);
 
   const prevSectionId = useRef(currentSection?.id);
 
-  // Handle section changes (e.g., clicking a tree tile). On leaving a section,
-  // commit its last caret so a return restores it (the resume point); on entry,
-  // restore the remembered caret if any, else fall back to the section start.
+  // Handle section changes (e.g., clicking a tree tile) and focus toggles. On
+  // leaving a section, commit its last caret so a return restores it (the
+  // resume point); on entry, restore the remembered caret if any, else the
+  // section start — clamped into the focus window when one is active.
   useEffect(() => {
+    const view = cmRef.current?.view;
     const departing = prevSectionId.current;
     const changed = !!currentSection && currentSection.id !== departing;
     if (changed && departing && caretRef.current[departing]) {
       setSectionCaret(departing, caretRef.current[departing]);
     }
 
+    const range = view ? syncFocusRange(view) : null;
+
     if (changed) {
       const sec = currentSection!;
       prevSectionId.current = sec.id;
-      if (!focusMode) {
-        const view = cmRef.current?.view;
-        if (view && !skipNextScroll.current) {
-          // Restore the resume point for this section, or its start if unvisited.
-          const remembered = useStore.getState().sectionCaret[sec.id];
-          const anchor = remembered?.anchor ?? sec.startOffset;
-          const head = remembered?.head ?? sec.startOffset;
-          view.focus();
-          try {
-            // Dispatch selection and scroll effect together for atomicity
-            view.dispatch({
-              selection: { anchor, head },
-              effects: [EditorView.scrollIntoView(head, { y: 'start', yMargin: 100 })],
-            });
-          } catch (e) {
-            console.warn("Could not scroll to section", e);
-          }
+      if (view && !skipNextScroll.current) {
+        // Restore the resume point (section-relative) against the section's
+        // LIVE span, or its start if unvisited.
+        const remembered = useStore.getState().sectionCaret[sec.id];
+        const base = range?.from ?? sec.startOffset;
+        const lo = range?.from ?? 0;
+        const hi = range?.to ?? view.state.doc.length;
+        const clamp = (n: number) => Math.max(lo, Math.min(n, hi));
+        const anchor = clamp(remembered ? base + remembered.anchor : base);
+        const head = clamp(remembered ? base + remembered.head : base);
+        view.focus();
+        try {
+          // Dispatch selection and scroll effect together for atomicity
+          view.dispatch({
+            selection: { anchor, head },
+            effects: [EditorView.scrollIntoView(head, { y: 'start', yMargin: 100 })],
+          });
+          pulseAt(view, head);
+        } catch (e) {
+          console.warn("Could not scroll to section", e);
         }
       }
     }
 
     // Reset the skip flag
     skipNextScroll.current = false;
-  }, [currentSection, focusMode, setSectionCaret]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection?.id, focusMode, setSectionCaret]);
 
-  
-  const handleMdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result;
-      if (typeof content === 'string') onImportMarkdown(content);
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
+  // The treemap search relay: a click on a search-lit tile selected the section
+  // AND asked for the query's first occurrence inside it. Declared AFTER the
+  // section-change effect so, in the same commit, focus scoping + the
+  // section-start landing run first and this then lands the caret ON the
+  // phrase (selected, pulsed). FTS matches are stemmed, so a missing literal
+  // occurrence quietly keeps the section-start landing. One-shot: cleared here.
+  const pendingPhraseReveal = useStore(s => s.pendingPhraseReveal);
+  useEffect(() => {
+    if (!pendingPhraseReveal) return;
+    const view = cmRef.current?.view;
+    if (!view) return;
+    const { query, sectionId } = pendingPhraseReveal;
+    const docText = view.state.doc.toString();
+    const range = sectionRangeInDoc(docText, sectionId, useStore.getState().sections);
+    if (range) {
+      const at = findInRangeInsensitive(docText, query, range);
+      if (at >= 0) {
+        try {
+          view.dispatch({
+            selection: { anchor: at, head: at + query.trim().length },
+            effects: [EditorView.scrollIntoView(at, { y: 'center' })],
+          });
+          view.focus();
+          pulseAt(view, at);
+        } catch {
+          /* out-of-range mid-edit; the section-start landing stands */
+        }
+      }
+    }
+    useStore.getState().setPendingPhraseReveal(null);
+  }, [pendingPhraseReveal]);
 
-  const handleProjectChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result;
-      if (typeof content === 'string') onLoadProject(content);
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
+  // "Here is what just changed": when a revision/parallel accept recorded a
+  // splice offset and no workspace overlay is covering the editor anymore,
+  // scroll to it and pulse the landing line — the moment-of-consequence cue —
+  // then clear the request. The offset was recorded against the buffer at
+  // accept time; clamp defensively (an intervening edit only costs precision).
+  const pendingReveal = useStore(s => s.pendingEditorReveal);
+  const revisionWorkspaceOpen = useStore(s => s.revisionWorkspaceOpen);
+  const parallelOpen = useStore(s => s.parallelOpen);
+  useEffect(() => {
+    if (!pendingReveal || revisionWorkspaceOpen || parallelOpen) return;
+    const view = cmRef.current?.view;
+    if (!view) return;
+    const pos = Math.max(0, Math.min(pendingReveal.offset, view.state.doc.length));
+    try {
+      view.dispatch({
+        selection: { anchor: pos, head: pos },
+        effects: [EditorView.scrollIntoView(pos, { y: 'center' })],
+      });
+      view.focus();
+      pulseAt(view, pos);
+    } catch {
+      /* out-of-range mid-edit; the tint remains the fallback wayfinding */
+    }
+    useStore.getState().setPendingEditorReveal(null);
+  }, [pendingReveal, revisionWorkspaceOpen, parallelOpen]);
 
-  const isHidden = currentSection ? (hiddenSectionIds || []).includes(currentSection.id) : false;
+  // Drift correction for the focus window. The field maps itself exactly
+  // through ordinary edits, but two events de-sync it from the true section
+  // boundary: an external full-document replace (an accepted AI edit while
+  // focused — mapping balloons the range), and a structural edit inside the
+  // window (typing a new same-level heading splits the section). Each time the
+  // debounced parse lands, re-derive the range from the LIVE buffer and
+  // correct: re-hide to the true boundary when the caret stays inside it, or
+  // follow the caret into its new section when it doesn't.
+  useEffect(() => {
+    const view = cmRef.current?.view;
+    if (!view || !focusMode || !currentSection || currentSection.id === 'root') return;
+    const cur = view.state.field(focusRangeField, false) ?? null;
+    const fresh = sectionRangeInDoc(view.state.doc.toString(), currentSection.id, sections);
+    if (!fresh) return; // heading renamed mid-flight — selection retention re-aims first
+    if (cur && cur.from === fresh.from && cur.to === fresh.to) return;
+    const head = view.state.selection.main.head;
+    if (head >= fresh.from && head <= fresh.to) {
+      view.dispatch({ effects: setFocusRange.of({ from: fresh.from, to: fresh.to }) });
+    } else {
+      let target: Section | null = null;
+      const walk = (nodes: Section[]) => {
+        for (const n of nodes) {
+          if (head >= n.startOffset) {
+            target = n;
+            walk(n.children);
+          }
+        }
+      };
+      walk(sections);
+      if (target && (target as Section).id !== currentSection.id) {
+        skipNextScroll.current = true;
+        onSectionChange((target as Section).id);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections, focusMode, currentSection?.id]);
 
   return (
     <div className="editor-panel-step flex-1 flex flex-col h-full bg-hld-bg relative transition-colors duration-200 min-w-0">
       {/* Toolbar */}
       <div className="h-14 border-b border-hld-border bg-hld-surface flex items-center justify-between px-4 z-20 relative shrink-0 min-w-0">
          <div className="absolute top-0 left-0 right-0 h-[1px] bg-hld-text/40" />
-         
+
          <div className="flex items-center gap-[5px] text-ui-meta tracking-[0.1em] uppercase text-hld-muted-text font-mono flex-1 min-w-0 pr-4">
            {currentSection ? (
              <>
                <span className="truncate">{projectName || 'Project'}</span>
                <span className="text-hld-muted-text" aria-hidden="true">›</span>
                <span className="text-hld-text font-bold truncate">
-                 {titleInput}
+                 {currentSection.title}
                </span>
              </>
            ) : (
@@ -352,6 +464,16 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
          </div>
 
          <div className="flex items-center gap-[6px] shrink-0">
+           {/* Approximate section magnitude (VISION principle 8 — orientation,
+               not false precision); the exact count waits on hover. */}
+           {currentSection && currentSection.wordCount > 0 && (
+              <span
+                className="mr-1 text-ui-meta font-mono uppercase tracking-[0.12em] text-hld-muted-text"
+                title={`${currentSection.wordCount} words`}
+              >
+                {magnitudeBand(currentSection.wordCount).label}
+              </span>
+           )}
            {/* Ambient save status — answers "is my work safe?" passively (autosave). */}
            {savedAgoLabel && (
               <div className="flex items-center gap-1.5 mr-1 text-ui-meta font-mono uppercase tracking-[0.12em] text-hld-muted-text" title="Autosaved continuously">
@@ -450,129 +572,55 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
         {!needsProject && !isEmptyState && !focusMode && <ActiveMoveMarker />}
         <div className="h-full relative">
 
-          {focusMode && currentSection && (
-            <div className="flex items-center gap-[8px] mb-[10px] pb-[8px] pt-[15px] px-[64px] border-b border-[rgba(0,232,245,0.2)] bg-hld-bg z-10 w-full max-w-[800px] mx-auto">
-              <div className="w-[7px] h-[7px] bg-hld-cyan rotate-45 shadow-[0_0_8px_var(--tw-colors-hld-cyan)] shrink-0" />
-              <span className="text-ui-label tracking-[0.14em] uppercase text-hld-cyan font-mono">{currentSection.title} — Focus Mode Active</span>
-            </div>
-          )}
-          
+          {/* No focus-mode banner: the lit Focus toggle + the toolbar breadcrumb
+              (which already names the section) carry the mode — a header strip
+              above the prose was one more line of chrome than the page needs. */}
           {(isEmptyState || needsProject) && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10 pointer-events-none opacity-100 animate-in fade-in duration-700">
-               <div className="text-center pointer-events-auto bg-hld-surface/80 backdrop-blur-sm p-12 border border-[rgba(0,232,245,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full">
-                 {needsProject ? (
-                   <>
-                     <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Start a Project</h2>
-                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">{isEmptyState ? 'Your writing lives in a project folder — saved to disk, with version history. Create or open one to begin.' : 'This is a read-only preview — nothing here is saved. Your writing lives in a project folder on disk, with version history. Create or open one to begin.'}</p>
-                     <div className="space-y-3">
-                       <button onClick={() => { void createNewProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
-                         <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
-                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">New Project</span>
-                       </button>
-                       <button onClick={() => { void openExistingProject(); }} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
-                         <FolderOpen size={16} className="group-hover:scale-110 transition-transform"/>
-                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Open Project</span>
-                       </button>
-                       <div className="pt-4 text-center">
-                          <button onClick={() => setShowRemoteProjectModal(true)} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
-                             <GitBranch size={12} /> Clone from a remote
-                          </button>
-                       </div>
-                     </div>
-                   </>
-                 ) : (
-                   <>
-                     <h2 className="text-[14px] uppercase tracking-[0.15em] font-bold text-hld-text mb-2 font-mono">Ready to Write?</h2>
-                     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-hld-muted-text mb-8 leading-[1.6]">Import a markdown file to visualize its structure, or just start typing.</p>
-                     <div className="space-y-3">
-                       <button onClick={() => mdInputRef.current?.click()} className="bracketed w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-[rgba(0,232,245,0.2)] text-hld-cyan hover:bg-[rgba(0,232,245,0.05)] transition-all group hover:shadow-[0_0_16px_rgba(0,232,245,0.2)] hover:border-[rgba(0,232,245,0.4)]" style={{"--br-color": "var(--tw-colors-hld-cyan)"} as any}>
-                         <FilePlus size={16} className="group-hover:scale-110 transition-transform"/>
-                         <span className="font-bold font-mono uppercase tracking-[0.14em] text-ui-btn">Import Markdown</span>
-                       </button>
-                       <div className="pt-4 text-center">
-                          <button onClick={() => {
-                            // Seed a single heading so a treemap node + currentSection
-                            // appear immediately, then focus the (now-mounted) editor
-                            // on the next frame and drop the cursor at the end.
-                            setLocalContent('# ');
-                            requestAnimationFrame(() => {
-                              const view = cmRef.current?.view;
-                              if (view) {
-                                view.focus();
-                                const end = view.state.doc.length;
-                                view.dispatch({ selection: { anchor: end, head: end } });
-                              }
-                            });
-                          }} className="text-hld-muted-text hover:text-hld-text text-ui-btn font-mono uppercase tracking-[0.14em] flex items-center justify-center gap-2 mx-auto transition-colors">
-                             <PenTool size={12} /> Start with a blank page
-                          </button>
-                       </div>
-                     </div>
-                   </>
-                 )}
-               </div>
-               <input type="file" ref={mdInputRef} className="hidden" accept=".md,.markdown,.txt" onChange={handleMdChange} />
-               <input type="file" ref={projectInputRef} className="hidden" accept=".json,.socratic" onChange={handleProjectChange} />
-            </div>
+            <EditorEmptyState
+              needsProject={needsProject}
+              onImportMarkdown={onImportMarkdown}
+              onLoadProject={onLoadProject}
+              onStartBlank={() => {
+                // Seed a single heading so a treemap node + currentSection
+                // appear immediately, then focus the (now-mounted) editor
+                // on the next frame and drop the cursor at the end.
+                setLocalContent('# ');
+                requestAnimationFrame(() => {
+                  const view = cmRef.current?.view;
+                  if (view) {
+                    view.focus();
+                    const end = view.state.doc.length;
+                    view.dispatch({ selection: { anchor: end, head: end } });
+                  }
+                });
+              }}
+            />
           )}
- 
-          {/* Unified Editor Area — mounted whenever a project is open (real or
+
+          {/* The ONE editor — mounted whenever a project is open (real or
               browser), even when empty, so a blank document is immediately
-              typeable. Only the desktop preview (needsProject) withholds it. */}
+              typeable. Focus mode does not swap it out: the focusRange
+              extension hides the surround and confines edits, so the buffer,
+              undo history, and decorations persist across toggles. Only the
+              desktop preview (needsProject) withholds it. */}
           {!needsProject && (
             <div className="flex-1 h-full max-w-[800px] mx-auto overflow-hidden">
-              {focusMode && currentSection ? (
-                <CodeMirror
-                  ref={focusCmRef}
-                  value={focusText}
-                  onChange={handleFocusChange}
-                  editable={!needsProject}
-                  extensions={[
-                    markdown({ 
-                      base: markdownLanguage, 
-                      codeLanguages: languages, 
-                      addKeymap: false,
-                      extensions: [Table, GFM]
-                    }), 
-                    ...hldExtensions, 
-                    ...manualBasicSetup,
-                    livePreviewPlugin,
-                    provenanceField,
-                  ]}
-                  theme={hldTheme}
-                  autoFocus
-                  height="100%"
-                  className="h-full"
-                  basicSetup={false}
-                />
-              ) : (
-                <CodeMirror
-                  ref={cmRef}
-                  value={localContent}
-                  onChange={handleMainChange}
-                  onUpdate={handleSelectionMap}
-                  editable={!needsProject}
-                  theme={hldTheme}
-                  height="100%"
-                  className="h-full"
-                  extensions={[
-                    markdown({ 
-                      base: markdownLanguage, 
-                      codeLanguages: languages, 
-                      addKeymap: false,
-                      extensions: [Table, GFM]
-                    }), 
-                    ...hldExtensions, 
-                    ...manualBasicSetup,
-                    livePreviewPlugin,
-                    provenanceField,
-                  ]}
-                  basicSetup={false}
-                />
-              )}
+              <CodeMirror
+                ref={cmRef}
+                value={localContent}
+                onChange={handleMainChange}
+                onUpdate={handleSelectionMap}
+                onCreateEditor={handleCreateEditor}
+                editable={!needsProject}
+                theme="none"
+                height="100%"
+                className="h-full"
+                extensions={editorExtensions}
+                basicSetup={false}
+              />
             </div>
           )}
-          
+
         </div>
       </div>
     </div>

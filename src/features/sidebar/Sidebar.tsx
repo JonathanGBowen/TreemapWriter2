@@ -50,7 +50,15 @@ function SearchBox() {
       <input
         value={searchQuery}
         onChange={(e) => schedule(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Escape") reset(); }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") reset();
+          // Enter hands off to the editor's find panel, pre-filled with this
+          // query — the map search found the neighborhoods; find-next then
+          // walks the exact instances document-wide.
+          if (e.key === "Enter" && searchQuery.trim()) {
+            useStore.getState().requestEditorSearch(searchQuery);
+          }
+        }}
         placeholder="Search sections…"
         aria-label="Search sections"
         className="w-full pl-7 pr-12 py-1 bg-hld-surface-3 border border-hld-border text-[10px] font-mono text-hld-text placeholder:text-hld-muted-text outline-none focus:border-hld-cyan transition-colors"
@@ -78,13 +86,25 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
   const markdown = useStore((s) => s.markdown);
   const searchMatchedIds = useStore((s) => s.searchMatchedIds);
   const matchedIds = useMemo(() => new Set(searchMatchedIds), [searchMatchedIds]);
+  // The search relay: while a section search is live, clicking a MATCHED (lit)
+  // tile also asks the editor to land the caret on the query's first occurrence
+  // inside that section — the map finds the neighborhoods; the editor completes
+  // the landing. Unmatched tiles and search-off clicks select as always.
+  const onSelectTile = (id: string) => {
+    onSelect(id);
+    const st = useStore.getState();
+    const query = st.searchQuery.trim();
+    if (query && st.searchMatchedIds.includes(id)) {
+      st.setPendingPhraseReveal({ query, sectionId: id });
+    }
+  };
   // Synthetic top row: selecting it operates on the whole document (id 'root').
   const documentRow = sections.length > 0 ? buildRootSection(markdown, sections, 'Whole Document') : null;
   return (
     <div className="treemap-step flex-1 overflow-hidden p-2.5 flex flex-col gap-2 min-h-0">
       <div className="h-px bg-hld-border" />
       <div className="flex-1 w-full border border-hld-border bg-hld-surface-3 relative overflow-hidden min-h-0">
-        <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelect} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} matchedIds={matchedIds} />
+        <Treemap sections={sections} selectedId={selectedId || ''} onSelect={onSelectTile} hiddenSectionIds={hiddenSectionIds} testSuite={testSuite} matchedIds={matchedIds} />
       </div>
       {isTauri() && <SearchBox />}
       <div className="h-px bg-hld-border" />
@@ -99,7 +119,7 @@ function MapZone({ onSelect }: { onSelect: (id: string) => void }) {
           />
         )}
         {sections.map((sec) => (
-          <SectionRow key={sec.id} section={sec} selected={selectedId === sec.id} status={testSuite[sec.id]?.status || 'idle'} onSelect={onSelect} />
+          <SectionRow key={sec.id} section={sec} selected={selectedId === sec.id} status={testSuite[sec.id]?.status || 'idle'} onSelect={onSelectTile} />
         ))}
       </div>
       <StrainRegister onSelect={onSelect} />

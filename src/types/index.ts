@@ -166,6 +166,13 @@ export interface ProvenanceMark {
   source: ProvenanceSource;
   /** Accept-time epoch ms. */
   at: number;
+  /**
+   * Character offset of the splice at accept-time (optional; additive). Pins the
+   * mark to the occurrence that was actually written when the inserted text has a
+   * duplicate elsewhere in the document; anchor `indexOf` stays the fallback for
+   * legacy marks and spans whose position has drifted.
+   */
+  offset?: number;
 }
 
 /** The persisted provenance layer for one document (`.twriter/provenance.json`). */

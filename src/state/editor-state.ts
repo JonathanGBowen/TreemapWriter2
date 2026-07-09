@@ -12,7 +12,10 @@ import type { AppState } from '.';
  */
 /** Last caret a section was left at — drives per-section resume (the editor's
  *  margin "resume marker" and caret-restore on re-entry). Committed when a
- *  section is departed, so it only ever names a place you can return to. */
+ *  section is departed, so it only ever names a place you can return to.
+ *  Offsets are SECTION-RELATIVE (anchor/head minus the section's start at
+ *  commit time): edits elsewhere in the document shift absolute positions, so
+ *  a restore re-derives the section's live start and adds these back. */
 export interface SectionCaret {
   anchor: number;
   head: number;
@@ -20,26 +23,76 @@ export interface SectionCaret {
 
 export interface EditorStateSlice {
   localContent: string;
+  /**
+   * True once the DRAFT has been edited this session (any setLocalContent).
+   * Distinguishes a deliberately-emptied document (persist it) from a transient
+   * empty buffer mid project-load/switch (never let it blank a saved document —
+   * the guard in saveCurrentState). Reset wherever localContent is seeded.
+   */
+  draftDirty: boolean;
   selectedId: string | null;
   activeLineIndex: number | null;
   /** sectionId → the caret last left there. Ephemeral (per session). */
   sectionCaret: Record<string, SectionCaret>;
 
+  /**
+   * Monotonic focus-request counter. Any surface (the Dock's Continue button)
+   * bumps it via `requestEditorFocus`; the editor watches it and responds by
+   * focusing the view and restoring the current section's resume caret — even
+   * when the selection didn't change (the case the old dead-ref wiring missed).
+   */
+  editorFocusSeq: number;
+  /** Like editorFocusSeq, but opens the in-editor find/replace panel (the ⌘K
+   *  "Find in text" door to CodeMirror's search — discoverability for ⌘F). */
+  editorSearchSeq: number;
+  /** Optional query to pre-fill the find panel with on the next editorSearchSeq
+   *  firing — the sidebar section-search's Enter handoff ("map found the
+   *  neighborhoods; editor search walks the instances"). Null = open blank. */
+  editorSearchPrefill: string | null;
+  /**
+   * One-shot request to land the caret on a phrase inside a section — the
+   * treemap relay: clicking a search-lit tile selects the section AND asks the
+   * editor to find the query within that section's live span (fall back to the
+   * section start when the literal string isn't present — FTS stems). Consumed
+   * and cleared by the editor.
+   */
+  pendingPhraseReveal: { query: string; sectionId: string } | null;
+  /**
+   * "Here is what just changed": the character offset of the most recent
+   * accepted AI splice. The main editor consumes it (scroll + landing pulse)
+   * once no workspace overlay is covering it, then clears it — so closing the
+   * Glass Box / Parallel workspace lands the writer AT the accepted edit
+   * instead of wherever the caret last was.
+   */
+  pendingEditorReveal: { offset: number } | null;
+
   setLocalContent: (content: string | ((prev: string) => string)) => void;
   setSelectedId: (id: string | null | ((prev: string | null) => string | null)) => void;
   setActiveLineIndex: (idx: number | null) => void;
   setSectionCaret: (id: string, caret: SectionCaret) => void;
+  requestEditorFocus: () => void;
+  /** Open the in-editor find panel; `query` pre-fills it (sidebar handoff). */
+  requestEditorSearch: (query?: string) => void;
+  setPendingEditorReveal: (reveal: { offset: number } | null) => void;
+  setPendingPhraseReveal: (reveal: { query: string; sectionId: string } | null) => void;
 }
 
 export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateSlice> = (set) => ({
   localContent: '',
+  draftDirty: false,
   selectedId: null,
   activeLineIndex: null,
   sectionCaret: {},
+  editorFocusSeq: 0,
+  editorSearchSeq: 0,
+  editorSearchPrefill: null,
+  pendingEditorReveal: null,
+  pendingPhraseReveal: null,
 
   setLocalContent: (content) =>
     set((state) => ({
       localContent: typeof content === 'function' ? content(state.localContent) : content,
+      draftDirty: true,
     })),
   setSelectedId: (id) =>
     set((state) => ({
@@ -48,4 +101,12 @@ export const createEditorStateSlice: StateCreator<AppState, [], [], EditorStateS
   setActiveLineIndex: (idx) => set({ activeLineIndex: idx }),
   setSectionCaret: (id, caret) =>
     set((state) => ({ sectionCaret: { ...state.sectionCaret, [id]: caret } })),
+  requestEditorFocus: () => set((state) => ({ editorFocusSeq: state.editorFocusSeq + 1 })),
+  requestEditorSearch: (query) =>
+    set((state) => ({
+      editorSearchSeq: state.editorSearchSeq + 1,
+      editorSearchPrefill: query?.trim() || null,
+    })),
+  setPendingEditorReveal: (reveal) => set({ pendingEditorReveal: reveal }),
+  setPendingPhraseReveal: (reveal) => set({ pendingPhraseReveal: reveal }),
 });
