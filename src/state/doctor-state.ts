@@ -27,7 +27,10 @@ import type {
  * Pure state only: the AI calls live in features/doctor/use-doctor-actions +
  * use-doctor-wizard-actions, mirroring use-climate-actions.
  */
-export type DoctorMode = 'instruments' | 'wizard';
+// `ledger` is the door to the saved checklist — reachable whenever a
+// `doctorChecklist` exists (even after reload, when the ephemeral wizard draft
+// is gone), so the persisted work ledger is never orphaned.
+export type DoctorMode = 'instruments' | 'wizard' | 'ledger';
 export type DoctorInstrument = DoctorRowInstrument | DoctorReportInstrument | 'paragraph';
 export type DoctorStatus = 'idle' | 'running' | 'streaming' | 'error';
 
@@ -52,6 +55,10 @@ export interface DoctorSlice {
   doctorOutlineHash: string | null;
   doctorSaysDoesRows: FunctionalOutlineRow[] | null;
   doctorCoherenceRows: CoherenceRow[] | null;
+  /** Hash of the scope prose the coherence table (the wizard's `outlineData`) was
+   *  generated from. The checklist's ¶ numbers only mean anything against it, so
+   *  it is the checklist's generation-time provenance and the recalibrate guard. */
+  doctorScopeHash: string | null;
   doctorReport: { instrument: DoctorReportInstrument; markdown: string } | null;
   /** Which block index the ¶ instrument targets (into the current scope's blocks). */
   doctorParagraphIndex: number | null;
@@ -71,8 +78,15 @@ export interface DoctorSlice {
   doctorChosenRoadmap: number | null;
   /** Step-5 preview tasks, before Save lands them in document-state. */
   doctorDraftTasks: DoctorTask[] | null;
-  /** Monotonic guard: a stale diagnosis stream stops appending after a reset. */
-  doctorWizardEpoch: number;
+  /**
+   * Monotonic operation token guarding EVERY async flow (instruments + wizard),
+   * not just the diagnosis stream. Close / retreat / reset / scope-change /
+   * thesis-change bump it; an action captures it at start and lands its result
+   * only if it is still current — so a completion that resolves after the user
+   * moved on (closed, switched scope, edited the thesis) is dropped, never
+   * landed on top of the new state.
+   */
+  doctorEpoch: number;
 
   openDoctor: () => void;
   closeDoctor: () => void;
@@ -82,13 +96,16 @@ export interface DoctorSlice {
   setDoctorThesis: (thesis: string, source: 'document' | 'distilled' | 'typed') => void;
   setDoctorOutlineRows: (rows: DoctorOutlineRow[] | null, sourceHash?: string | null) => void;
   setDoctorSaysDoesRows: (rows: FunctionalOutlineRow[] | null) => void;
-  setDoctorCoherenceRows: (rows: CoherenceRow[] | null) => void;
+  /** Coherence rows carry the scope hash they were generated against (staleness). */
+  setDoctorCoherenceRows: (rows: CoherenceRow[] | null, scopeHash?: string | null) => void;
   setDoctorReport: (report: { instrument: DoctorReportInstrument; markdown: string } | null) => void;
   setDoctorParagraphIndex: (index: number | null) => void;
   setDoctorParagraphDiag: (diag: ParagraphDiagnosis | null) => void;
   setDoctorThesisOptions: (options: ThesisOption[] | null) => void;
   setDoctorStatus: (status: DoctorStatus) => void;
   appendDoctorDiagnosis: (chunk: string) => void;
+  /** Reset the streamed diagnosis buffer through a slice action (not raw setState). */
+  clearDoctorDiagnosis: () => void;
   setDoctorCriticalIssue: (issue: string) => void;
   setDoctorRoadmaps: (roadmaps: RoadmapOption[] | null) => void;
   chooseDoctorRoadmap: (index: number | null) => void;
@@ -118,6 +135,7 @@ export const createDoctorSlice: StateCreator<AppState, [], [], DoctorSlice> = (s
   doctorOutlineHash: null,
   doctorSaysDoesRows: null,
   doctorCoherenceRows: null,
+  doctorScopeHash: null,
   doctorReport: null,
   doctorParagraphIndex: null,
   doctorParagraphDiag: null,
@@ -129,7 +147,7 @@ export const createDoctorSlice: StateCreator<AppState, [], [], DoctorSlice> = (s
   doctorRoadmaps: null,
   doctorChosenRoadmap: null,
   doctorDraftTasks: null,
-  doctorWizardEpoch: 0,
+  doctorEpoch: 0,
 
   openDoctor: () => {
     const s = get();
@@ -147,8 +165,10 @@ export const createDoctorSlice: StateCreator<AppState, [], [], DoctorSlice> = (s
     set({ doctorOpen: true });
   },
   // Closing keeps the readings + wizard progress (regenerable, cheap to keep)
-  // but drops any in-flight status, so reopening lands in a settled state.
-  closeDoctor: () => set({ doctorOpen: false, doctorStatus: 'idle' }),
+  // but drops any in-flight status AND bumps the epoch, so an AI call still in
+  // flight is invalidated (its landing check fails) and reopening is settled.
+  closeDoctor: () =>
+    set((s) => ({ doctorOpen: false, doctorStatus: 'idle', doctorEpoch: s.doctorEpoch + 1 })),
   setDoctorMode: (doctorMode) => set({ doctorMode }),
   setDoctorInstrument: (doctorInstrument) => set({ doctorInstrument }),
   // A new target invalidates every scope-derived reading (rows are block-indexed
@@ -162,25 +182,47 @@ export const createDoctorSlice: StateCreator<AppState, [], [], DoctorSlice> = (s
         doctorOutlineHash: null,
         doctorSaysDoesRows: null,
         doctorCoherenceRows: null,
+        doctorScopeHash: null,
         doctorReport: null,
         doctorParagraphIndex: null,
         doctorParagraphDiag: null,
+        doctorThesisOptions: null,
         doctorStepCursor: 0,
-        doctorWizardEpoch: s.doctorWizardEpoch + 1,
+        doctorEpoch: s.doctorEpoch + 1,
         ...WIZARD_CLEARED,
       };
     }),
-  setDoctorThesis: (doctorThesis, doctorThesisSource) => set({ doctorThesis, doctorThesisSource }),
+  // The coherence table (and the whole wizard chain) is made against the thesis;
+  // when it actually changes, drop that chain rather than keep a stale reading
+  // judged against a thesis it never saw. Prose-driven readings (claims/saysDoes)
+  // survive. Drop the cursor to at most calibration so the writer re-runs it.
+  setDoctorThesis: (doctorThesis, doctorThesisSource) =>
+    set((s) => {
+      if (doctorThesis.trim() === s.doctorThesis.trim()) {
+        return { doctorThesis, doctorThesisSource };
+      }
+      return {
+        doctorThesis,
+        doctorThesisSource,
+        doctorCoherenceRows: null,
+        doctorScopeHash: null,
+        doctorStepCursor: Math.min(s.doctorStepCursor, 1),
+        doctorEpoch: s.doctorEpoch + 1,
+        ...WIZARD_CLEARED,
+      };
+    }),
   setDoctorOutlineRows: (doctorOutlineRows, sourceHash = null) =>
     set({ doctorOutlineRows, doctorOutlineHash: sourceHash }),
   setDoctorSaysDoesRows: (doctorSaysDoesRows) => set({ doctorSaysDoesRows }),
-  setDoctorCoherenceRows: (doctorCoherenceRows) => set({ doctorCoherenceRows }),
+  setDoctorCoherenceRows: (doctorCoherenceRows, scopeHash = null) =>
+    set({ doctorCoherenceRows, doctorScopeHash: scopeHash }),
   setDoctorReport: (doctorReport) => set({ doctorReport }),
   setDoctorParagraphIndex: (doctorParagraphIndex) => set({ doctorParagraphIndex }),
   setDoctorParagraphDiag: (doctorParagraphDiag) => set({ doctorParagraphDiag }),
   setDoctorThesisOptions: (doctorThesisOptions) => set({ doctorThesisOptions }),
   setDoctorStatus: (doctorStatus) => set({ doctorStatus }),
   appendDoctorDiagnosis: (chunk) => set((s) => ({ doctorDiagnosis: s.doctorDiagnosis + chunk })),
+  clearDoctorDiagnosis: () => set({ doctorDiagnosis: '' }),
   setDoctorCriticalIssue: (doctorCriticalIssue) => set({ doctorCriticalIssue }),
   setDoctorRoadmaps: (doctorRoadmaps) => set({ doctorRoadmaps }),
   chooseDoctorRoadmap: (doctorChosenRoadmap) => set({ doctorChosenRoadmap }),
@@ -192,7 +234,7 @@ export const createDoctorSlice: StateCreator<AppState, [], [], DoctorSlice> = (s
   retreatDoctorStep: () =>
     set((s) => {
       const cursor = Math.max(s.doctorStepCursor - 1, 0);
-      const cleared: Partial<DoctorSlice> = { doctorWizardEpoch: s.doctorWizardEpoch + 1 };
+      const cleared: Partial<DoctorSlice> = { doctorEpoch: s.doctorEpoch + 1 };
       if (cursor <= 3) {
         cleared.doctorDraftTasks = null;
         cleared.doctorChosenRoadmap = null;
@@ -202,12 +244,21 @@ export const createDoctorSlice: StateCreator<AppState, [], [], DoctorSlice> = (s
         cleared.doctorDiagnosis = '';
         cleared.doctorCriticalIssue = '';
       }
+      // Landing back at discovery (before calibration) drops the coherence table:
+      // it is DOWNSTREAM of discovery, so a table judged against a since-changed
+      // thesis must not linger. Landing AT calibration keeps it (its own output).
+      if (cursor === 0) {
+        cleared.doctorCoherenceRows = null;
+        cleared.doctorScopeHash = null;
+      }
       return { doctorStepCursor: cursor, ...cleared };
     }),
   resetDoctorWizard: () =>
     set((s) => ({
       doctorStepCursor: 0,
-      doctorWizardEpoch: s.doctorWizardEpoch + 1,
+      doctorEpoch: s.doctorEpoch + 1,
+      doctorCoherenceRows: null,
+      doctorScopeHash: null,
       ...WIZARD_CLEARED,
     })),
 });

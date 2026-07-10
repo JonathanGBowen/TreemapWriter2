@@ -96,6 +96,16 @@ const ROW_SCHEMA: Record<DoctorRowInstrument, object> = {
   },
 };
 
+/** An explicit lowercase JSON shape per instrument. Gemini enforces the schema
+ *  natively, but schemaless transports (Anthropic/Ollama) never see it — so the
+ *  prompt itself must show the exact keys, or a model echoing the ported prompt's
+ *  "Para / Says / Does" table headers would emit keys the normalizers can't read. */
+const ROW_EXAMPLE: Record<DoctorRowInstrument, string> = {
+  claims: '{"rows":[{"index":1,"claim":"…"}]}',
+  saysDoes: '{"rows":[{"index":1,"says":"…","does":"…"}]}',
+  thesisCheck: '{"rows":[{"index":1,"claim":"…","verdict":"Yes","justification":"…"}]}',
+};
+
 const KIND_HINT: Record<string, string> = {
   prose: 'prose',
   heading: 'heading — echo verbatim, no verdict',
@@ -121,7 +131,8 @@ const buildRowPrompt = (input: DoctorOutlineInput): string =>
     // guardContextFit and aborts on overflow rather than truncating.
     numberedBlocks(input.blocks),
     '',
-    'Return ONLY the JSON object defined by the schema (a "rows" array). Produce exactly one row per paragraph number above, in order, using that number as `index`.',
+    'Return ONLY a JSON object with a "rows" array — no markdown, no table. Produce exactly one row per paragraph number above, in order, using that number as `index`. Use these exact lowercase keys:',
+    ROW_EXAMPLE[input.instrument],
   ].join('\n');
 
 export async function runDoctorOutline(
@@ -173,7 +184,7 @@ export async function runDoctorParagraph(
     '### PARAGRAPH ###',
     input.paragraph,
     '',
-    'Return ONLY the JSON object defined by the schema: "says" (one sentence), "does" (the rhetorical function), "coherence" (the one-sentence Coherence Check).',
+    'Return ONLY a JSON object with these exact lowercase keys: "says" (one sentence), "does" (the rhetorical function), "coherence" (the one-sentence Coherence Check). Example: {"says":"…","does":"…","coherence":"…"}',
   ].join('\n');
   const text = await client.generateText({
     model,
@@ -218,7 +229,7 @@ export async function distillThesis(
     '### DRAFT TEXT ###',
     input.text,
     '',
-    'Return ONLY the JSON object defined by the schema (an "options" array of exactly three: mirror, pivot, risk).',
+    'Return ONLY a JSON object with an "options" array of exactly three (mirror, pivot, risk), using these exact lowercase keys. Example: {"options":[{"type":"mirror","description":"…","thesis":"…"}]}',
   ].join('\n');
   const text = await client.generateText({
     model,
@@ -227,7 +238,10 @@ export async function distillThesis(
     json: true,
     responseJsonSchema: thesisOptionsSchema,
     thinkingBudget,
-    maxTokens: 4000,
+    // Heavy tier + adaptive thinking: on the Anthropic path thinking tokens count
+    // INSIDE maxTokens, so a small cap can exhaust the budget before the JSON.
+    // Match the other heavy flows (the payload — three short theses — is tiny).
+    maxTokens: MAX_OUTPUT_TOKENS,
   });
   return normalizeThesisOptions(safeJsonParse(text || '', null));
 }

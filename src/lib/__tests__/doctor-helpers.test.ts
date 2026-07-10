@@ -29,8 +29,14 @@ describe('normalizeClaimRows', () => {
       blocks,
     );
     expect(rows).toHaveLength(3);
-    expect(rows[0]).toEqual({ index: 0, kind: 'heading', claim: '## Introduction' });
+    expect(rows[0]).toEqual({
+      index: 0,
+      kind: 'heading',
+      claim: '## Introduction',
+      anchor: anchorFor('## Introduction'),
+    });
     expect(rows[1].claim).toBe('Claim A distilled');
+    expect(rows[1].anchor).toBe(anchorFor(blocks[1].text)); // stamped for stable reveal
     expect(rows[2].claim).toBe(''); // missed → blank, flagged by the UI
   });
 
@@ -42,6 +48,11 @@ describe('normalizeClaimRows', () => {
     expect(rows[1].claim).toBe('A');
     expect(rows[2].claim).toBe('B');
   });
+
+  it('reads capitalized JSON keys a schemaless transport may emit (case-insensitive)', () => {
+    const rows = normalizeClaimRows({ rows: [{ Index: 2, Claim: 'Cap-keyed claim' }] }, blocks);
+    expect(rows[1].claim).toBe('Cap-keyed claim');
+  });
 });
 
 describe('normalizeSaysDoesRows', () => {
@@ -50,9 +61,20 @@ describe('normalizeSaysDoesRows', () => {
       { rows: [{ index: 2, says: 'Says A', does: 'Introduces A' }, { index: 3, says: 'Says B', does: 'Supports A' }] },
       blocks,
     );
-    expect(rows[0]).toEqual({ index: 0, kind: 'heading', says: '## Introduction', does: '' });
+    expect(rows[0]).toEqual({
+      index: 0,
+      kind: 'heading',
+      says: '## Introduction',
+      does: '',
+      anchor: anchorFor('## Introduction'),
+    });
     expect(rows[1]).toMatchObject({ says: 'Says A', does: 'Introduces A' });
     expect(rows[2]).toMatchObject({ says: 'Says B', does: 'Supports A' });
+  });
+
+  it('reads capitalized Says/Does keys a schemaless transport may echo from the prompt', () => {
+    const rows = normalizeSaysDoesRows({ rows: [{ Para: 2, Says: 'S', Does: 'D' }] }, blocks);
+    expect(rows[1]).toMatchObject({ says: 'S', does: 'D' });
   });
 });
 
@@ -166,13 +188,25 @@ describe('extractCriticalIssue', () => {
     expect(extractCriticalIssue('some analysis\n\nfinal verdict line\n\n')).toBe('final verdict line');
     expect(extractCriticalIssue('')).toBe('');
   });
+
+  it('strips surrounding bold markers the model wraps the sentence in', () => {
+    const prose = 'Reasoning…\n\n**The most critical issue is that the argument abandons its thesis.**';
+    expect(extractCriticalIssue(prose)).toBe(
+      'The most critical issue is that the argument abandons its thesis.',
+    );
+  });
+
+  it('cuts at the first sentence terminator, never running into the remedial tail', () => {
+    const prose = 'The most critical issue is the missing warrant. To fix this, add a premise and reorder paragraphs 3 and 4.';
+    expect(extractCriticalIssue(prose)).toBe('The most critical issue is the missing warrant.');
+  });
 });
 
 describe('formatOutlineData', () => {
   it('renders a deterministic markdown table with 1-based numbers and — for headings', () => {
     const table = formatOutlineData([
-      { index: 0, kind: 'heading', claim: '## Introduction', justification: '' },
-      { index: 1, kind: 'prose', claim: 'A | with pipe', verdict: 'weakly', justification: 'thin' },
+      { index: 0, kind: 'heading', claim: '## Introduction', justification: '', anchor: '' },
+      { index: 1, kind: 'prose', claim: 'A | with pipe', verdict: 'weakly', justification: 'thin', anchor: '' },
     ]);
     expect(table).toContain('| Paragraph # | Claim | Supports Thesis? | Justification |');
     expect(table).toContain('| 1 | ## Introduction *(heading)* | — | |');
@@ -184,15 +218,23 @@ describe('formatOutlineMarkdown', () => {
   it('leads with the thesis and cites bullets by [n]', () => {
     const md = formatOutlineMarkdown(
       [
-        { index: 0, kind: 'heading', claim: '## Introduction' },
-        { index: 1, kind: 'prose', claim: 'Claim A' },
-        { index: 2, kind: 'prose', claim: '' },
+        { index: 0, kind: 'heading', claim: '## Introduction', anchor: '' },
+        { index: 1, kind: 'prose', claim: 'Claim A', anchor: '' },
+        { index: 2, kind: 'prose', claim: '', anchor: '' },
       ],
       'The thesis.',
     );
     expect(md.startsWith('Thesis: The thesis.')).toBe(true);
     expect(md).toContain('- [2] Claim A');
     expect(md).toContain('- [3] (no distillation)');
+  });
+
+  it('collapses a multi-line list/code echo into a single bullet', () => {
+    const md = formatOutlineMarkdown(
+      [{ index: 0, kind: 'list', claim: '- one\n- two\n- three', anchor: '' }],
+      '',
+    );
+    expect(md).toBe('- [1] - one - two - three');
   });
 });
 
