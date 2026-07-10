@@ -13,15 +13,15 @@ export interface Section {
   children: Section[];
   parentId: string | null;
 }
- 
+
 // --- STRUCTURED SPEC SYSTEM ---
- 
-/** 
+
+/**
  * The rhetorical/argumentative function a section performs in the document.
  * This replaces the vague "goal" string with a typed classification that
  * constrains what "success" means for this section.
  */
-export type SectionFunction = 
+export type SectionFunction =
   | 'introduce'    // Sets up the problem space, motivates what follows
   | 'explicate'    // Unpacks a concept, theory, or framework
   | 'argue'        // Advances a claim with supporting reasons
@@ -32,7 +32,7 @@ export type SectionFunction =
   | 'evaluate'     // Assesses the adequacy of something against criteria
   | 'narrate'      // Traces a historical or conceptual development
   | 'transition';  // Bridges between major parts of the argument
- 
+
 /**
  * A concrete, paragraph-level thing the section must DO.
  * These are the bridging tasks — specific enough to act on,
@@ -44,7 +44,7 @@ export interface RequiredMove {
   /** Optional: which other move this should follow */
   after?: string;
 }
- 
+
 /**
  * The structured specification for a section. Replaces the flat
  * { goals: string, mainClaim: string } with something that
@@ -62,9 +62,9 @@ export interface SectionSpec {
   /** What this section must establish for later sections to build on */
   outgoingCommitments: string[];
 }
- 
+
 // --- DIAGNOSTIC SYSTEM ---
- 
+
 export type MoveStatus = 'present' | 'partial' | 'missing' | 'unclear';
 
 /**
@@ -970,19 +970,19 @@ export interface TestResult {
   critique: string;
   suggestions: string[];
 }
- 
+
 export interface SpecHistoryItem {
   timestamp: number;
   goals: string;
   instruction?: string;
   type: 'manual' | 'ai-generate' | 'ai-refine';
 }
- 
+
 export interface Dependency {
   id: string;
   type: 'prerequisite' | 'reference';
 }
- 
+
 export interface TestSuiteEntry {
   /** Legacy flat goal string — kept for backward compat and manual override */
   goals: string;
@@ -1015,18 +1015,18 @@ export interface TestSuiteEntry {
    */
   reverseSummary?: string;
 }
- 
+
 export interface TestSuite {
   [sectionId: string]: TestSuiteEntry;
 }
- 
+
 export interface Persona {
   id: string;
   name: string;
   role: string;
   instruction: string;
 }
- 
+
 export interface Snapshot {
   id: string;
   timestamp: number;
@@ -1104,7 +1104,7 @@ export interface ProjectMeta {
    */
   path?: string;
 }
- 
+
 /**
  * The user-editable prompts, keyed by their persisted field names. Derived from
  * the prompt registry (the single source of truth for the inventory) so adding a
@@ -1358,12 +1358,20 @@ export interface MarkdownDelta {
 /** How strongly a paragraph's claim supports the working thesis. */
 export type DoctorVerdict = 'yes' | 'no' | 'weakly';
 
+// Every row carries the verbatim `anchor` of its source block, stamped at
+// generation time, so a click reveals the paragraph the row was MADE from —
+// even after the document was edited and the block indices shifted. (Reading
+// state is kept across close, so index-based reveal would jump to whatever now
+// sits at that index; the anchor relocates the real paragraph.)
+
 /** One reverse-outline row: the paragraph's single maximally-concise claim. */
 export interface DoctorOutlineRow {
   /** 0-based block index into the segmented scope (ParagraphBlock.index). */
   index: number;
   claim: string;
   kind: ParagraphKind;
+  /** Verbatim anchor of the source block at generation time (for stable reveal). */
+  anchor: string;
 }
 
 /** One Says/Does row of the Functional Reverse Outline (the dual-axis reading). */
@@ -1374,6 +1382,7 @@ export interface FunctionalOutlineRow {
   /** Rhetorical function — what the paragraph DOES (<40 chars by prompt contract). */
   does: string;
   kind: ParagraphKind;
+  anchor: string;
 }
 
 /** One row of the Thesis Coherence Check. */
@@ -1385,6 +1394,7 @@ export interface CoherenceRow {
   verdict?: DoctorVerdict;
   justification: string;
   kind: ParagraphKind;
+  anchor: string;
 }
 
 /** The single-paragraph Saying-vs-Doing diagnostic. */
