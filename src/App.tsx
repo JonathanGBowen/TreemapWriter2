@@ -687,6 +687,7 @@ export const App = () => {
     { id: 'compare', label: 'Compare versions', hint: 'A/B evaluation', glyph: '≈', run: () => useStore.getState().openCompare() },
     { id: 'spec-test', label: 'Spec test', hint: 'A/B against the rubric · whole + parts', glyph: '▣', run: () => useStore.getState().openSpecTest() },
     { id: 'climate', label: 'Climate', hint: 'Atmospheric report', glyph: '≋', run: () => useStore.getState().openClimate() },
+    { id: 'doctor', label: 'Outline Doctor', hint: 'Reverse-outline diagnosis · revision checklist', glyph: '≣', run: () => useStore.getState().openDoctor() },
     { id: 'history', label: 'Version history', hint: 'Snapshots & restore', glyph: '◷', run: () => useStore.getState().setShowHistoryModal(true) },
     { id: 'snapshot', label: 'Snapshot now', hint: 'Commit a labeled version', glyph: '◆', shortcut: '⌘S', run: handleManualSave },
     { id: 'new-project', label: 'New project', glyph: '＋', run: () => createNewProject() },

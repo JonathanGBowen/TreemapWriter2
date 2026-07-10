@@ -12,7 +12,8 @@ export type OpWorkspace =
   | 'gist'
   | 'compare'
   | 'spec-test'
-  | 'climate';
+  | 'climate'
+  | 'doctor';
 
 /** One in-flight AI operation, surfaced by the global activity pill. */
 export interface ActiveOp {
@@ -33,6 +34,7 @@ const WORKSPACE_OPEN_FLAG: Record<OpWorkspace, keyof AppState> = {
   compare: 'comparisonOpen',
   'spec-test': 'specTestOpen',
   climate: 'climateOpen',
+  doctor: 'doctorOpen',
 };
 
 /** Monotonic op id source. Module-level: the slice is created once per session. */

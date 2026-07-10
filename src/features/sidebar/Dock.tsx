@@ -39,6 +39,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const openCompare = useStore((s) => s.openCompare);
   const openSpecTest = useStore((s) => s.openSpecTest);
   const openClimate = useStore((s) => s.openClimate);
+  const openDoctor = useStore((s) => s.openDoctor);
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
   const openDashboard = useStore((s) => s.openDashboard);
   const setShowCoachModal = useStore((s) => s.setShowCoachModal);
@@ -77,9 +78,9 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     onBlur: () => setCaption(null),
   });
 
-  // Two workflow groups, seven each (the grid wraps to two rows). Compose/revise
-  // first, then evaluate/inspect. Every major modal/workspace is one glyph away —
-  // ⌘K (Assist) stays the searchable door + the home of the rarer actions.
+  // Two workflow groups (the grid wraps by sevens). Compose/revise first, then
+  // evaluate/inspect. Every major modal/workspace is one glyph away — ⌘K
+  // (Assist) stays the searchable door + the home of the rarer actions.
   const tools: { g: string; name: string; aria: string; onClick: () => void }[] = [
     // compose / revise
     { g: '◉', name: 'Assist — every action, searchable (⌘K)', aria: 'Assist', onClick: () => setShowCommandPalette(true) },
@@ -95,6 +96,7 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '▣', name: 'Spec test — A/B against the rubric, whole + parts', aria: 'Spec test', onClick: () => openSpecTest() },
     { g: '≈', name: 'Compare — version A/B evaluation', aria: 'Compare', onClick: () => openCompare() },
     { g: '≋', name: 'Climate — atmospheric weather report', aria: 'Climate', onClick: () => openClimate() },
+    { g: '≣', name: 'Outline Doctor — reverse-outline diagnosis, revision checklist', aria: 'Outline Doctor', onClick: () => openDoctor() },
     { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
     { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
