@@ -26,7 +26,17 @@ type Blockish = Pick<ParagraphBlock, 'index' | 'text' | 'kind'>;
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v));
 
 const pickRaw = (o: Record<string, unknown>, keys: string[]): unknown => {
+  // Fast path: exact (lowercase) key match.
   for (const k of keys) if (o[k] != null) return o[k];
+  // Case-insensitive fallback: schemaless transports (Anthropic/Ollama) never
+  // see the JSON schema, so a model echoing the prompt's column labels can emit
+  // capitalized keys ("Says"/"Does"/"Para"/"Supports Thesis?"). Match those too.
+  const lower: Record<string, unknown> = {};
+  for (const key of Object.keys(o)) {
+    const lk = key.toLowerCase();
+    if (!(lk in lower)) lower[lk] = o[key];
+  }
+  for (const k of keys) if (lower[k] != null) return lower[k];
   return undefined;
 };
 const pickStr = (o: Record<string, unknown>, keys: string[]): string => str(pickRaw(o, keys)).trim();
@@ -60,6 +70,7 @@ export const normalizeClaimRows = (raw: unknown, blocks: Blockish[]): DoctorOutl
   return blocks.map((b) => ({
     index: b.index,
     kind: b.kind,
+    anchor: anchorFor(b.text),
     claim:
       b.kind === 'prose'
         ? pickStr(byNum.get(b.index + 1) ?? {}, ['claim', 'summary', 'sentence', 'text'])
@@ -71,11 +82,13 @@ export const normalizeClaimRows = (raw: unknown, blocks: Blockish[]): DoctorOutl
 export const normalizeSaysDoesRows = (raw: unknown, blocks: Blockish[]): FunctionalOutlineRow[] => {
   const byNum = rowsByNumber(raw, ['rows', 'outline', 'table']);
   return blocks.map((b) => {
-    if (b.kind !== 'prose') return { index: b.index, kind: b.kind, says: b.text.trim(), does: '' };
+    if (b.kind !== 'prose')
+      return { index: b.index, kind: b.kind, anchor: anchorFor(b.text), says: b.text.trim(), does: '' };
     const o = byNum.get(b.index + 1) ?? {};
     return {
       index: b.index,
       kind: b.kind,
+      anchor: anchorFor(b.text),
       says: pickStr(o, ['says', 'say', 'content', 'summary']),
       does: pickStr(o, ['does', 'do', 'function', 'role']),
     };
@@ -95,12 +108,13 @@ export const normalizeCoherenceRows = (raw: unknown, blocks: Blockish[]): Cohere
   const byNum = rowsByNumber(raw, ['rows', 'checks', 'claims', 'table']);
   return blocks.map((b) => {
     if (b.kind !== 'prose')
-      return { index: b.index, kind: b.kind, claim: b.text.trim(), justification: '' };
+      return { index: b.index, kind: b.kind, anchor: anchorFor(b.text), claim: b.text.trim(), justification: '' };
     const o = byNum.get(b.index + 1) ?? {};
     const claim = pickStr(o, ['claim', 'summary', 'text']);
     return {
       index: b.index,
       kind: b.kind,
+      anchor: anchorFor(b.text),
       claim,
       // A missed row keeps verdict undefined alongside its '' claim — flagged, not judged.
       verdict: claim ? coerceVerdict(pickRaw(o, ['verdict', 'supports', 'supportsThesis'])) : undefined,
@@ -196,17 +210,23 @@ export const normalizeDoctorTasks = (raw: unknown, blocks: Blockish[]): DoctorTa
   return out;
 };
 
+/** Drop markdown emphasis/code markers a model may wrap a sentence in, and squeeze whitespace. */
+const stripEmphasis = (s: string): string => s.replace(/[*_`]+/g, '').replace(/\s+/g, ' ').trim();
+
 /**
  * Pull the diagnosed critical issue out of the streamed step-3 prose: the last
- * sentence beginning "The most critical issue is…" (the prompt's contract), else
- * the last non-empty line. Heuristic on purpose — the field is user-editable.
+ * sentence beginning "The most critical issue is…" (the prompt's contract),
+ * ending at the FIRST sentence terminator (never running into the remedial tail),
+ * with any surrounding **bold** / *italic* / `code` markers stripped — models
+ * routinely bold the mandated closing sentence. Else the last non-empty line.
+ * Heuristic on purpose — the field is user-editable.
  */
 export const extractCriticalIssue = (prose: string): string => {
-  const matches = prose.match(/The most critical issue is[^]*?(?=\n\s*\n|$)/gi);
-  if (matches && matches.length > 0) return matches[matches.length - 1].trim();
+  const matches = prose.match(/The most critical issue is[^.!?\n]*[.!?]?/gi);
+  if (matches && matches.length > 0) return stripEmphasis(matches[matches.length - 1]);
   const lines = prose
     .split('\n')
-    .map((l) => l.trim())
+    .map((l) => stripEmphasis(l))
     .filter(Boolean);
   return lines[lines.length - 1] ?? '';
 };
@@ -243,7 +263,10 @@ export const formatOutlineMarkdown = (rows: DoctorOutlineRow[], thesis: string):
   if (thesis.trim()) lines.push(`Thesis: ${thesis.trim()}`, '');
   for (const r of rows) {
     if (r.kind === 'heading') lines.push('', r.claim, '');
-    else lines.push(`- [${r.index + 1}] ${r.claim || '(no distillation)'}`);
+    // A prose claim is one sentence; a list/code echo is the verbatim (multi-line)
+    // block — collapse its newlines so it stays ONE bullet, not several phantom
+    // outline claims the flow/redundancy/gaps instruments would miscount.
+    else lines.push(`- [${r.index + 1}] ${(r.claim || '(no distillation)').replace(/\s*\n\s*/g, ' ')}`);
   }
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 };

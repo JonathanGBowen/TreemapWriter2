@@ -54,6 +54,7 @@ export const useDoctorActions = () => {
       return false;
     }
 
+    const epoch = s.doctorEpoch;
     s.setDoctorStatus('running');
     const LABEL: Record<DoctorRowInstrument, string> = {
       claims: 'Outlining…',
@@ -70,9 +71,12 @@ export const useDoctorActions = () => {
         config: s.promptsConfig,
       });
       const st = useStore.getState();
-      if (result.instrument === 'claims') st.setDoctorOutlineRows(result.rows, sourceHashOf(scope.text));
+      // Dropped if the writer closed / switched scope / edited the thesis mid-call.
+      if (st.doctorEpoch !== epoch) return false;
+      const hash = sourceHashOf(scope.text);
+      if (result.instrument === 'claims') st.setDoctorOutlineRows(result.rows, hash);
       else if (result.instrument === 'saysDoes') st.setDoctorSaysDoesRows(result.rows);
-      else st.setDoctorCoherenceRows(result.rows);
+      else st.setDoctorCoherenceRows(result.rows, hash);
       st.setDoctorStatus('idle');
       return true;
     } catch (e) {
@@ -96,6 +100,7 @@ export const useDoctorActions = () => {
       const scope = requireScope();
       if (!scope) return;
 
+      const epoch = s.doctorEpoch;
       let rows: DoctorOutlineRow[] | null = s.doctorOutlineRows;
       const fresh = rows && s.doctorOutlineHash === sourceHashOf(scope.text);
       if (!fresh) {
@@ -104,6 +109,7 @@ export const useDoctorActions = () => {
         rows = useStore.getState().doctorOutlineRows;
       }
       if (!rows || rows.length === 0) return;
+      if (useStore.getState().doctorEpoch !== epoch) return; // stale after the outlining leg
 
       const st = useStore.getState();
       st.setDoctorStatus('running');
@@ -116,13 +122,15 @@ export const useDoctorActions = () => {
           outlineMarkdown: formatOutlineMarkdown(rows, st.doctorThesis),
           config: st.promptsConfig,
         });
+        const done = useStore.getState();
+        if (done.doctorEpoch !== epoch) return; // stale — dropped
         if (!markdown) {
-          useStore.getState().setDoctorStatus('error');
+          done.setDoctorStatus('error');
           toast.error('The model returned an empty report — try again.');
           return;
         }
-        useStore.getState().setDoctorReport({ instrument, markdown });
-        useStore.getState().setDoctorStatus('idle');
+        done.setDoctorReport({ instrument, markdown });
+        done.setDoctorStatus('idle');
       } catch (e) {
         useStore.getState().setDoctorStatus('error');
         notifyAiError(e, `Report failed: ${errMessage(e)}`);
@@ -144,19 +152,22 @@ export const useDoctorActions = () => {
       toast.error('Pick a prose paragraph to diagnose.');
       return;
     }
+    const epoch = s.doctorEpoch;
     s.setDoctorParagraphIndex(blockIndex);
     s.setDoctorParagraphDiag(null);
     s.setDoctorStatus('running');
     const opId = s.beginOp({ label: 'Saying vs doing…', workspace: 'doctor' });
     try {
       const diag = await aiProvider.runDoctorParagraph({ paragraph: block.text, config: s.promptsConfig });
+      const st = useStore.getState();
+      if (st.doctorEpoch !== epoch) return; // stale — dropped
       if (!diag) {
-        useStore.getState().setDoctorStatus('error');
+        st.setDoctorStatus('error');
         toast.error('The model returned no usable diagnosis — try again.');
         return;
       }
-      useStore.getState().setDoctorParagraphDiag(diag);
-      useStore.getState().setDoctorStatus('idle');
+      st.setDoctorParagraphDiag(diag);
+      st.setDoctorStatus('idle');
     } catch (e) {
       useStore.getState().setDoctorStatus('error');
       notifyAiError(e, `Diagnosis failed: ${errMessage(e)}`);
@@ -187,17 +198,20 @@ export const useDoctorActions = () => {
     ) {
       return;
     }
+    const epoch = s.doctorEpoch;
     s.setDoctorStatus('running');
     const opId = s.beginOp({ label: 'Distilling a thesis…', workspace: 'doctor' });
     try {
       const options = await aiProvider.distillThesis({ text: scope.text, config: s.promptsConfig });
+      const st = useStore.getState();
+      if (st.doctorEpoch !== epoch) return; // stale — dropped
       if (options.length === 0) {
-        useStore.getState().setDoctorStatus('error');
+        st.setDoctorStatus('error');
         toast.error('The model returned no usable thesis options — try again.');
         return;
       }
-      useStore.getState().setDoctorThesisOptions(options);
-      useStore.getState().setDoctorStatus('idle');
+      st.setDoctorThesisOptions(options);
+      st.setDoctorStatus('idle');
     } catch (e) {
       useStore.getState().setDoctorStatus('error');
       notifyAiError(e, `Distillation failed: ${errMessage(e)}`);
@@ -211,13 +225,16 @@ export const useDoctorActions = () => {
    * the LIVE buffer (survives edits elsewhere), hand the offset to the editor's
    * reveal channel, and step out of the workspace.
    */
-  const revealBlock = useCallback((blockIndex: number) => {
+  /**
+   * Jump to the paragraph a verbatim anchor names. The outline/coherence rows
+   * carry their source anchor from generation time, so this finds the RIGHT
+   * paragraph even when the reading is stale and the document has been edited
+   * since — the anchor relocates verbatim in the live buffer or honestly fails.
+   */
+  const revealAnchor = useCallback((anchor: string) => {
     const s = useStore.getState();
-    const scope = doctorScopeFromState(s);
-    const block = scope?.blocks[blockIndex];
-    if (!block) return;
     const live = s.localContent || s.markdown;
-    const located = relocateBlock(live, anchorFor(block.text));
+    const located = relocateBlock(live, anchor);
     if (!located) {
       toast.error('That paragraph has changed too much to locate — regenerate the reading.');
       return;
@@ -227,5 +244,12 @@ export const useDoctorActions = () => {
     s.closeDoctor();
   }, []);
 
-  return { runRows, runReport, runParagraph, runDistiller, revealBlock };
+  /** Reveal a freshly-picked LIVE block by index (the ¶ diagnostic's own pick). */
+  const revealBlock = useCallback((blockIndex: number) => {
+    const scope = doctorScopeFromState(useStore.getState());
+    const block = scope?.blocks[blockIndex];
+    if (block) revealAnchor(anchorFor(block.text));
+  }, [revealAnchor]);
+
+  return { runRows, runReport, runParagraph, runDistiller, revealBlock, revealAnchor };
 };

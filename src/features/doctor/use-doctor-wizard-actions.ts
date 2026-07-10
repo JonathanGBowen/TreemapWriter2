@@ -44,6 +44,7 @@ export const useDoctorWizardActions = () => {
       return;
     }
 
+    const epoch = s.doctorEpoch;
     s.setDoctorStatus('running');
     const opId = s.beginOp({ label: 'Calibrating…', workspace: 'doctor' });
     try {
@@ -54,9 +55,13 @@ export const useDoctorWizardActions = () => {
         blocks: scope.blocks.map((b) => ({ index: b.index, text: b.text, kind: b.kind })),
         config: s.promptsConfig,
       });
-      if (result.instrument !== 'thesisCheck') return; // unreachable; type narrowing
       const st = useStore.getState();
-      st.setDoctorCoherenceRows(result.rows);
+      // Dropped if the writer closed / switched scope / edited the thesis mid-call.
+      if (st.doctorEpoch !== epoch) return;
+      if (result.instrument !== 'thesisCheck') return; // unreachable; type narrowing
+      // Stamp the calibration-time prose hash: the coherence table's ¶ numbers
+      // (the wizard's outlineData) only mean anything against this exact prose.
+      st.setDoctorCoherenceRows(result.rows, sourceHashOf(scope.text));
       st.setDoctorStatus('idle');
       st.advanceDoctorStep();
     } catch (e) {
@@ -76,9 +81,9 @@ export const useDoctorWizardActions = () => {
       toast.error('Run the calibration first — the diagnosis reads its table.');
       return;
     }
-    const epoch = s.doctorWizardEpoch;
+    const epoch = s.doctorEpoch;
     s.setDoctorCriticalIssue('');
-    useStore.setState({ doctorDiagnosis: '' });
+    s.clearDoctorDiagnosis();
     s.setDoctorStatus('streaming');
     const opId = s.beginOp({ label: 'Diagnosing…', workspace: 'doctor' });
     try {
@@ -88,12 +93,13 @@ export const useDoctorWizardActions = () => {
       });
       for await (const chunk of stream) {
         const st = useStore.getState();
-        // A retreat/reset/scope-change bumped the epoch — stop landing stale prose.
-        if (st.doctorWizardEpoch !== epoch) return;
+        // A close/retreat/reset/scope-change/thesis-change bumped the epoch —
+        // stop landing stale prose (a second stream can't interleave into this buffer).
+        if (st.doctorEpoch !== epoch) return;
         st.appendDoctorDiagnosis(chunk);
       }
       const st = useStore.getState();
-      if (st.doctorWizardEpoch !== epoch) return;
+      if (st.doctorEpoch !== epoch) return;
       st.setDoctorCriticalIssue(extractCriticalIssue(st.doctorDiagnosis));
       st.setDoctorStatus('idle');
     } catch (e) {
@@ -113,6 +119,7 @@ export const useDoctorWizardActions = () => {
       toast.error('Name the critical issue first (step 3).');
       return;
     }
+    const epoch = s.doctorEpoch;
     s.setDoctorStatus('running');
     const opId = s.beginOp({ label: 'Drawing roadmaps…', workspace: 'doctor' });
     try {
@@ -121,12 +128,13 @@ export const useDoctorWizardActions = () => {
         outlineData: formatOutlineData(rows),
         config: s.promptsConfig,
       });
+      const st = useStore.getState();
+      if (st.doctorEpoch !== epoch) return; // stale — dropped
       if (roadmaps.length === 0) {
-        useStore.getState().setDoctorStatus('error');
+        st.setDoctorStatus('error');
         toast.error('The model returned no usable roadmaps — try again.');
         return;
       }
-      const st = useStore.getState();
       st.setDoctorRoadmaps(roadmaps);
       st.setDoctorStatus('idle');
     } catch (e) {
@@ -148,6 +156,15 @@ export const useDoctorWizardActions = () => {
       toast.error('Choose a roadmap first (step 4).');
       return;
     }
+    // The checklist's ¶ numbers come from the calibration-time coherence table,
+    // and its anchors resolve against the LIVE blocks — so the two only agree
+    // while the prose is unchanged since calibration. If it has drifted, the plan
+    // would mis-anchor every task silently; require a recalibrate first.
+    if (s.doctorScopeHash && sourceHashOf(scope.text) !== s.doctorScopeHash) {
+      toast.error('The draft changed since calibration — recalibrate (step 2) so the plan anchors correctly.');
+      return;
+    }
+    const epoch = s.doctorEpoch;
     s.setDoctorStatus('running');
     const opId = s.beginOp({ label: 'Writing the checklist…', workspace: 'doctor' });
     try {
@@ -157,12 +174,13 @@ export const useDoctorWizardActions = () => {
         blocks: scope.blocks.map((b) => ({ index: b.index, text: b.text, kind: b.kind })),
         config: s.promptsConfig,
       });
+      const st = useStore.getState();
+      if (st.doctorEpoch !== epoch) return; // stale — dropped
       if (tasks.length === 0) {
-        useStore.getState().setDoctorStatus('error');
+        st.setDoctorStatus('error');
         toast.error('The model returned no usable tasks — try again.');
         return;
       }
-      const st = useStore.getState();
       st.setDoctorDraftTasks(tasks);
       st.setDoctorStatus('idle');
       st.advanceDoctorStep();
@@ -179,7 +197,13 @@ export const useDoctorWizardActions = () => {
     const s = useStore.getState();
     const scope = doctorScopeFromState(s);
     const roadmap = s.doctorChosenRoadmap != null ? s.doctorRoadmaps?.[s.doctorChosenRoadmap] : null;
-    if (!scope || !roadmap || !s.doctorDraftTasks?.length) return;
+    if (!roadmap || !s.doctorDraftTasks?.length) return;
+    if (!scope) {
+      // The target section was renamed/deleted mid-wizard, so its id no longer
+      // resolves — say so rather than let the Save button look broken.
+      toast.error('The target section is no longer in the draft — reopen the sequence on a current scope.');
+      return;
+    }
     const checklist: DoctorChecklist = {
       scopeKey: scope.scopeKey,
       thesis: s.doctorThesis,
@@ -188,7 +212,11 @@ export const useDoctorWizardActions = () => {
       roadmapOutline: roadmap.outline,
       tasks: s.doctorDraftTasks,
       createdAt: Date.now(),
-      sourceHash: sourceHashOf(scope.text),
+      // The GENERATION-time hash (the prose the ¶ numbers refer to), not the
+      // save-time prose — so ChecklistPanel's staleness badge is honest about
+      // any edit made between calibration and save. Falls back to live only if
+      // calibration somehow left no hash.
+      sourceHash: s.doctorScopeHash ?? sourceHashOf(scope.text),
     };
     s.setDoctorChecklist(checklist);
     void s.saveCurrentState();
@@ -204,6 +232,12 @@ export const useDoctorWizardActions = () => {
     const s = useStore.getState();
     const checklist = s.doctorChecklist;
     if (!checklist) return;
+    // A sprint attaches to a section; a draft with no sections would open the
+    // modal onto nothing and strand its open flag. Refuse loudly instead.
+    if (s.sections.length === 0) {
+      toast.error('Add at least one section heading before sending the plan to a sprint.');
+      return;
+    }
     s.setSprintSeed({
       framing: { model: 'plain', wish: `Execute revision roadmap: ${checklist.roadmapTitle}` },
       transcript: checklistToMarkdown(checklist),
