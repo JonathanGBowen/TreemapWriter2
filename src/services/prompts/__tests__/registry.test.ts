@@ -26,6 +26,9 @@ const HISTORICAL_KEYS = [
   'diagnosticInstruction',
   'dialoguePrompt',
   'directiveDialoguePrompt',
+  // Anchored-dialogue interlocutor (2026-07-10) — the editable base voice for the
+  // typed openings (re-entry / coach-plan / unstick); the house-voice contract is locked.
+  'interlocutorPrompt',
   'generatePersonasPrompt',
   'generateRevisionsPrompt',
   // Parallel Editor (reverse-outline revision) — two new editable flows.
@@ -80,6 +83,9 @@ const LOCKED_KEYS = [
   // Gist Editor — single-span refresh + re-fit (engine internals, locked).
   'gistRefreshSpanPrompt',
   'gistRefitPrompt',
+  // Anchored-dialogue house voice (2026-07-10) — the ≤3-sentence/one-question/
+  // converge-by-4 contract prepended to every opening; locked so it cannot drift.
+  'interlocutorVoice',
 ];
 
 describe('DEFAULT_PROMPTS_CONFIG (derived from the registry)', () => {

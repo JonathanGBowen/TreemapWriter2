@@ -409,19 +409,28 @@ spec exists" case and peers). Deliberate follow-ons: the throttle is best-effort
 the latest op only (a `+N` count when several run); and conversational dialogue/coach
 streams keep their own inline indicators rather than the pill.
 
-**Dialogue expansion — Increment 1 shipped 2026-07-10** (design record:
+**Dialogue expansion — Increments 1–2 shipped 2026-07-10** (design record:
 [`docs/dialogue-design.md`](docs/dialogue-design.md) — the anchored-corridor law;
-see [`docs/migration-log.md`](docs/migration-log.md)). The shared dialogue kit
-(`features/shared/dialogue/` — transcript/composer/streaming mutex, extracted from
-the five hand-copied surfaces; `DialogueTab` + `DirectiveDialogue` migrated), the
-four dormant interrogation foci wired in the Analysis tab (`thesis`/`concepts`/
-`argument`/`support` + the `entire` reading), and a deterministic **gaps** focus
-(`lib/gap-focus.ts`: strain signals + missing/partial/unclear moves + the
-gap→vector next action) seedable from the Dialogue tab's empty state and a per-row
-`⊕` on the Structural-Tension Register — gap-seeded dialogues carry the section
-prose (additive `ContinueDialogueInput.sectionText`). Increments 2–4 (activity
-brief + re-entry opening; coach/gap/unstick openings; the Memorandum) follow on
-this branch.
+see [`docs/migration-log.md`](docs/migration-log.md)). **Inc 1:** the shared
+dialogue kit (`features/shared/dialogue/` — transcript/composer/streaming mutex,
+extracted from the five hand-copied surfaces; `DialogueTab` + `DirectiveDialogue`
+migrated), the four dormant interrogation foci wired in the Analysis tab
+(`thesis`/`concepts`/`argument`/`support` + the `entire` reading), and a
+deterministic **gaps** focus (`lib/gap-focus.ts`) seedable from the Dialogue tab
+and a per-row `⊕` on the Structural-Tension Register (gap-seeded dialogues carry
+the section prose — additive `ContinueDialogueInput.sectionText`). **Inc 2:** the
+**activity spine** (`lib/activity-brief.ts` over sessions + snapshots, approximate
+magnitude) + the **re-entry opening** (`lib/dialogue-openings.ts` +
+`state/dialogue-state.ts` + `OpeningDialogue`): a deterministic RECENT-ACTIVITY
+record taken to dialogue via the new `interlocutorTurn` flow
+(`interlocutor-voice.md` locked + `interlocutor.md`), converging on a
+`{wish,firstStep,sectionId}` deposit whose exit chip slingshots the caret back
+into the prose. **Last session's carry-forward is now re-surfaced** as tappable
+chips at check-in (discharges the felt-priority note below). Entry via `⊕ Where
+was I?` on the resume marker + at check-in. Turn pips + soft-yield enforce
+convergence. Increments 3 (coach/gap/unstick openings — where the coach gains the
+activity brief) and 4 (the Memorandum) follow on this branch. *Pending:* one
+manual AI-path check of a live re-entry turn (needs an API key).
 
 ## Next (felt priorities)
 
@@ -498,9 +507,11 @@ this branch.
   commitment-branch ("if commitment < 7, simplify"), and the idle-timeout-driven
   check-out. The data model (`SessionRecord` / `SessionGoal` / `SessionStep` /
   `CarryForward`) and lifecycle thunks already exist, so this is UI on top of a
-  settled spine. Two smaller follow-ons flagged by the brief: surfacing *last
-  session's carry-forward* at the next check-in (the records already store it),
-  and a **spec-evaluation delta** between the session start/end snapshots. The
+  settled spine. One smaller follow-on flagged by the brief remains: a **spec-evaluation delta**
+  between the session start/end snapshots. (Surfacing *last session's
+  carry-forward* at the next check-in — the other flagged follow-on — **shipped
+  2026-07-10** with dialogue-expansion Inc 2: tappable chips at check-in +
+  re-surfaced in the re-entry opening's activity brief.) The
   evaluation *engine* now exists (the spec-anchored A/B whole-test,
   `runSpecTestForOperands`, shipped 2026-06-26, store/UI-free); what remains is the
   automatic trigger that calls it on check-out with the start tag as the baseline

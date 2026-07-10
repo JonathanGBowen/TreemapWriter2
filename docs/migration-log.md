@@ -5853,3 +5853,61 @@ dialogue looks and behaves as before (shared bubbles).
 **Rollback.** One commit; `git revert`. No persisted-data or schema changes —
 the `ContinueDialogueInput` fields are optional and the dialogue transcript
 shape is untouched.
+
+---
+
+## 2026-07-10 — Dialogue expansion II: the activity spine + the re-entry opening
+
+Second increment (design record: [`dialogue-design.md`](dialogue-design.md)).
+The headline capability: dialogue that reads the recent git/session history and
+converges on where to resume — and the substrate all future openings plug into.
+
+**What changed.**
+
+- **`src/lib/activity-brief.ts`** (pure, tested): a bounded (~1,200-char)
+  RECENT ACTIVITY record composed from `repository.listSessions()` +
+  `listSnapshotMeta()` — last sittings (wish, obstacle, steps, carry-forward),
+  word deltas as **approximate magnitude** (`lib/magnitude.ts`), days-since,
+  and unsessioned snapshots since the last check-out. No AI, no new Rust (the
+  session YAML already carries what the git trailers do). Ships
+  `latestCarryForward` / `carryForwardFragments` — the app's own gap-capture,
+  finally re-surfaced.
+- **`src/lib/dialogue-openings.ts`** (pure, tested): the typed `DialogueOpening`
+  (kind · label · deterministic context · turn budget), the fenced-`{deposit}`
+  contract + `extractOpeningDeposit` / `stripDepositBlock`, and
+  `buildReentryOpening` (activity brief + top strain + current section's
+  gap→vector + a capped section index → a converge-on-`{wish,firstStep,sectionId}`
+  record). An opening with no deposit is definitionally cut.
+- **The interlocutor flow** — the one new streaming method
+  `AIProvider.interlocutorTurn` (impl in `ai-provider.impl.ts`; `AICallKind
+  'interlocutorTurn'` → interactive tier + `AGENT_DEFAULT_KINDS`). Two prompts:
+  **`interlocutor-voice.md`** (LOCKED house voice: ≤3 sentences, one question,
+  point at a location, converge by the 4th exchange) prepended to the editable
+  **`interlocutor.md`** base.
+- **Ephemeral `src/state/dialogue-state.ts`** — one active opening at a time
+  (opening a new one ends the old); `DialogueTab` renders the opening when
+  present, else the persisted analysis dialogue (whose `.spec.yaml` home is
+  untouched). `OpeningDialogue.tsx` + `use-opening-dialogue.ts` drive it with
+  **turn pips** (depleting diamonds) and a **soft yield** at budget (composer
+  dims, exit lights — never a lockout). The exit chip is the only lit action:
+  **→ back to the text** sets `selectedId` (the editor restores the caret +
+  scrolls on section change), **→ session** hands the wish to the check-in via a
+  one-shot `sessionPrefill`.
+- **Entry points (no new chrome):** the `ResumeMarker`'s revealed panel gains
+  **⊕ Where was I?**; the Session check-in surfaces the last check-out's
+  **carry-forward as tappable chips** (tap → wish, no AI) plus the same ⊕, and
+  consumes `sessionPrefill`.
+
+**Verify.** `npm test` (792 passing, incl. `activity-brief.test.ts` +
+`dialogue-openings.test.ts`), `npm run typecheck`, `npm run build` green.
+Manual (no AI key needed): the check-in shows carry-forward chips after a
+checked-out session; ⊕ Where was I? opens the Dialogue tab with a Focus banner,
+turn pips, and a composer; the composer never appears without an opening. **Manual
+AI-path check still pending** (needs an `ANTHROPIC_API_KEY`/`GEMINI_API_KEY`): drive
+a re-entry turn, exhaust the pips, confirm the `{deposit}` chip lands the caret in
+the named section. The coach/`buildReinstatement.extraFragments` history feeds land
+in Increment 3 (the coach is reworked there).
+
+**Rollback.** One commit; `git revert`. New slice + lib + prompts + one optional
+`AICallKind`; no persisted-data or schema changes (the opening transcript is
+ephemeral; `sessionPrefill` is ephemeral UI state).

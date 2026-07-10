@@ -14,6 +14,7 @@ import { createParallelSlice, type ParallelSlice } from './parallel-state';
 import { createGistSlice, type GistSlice } from './gist-state';
 import { createTraceSlice, type TraceSlice } from './trace-state';
 import { createSessionSlice, type SessionSlice } from './session-state';
+import { createDialogueOpeningSlice, type DialogueOpeningSlice } from './dialogue-state';
 import {
   setModelConfigSource,
   setAgentTraceSink,
@@ -56,7 +57,8 @@ export type AppState =
   & ParallelSlice
   & GistSlice
   & TraceSlice
-  & SessionSlice;
+  & SessionSlice
+  & DialogueOpeningSlice;
 
 // Dev-only escape hatch for E2E verification scripts (never in prod builds).
 declare global {
@@ -81,6 +83,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createGistSlice(...args),
   ...createTraceSlice(...args),
   ...createSessionSlice(...args),
+  ...createDialogueOpeningSlice(...args),
 }));
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {

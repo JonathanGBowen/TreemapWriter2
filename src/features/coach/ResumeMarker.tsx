@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAmbientCue } from './use-ambient-cue';
+import { useReentryOpening } from './use-reentry-opening';
 import { useStore } from '../../state';
 import { useCurrentSection } from '../tests-panel/use-current-section';
 
@@ -17,6 +18,7 @@ import { useCurrentSection } from '../tests-panel/use-current-section';
  */
 export const ResumeMarker: React.FC<{ onResume: () => void }> = ({ onResume }) => {
   const cue = useAmbientCue();
+  const openReentry = useReentryOpening();
   const currentSection = useCurrentSection();
   const hasCaret = useStore((s) => (currentSection ? !!s.sectionCaret[currentSection.id] : false));
   const [hovered, setHovered] = useState(false);
@@ -48,6 +50,13 @@ export const ResumeMarker: React.FC<{ onResume: () => void }> = ({ onResume }) =
             title="Open the coach for a fuller plan"
           >
             <span className="text-[10px] leading-none">⤢</span> Go deeper
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); void openReentry(); }}
+            className="self-start inline-flex items-center gap-[5px] font-mono text-[8px] tracking-[0.1em] uppercase text-hld-cyan bg-transparent border border-hld-cyan/40 px-[8px] py-[3px] hover:bg-hld-cyan/10 transition-colors"
+            title="Where was I? — a short dialogue over your recent activity"
+          >
+            <span className="text-[10px] leading-none">⊕</span> Where was I?
           </button>
         </span>
       )}

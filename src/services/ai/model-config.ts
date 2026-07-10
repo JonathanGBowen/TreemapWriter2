@@ -50,6 +50,9 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   decomposeSprintStep: g(INTERACTIVE, NO_THINK),
   // Socratic directive extraction — a live dialogue turn; must feel instant.
   directiveDialogueTurn: g(INTERACTIVE, NO_THINK),
+  // Anchored-opening interlocutor turn (re-entry / coach-plan / unstick) —
+  // a live dialogue over a deterministic record; must feel instant.
+  interlocutorTurn: g(INTERACTIVE, NO_THINK),
 
   // --- A: heavy reasoning (top flash, maximum thinking) ---
   estimateDependencies: g(HEAVY, THINK),

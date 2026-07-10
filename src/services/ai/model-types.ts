@@ -29,6 +29,7 @@ export type AICallKind =
   | 'analyzeSection'
   | 'refactorAnalysis'
   | 'continueDialogue'
+  | 'interlocutorTurn'
   | 'generateRevisions'
   | 'auditSourceUsage'
   | 'generateReverseOutline'
@@ -67,6 +68,7 @@ export const AI_CALL_KINDS: AICallKind[] = [
   'analyzeSection',
   'refactorAnalysis',
   'continueDialogue',
+  'interlocutorTurn',
   'generateRevisions',
   'auditSourceUsage',
   'generateReverseOutline',
@@ -106,6 +108,7 @@ export const AI_CALL_KIND_LABELS: Record<AICallKind, string> = {
   analyzeSection: 'Analyze section',
   refactorAnalysis: 'Refactor analysis',
   continueDialogue: 'Dialogue',
+  interlocutorTurn: 'Interlocutor (live)',
   generateRevisions: 'Generate revisions',
   auditSourceUsage: 'Audit source usage',
   generateReverseOutline: 'Reverse outline',

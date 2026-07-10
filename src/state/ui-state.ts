@@ -168,6 +168,11 @@ export interface UIStateSlice {
   showExternalChangeModal: boolean;
   /** Session ceremony check-in / check-out (the standalone Start/End boundary). */
   showSessionModal: boolean;
+  /**
+   * One-shot check-in prefill handed off from a dialogue deposit (the re-entry
+   * opening's "→ session" chip). Consumed and cleared by the check-in on mount.
+   */
+  sessionPrefill: { wish: string; firstStep?: string } | null;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -239,6 +244,7 @@ export interface UIStateSlice {
   setShowAgentTraceModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
   setShowSessionModal: (show: boolean) => void;
+  setSessionPrefill: (prefill: { wish: string; firstStep?: string } | null) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set, get) => ({
@@ -297,6 +303,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showAgentTraceModal: false,
   showExternalChangeModal: false,
   showSessionModal: false,
+  sessionPrefill: null,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -396,4 +403,5 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
   setShowSessionModal: (show) => set({ showSessionModal: show }),
+  setSessionPrefill: (prefill) => set({ sessionPrefill: prefill }),
 });

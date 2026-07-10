@@ -7,6 +7,7 @@ import { Composer, Transcript } from "../shared/dialogue";
 import { DisabledHint } from "../shared/DisabledHint";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
+import { OpeningDialogue } from "./OpeningDialogue";
 
 const DialogueEmptyState: React.FC<{ onOpenAnalysis: () => void; onGaps?: () => void }> = ({
   onOpenAnalysis,
@@ -85,6 +86,7 @@ export const DialogueTab: React.FC = () => {
   const sections = useStore(s => s.sections);
   const isProcessing = useStore(s => s.isProcessing);
   const setTestsPanelTab = useStore(s => s.setTestsPanelTab);
+  const dialogueOpening = useStore(s => s.dialogueOpening);
   const currentSection = useCurrentSection();
   const { sendDialogueMessage, concludeAndRefactor, discardDialogue, interrogate, streaming } = useAnalysisActions();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,12 @@ export const DialogueTab: React.FC = () => {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages.length, isStreaming, streamedText.length]);
+
+  // An active anchored opening (re-entry / coach-plan / unstick) takes the tab —
+  // it is section-independent and ephemeral, so it renders above the analysis
+  // dialogue (whose persisted home on the testSuite is untouched). Placed after
+  // all hooks so the rules of hooks hold regardless of which face renders.
+  if (dialogueOpening) return <OpeningDialogue opening={dialogueOpening} />;
 
   if (!currentSection) return null;
 
