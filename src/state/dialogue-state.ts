@@ -21,13 +21,18 @@ export interface DialogueOpeningSlice {
   endDialogueOpening: () => void;
 }
 
+/** Monotonic per-open id (module-level, survives the slice). Identifies one
+ *  opening instance so a stale in-flight turn can't write into its successor. */
+let openingSeq = 0;
+
 export const createDialogueOpeningSlice: StateCreator<AppState, [], [], DialogueOpeningSlice> = (
   set,
 ) => ({
   dialogueOpening: null,
   openingMessages: [],
 
-  openDialogueOpening: (opening) => set({ dialogueOpening: opening, openingMessages: [] }),
+  openDialogueOpening: (opening) =>
+    set({ dialogueOpening: { ...opening, id: ++openingSeq }, openingMessages: [] }),
   setOpeningMessages: (messages) => set({ openingMessages: messages }),
   endDialogueOpening: () => set({ dialogueOpening: null, openingMessages: [] }),
 });

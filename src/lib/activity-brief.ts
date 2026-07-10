@@ -88,10 +88,14 @@ export function buildActivityBrief(input: ActivityBriefInput): string | null {
 
   const lines: string[] = [];
 
-  // Most recent touch, whichever record carries it.
+  // Most recent touch, whichever record carries it. The session's check-OUT is
+  // its start + duration — using the start would count in-session snapshots as
+  // later, unsessioned work.
   const lastSnapMs = snapshots[0]?.timestamp ?? null;
-  const lastSessionMs = ended[0] ? sessionStartMs(ended[0].id) : null;
-  const lastTouch = Math.max(lastSnapMs ?? 0, lastSessionMs ?? 0);
+  const lastSessionStartMs = ended[0] ? sessionStartMs(ended[0].id) : null;
+  const lastSessionEndMs =
+    lastSessionStartMs !== null ? lastSessionStartMs + (ended[0]?.durationMinutes ?? 0) * 60_000 : null;
+  const lastTouch = Math.max(lastSnapMs ?? 0, lastSessionEndMs ?? 0);
   if (lastTouch > 0) lines.push(`- last touched: ${whenLabel(now, lastTouch)}`);
 
   // The last sitting, in full; up to two earlier ones, compressed.
@@ -117,7 +121,7 @@ export function buildActivityBrief(input: ActivityBriefInput): string | null {
   });
 
   // Work outside the session ceremony: snapshots after the last check-out.
-  const lastEndMs = lastSessionMs;
+  const lastEndMs = lastSessionEndMs;
   const since = lastEndMs ? snapshots.filter((m) => m.timestamp > lastEndMs) : snapshots;
   if (since.length > 0) {
     const latest = since[0];

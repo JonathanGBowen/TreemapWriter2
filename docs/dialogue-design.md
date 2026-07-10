@@ -174,7 +174,10 @@ purpose." That is the Memorandum's entire jurisdiction.
 - **The no-inference rule keeps it clean:** document-facts and stated
   commitments only — no trait claims, no "you tend to…", no behavioral
   inference. The rule lives in locked prompt text so it cannot drift.
-- Empty means invisible: no toggle, no flag, zero footprint until first use.
+- Near-zero footprint until first use: an empty, unopened Memorandum renders
+  only a single ghost line ("＋ memorandum") to begin one — no panel, no
+  persisted note, no nag. (The writer keeps the pen: manual first-authorship
+  matters as much as the AI's gated proposal, so the entry point stays, minimal.)
 
 ## V. Anti-distraction mechanics (not platitudes)
 

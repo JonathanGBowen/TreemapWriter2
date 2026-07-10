@@ -6036,3 +6036,21 @@ conversation, ephemeral transcripts, and an AI that never initiates. *Deferred b
 design (named in Inc 3):* the FTS/`specEdit` gap opening and the
 Sprint/`proposeRecenterings` deposit hand-offs. *Pending across Inc 2–3:* one
 manual AI-path drive of the live openings (needs an API key).
+
+**Adversarial-review fixes (same day, 2026-07-10).** A four-dimension diff review
+(each finding independently verified) confirmed three defects across the wave;
+all fixed: (1) **opening swapped mid-stream corrupted its successor** — a second
+opening started while a turn streamed could deadlock the new composer and clobber
+its transcript when the stale turn resolved; fixed with a per-open `id`
+(`dialogue-state.ts`), a per-opening stream key + an identity guard on the commit
+(`use-opening-dialogue.ts`), and keying `OpeningDialogue` by that id so a swap
+remounts fresh; (2) **the Memorandum accept chip never re-armed** — a second,
+different proposed revision within one opening stayed unacceptable; fixed by
+resetting on `deposit.memorandum` change; (3) **the activity brief used the
+session START as the check-out boundary**, mislabeling in-session snapshots as
+later unsessioned work; fixed to start + `durationMinutes` (regression test
+added). Also: the empty Memorandum footprint was reduced to a single ghost line
+(the design-doc §IV wording tightened to match — manual first-authorship is
+kept), and a dead `useState` import was removed. The principles and consistency
+dimensions came back clean. `npm test` (800), `typecheck`, `build`, and
+`cargo test` (58) all green.

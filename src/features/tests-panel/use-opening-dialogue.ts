@@ -8,7 +8,9 @@ import { findSectionById } from '../../lib/utils';
 import { guardContextFit } from '../shared/context-guard';
 import { useDialogueStream, dialogueInFlight } from '../shared/dialogue';
 
-const OPENING_KEY = 'dialogue-opening';
+/** Per-opening stream key: a stale in-flight turn (old opening) can't lock or
+ *  bleed into a newly-opened one (they hold distinct keys). */
+const keyFor = (id: number | undefined) => `dialogue-opening:${id ?? 0}`;
 
 /**
  * Drives the anchored-opening dialogue (re-entry / coach-plan / unstick) through
@@ -25,18 +27,22 @@ export function useOpeningDialogue() {
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
   const setMemorandum = useStore((s) => s.setMemorandum);
   const saveCurrentState = useStore((s) => s.saveCurrentState);
+  const openingId = useStore((s) => s.dialogueOpening?.id);
   const { streaming: liveTurn, runTurn } = useDialogueStream();
 
-  const isStreaming = liveTurn?.key === OPENING_KEY;
+  const streamKey = keyFor(openingId);
+  const isStreaming = liveTurn?.key === streamKey;
   const streamedText = isStreaming ? liveTurn.text : '';
 
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || dialogueInFlight(OPENING_KEY)) return;
       const { dialogueOpening, openingMessages, promptsConfig, modelConfig, globalModelDefault, modelCatalog } =
         useStore.getState();
       if (!dialogueOpening) return;
+      const key = keyFor(dialogueOpening.id);
+      const openingRef = dialogueOpening; // capture identity for the commit guard
+      if (!trimmed || dialogueInFlight(key)) return;
 
       const next: DialogueMessage[] = [...openingMessages, { role: 'user', text: trimmed }];
 
@@ -48,17 +54,17 @@ export function useOpeningDialogue() {
 
       setOpeningMessages(next);
       await runTurn({
-        key: OPENING_KEY,
+        key,
         stream: aiProvider.interlocutorTurn({
           opening: { kind: dialogueOpening.kind, label: dialogueOpening.label, context: dialogueOpening.context },
           messages: next,
           config: promptsConfig,
         }),
         onCommit: (t) => {
-          // Read the latest transcript at commit time (the opening may have been
-          // ended by a concurrent action; guard against a stale append).
+          // Land the reply ONLY if this exact opening is still active — a
+          // different (or ended) opening must never inherit this transcript.
           const state = useStore.getState();
-          if (!state.dialogueOpening) return;
+          if (state.dialogueOpening !== openingRef) return;
           state.setOpeningMessages([...next, { role: 'model', text: t }]);
         },
       });
@@ -101,7 +107,7 @@ export function useOpeningDialogue() {
   );
 
   const dismiss = useCallback(() => {
-    if (dialogueInFlight(OPENING_KEY)) return;
+    if (dialogueInFlight(keyFor(useStore.getState().dialogueOpening?.id))) return;
     endDialogueOpening();
     setTestsPanelTab('spec');
   }, [endDialogueOpening, setTestsPanelTab]);

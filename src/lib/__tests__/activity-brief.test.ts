@@ -89,6 +89,17 @@ describe('buildActivityBrief', () => {
     expect(brief).toContain('- since last check-out: 1 snapshot (latest: "polish transitions")');
   });
 
+  it('does NOT count an in-session snapshot as post-checkout (boundary is start+duration)', () => {
+    // Session starts 09:15, runs 42 min → checks out ~09:57. A snapshot at 09:30
+    // is INSIDE the session; only the 10:30 one is genuinely after.
+    const s = session({ id: '2026-07-06T09-15-00', durationMinutes: 42 });
+    const during = snap(Date.parse('2026-07-06T09:30:00Z'), 'mid-sprint save');
+    const after = snap(Date.parse('2026-07-06T10:30:00Z'), 'later polish');
+    const brief = buildActivityBrief({ sessions: [s], snapshots: [after, during], now: NOW });
+    expect(brief).toContain('- since last check-out: 1 snapshot (latest: "later polish")');
+    expect(brief).not.toContain('mid-sprint save');
+  });
+
   it('stays under the cap', () => {
     const many = Array.from({ length: 40 }, (_, i) =>
       session({

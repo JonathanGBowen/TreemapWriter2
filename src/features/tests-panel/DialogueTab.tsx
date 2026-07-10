@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { FlaskConical, MessagesSquare } from "lucide-react";
 import { useStore } from "../../state";
@@ -106,8 +106,10 @@ export const DialogueTab: React.FC = () => {
   // An active anchored opening (re-entry / coach-plan / unstick) takes the tab —
   // it is section-independent and ephemeral, so it renders above the analysis
   // dialogue (whose persisted home on the testSuite is untouched). Placed after
-  // all hooks so the rules of hooks hold regardless of which face renders.
-  if (dialogueOpening) return <OpeningDialogue opening={dialogueOpening} />;
+  // all hooks so the rules of hooks hold regardless of which face renders. Keyed
+  // by the opening id so a swap (e.g. mid-stream) remounts fresh rather than
+  // inheriting the previous opening's stream/accept state.
+  if (dialogueOpening) return <OpeningDialogue key={dialogueOpening.id} opening={dialogueOpening} />;
 
   if (!currentSection) return null;
 

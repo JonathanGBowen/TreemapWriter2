@@ -11,6 +11,12 @@ import { safeJsonParse } from './utils';
 export type DialogueOpeningKind = 'reentry' | 'coach-plan' | 'unstick';
 
 export interface DialogueOpening {
+  /**
+   * A per-open identity stamped by `openDialogueOpening` (the builders leave it
+   * unset). It keys the transcript component's remount and the stream so a
+   * second opening started mid-stream can never inherit or clobber the first.
+   */
+  id?: number;
   kind: DialogueOpeningKind;
   /** Short mono caption for the Focus banner ("RE-ENTRY · where was I?"). */
   label: string;

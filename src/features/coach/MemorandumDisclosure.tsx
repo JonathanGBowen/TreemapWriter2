@@ -4,9 +4,10 @@ import { MEMORANDUM_CAP } from '../../state/document-state';
 
 /**
  * The Memorandum — one capped, plain-markdown note of the writer's standing
- * intent (docs/dialogue-design.md §IV). Edited in place; empty ⇒ a single quiet
- * affordance (zero footprint until first use). Whatever is shown here is exactly
- * what any dialogue/coach prompt receives — the symmetry rule made visible.
+ * intent (docs/dialogue-design.md §IV). Edited in place. Whatever is shown here
+ * is exactly what any dialogue/coach prompt receives — the symmetry rule made
+ * visible. Near-zero footprint until first use: an empty, unopened memorandum
+ * renders only a single ghost line to begin one (no panel, no nag).
  */
 export const MemorandumDisclosure: React.FC = () => {
   const memorandum = useStore((s) => s.memorandum);
@@ -16,6 +17,21 @@ export const MemorandumDisclosure: React.FC = () => {
 
   const persist = () => void saveCurrentState().catch(() => {});
   const remaining = MEMORANDUM_CAP - memorandum.length;
+
+  // Empty and unopened: a single quiet line, no container — the feature stays
+  // out of the way until the writer (or an accepted proposal) first fills it.
+  if (!memorandum.trim() && !open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Note a standing intent the AI should honor — a decision, an open question, a don't-suggest veto"
+        className="font-mono text-[9px] tracking-[0.12em] uppercase text-hld-muted-text/70 hover:text-hld-cyan transition-colors"
+      >
+        ＋ memorandum
+      </button>
+    );
+  }
 
   return (
     <div className="w-full max-w-[320px] border border-hld-border/60 bg-hld-surface-2/30">

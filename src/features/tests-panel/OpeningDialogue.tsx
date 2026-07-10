@@ -63,6 +63,12 @@ export const OpeningDialogue: React.FC<{ opening: DialogueOpening }> = ({ openin
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages.length, isStreaming, streamedText.length, deposit]);
 
+  // A refined turn may propose a DIFFERENT standing-intent note; re-arm the
+  // accept when the proposed text changes so the newer revision is acceptable.
+  useEffect(() => {
+    setMemoAccepted(false);
+  }, [deposit?.memorandum]);
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-hld-surface-3">
       {/* Focus banner: the occasion + turn budget + a quiet way out. */}
