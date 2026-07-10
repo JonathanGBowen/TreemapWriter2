@@ -50,6 +50,10 @@ impl Layout {
         self.twriter_dir().join("reverse-outline.json")
     }
 
+    pub fn outline_doctor_json(&self) -> PathBuf {
+        self.twriter_dir().join("outline-doctor.json")
+    }
+
     pub fn gist_json(&self) -> PathBuf {
         self.twriter_dir().join("gist.json")
     }
@@ -149,6 +153,10 @@ mod tests {
         assert_eq!(
             layout.reverse_outline_json(),
             Path::new("/projects/diss/.twriter/reverse-outline.json")
+        );
+        assert_eq!(
+            layout.outline_doctor_json(),
+            Path::new("/projects/diss/.twriter/outline-doctor.json")
         );
         assert_eq!(
             layout.structural_parts_json(),

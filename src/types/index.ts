@@ -13,15 +13,15 @@ export interface Section {
   children: Section[];
   parentId: string | null;
 }
- 
+
 // --- STRUCTURED SPEC SYSTEM ---
- 
-/** 
+
+/**
  * The rhetorical/argumentative function a section performs in the document.
  * This replaces the vague "goal" string with a typed classification that
  * constrains what "success" means for this section.
  */
-export type SectionFunction = 
+export type SectionFunction =
   | 'introduce'    // Sets up the problem space, motivates what follows
   | 'explicate'    // Unpacks a concept, theory, or framework
   | 'argue'        // Advances a claim with supporting reasons
@@ -32,7 +32,7 @@ export type SectionFunction =
   | 'evaluate'     // Assesses the adequacy of something against criteria
   | 'narrate'      // Traces a historical or conceptual development
   | 'transition';  // Bridges between major parts of the argument
- 
+
 /**
  * A concrete, paragraph-level thing the section must DO.
  * These are the bridging tasks — specific enough to act on,
@@ -44,7 +44,7 @@ export interface RequiredMove {
   /** Optional: which other move this should follow */
   after?: string;
 }
- 
+
 /**
  * The structured specification for a section. Replaces the flat
  * { goals: string, mainClaim: string } with something that
@@ -62,9 +62,9 @@ export interface SectionSpec {
   /** What this section must establish for later sections to build on */
   outgoingCommitments: string[];
 }
- 
+
 // --- DIAGNOSTIC SYSTEM ---
- 
+
 export type MoveStatus = 'present' | 'partial' | 'missing' | 'unclear';
 
 /**
@@ -970,19 +970,19 @@ export interface TestResult {
   critique: string;
   suggestions: string[];
 }
- 
+
 export interface SpecHistoryItem {
   timestamp: number;
   goals: string;
   instruction?: string;
   type: 'manual' | 'ai-generate' | 'ai-refine';
 }
- 
+
 export interface Dependency {
   id: string;
   type: 'prerequisite' | 'reference';
 }
- 
+
 export interface TestSuiteEntry {
   /** Legacy flat goal string — kept for backward compat and manual override */
   goals: string;
@@ -1015,18 +1015,18 @@ export interface TestSuiteEntry {
    */
   reverseSummary?: string;
 }
- 
+
 export interface TestSuite {
   [sectionId: string]: TestSuiteEntry;
 }
- 
+
 export interface Persona {
   id: string;
   name: string;
   role: string;
   instruction: string;
 }
- 
+
 export interface Snapshot {
   id: string;
   timestamp: number;
@@ -1104,7 +1104,7 @@ export interface ProjectMeta {
    */
   path?: string;
 }
- 
+
 /**
  * The user-editable prompts, keyed by their persisted field names. Derived from
  * the prompt registry (the single source of truth for the inventory) so adding a
@@ -1348,3 +1348,111 @@ export interface MarkdownDelta {
   signature: DiskSignature | null;
   content: string | null;
 }
+// --- REVERSE OUTLINE DOCTOR (the ported Prosthetic Logician) ---
+// Every row/option type here is a GLOSS-LEVEL READING — a spec-free, regenerable
+// diagnostic over the live prose, never the exegetical record. Like
+// `TestSuiteEntry.reverseSummary`, none of these may ever be conflated with (or
+// written into) a spec's `mainClaim`: the Doctor reads the draft against a working
+// thesis; the spec layer reconstructs the argument. Keep the two apart.
+
+/** How strongly a paragraph's claim supports the working thesis. */
+export type DoctorVerdict = 'yes' | 'no' | 'weakly';
+
+// Every row carries the verbatim `anchor` of its source block, stamped at
+// generation time, so a click reveals the paragraph the row was MADE from —
+// even after the document was edited and the block indices shifted. (Reading
+// state is kept across close, so index-based reveal would jump to whatever now
+// sits at that index; the anchor relocates the real paragraph.)
+
+/** One reverse-outline row: the paragraph's single maximally-concise claim. */
+export interface DoctorOutlineRow {
+  /** 0-based block index into the segmented scope (ParagraphBlock.index). */
+  index: number;
+  claim: string;
+  kind: ParagraphKind;
+  /** Verbatim anchor of the source block at generation time (for stable reveal). */
+  anchor: string;
+}
+
+/** One Says/Does row of the Functional Reverse Outline (the dual-axis reading). */
+export interface FunctionalOutlineRow {
+  index: number;
+  /** Content summary — what the paragraph SAYS (<50 chars by prompt contract). */
+  says: string;
+  /** Rhetorical function — what the paragraph DOES (<40 chars by prompt contract). */
+  does: string;
+  kind: ParagraphKind;
+  anchor: string;
+}
+
+/** One row of the Thesis Coherence Check. */
+export interface CoherenceRow {
+  index: number;
+  claim: string;
+  /** Absent on non-prose rows (headings/lists echo into the numbering, unjudged)
+   *  and on rows the model missed (claim is '' there — the UI flags them). */
+  verdict?: DoctorVerdict;
+  justification: string;
+  kind: ParagraphKind;
+  anchor: string;
+}
+
+/** The single-paragraph Saying-vs-Doing diagnostic. */
+export interface ParagraphDiagnosis {
+  says: string;
+  does: string;
+  /** One sentence: does SAYS align with DOES? */
+  coherence: string;
+}
+
+/** One distilled thesis candidate for a discovery draft. */
+export interface ThesisOption {
+  type: 'mirror' | 'pivot' | 'risk';
+  /** One-line gloss of what this option reflects (from the model). */
+  description: string;
+  thesis: string;
+}
+
+/** One restructuring roadmap (wizard step 4) — a strategic choice, pickable as a card. */
+export interface RoadmapOption {
+  title: string;
+  /** The one-sentence strategic choice this roadmap makes. */
+  summary: string;
+  /** The restructured paper as bulleted outline lines. */
+  outline: string[];
+}
+
+/** One concrete revision task on the checklist. */
+export interface DoctorTask {
+  id: string;
+  text: string;
+  done: boolean;
+  /** 1-based paragraph numbers the task touches (the wizard's shared numbering). */
+  paragraphNumbers: number[];
+  /** Verbatim anchors (anchorFor) of those paragraphs, for jump-to-text after edits. */
+  anchors: string[];
+}
+
+/**
+ * The wizard's persisted output: the revision checklist, with the diagnosis it
+ * answers. ONE per project (a whole-argument operation; a re-run replaces it —
+ * git history keeps the old one). Persisted via `.twriter/outline-doctor.json`.
+ */
+export interface DoctorChecklist {
+  /** Section id the wizard ran over, or 'root' for the whole draft. */
+  scopeKey: string;
+  thesis: string;
+  criticalIssue: string;
+  roadmapTitle: string;
+  roadmapOutline: string[];
+  tasks: DoctorTask[];
+  createdAt: number;
+  /** Hash of the scope's prose at generation time — drives the staleness note. */
+  sourceHash: string;
+}
+
+/** The three essayistic report instruments (they read the reverse outline). */
+export type DoctorReportInstrument = 'flow' | 'redundancy' | 'gaps';
+
+/** The three structured row instruments. */
+export type DoctorRowInstrument = 'claims' | 'saysDoes' | 'thesisCheck';

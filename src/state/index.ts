@@ -8,6 +8,7 @@ import { createRevisionSlice, type RevisionSlice } from './revision-state';
 import { createComparisonSlice, type ComparisonSlice } from './comparison-state';
 import { createSpecTestSlice, type SpecTestSlice } from './spec-test-state';
 import { createClimateSlice, type ClimateSlice } from './climate-state';
+import { createDoctorSlice, type DoctorSlice } from './doctor-state';
 import { createInterpolationSlice, type InterpolationSlice } from './interpolation-state';
 import { createSegmentSlice, type SegmentSlice } from './segment-state';
 import { createParallelSlice, type ParallelSlice } from './parallel-state';
@@ -35,6 +36,7 @@ import {
  * - {@link ComparisonSlice}    — Version Compare workspace (ephemeral, unpersisted)
  * - {@link SpecTestSlice}      — Spec Test workspace (ephemeral, unpersisted)
  * - {@link ClimateSlice}       — Climate Artist workspace (ephemeral, unpersisted)
+ * - {@link DoctorSlice}        — Reverse Outline Doctor workspace (ephemeral; the checklist persists in DocumentState)
  * - {@link InterpolationSlice} — Generate-Specs workspace (ephemeral, unpersisted)
  * - {@link ParallelSlice}      — Parallel Editor workspace (ephemeral; outlineA persists in DocumentState)
  * - {@link GistSlice}          — Gist Editor workspace (ephemeral; the gist persists in DocumentState)
@@ -52,6 +54,7 @@ export type AppState =
   & ComparisonSlice
   & SpecTestSlice
   & ClimateSlice
+  & DoctorSlice
   & InterpolationSlice
   & SegmentSlice
   & ParallelSlice
@@ -77,6 +80,7 @@ export const useStore = create<AppState>()((...args) => ({
   ...createComparisonSlice(...args),
   ...createSpecTestSlice(...args),
   ...createClimateSlice(...args),
+  ...createDoctorSlice(...args),
   ...createInterpolationSlice(...args),
   ...createSegmentSlice(...args),
   ...createParallelSlice(...args),

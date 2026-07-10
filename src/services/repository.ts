@@ -1,6 +1,7 @@
 import type {
   AgentFileEntry,
   DiskSignature,
+  DoctorChecklist,
   MarkdownDelta,
   Persona,
   PromptsConfig,
@@ -59,6 +60,13 @@ export interface StoredProjectData {
    * persists; the edited target + regenerated draft are ephemeral session state.
    */
   reverseOutlines?: ReverseOutlineDoc[];
+  /**
+   * The Reverse Outline Doctor's revision checklist (`.twriter/outline-doctor.json`
+   * on desktop). One per project — the latest wizard run wins; git history keeps
+   * old ones. Opaque to the Rust mirror (a `Value`, like `gist`), so the TS layer
+   * owns the shape. Null/absent until the writer first completes the wizard.
+   */
+  doctorChecklist?: DoctorChecklist | null;
   /**
    * The Gist Editor's persisted scale model (`.twriter/gist.json` on desktop). One
    * per document; null/absent until the writer first generates a gist.

@@ -190,4 +190,57 @@ describe('document-state mutators', () => {
       expect(store.getState().sources).toEqual(before);
     });
   });
+
+  describe('doctorChecklist (persisted work ledger)', () => {
+    const checklist = () => ({
+      scopeKey: 'root',
+      thesis: 'T',
+      criticalIssue: 'The most critical issue is X.',
+      roadmapTitle: 'Front-load',
+      roadmapOutline: ['step'],
+      tasks: [
+        { id: 'task-0', text: 'Do A', done: false, paragraphNumbers: [2], anchors: ['a'] },
+        { id: 'task-1', text: 'Do B', done: false, paragraphNumbers: [], anchors: [] },
+      ],
+      createdAt: 1,
+      sourceHash: 'h',
+    });
+
+    it('setDoctorChecklist replaces whole; null clears', () => {
+      store.getState().setDoctorChecklist(checklist());
+      expect(store.getState().doctorChecklist?.tasks).toHaveLength(2);
+      store.getState().setDoctorChecklist(null);
+      expect(store.getState().doctorChecklist).toBeNull();
+    });
+
+    it('toggleDoctorTask flips exactly the named task and is a no-op without a checklist', () => {
+      store.getState().toggleDoctorTask('task-0'); // no checklist yet
+      expect(store.getState().doctorChecklist).toBeNull();
+
+      store.getState().setDoctorChecklist(checklist());
+      store.getState().toggleDoctorTask('task-0');
+      expect(store.getState().doctorChecklist?.tasks.map((t) => t.done)).toEqual([true, false]);
+      store.getState().toggleDoctorTask('task-0'); // undo by re-flip
+      expect(store.getState().doctorChecklist?.tasks.map((t) => t.done)).toEqual([false, false]);
+    });
+  });
+
+  describe('adoptDocumentClaim', () => {
+    it('writes the root mainClaim, creating the entry when absent', () => {
+      store.getState().adoptDocumentClaim('The adopted thesis.');
+      expect(store.getState().testSuite['root']?.mainClaim).toBe('The adopted thesis.');
+    });
+
+    it('also patches the root spec mainClaim when a spec exists', () => {
+      store.setState({
+        testSuite: {
+          root: { goals: '', status: 'idle', history: [], spec: spec() } as TestSuiteEntry,
+        },
+      } as unknown as Partial<DocumentStateSlice>);
+      store.getState().adoptDocumentClaim('New claim.');
+      const root = store.getState().testSuite['root'];
+      expect(root.mainClaim).toBe('New claim.');
+      expect(root.spec?.mainClaim).toBe('New claim.');
+    });
+  });
 });

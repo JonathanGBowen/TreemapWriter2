@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-07-08.** Update this file whenever a feature ships or is
+> **Current as of 2026-07-09.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -30,6 +30,32 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, yellow on error — palette 3C, below) surfaces status without
 distraction.
+
+**Reverse Outline Doctor shipped 2026-07-09** (four commits; see
+[`docs/migration-log.md`](docs/migration-log.md)): the legacy "Prosthetic
+Logician" app recreated as a ninth workspace (dock `≣`), porting its prompt
+library as a new editable `doctor` category — the Says/Does functional reverse
+outline, the per-paragraph thesis coherence check, the Mirror/Pivot/Risk thesis
+distiller, the single-¶ Saying-vs-Doing card, three founding-report prompts the
+original never shipped (logical flow / redundancy / gap finder — they read the
+reverse outline, not the prose), and the five-step **Sequence** (né
+"Breakthrough Sequence"): calibrate → streamed diagnosis (editable critical
+issue) → 3-card roadmap pick → a **persisted, checkable revision checklist**
+(`.twriter/outline-doctor.json`, ¶-anchored tasks that jump the editor,
+staleness note, download-as-.md) → **Send to Sprint** (a `sprintSeed` opens
+SprintModal at plan review, the checklist grounding `generateSprintPlan` via
+`extraContext`). All readings are gloss-level and ephemeral except the
+checklist; `adoptDocumentClaim` is the one explicit crossing into the exegetical
+layer. *Deliberate limits:* one checklist per project (a re-run replaces it; git
+keeps history); the seeded sprint targets the current selection while the
+checklist may be document-wide (tasks still ground the plan); critical-issue
+extraction is heuristic (mitigated: the field is editable); the prompt
+char-budgets (70/50/40) are prompt constraints, not enforced truncation; the
+claims instrument deliberately does NOT share state with the Parallel editor's
+`reverseOutlines` (different contract: diagnostic gloss vs hand-corrected
+editing substrate — a quiet cross-link hint names the other when fresh). Watch
+item: if the claims instrument proves redundant with Parallel in real use,
+alias it to the Parallel outline view rather than maintaining both prompts.
 
 **Fixed 2026-07-06 — merge-resolve crash on old divergent projects** (see
 [`docs/migration-log.md`](docs/migration-log.md)). `sync_resolve_merge` failed with

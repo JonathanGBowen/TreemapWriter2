@@ -29,6 +29,7 @@ const CATEGORY_ORDER: PromptCategory[] = [
   'sprints',
   'comparison',
   'climate',
+  'doctor',
 ];
 
 const CATEGORY_PRESENTATION: Record<
@@ -79,6 +80,11 @@ const CATEGORY_PRESENTATION: Record<
     title: 'Climate Artist',
     eyebrow: 'text-teal-500/70 border-teal-500/30',
     selected: 'bg-teal-500/20 border-teal-400 text-teal-300',
+  },
+  doctor: {
+    title: 'Outline Doctor',
+    eyebrow: 'text-indigo-500/70 border-indigo-500/30',
+    selected: 'bg-indigo-500/20 border-indigo-400 text-indigo-300',
   },
 };
 

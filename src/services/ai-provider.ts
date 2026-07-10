@@ -38,6 +38,15 @@ import type {
   WholeFromPartResult,
   RecenteringsResult,
   StructuralPart,
+  DoctorOutlineRow,
+  FunctionalOutlineRow,
+  CoherenceRow,
+  ParagraphDiagnosis,
+  ThesisOption,
+  RoadmapOption,
+  DoctorTask,
+  DoctorRowInstrument,
+  DoctorReportInstrument,
 } from '../types';
 import type { ModelChoice } from './ai/model-types';
 import type { SpecStage } from './ai/ai-provider.specs';
@@ -220,6 +229,36 @@ export interface AIProvider {
    * right for the whole?" beat. The unstick operation. Null ⇒ no usable proposal.
    */
   proposeRecenterings(input: RecenterInput): Promise<RecenteringsResult | null>;
+  /**
+   * Reverse Outline Doctor — the three structured row instruments over one
+   * pre-segmented scope: claims outline / Says-Does functional outline / thesis
+   * coherence check. One row per input block, never dropped (a missed prose
+   * block comes back blank; non-prose echoed).
+   */
+  runDoctorOutline(input: DoctorOutlineInput): Promise<DoctorOutlineResult>;
+  /** Doctor — the single-paragraph Saying-vs-Doing diagnostic. Null ⇒ unusable. */
+  runDoctorParagraph(input: DoctorParagraphInput): Promise<ParagraphDiagnosis | null>;
+  /**
+   * Doctor — the Thesis Distiller: three candidate theses (Mirror / Pivot /
+   * Risk) for a discovery draft. `[]` ⇒ unusable (caller toasts).
+   */
+  distillThesis(input: DistillThesisInput): Promise<ThesisOption[]>;
+  /**
+   * Doctor — the essayistic report instruments (logical flow / redundancy /
+   * gaps). They read the REVERSE OUTLINE, not the raw prose — their original
+   * design. Returns markdown prose (the Climate idiom).
+   */
+  runDoctorReport(input: DoctorReportInput): Promise<string>;
+  /**
+   * Doctor wizard step 3 — the Senior-Editor chain-of-thought diagnosis over the
+   * coherence table, streamed token-by-token; concludes "The most critical issue
+   * is…" (extracted app-side, user-editable).
+   */
+  diagnoseStructure(input: DiagnoseStructureInput): AsyncIterable<string>;
+  /** Doctor wizard step 4 — 2–3 restructuring roadmaps. `[]` ⇒ unusable. */
+  proposeRoadmaps(input: ProposeRoadmapsInput): Promise<RoadmapOption[]>;
+  /** Doctor wizard step 5 — the chosen roadmap as small, ¶-anchored tasks. */
+  generateDoctorChecklist(input: GenerateDoctorChecklistInput): Promise<DoctorTask[]>;
   /**
    * The local, provider-agnostic agent: a multi-turn, tool-using loop over the
    * configured model (incl. local Ollama). The full conversation travels each
@@ -843,6 +882,94 @@ export interface AnalyzeAtmosphereInput {
   sectionTitle?: string;
   /** The text to read: the whole markdown, or the section's `fullContent`. */
   text: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+/** A pre-segmented scope block as the Doctor flows consume it (lib/paragraph-helpers). */
+export interface DoctorBlock {
+  /** 0-based ParagraphBlock index; the model sees it 1-based as [index+1]. */
+  index: number;
+  text: string;
+  kind: ParagraphKind;
+}
+
+export interface DoctorOutlineInput {
+  /** Which row instrument to run (selects the editable prompt). */
+  instrument: DoctorRowInstrument;
+  /** "Whole draft" or the section title — model framing only. */
+  scopeTitle: string;
+  /** The working thesis the reading is made against. */
+  thesis: string;
+  blocks: DoctorBlock[];
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+/** Discriminated result of the three row instruments. */
+export type DoctorOutlineResult =
+  | { instrument: 'claims'; rows: DoctorOutlineRow[] }
+  | { instrument: 'saysDoes'; rows: FunctionalOutlineRow[] }
+  | { instrument: 'thesisCheck'; rows: CoherenceRow[] };
+
+export interface DoctorParagraphInput {
+  paragraph: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface DistillThesisInput {
+  /** The discovery draft (the whole scope's prose, sent whole — never sliced). */
+  text: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface DoctorReportInput {
+  /** Which report instrument to run (selects the editable prompt). */
+  instrument: DoctorReportInstrument;
+  scopeTitle: string;
+  thesis: string;
+  /** The reverse outline the report reads (formatOutlineMarkdown). */
+  outlineMarkdown: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface DiagnoseStructureInput {
+  /** The coherence table (formatOutlineData) — the wizard's threaded context. */
+  outlineData: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface ProposeRoadmapsInput {
+  /** The diagnosed critical issue (step 3's extracted, user-edited sentence). */
+  criticalIssue: string;
+  outlineData: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface GenerateDoctorChecklistInput {
+  chosenRoadmap: RoadmapOption;
+  outlineData: string;
+  /** The scope's blocks — task ¶ numbers resolve to anchors against these. */
+  blocks: DoctorBlock[];
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

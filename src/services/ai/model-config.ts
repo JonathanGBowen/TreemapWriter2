@@ -53,6 +53,8 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   // Anchored-opening interlocutor turn (re-entry / coach-plan / unstick) —
   // a live dialogue over a deterministic record; must feel instant.
   interlocutorTurn: g(INTERACTIVE, NO_THINK),
+  // …except the one-paragraph Says-vs-Does, which must feel instant.
+  runDoctorParagraph: g(INTERACTIVE, NO_THINK),
 
   // --- A: heavy reasoning (top flash, maximum thinking) ---
   estimateDependencies: g(HEAVY, THINK),
@@ -93,6 +95,13 @@ export const DEFAULT_MODEL_CONFIG: Record<AICallKind, ModelChoice> = {
   // Gestalt whole/part ops — focused reasoning over one section.
   reconstructWhole: g(HEAVY, THINK),
   proposeRecenterings: g(HEAVY, THINK),
+  // Reverse Outline Doctor — whole-scope clinical readings, heavy tier…
+  runDoctorOutline: g(HEAVY, THINK),
+  distillThesis: g(HEAVY, THINK),
+  runDoctorReport: g(HEAVY, THINK),
+  diagnoseStructure: g(HEAVY, THINK),
+  proposeRoadmaps: g(HEAVY, THINK),
+  generateDoctorChecklist: g(HEAVY, THINK),
   // Local multi-turn tool-using agent — sustained reasoning across turns. The
   // user can repoint this at a local Ollama model in the Local Agent settings.
   runAgent: g(HEAVY, THINK),

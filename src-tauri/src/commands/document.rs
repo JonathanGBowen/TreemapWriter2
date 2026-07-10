@@ -104,6 +104,8 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         crate::fs_io::read_json(&layout.models_json())?;
     let reverse_outlines: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.reverse_outline_json())?;
+    let doctor_checklist: Option<serde_json::Value> =
+        crate::fs_io::read_json(&layout.outline_doctor_json())?;
     let gist: Option<serde_json::Value> = crate::fs_io::read_json(&layout.gist_json())?;
     let provenance: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.provenance_json())?;
@@ -135,6 +137,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         interpolation_config: None, // legacy alias; importer normalizes
         models_config,
         reverse_outlines,
+        doctor_checklist,
         gist,
         provenance,
         structural_parts,
@@ -180,6 +183,9 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(ro) = &data.reverse_outlines {
         crate::fs_io::write_json(&layout.reverse_outline_json(), ro)?;
+    }
+    if let Some(dc) = &data.doctor_checklist {
+        crate::fs_io::write_json(&layout.outline_doctor_json(), dc)?;
     }
     if let Some(g) = &data.gist {
         crate::fs_io::write_json(&layout.gist_json(), g)?;
@@ -299,6 +305,42 @@ mod tests {
         // ...and survives a read round-trip byte-for-byte.
         let back = read_from(&layout).unwrap();
         assert_eq!(back.reverse_outlines, Some(outline));
+    }
+
+    #[test]
+    fn doctor_checklist_round_trips_through_write_then_read() {
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // The TS layer owns the shape; Rust round-trips it as an opaque Value.
+        let checklist = serde_json::json!({
+            "scopeKey": "root",
+            "thesis": "The thesis.",
+            "criticalIssue": "The most critical issue is X.",
+            "roadmapTitle": "Front-load the thesis",
+            "roadmapOutline": ["move the claim first"],
+            "tasks": [
+                { "id": "task-0", "text": "Combine ¶2 and ¶3.", "done": true,
+                  "paragraphNumbers": [2, 3], "anchors": ["Second paragraph."] }
+            ],
+            "createdAt": 1_700_000_000_000_i64,
+            "sourceHash": "abc"
+        });
+
+        let data = StoredProjectData {
+            markdown: Some("# Intro\n\nThe claim, defended.".to_string()),
+            doctor_checklist: Some(checklist.clone()),
+            ..Default::default()
+        };
+        write_to(&layout, &data).unwrap();
+
+        // The sidecar lands under .twriter/ (committed, like specs)...
+        assert!(layout.outline_doctor_json().is_file());
+
+        // ...and survives a read round-trip byte-for-byte (done flag included).
+        let back = read_from(&layout).unwrap();
+        assert_eq!(back.doctor_checklist, Some(checklist));
     }
 
     #[test]

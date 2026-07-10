@@ -43,6 +43,18 @@ const config: PromptsConfig = {
   segmentCritiqueTask: '',
   segmentSummaryTask: '',
   discoverStructuralPartsPrompt: '',
+  doctorSystemPrompt: '',
+  doctorOutlinePrompt: '',
+  doctorOutlineTablePrompt: '',
+  doctorThesisCheckPrompt: '',
+  doctorParagraphPrompt: '',
+  doctorDistillThesisPrompt: '',
+  doctorDiagnosePrompt: '',
+  doctorRoadmapsPrompt: '',
+  doctorChecklistPrompt: '',
+  doctorFlowPrompt: '',
+  doctorRedundancyPrompt: '',
+  doctorGapsPrompt: '',
 };
 
 /** A canned client that records each prompt and replays scripted JSON responses. */
