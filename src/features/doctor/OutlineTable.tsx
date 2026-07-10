@@ -42,7 +42,7 @@ export function OutlineTable({ instrument }: { instrument: DoctorRowInstrument }
   const outlineRows = useStore((s) => s.doctorOutlineRows);
   const saysDoesRows = useStore((s) => s.doctorSaysDoesRows);
   const coherenceRows = useStore((s) => s.doctorCoherenceRows);
-  const { revealBlock } = useDoctorActions();
+  const { revealAnchor } = useDoctorActions();
 
   const copyText =
     instrument === 'claims' && outlineRows
@@ -60,11 +60,11 @@ export function OutlineTable({ instrument }: { instrument: DoctorRowInstrument }
     instrument === 'claims' ? outlineRows : instrument === 'saysDoes' ? saysDoesRows : coherenceRows;
   if (!rows) return null;
 
-  const rowButton = (index: number, children: React.ReactNode, key: string) => (
+  const rowButton = (index: number, anchor: string, children: React.ReactNode, key: string) => (
     <button
       key={key}
       type="button"
-      onClick={() => revealBlock(index)}
+      onClick={() => revealAnchor(anchor)}
       title="Open in the editor at this paragraph"
       className="w-full text-left px-3 py-2 border-b border-hld-border/60 hover:bg-hld-cyan/5 transition-colors flex items-start gap-3 group"
     >
@@ -108,6 +108,7 @@ export function OutlineTable({ instrument }: { instrument: DoctorRowInstrument }
               const claim = (r as { claim: string }).claim;
               return rowButton(
                 r.index,
+                r.anchor,
                 <span className="font-sans text-[12.5px] text-slate-300 leading-relaxed">{claim || MISSING}</span>,
                 `c-${r.index}`,
               );
@@ -116,6 +117,7 @@ export function OutlineTable({ instrument }: { instrument: DoctorRowInstrument }
               const row = r as { says: string; does: string };
               return rowButton(
                 r.index,
+                r.anchor,
                 <span className="flex-1 min-w-0 flex flex-col md:flex-row md:items-baseline gap-1 md:gap-3">
                   <span className="font-sans text-[12.5px] text-slate-300 md:flex-1">{row.says || MISSING}</span>
                   <span className="font-mono text-[10px] text-hld-cyan/90 md:w-[220px] shrink-0">
@@ -128,6 +130,7 @@ export function OutlineTable({ instrument }: { instrument: DoctorRowInstrument }
             const row = r as CoherenceRow;
             return rowButton(
               r.index,
+              r.anchor,
               <span className="flex-1 min-w-0 flex flex-col gap-1">
                 <span className="flex items-baseline gap-3">
                   <span className="font-sans text-[12.5px] text-slate-300 flex-1">{row.claim || MISSING}</span>

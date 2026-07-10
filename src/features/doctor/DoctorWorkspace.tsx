@@ -5,6 +5,7 @@ import { ThesisBar } from './ThesisBar';
 import { InstrumentRail } from './InstrumentRail';
 import { DoctorReading } from './DoctorReading';
 import { DoctorWizard } from './DoctorWizard';
+import { ChecklistPanel } from './ChecklistPanel';
 
 /**
  * The Reverse Outline Doctor workspace — the ported Prosthetic Logician as a
@@ -39,6 +40,12 @@ export function DoctorWorkspace() {
           <InstrumentRail />
           <div className="flex-1 min-w-0 flex flex-col bg-hld-surface-3">
             <DoctorReading />
+          </div>
+        </div>
+      ) : mode === 'ledger' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto bg-hld-surface-3">
+          <div className="mx-auto w-full max-w-[820px] px-6 py-6">
+            <ChecklistPanel />
           </div>
         </div>
       ) : (

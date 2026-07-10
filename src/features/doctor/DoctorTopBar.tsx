@@ -1,4 +1,5 @@
 import { useStore } from '../../state';
+import type { DoctorMode } from '../../state/doctor-state';
 import type { Section } from '../../types';
 
 /** Flatten the section tree into indented options for the scope picker. */
@@ -19,11 +20,12 @@ export function DoctorTopBar() {
   const targetId = useStore((s) => s.doctorTargetId);
   const setTarget = useStore((s) => s.setDoctorTarget);
   const status = useStore((s) => s.doctorStatus);
+  const hasChecklist = useStore((s) => s.doctorChecklist !== null);
 
   const busy = status === 'running' || status === 'streaming';
   const flat = flatten(sections);
 
-  const modeBtn = (m: 'instruments' | 'wizard', label: string) => (
+  const modeBtn = (m: DoctorMode, label: string) => (
     <button
       type="button"
       onClick={() => setMode(m)}
@@ -57,6 +59,8 @@ export function DoctorTopBar() {
       <div className="flex items-center gap-1" role="group" aria-label="Mode">
         {modeBtn('instruments', 'Instruments')}
         {modeBtn('wizard', 'Sequence')}
+        {/* The saved-checklist door — only when one exists (survives reload). */}
+        {hasChecklist && modeBtn('ledger', 'Checklist')}
       </div>
 
       <label className="flex items-center gap-2 min-w-0">
