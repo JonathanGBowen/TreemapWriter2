@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCoachPlanOpening,
   buildReentryOpening,
+  buildUnstickOpening,
   extractOpeningDeposit,
   stripDepositBlock,
 } from '../dialogue-openings';
@@ -74,5 +76,57 @@ describe('buildReentryOpening', () => {
     const opening = buildReentryOpening({ activityBrief: null, sections });
     expect(opening.context).toContain('(and 20 more)');
     expect(opening.context).not.toContain('s75 —');
+  });
+});
+
+describe('buildCoachPlanOpening', () => {
+  it('carries the plan verbatim and the deposit contract', () => {
+    const opening = buildCoachPlanOpening({
+      plan: '1. Draft the regress reply.\n2. Stitch it in.',
+      structureSummary: '[{"title":"B","status":"draft"}]',
+      activityBrief: '- last touched: yesterday',
+      sections: [{ id: 'b', title: 'Chapter B' }],
+    });
+    expect(opening.kind).toBe('coach-plan');
+    expect(opening.turnBudget).toBe(4);
+    expect(opening.context).toContain("THE COACH'S PLAN");
+    expect(opening.context).toContain('Draft the regress reply');
+    expect(opening.context).toContain('RECENT ACTIVITY:\n- last touched: yesterday');
+    expect(opening.context).toContain('"kind": "coach-plan"');
+  });
+});
+
+describe('buildUnstickOpening', () => {
+  it('offers all three located outcomes and points the good-enough deposit at the next section', () => {
+    const opening = buildUnstickOpening({
+      section: { id: 'b', title: 'Chapter B', content: 'The section prose.' },
+      surround: '↘ SUPPLIES: the typology',
+      mainClaim: 'B earns the typology',
+      nextAction: { gap: 'the reply', vector: 'state the stopping condition' },
+      activeStep: 'Draft move one',
+      nextSectionId: 'c',
+    });
+    expect(opening.kind).toBe('unstick');
+    expect(opening.turnBudget).toBe(3);
+    expect(opening.sectionId).toBe('b');
+    expect(opening.context).toContain('STUCK ON: "Chapter B" (b)');
+    expect(opening.context).toContain('THIS SECTION MUST EARN: B earns the typology');
+    expect(opening.context).toContain('LAST DEMAND: the reply → state the stopping condition');
+    expect(opening.context).toContain('ACTIVE SPRINT STEP: Draft move one');
+    expect(opening.context).toContain('SECTION TEXT:\n---\nThe section prose.\n---');
+    // permission-to-stop deposits jump to the NEXT section
+    expect(opening.context).toContain('"goodEnough": true, "sectionId": "c"');
+    // a located next action stays here
+    expect(opening.context).toContain('"vector": "<the concrete move>", "sectionId": "b"');
+  });
+
+  it('falls back to nextPriority and stays on the section when there is no next', () => {
+    const opening = buildUnstickOpening({
+      section: { id: 'only', title: 'Sole', content: 'x' },
+      nextPriority: 'tighten the intro',
+      nextSectionId: null,
+    });
+    expect(opening.context).toContain('LAST PRIORITY: tighten the intro');
+    expect(opening.context).toContain('"goodEnough": true, "sectionId": "only"');
   });
 });

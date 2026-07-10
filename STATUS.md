@@ -428,9 +428,13 @@ record taken to dialogue via the new `interlocutorTurn` flow
 into the prose. **Last session's carry-forward is now re-surfaced** as tappable
 chips at check-in (discharges the felt-priority note below). Entry via `⊕ Where
 was I?` on the resume marker + at check-in. Turn pips + soft-yield enforce
-convergence. Increments 3 (coach/gap/unstick openings — where the coach gains the
-activity brief) and 4 (the Memorandum) follow on this branch. *Pending:* one
-manual AI-path check of a live re-entry turn (needs an API key).
+convergence. **Inc 3:** the coach becomes **history-aware** (`buildCoachPrompt` gains the
+activity brief), a **coach-plan opening** (⊕ Contest this plan in the CoachModal),
+and the **repointed 90 s stall** → a section-grained **unstick opening** whose
+*permission-to-stop* deposit is the first home of the F3 Good-Enough gate.
+Increment 4 (the Memorandum) follows. *Deferred (named):* the FTS/`specEdit` gap
+opening and the Sprint/`proposeRecenterings` deposit hand-offs. *Pending:* one
+manual AI-path check of the live openings (needs an API key).
 
 ## Next (felt priorities)
 
@@ -532,8 +536,12 @@ manual AI-path check of a live re-entry turn (needs an API key).
   the bounded move-completion agent loop (rubric-declared Good-Enough, never
   model-self-judged); ~~**(F5) point-of-action move instructions**~~ — **shipped** as
   the margin `ActiveMoveMarker` (WS3), which surfaces the active move's vector *when the
-  move becomes active*, not as a skippable pre-gate. F3 is now the highest-leverage
-  remaining item.
+  move becomes active*, not as a skippable pre-gate. **F3 got its first home
+  2026-07-10** (dialogue-expansion Inc 3): the repointed 90 s stall's **unstick
+  opening** offers *permission to stop* ("good enough — move on") as one of three
+  prompt-sanctioned deposits — an explicit stop authority, never model-self-judged.
+  The rubric-declared move-completion *agent loop* (tied to the readiness ladder)
+  remains the fuller F3 build.
 
 - **Gestalt roadmap — substantially shipped 2026-06-26 (second reading + Phases 1–3).**
   Tier 1 shipped 2026-06-17 (part-not-piece context: prefix-truncation killed in spec

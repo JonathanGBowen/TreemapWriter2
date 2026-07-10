@@ -129,3 +129,82 @@ export function buildReentryOpening(input: ReentryOpeningInput): DialogueOpening
     turnBudget: 4,
   };
 }
+
+export interface CoachPlanOpeningInput {
+  /** The coach's just-streamed action plan, verbatim. */
+  plan: string;
+  /** Compact structure summary (the coach's own structureData, stringified). */
+  structureSummary: string;
+  activityBrief: string | null;
+  sections: Array<{ id: string; title: string }>;
+}
+
+/** The coach-plan opening — contest the triage before committing to a sprint. */
+export function buildCoachPlanOpening(input: CoachPlanOpeningInput): DialogueOpening {
+  const context = [
+    `THE COACH'S PLAN (the triage to contest):\n${input.plan}`,
+    input.activityBrief ? `RECENT ACTIVITY:\n${input.activityBrief}` : '',
+    `STRUCTURE:\n${input.structureSummary}`,
+    sectionIndexBlock(input.sections),
+    [
+      'DEPOSIT — when converged, emit exactly this fenced block:',
+      '```json',
+      '{"deposit": {"kind": "coach-plan", "wish": "<the one move worth this sitting>", "firstStep": "<the concrete first action>", "sectionId": "<one id from SECTIONS, or omit>"}}',
+      '```',
+    ].join('\n'),
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  return { kind: 'coach-plan', label: 'CONTEST · the plan', context, turnBudget: 4 };
+}
+
+export interface UnstickOpeningInput {
+  section: { id: string; title: string; content: string };
+  /** Structural surround (part-in-whole), when available. */
+  surround?: string | null;
+  /** The section's held claim, when a spec exists. */
+  mainClaim?: string | null;
+  /** The gap→vector demand or the fallback priority, when a diagnostic exists. */
+  nextAction?: NextAction | null;
+  nextPriority?: string | null;
+  /** The active sprint step's one-liner, when a session is running. */
+  activeStep?: string | null;
+  /** The id of the next section in reading order, for the "move on" deposit. */
+  nextSectionId?: string | null;
+}
+
+/**
+ * The unstick opening — the repointed 90 s stall (docs/dialogue-design.md §III).
+ * Three permitted outcomes, all located: a next action HERE, a recentering, or
+ * permission to stop ("good enough — move on"). Section-grained, three exchanges.
+ */
+export function buildUnstickOpening(input: UnstickOpeningInput): DialogueOpening {
+  const { section } = input;
+  const context = [
+    `STUCK ON: "${section.title}" (${section.id})`,
+    input.mainClaim ? `THIS SECTION MUST EARN: ${input.mainClaim}` : '',
+    input.surround ? `PART IN WHOLE:\n${input.surround}` : '',
+    input.nextAction
+      ? `LAST DEMAND: ${input.nextAction.gap} → ${input.nextAction.vector}`
+      : input.nextPriority
+        ? `LAST PRIORITY: ${input.nextPriority}`
+        : '',
+    input.activeStep ? `ACTIVE SPRINT STEP: ${input.activeStep}` : '',
+    `SECTION TEXT:\n---\n${section.content}\n---`,
+    [
+      'PERMITTED OUTCOMES — converge on exactly ONE fenced deposit:',
+      '- a located next action HERE:',
+      `  \`\`\`json\n  {"deposit": {"kind": "unstick", "vector": "<the concrete move>", "sectionId": "${section.id}"}}\n  \`\`\``,
+      '- a recentering (the goal itself may be the block — say so, propose the new center):',
+      `  \`\`\`json\n  {"deposit": {"kind": "unstick", "vector": "recenter on <X>", "sectionId": "${section.id}"}}\n  \`\`\``,
+      '- permission to STOP (this move is good enough for what the whole now needs — move on):',
+      `  \`\`\`json\n  {"deposit": {"kind": "unstick", "goodEnough": true, "sectionId": "${input.nextSectionId ?? section.id}"}}\n  \`\`\``,
+      'Do not fabricate more work than the whole demands. Permission to stop is a valid, often correct outcome.',
+    ].join('\n'),
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  return { kind: 'unstick', label: 'UNSTICK · this section', context, sectionId: section.id, turnBudget: 3 };
+}

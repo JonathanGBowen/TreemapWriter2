@@ -98,10 +98,14 @@ export const OpeningDialogue: React.FC<{ opening: DialogueOpening }> = ({ openin
           <div className="flex flex-wrap items-center gap-[8px]">
             <ExitChip
               lit
-              title="Land in this section and pick up the work"
+              title={
+                deposit.goodEnough
+                  ? 'Good enough for what the whole needs — move on'
+                  : 'Land in the text and pick up the work'
+              }
               onClick={() => applyDeposit(deposit)}
             >
-              → back to the text
+              {deposit.goodEnough ? '→ good enough · move on' : '→ back to the text'}
             </ExitChip>
             {deposit.wish && (
               <ExitChip title="Start a session with this as the wish" onClick={() => toSession(deposit)}>

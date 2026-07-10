@@ -5911,3 +5911,62 @@ in Increment 3 (the coach is reworked there).
 **Rollback.** One commit; `git revert`. New slice + lib + prompts + one optional
 `AICallKind`; no persisted-data or schema changes (the opening transcript is
 ephemeral; `sessionPrefill` is ephemeral UI state).
+
+---
+
+## 2026-07-10 — Dialogue expansion III: coach, and the repointed unstick stall
+
+Third increment (design record: [`dialogue-design.md`](dialogue-design.md)). Two
+more openings on the Increment-2 substrate, and the coach finally reads history.
+
+**What changed.**
+
+- **The coach is history-aware.** `buildCoachPrompt` gains an optional
+  `activityBrief` block (`CoachAdviceInput.activityBrief`); `CoachModal` fetches
+  the record once per open (`repository.listSessions()` + `listSnapshotMeta()` →
+  `buildActivityBrief`) and passes it to `streamCoachAdvice`. The triage now
+  knows what happened last sitting — closing the exploration's headline gap. No
+  extra AI call; omitted → the prior structure-only prompt exactly.
+- **The coach-plan opening — "contest this plan."** After the plan streams, a
+  quiet **⊕ Contest this plan** in the CoachModal footer opens a `coach-plan`
+  opening (`buildCoachPlanOpening`: the plan verbatim + a structure summary +
+  the activity brief) and closes the modal. The writer can push back before
+  committing; it converges on a `{wish,firstStep,sectionId}` deposit — the exit
+  chip lands the caret, or **→ session** hands the wish to the check-in.
+- **The unstick opening — the repointed 90 s stall** (owner-confirmed). The
+  `ResumeMarker`'s stalled ("Still here?") escalation now shows **⊕ Unstick**
+  instead of "Go deeper": a section-grained, three-exchange `unstick` opening
+  (`buildUnstickOpening`: section text + structural surround + held claim + last
+  demand + active sprint step) with exactly three permitted, all-located
+  outcomes — a next action HERE, a recentering, or **permission to stop**
+  ("good enough — move on", jumping to the next section). This is the **first
+  home of the F3 "Good-Enough" gate** (STATUS's highest-leverage open clinical
+  item): permission to stop is a valid, prompt-sanctioned deposit, never
+  model-self-judged perfection. The dock ◍ / non-stalled "Go deeper" keep the
+  whole-document CoachModal; `use-ambient-cue.ts` stays AI-free (AI joins only
+  on the writer's tap). `OpeningDialogue`'s exit chip adapts its label for the
+  good-enough deposit.
+- New hooks `features/coach/use-open-dialogue.ts` (`useCoachPlanOpening` /
+  `useUnstickOpening`) assemble each opening from canonical in-memory state +
+  (coach) the async activity record.
+
+**Verify.** `npm test` (795 passing, incl. the coach-plan/unstick builder
+tests), `npm run typecheck`, `npm run build` green. Manual (no AI key): the
+CoachModal shows ⊕ Contest this plan after a plan lands; a mid-section stall
+turns the resume marker's escalation into ⊕ Unstick. **Manual AI-path check still
+pending** (needs an API key): contest a plan and run an unstick to convergence;
+confirm the good-enough deposit renders "→ good enough · move on" and jumps to the
+next section.
+
+**Deferred by design (named):** the richer *gap* opening — an FTS-snippet-backed
+interlocutor turn on a strain signal with a gated `specEdit` diff proposal — is
+not built; the deterministic gap dialogue (Inc 1: the StrainRegister `⊕` + the
+Dialogue-tab gaps focus, through the persisted analysis channel) already serves
+"help identify gaps." The Sprint / `proposeRecenterings` structured hand-offs
+from a deposit are likewise deferred (each touches another subsystem); the
+coach-plan/unstick deposits currently slingshot via caret-jump + session prefill,
+which is coherent and self-contained.
+
+**Rollback.** One commit; `git revert`. Two pure builders + two hooks + the
+optional `activityBrief` prompt field + UI wiring; no persisted-data or schema
+changes.
