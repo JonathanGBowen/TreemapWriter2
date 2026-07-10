@@ -195,6 +195,24 @@ export const useDoctorWizardActions = () => {
     toast.success('Checklist saved with the project.');
   }, []);
 
+  /**
+   * Hand the saved checklist to Living Sprints: seed a plain goal framing named
+   * after the roadmap, ground the plan in the checklist markdown (it travels as
+   * `extraContext`), and open the sprint straight at the plan-review phase.
+   */
+  const sendToSprint = useCallback(() => {
+    const s = useStore.getState();
+    const checklist = s.doctorChecklist;
+    if (!checklist) return;
+    s.setSprintSeed({
+      framing: { model: 'plain', wish: `Execute revision roadmap: ${checklist.roadmapTitle}` },
+      transcript: checklistToMarkdown(checklist),
+    });
+    s.setSprintMode('content');
+    s.closeDoctor();
+    s.setShowSprintModal(true);
+  }, []);
+
   /** Download the saved checklist as markdown (the App.tsx export idiom). */
   const downloadChecklistMd = useCallback(() => {
     const s = useStore.getState();
@@ -216,6 +234,7 @@ export const useDoctorWizardActions = () => {
     runStrategy,
     runChecklist,
     saveChecklist,
+    sendToSprint,
     downloadChecklistMd,
   };
 };

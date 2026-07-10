@@ -5799,3 +5799,88 @@ project delete confirms), and `theme.3c.tailwind.css` was applied for its
 *colour intent* rather than verbatim — this repo's already-declined `muted-text`
 inversion and custom `--spacing-*` scale (2026-06-26 remediation) were not
 revisited.
+
+## 2026-07-09 — Reverse Outline Doctor: the Prosthetic Logician ported as a workspace
+
+**What changed.** The legacy "Prosthetic Logician" app (a standalone
+React/Gemini reverse-outlining assistant) is recreated as a ninth full-screen
+workspace — **Reverse Outline Doctor** (dock `≣`, ⌘K "Outline Doctor") — porting
+its prompt library as editable defaults and pointing every tool at the **live
+document** (whole draft or one section) instead of pasted text. Four commits,
+each green.
+
+- **Prompts + AI flows** (`doctor: port Prosthetic Logician prompts + AI flows`).
+  A new `'doctor'` prompt category with 12 editable prompts: the Logician
+  persona (system instruction on every Doctor call), the claims reverse outline
+  (≤70-char claims), the Says/Does "Functional Reverse Outline" (<50/<40-char
+  fields, one line per row), the per-paragraph Thesis Coherence Check
+  (Yes/No/Weakly), the single-¶ Saying-vs-Doing diagnostic, the Thesis Distiller
+  (Mirror/Pivot/Risk), the wizard's diagnose/roadmaps/checklist prompts, and —
+  from the founding report's transcript in the legacy repo's
+  `migrated_prompt_history/` — three prompts the original app never shipped:
+  Logical Flow & Transition Analysis, Redundancy & "Monster Paragraph" Detector,
+  and the Self-Ask Argumentative Gap Finder. Ported wording kept verbatim except
+  where a paste block yields to framed live-document input or a markdown-table
+  directive yields to the structured-output contract (the JSON tail is appended
+  by the flow, never inlined in the prompt). Seven new call kinds
+  (`runDoctorOutline` — one instrument-enum flow for the three row readings, the
+  `analyzeAtmosphere` precedent — `runDoctorParagraph`, `distillThesis`,
+  `runDoctorReport`, `diagnoseStructure` (streamed), `proposeRoadmaps`,
+  `generateDoctorChecklist`), implemented in `ai-provider.doctor.ts` /
+  `ai-provider.doctor-wizard.ts` over pure normalizers in `lib/doctor-helpers.ts`
+  (the `normalizeReverseOutline` never-drop contract: one row per pre-numbered
+  paragraph, misses blanked and flagged, non-prose echoed; tasks never dropped —
+  an out-of-range ¶ ref loses its anchor, not the task). The three report
+  instruments read the **reverse outline, not the raw prose** — their original
+  design; the actions hook auto-generates a stale/missing claims outline first
+  as a second visible op.
+- **Persistence** (`doctor: persist the revision checklist`). One new domain
+  field: `doctorChecklist` ↔ committed `.twriter/outline-doctor.json` via the
+  opaque-Rust-`Value` recipe (+ serde round-trip test; `cargo test` run against
+  installed GTK libs, 58 pass). One checklist per project — a re-run replaces
+  it; git history keeps old ones. Plus `adoptDocumentClaim`: the explicit,
+  user-initiated crossing that writes a distilled thesis into the root entry's
+  `mainClaim` (and root `spec.mainClaim` when present). Every other Doctor
+  reading is deliberately ephemeral — gloss-level, regenerable, never conflated
+  with the exegetical spec layer (the `reverseSummary` precedent, restated on
+  the new types).
+- **The workspace** (`doctor: Reverse Outline Doctor workspace`). An ephemeral
+  `doctor-state` slice (epoch-guarded streams; a scope change invalidates
+  scope-derived readings) with two halves: **Instruments** (the seven readings;
+  verdict pips per palette 3C — green supports / yellow fails, the one alert /
+  muted weakly; every row click jumps the editor to that paragraph by verbatim
+  anchor — the concrete-operation law) and **Sequence** (the renamed
+  "Breakthrough Sequence": discovery → calibration → diagnosis → strategy →
+  action as a slice-modeled walk, the interpolation pattern). The step-2
+  coherence table threads downstream exactly as the legacy chain did; step 3
+  streams the Senior-Editor chain-of-thought into an **editable**
+  critical-issue field; step 4 is a real 3-card roadmap picker (the legacy
+  app's copy-paste-your-choice step is gone); step 5 previews ¶-anchored tasks,
+  and Save lands the checkable ledger (staleness note when the prose has moved
+  on, ↧ download-as-.md).
+- **Sprint hand-off** (`doctor: Send-to-Sprint hand-off + docs`). A new
+  ephemeral `sprintSeed` in ui-state: `» Send to Sprint` frames a plain goal
+  from the roadmap title, grounds it with the checklist markdown (traveling as
+  `generateSprintPlan`'s existing `extraContext`), and opens SprintModal
+  directly at the plan-review phase — the checklist becomes timed, role-typed
+  sprint moves in the existing Goblin plan editor.
+
+**Deliberately not ported:** the D3 mind map (Argument Topology covers it), the
+Pomodoro timer (Living Sprints), the localStorage sessions/settings (the prompt
+registry + project persistence), and the feedback widget (telemetry is out of
+scope by identity).
+
+**How to verify.** `npm test` (799), `npm run typecheck`, `npm run build`,
+`cargo test` (58, needs the GTK dev libs). In the browser (`npm run dev`, demo
+project): dock `≣` → the thesis chip seeds from the root claim (or ⚗ Distill →
+pick of three cards; "Adopt as document claim" updates the root spec); run the
+Says/Does reading → one row per ¶, row click lands the editor on the paragraph;
+run Logical Flow with no outline → two ops visible in the activity pill; walk
+the Sequence (step 3 visibly streams; edit the issue; pick 1 of 3 roadmaps) →
+Save → reload: the checklist and its toggles persist; ↧ Download yields
+checkbox markdown; » Send to Sprint opens the plan phase with checklist-derived
+moves. Desktop: `.twriter/outline-doctor.json` appears and round-trips.
+
+**How to roll back.** Revert the four `doctor:` commits. Additive throughout —
+no existing schema changed; a project that has written `outline-doctor.json`
+simply carries an unread sidecar after a rollback.

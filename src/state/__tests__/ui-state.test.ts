@@ -59,6 +59,17 @@ describe('ui-state slice', () => {
     expect(store.getState().showSprintModal).toBe(true);
   });
 
+  it('a sprint seed holds a pre-framed goal until the modal consumes it', () => {
+    expect(store.getState().sprintSeed).toBeNull();
+    store.getState().setSprintSeed({
+      framing: { model: 'plain', wish: 'Execute revision roadmap: Front-load' },
+      transcript: '- [ ] task',
+    });
+    expect(store.getState().sprintSeed?.framing.wish).toContain('Front-load');
+    store.getState().setSprintSeed(null);
+    expect(store.getState().sprintSeed).toBeNull();
+  });
+
   it('the command palette has its own flag', () => {
     expect(store.getState().showCommandPalette).toBe(false);
     store.getState().setShowCommandPalette(true);

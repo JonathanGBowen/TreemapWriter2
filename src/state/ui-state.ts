@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { AppState } from '.';
-import type { PendingMerge, Section } from '../types';
+import type { PendingMerge, Section, SprintGoalFraming } from '../types';
 import { repository } from '../services/repository-registry';
 
 /** Workspaces a running AI op can belong to — used by the activity pill to jump back. */
@@ -144,6 +144,13 @@ export interface UIStateSlice {
   /** One sprint surface; `sprintMode` selects goal-framing vs drafting. */
   showSprintModal: boolean;
   sprintMode: 'goal' | 'content';
+  /**
+   * A pre-framed sprint goal another surface hands off (today: the Outline
+   * Doctor's checklist). SprintModal consumes it on open — straight to the plan
+   * phase, the transcript grounding the generated plan via `extraContext` —
+   * then clears it. Ephemeral by design.
+   */
+  sprintSeed: { framing: SprintGoalFraming; transcript?: string } | null;
   showHistoryModal: boolean;
   showGraphModal: boolean;
   showCoachModal: boolean;
@@ -224,6 +231,7 @@ export interface UIStateSlice {
   setShowProjectFileModal: (show: boolean) => void;
   setShowSprintModal: (show: boolean) => void;
   setSprintMode: (mode: 'goal' | 'content') => void;
+  setSprintSeed: (seed: { framing: SprintGoalFraming; transcript?: string } | null) => void;
   setShowHistoryModal: (show: boolean) => void;
   setShowGraphModal: (show: boolean) => void;
   setShowCoachModal: (show: boolean) => void;
@@ -283,6 +291,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showProjectFileModal: false,
   showSprintModal: false,
   sprintMode: 'content',
+  sprintSeed: null,
   showHistoryModal: false,
   showGraphModal: false,
   showCoachModal: false,
@@ -382,6 +391,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowProjectFileModal: (show) => set({ showProjectFileModal: show }),
   setShowSprintModal: (show) => set({ showSprintModal: show }),
   setSprintMode: (mode) => set({ sprintMode: mode }),
+  setSprintSeed: (sprintSeed) => set({ sprintSeed }),
   setShowHistoryModal: (show) => set({ showHistoryModal: show }),
   setShowGraphModal: (show) => set({ showGraphModal: show }),
   setShowCoachModal: (show) => set({ showCoachModal: show }),

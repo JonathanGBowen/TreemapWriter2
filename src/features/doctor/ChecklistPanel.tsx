@@ -14,7 +14,7 @@ export function ChecklistPanel() {
   const checklist = useStore((s) => s.doctorChecklist);
   const toggle = useStore((s) => s.toggleDoctorTask);
   const save = useStore((s) => s.saveCurrentState);
-  const { downloadChecklistMd } = useDoctorWizardActions();
+  const { downloadChecklistMd, sendToSprint } = useDoctorWizardActions();
 
   // Staleness against the checklist's own scope (not the picker's), resolved live.
   const stale = useStore((s) => {
@@ -72,6 +72,14 @@ export function ChecklistPanel() {
             className="px-2.5 py-1 border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9px] uppercase tracking-[0.12em] transition-all"
           >
             ↧ Download .md
+          </button>
+          <button
+            type="button"
+            onClick={sendToSprint}
+            title="Open a Living Sprint whose plan is generated from this checklist"
+            className="px-2.5 py-1 border border-hld-cyan/40 text-hld-cyan hover:bg-hld-cyan/10 font-mono text-[9px] uppercase tracking-[0.12em] transition-all"
+          >
+            » Send to Sprint
           </button>
         </div>
       </div>
