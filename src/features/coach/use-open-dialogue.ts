@@ -44,7 +44,7 @@ export function useCoachPlanOpening(): (plan: string) => Promise<void> {
 
   return useCallback(
     async (plan: string) => {
-      const { sections, testSuite } = useStore.getState();
+      const { sections, testSuite, memorandum } = useStore.getState();
       const [sessions, snapshots] = await Promise.all([
         repo.listSessions().catch(() => []),
         repo.listSnapshotMeta(30).catch(() => []),
@@ -55,6 +55,7 @@ export function useCoachPlanOpening(): (plan: string) => Promise<void> {
           structureSummary: structureSummary(sections, testSuite),
           activityBrief: buildActivityBrief({ sessions, snapshots, now: Date.now() }),
           sections: flatIndex(sections),
+          memorandum,
         }),
       );
       setShowCoachModal(false);
@@ -76,7 +77,7 @@ export function useUnstickOpening(): (sectionId: string) => void {
 
   return useCallback(
     (sectionId: string) => {
-      const { sections, testSuite, activeSession } = useStore.getState();
+      const { sections, testSuite, activeSession, memorandum } = useStore.getState();
       const section = findSectionById(sections, sectionId);
       if (!section) return;
 
@@ -97,6 +98,7 @@ export function useUnstickOpening(): (sectionId: string) => void {
           nextPriority: entry?.lastDiagnostic?.nextPriority ?? null,
           activeStep,
           nextSectionId,
+          memorandum,
         }),
       );
       setTestsPanelTab('dialogue');

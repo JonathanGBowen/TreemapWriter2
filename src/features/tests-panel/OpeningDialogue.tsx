@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { X } from 'lucide-react';
 import type { DialogueMessage } from '../../types';
@@ -43,7 +43,10 @@ const ExitChip: React.FC<{ onClick: () => void; children: React.ReactNode; lit?:
 
 export const OpeningDialogue: React.FC<{ opening: DialogueOpening }> = ({ opening }) => {
   const messages = useStore((s) => s.openingMessages);
-  const { send, applyDeposit, toSession, dismiss, isStreaming, streamedText } = useOpeningDialogue();
+  const currentMemo = useStore((s) => s.memorandum);
+  const { send, applyDeposit, toSession, acceptMemorandum, dismiss, isStreaming, streamedText } =
+    useOpeningDialogue();
+  const [memoAccepted, setMemoAccepted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const spent = messages.filter((m) => m.role === 'user').length;
@@ -92,6 +95,29 @@ export const OpeningDialogue: React.FC<{ opening: DialogueOpening }> = ({ openin
       </div>
 
       <div className="p-4 pt-0 flex flex-col gap-[10px] shrink-0">
+        {deposit?.memorandum && deposit.memorandum.trim() !== currentMemo.trim() && (
+          // A proposed Memorandum revision — default-skip, shown verbatim, one
+          // quiet accept (the bounded-agency contract applied to memory, §IV).
+          <div className="flex items-start gap-[8px] border border-hld-border bg-hld-surface-2/40 px-[10px] py-[8px]">
+            <div className="min-w-0 flex-1">
+              <div className="font-mono text-[8px] tracking-[0.12em] uppercase text-hld-muted-text mb-[4px]">
+                Proposed memorandum
+              </div>
+              <div className="text-[11px] font-sans text-hld-text whitespace-pre-wrap line-clamp-4">
+                {deposit.memorandum}
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={memoAccepted}
+              onClick={() => { acceptMemorandum(deposit.memorandum!); setMemoAccepted(true); }}
+              className="shrink-0 self-center px-[10px] py-[6px] border border-hld-border text-hld-muted-text-2 font-mono uppercase tracking-[0.12em] text-[8px] hover:text-hld-cyan hover:border-hld-cyan transition-colors disabled:opacity-40"
+              title="Save this as the standing-intent note (skip to ignore)"
+            >
+              {memoAccepted ? 'noted' : '✎ note it'}
+            </button>
+          </div>
+        )}
         {deposit ? (
           // Converged: the exit outshines everything. The transcript stays
           // readable above; the way back into the prose is the only lit action.

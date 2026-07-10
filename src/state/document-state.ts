@@ -27,6 +27,9 @@ import {
 } from '../lib/analysis-helpers';
 import { applySourcePatch, type SourcePatch } from '../lib/source-edit';
 
+/** Hard cap on the Memorandum — forces triage, prevents a dossier accreting. */
+export const MEMORANDUM_CAP = 1200;
+
 const blankEntry = (): TestSuiteEntry => ({
   goals: '',
   status: 'idle',
@@ -105,6 +108,16 @@ export interface DocumentStateSlice {
    * a source.
    */
   sources: SourceDocument[];
+  /**
+   * The Memorandum — one capped, plain-markdown note of the writer's STANDING
+   * INTENT about the work (decisions taken, open questions, the recurring
+   * obstacle, "don't-suggest" vetoes). Persisted domain content
+   * (`.twriter/memorandum.md`, committed — git is its history and undo). Never
+   * facts derivable from the repo, never trait/behavioral inference. Empty until
+   * the writer (or an accepted dialogue proposal) first fills it; empty ⇒ zero
+   * footprint. See docs/dialogue-design.md §IV.
+   */
+  memorandum: string;
   lastAutoSave: Date | null;
 
   setMarkdown: (markdown: string) => void;
@@ -125,6 +138,8 @@ export interface DocumentStateSlice {
   setStructuralParts: (parts: StructuralPart[]) => void;
   /** Replace all source documents (the load path). */
   setSources: (sources: SourceDocument[]) => void;
+  /** Replace the Memorandum, hard-capped (over-length input is truncated). */
+  setMemorandum: (text: string) => void;
   /** Add one source document (append). */
   addSource: (source: SourceDocument) => void;
   /**
@@ -214,6 +229,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   provenanceMarks: [],
   structuralParts: [],
   sources: [],
+  memorandum: '',
   lastAutoSave: null,
 
   setMarkdown: (markdown) => set({ markdown }),
@@ -244,6 +260,9 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
     set((state) => ({ provenanceMarks: [...state.provenanceMarks, mark] })),
   setStructuralParts: (parts) => set({ structuralParts: parts }),
   setSources: (sources) => set({ sources }),
+  // Cap enforced HERE (the one write path) so an over-length AI proposal or
+  // paste can never accrete a shadow-profile — distillation, not accumulation.
+  setMemorandum: (text) => set({ memorandum: text.slice(0, MEMORANDUM_CAP) }),
   addSource: (source) => set((state) => ({ sources: [...state.sources, source] })),
   updateSource: (id, { exegesis, ...patch }) =>
     set((state) => ({

@@ -35,6 +35,14 @@ describe('extractOpeningDeposit', () => {
     const turn = '```json\n{"deposit": {"kind": "unstick", "goodEnough": true, "sectionId": "next-1"}}\n```';
     expect(extractOpeningDeposit(turn)).toMatchObject({ goodEnough: true, sectionId: 'next-1' });
   });
+
+  it('carries an optional memorandum revision, and a memorandum-only deposit is valid', () => {
+    const turn =
+      '```json\n{"deposit": {"kind": "reentry", "wish": "resume §3", "memorandum": "ch. 2 is settled"}}\n```';
+    expect(extractOpeningDeposit(turn)).toMatchObject({ wish: 'resume §3', memorandum: 'ch. 2 is settled' });
+    const memoOnly = '```json\n{"deposit": {"kind": "coach-plan", "memorandum": "don\'t split §4"}}\n```';
+    expect(extractOpeningDeposit(memoOnly)).toMatchObject({ memorandum: "don't split §4" });
+  });
 });
 
 describe('stripDepositBlock', () => {

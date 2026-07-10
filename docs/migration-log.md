@@ -5970,3 +5970,69 @@ which is coherent and self-contained.
 **Rollback.** One commit; `git revert`. Two pure builders + two hooks + the
 optional `activityBrief` prompt field + UI wiring; no persisted-data or schema
 changes.
+
+---
+
+## 2026-07-10 — Dialogue expansion IV: the Memorandum
+
+Final increment (design record: [`dialogue-design.md`](dialogue-design.md) §IV) —
+the one Rust-touching one. A single, capped, committed note of the writer's
+STANDING INTENT, held honest by a fence.
+
+**What changed.**
+
+- **The persisted-field chain** (`memorandum`, the "new persisted field" recipe,
+  TS + Rust landed together): `StoredProjectData.memorandum?: string`
+  (`repository.ts`) → a `memorandum: string` field + capped `setMemorandum`
+  (`state/document-state.ts`, cap `MEMORANDUM_CAP = 1200` enforced in the one
+  write path) → `performSave` + all three load/reset paths (`project-state.ts`)
+  → **Rust:** `layout.memorandum_md()` = `.twriter/memorandum.md`, an
+  `Option<String>` mirror on the `StoredProjectData` struct (`types.rs`), and
+  read/write in `document.rs` (`read_to_string_optional` / `atomic_write_str`).
+  Unlike the JSON sidecars it is a **bare markdown string** (like `local_draft`)
+  but **committed, not gitignored** — git is its history and its undo. A serde
+  round-trip test (`memorandum_round_trips_through_write_then_read_and_is_optional`)
+  pins it (the 2026-06-24 strict-mirror lesson); both repository impls pass the
+  field through their existing blob path, so no impl-specific change was needed.
+- **The UI** — a collapsed `MemorandumDisclosure` atop the Dialogue tab's empty
+  state, edited in place with a live remaining-char count; **empty ⇒ zero
+  footprint** (no toggle, no flag). Whatever is shown there is verbatim what any
+  prompt receives (the symmetry rule).
+- **Injection** — the Memorandum is prepended verbatim to every anchored opening
+  (re-entry / coach-plan / unstick, via `memorandumBlock` in
+  `dialogue-openings.ts`) and to `buildCoachPrompt`.
+- **Gated self-maintenance** — no new AI call: the interlocutor's terminal
+  `{deposit}` may carry an optional `memorandum` revision; `OpeningDialogue`
+  renders it as a **default-skip diff chip** ("✎ note it") that calls
+  `setMemorandum` on accept. The **no-inference contract** (document-facts and
+  stated commitments only — never a trait claim, never anything derivable from
+  the repo) lives in the **locked** `interlocutor-voice.md`, so it cannot drift.
+
+**Verify.** `npm test` (799 passing, incl. `memorandum.test.ts` cap +
+`dialogue-openings` deposit-memorandum), `npm run typecheck`, `npm run build`
+green; **`cargo test` green (58 passing, incl. the memorandum round-trip)** —
+the GTK/WebKit dev libs were installed in this session, so the desktop chain was
+actually compiled and exercised here (not inspection-only). Manual: the Dialogue
+tab's empty state shows the Memorandum disclosure; typing then reload preserves
+it; empty renders nothing anywhere.
+
+**Rollback.** One commit; `git revert`. Adds a persisted field, so a project
+saved with a memorandum keeps a `.twriter/memorandum.md` a revert would ignore
+(harmless — an unread committed file). No schema migration needed (the field is
+optional everywhere; serde tolerates its absence).
+
+---
+
+**Dialogue expansion — program complete (four increments + the design essay).**
+The right column's dialogue is no longer analysis-tethered: it hosts typed,
+document-anchored **openings** (re-entry, coach-plan, unstick) on one shared kit
+and one `interlocutorTurn` method, each converging on a located deposit that
+slingshots the caret back into the prose; the dormant interrogation foci + a
+deterministic gaps focus are lit; the coach reads recent git/session history; and
+a fenced, capped, committed **Memorandum** carries standing intent. The
+anchored-corridor law ([`docs/dialogue-design.md`](dialogue-design.md)) held
+throughout: no lobby, a terminal artifact per opening, the exit outshining the
+conversation, ephemeral transcripts, and an AI that never initiates. *Deferred by
+design (named in Inc 3):* the FTS/`specEdit` gap opening and the
+Sprint/`proposeRecenterings` deposit hand-offs. *Pending across Inc 2–3:* one
+manual AI-path drive of the live openings (needs an API key).

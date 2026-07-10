@@ -432,9 +432,15 @@ convergence. **Inc 3:** the coach becomes **history-aware** (`buildCoachPrompt` 
 activity brief), a **coach-plan opening** (⊕ Contest this plan in the CoachModal),
 and the **repointed 90 s stall** → a section-grained **unstick opening** whose
 *permission-to-stop* deposit is the first home of the F3 Good-Enough gate.
-Increment 4 (the Memorandum) follows. *Deferred (named):* the FTS/`specEdit` gap
-opening and the Sprint/`proposeRecenterings` deposit hand-offs. *Pending:* one
-manual AI-path check of the live openings (needs an API key).
+**Inc 4:** the **Memorandum** — one capped (1200-char), committed plain-markdown
+note of standing intent (`.twriter/memorandum.md`; the full TS + Rust chain,
+`cargo test` green), edited in the Dialogue-tab empty state, injected verbatim
+into every opening + the coach, and revisable only via a default-skip diff chip
+from a dialogue deposit (no-inference contract locked in `interlocutor-voice.md`).
+**Program complete** (design essay + four increments). *Deferred by design
+(named):* the FTS/`specEdit` gap opening and the Sprint/`proposeRecenterings`
+deposit hand-offs. *Pending:* one manual AI-path drive of the live openings
+(needs an API key).
 
 ## Next (felt priorities)
 

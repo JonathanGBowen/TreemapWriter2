@@ -7,6 +7,7 @@ import { repository as repo } from '../services/repository-registry';
 import { setSecret } from '../services/credentials';
 import { isTauri } from '../services/tauri-environment';
 import { normalizeModelConfig } from '../services/ai/model-config';
+import { MEMORANDUM_CAP } from './document-state';
 import type { Dependency, ProjectMeta, PromptsConfig, Snapshot, TestSuite } from '../types';
 import type { AppState } from '.';
 
@@ -142,6 +143,7 @@ async function performSave(
     provenance: { marks: state.provenanceMarks },
     structuralParts: state.structuralParts,
     sources: state.sources,
+    memorandum: state.memorandum,
     cachedCoachAdvice: state.cachedCoachAdvice,
     revisions: state.revisions,
     lastModified: Date.now(),
@@ -346,6 +348,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       provenanceMarks: [],
       structuralParts: [],
       sources: [],
+      memorandum: '',
       selectedSourceIds: [],
       // Browser persists to IndexedDB; desktop shows the demo as an unsaved
       // preview until the user creates/opens a real folder-backed project.
@@ -399,6 +402,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       provenanceMarks: [],
       structuralParts: [],
       sources: [],
+      memorandum: '',
       selectedSourceIds: [],
       hiddenSectionIds: [],
       activePersonaId: 'default',
@@ -507,6 +511,7 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
         provenanceMarks: data.provenance?.marks ?? [],
         structuralParts: data.structuralParts ?? [],
         sources: data.sources ?? [],
+        memorandum: (data.memorandum ?? '').slice(0, MEMORANDUM_CAP),
         // Default-select every persisted source so the writer's setup is ready to use
         // on open (selection itself is ephemeral, so it isn't restored from disk).
         selectedSourceIds: (data.sources ?? []).map((s) => s.id),

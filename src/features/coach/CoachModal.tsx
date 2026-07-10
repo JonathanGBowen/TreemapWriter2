@@ -35,6 +35,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   const setShow = useStore(s => s.setShowCoachModal);
   const modelCatalog = useStore(s => s.modelCatalog);
   const structuralParts = useStore(s => s.structuralParts);
+  const memorandum = useStore(s => s.memorandum);
   const onClose = () => setShow(false);
   const [choice, setChoice] = useModelChoice('streamCoachAdvice', isOpen);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -116,6 +117,7 @@ export const CoachModal: React.FC<CoachModalProps> = ({
         testSuite,
         structuralParts,
         activityBrief: activityBrief ?? undefined,
+        memorandum: memorandum || undefined,
         config: promptsConfig,
         modelChoice: choice,
       })) {

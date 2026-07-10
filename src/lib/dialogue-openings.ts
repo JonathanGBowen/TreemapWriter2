@@ -41,6 +41,12 @@ export interface OpeningDeposit {
   sectionId?: string;
   /** Unstick outcome c: permission to stop — "good enough, move on." */
   goodEnough?: boolean;
+  /**
+   * An optional proposed revision of the Memorandum (§IV) — the writer's standing
+   * intent, capped and document-facts-only. Rendered as a default-skip diff chip;
+   * never auto-applied.
+   */
+  memorandum?: string;
 }
 
 const str = (v: unknown): string | undefined =>
@@ -62,14 +68,33 @@ export function extractOpeningDeposit(text: string): OpeningDeposit | null {
     vector: str(dep.vector),
     sectionId: str(dep.sectionId),
     goodEnough: dep.goodEnough === true ? true : undefined,
+    memorandum: str(dep.memorandum),
   };
-  if (!out.wish && !out.firstStep && !out.vector && !out.goodEnough) return null;
+  if (!out.wish && !out.firstStep && !out.vector && !out.goodEnough && !out.memorandum) return null;
   return out;
 }
 
 /** A model turn with its fenced deposit removed (the chip renders it instead). */
 export const stripDepositBlock = (text: string): string =>
   text.replace(/```(?:json)?[\s\S]*?```/gi, '').trim();
+
+/**
+ * The Memorandum as a context block, shown VERBATIM (the symmetry rule, §IV: the
+ * model never knows anything the writer can't read on screen). Empty ⇒ no block,
+ * and the deposit contract only invites a revision when a note already exists or
+ * the exchange plainly settled a standing intent.
+ */
+const memorandumBlock = (memorandum?: string | null): string => {
+  const m = (memorandum ?? '').trim();
+  const shown = m ? `MEMORANDUM (the writer's standing intent — honor it):\n${m}` : '';
+  const invite = [
+    'If this exchange settled or changed a STANDING INTENT (a decision, an open',
+    'question, a "don\'t-suggest" veto — never a trait or behavioral claim, never a',
+    'fact derivable from the repo), you MAY add a "memorandum" field to the deposit',
+    'with the full revised note (document-facts only). Otherwise omit it.',
+  ].join(' ');
+  return [shown, invite].filter(Boolean).join('\n\n');
+};
 
 /** Cap on the SECTIONS index inside an opening context (orientation, not a dump). */
 const SECTION_INDEX_CAP = 60;
@@ -95,11 +120,14 @@ export interface ReentryOpeningInput {
   nextAction?: NextAction | null;
   /** Flat section index so the deposit can name a real target. */
   sections: Array<{ id: string; title: string }>;
+  /** The writer's standing-intent note, shown verbatim + open to revision. */
+  memorandum?: string | null;
 }
 
 /** The re-entry opening — "where was I, and what is this sitting for?" */
 export function buildReentryOpening(input: ReentryOpeningInput): DialogueOpening {
   const context = [
+    memorandumBlock(input.memorandum),
     input.activityBrief
       ? `RECENT ACTIVITY:\n${input.activityBrief}`
       : 'RECENT ACTIVITY:\n(no recorded sessions or snapshots yet)',
@@ -137,11 +165,13 @@ export interface CoachPlanOpeningInput {
   structureSummary: string;
   activityBrief: string | null;
   sections: Array<{ id: string; title: string }>;
+  memorandum?: string | null;
 }
 
 /** The coach-plan opening — contest the triage before committing to a sprint. */
 export function buildCoachPlanOpening(input: CoachPlanOpeningInput): DialogueOpening {
   const context = [
+    memorandumBlock(input.memorandum),
     `THE COACH'S PLAN (the triage to contest):\n${input.plan}`,
     input.activityBrief ? `RECENT ACTIVITY:\n${input.activityBrief}` : '',
     `STRUCTURE:\n${input.structureSummary}`,
@@ -172,6 +202,7 @@ export interface UnstickOpeningInput {
   activeStep?: string | null;
   /** The id of the next section in reading order, for the "move on" deposit. */
   nextSectionId?: string | null;
+  memorandum?: string | null;
 }
 
 /**
@@ -182,6 +213,7 @@ export interface UnstickOpeningInput {
 export function buildUnstickOpening(input: UnstickOpeningInput): DialogueOpening {
   const { section } = input;
   const context = [
+    memorandumBlock(input.memorandum),
     `STUCK ON: "${section.title}" (${section.id})`,
     input.mainClaim ? `THIS SECTION MUST EARN: ${input.mainClaim}` : '',
     input.surround ? `PART IN WHOLE:\n${input.surround}` : '',

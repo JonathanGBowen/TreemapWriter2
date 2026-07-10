@@ -288,6 +288,11 @@ pub struct StoredProjectData {
     /// sparse/evolving shape can never reject the whole save.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sources: Option<serde_json::Value>,
+    /// The Memorandum (`.twriter/memorandum.md`): one capped plain-markdown note of
+    /// the writer's standing intent. A bare `Option<String>` (like `local_draft`),
+    /// NOT JSON — but COMMITTED, not gitignored, so git is its history and undo.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub memorandum: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

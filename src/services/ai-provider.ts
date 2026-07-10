@@ -419,6 +419,8 @@ export interface CoachAdviceInput {
    * structure-only prompt, exactly as before.
    */
   activityBrief?: string;
+  /** The writer's standing-intent Memorandum, injected verbatim (§IV). Omitted → absent. */
+  memorandum?: string;
   config: PromptsConfig;
   modelId?: string;
   modelChoice?: ModelChoice;

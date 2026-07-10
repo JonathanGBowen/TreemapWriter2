@@ -30,7 +30,7 @@ export function useReentryOpening(): () => Promise<void> {
   const setTestsPanelTab = useStore((s) => s.setTestsPanelTab);
 
   return useCallback(async () => {
-    const { sections, testSuite, selectedId, dismissedStrainIds } = useStore.getState();
+    const { sections, testSuite, selectedId, dismissedStrainIds, memorandum } = useStore.getState();
 
     // Deterministic record — read the canonical sources directly.
     const [sessions, snapshots] = await Promise.all([
@@ -56,6 +56,7 @@ export function useReentryOpening(): () => Promise<void> {
         currentSection: current,
         nextAction,
         sections: index,
+        memorandum,
       }),
     );
     setTestsPanelTab('dialogue');

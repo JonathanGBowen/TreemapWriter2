@@ -66,6 +66,12 @@ impl Layout {
         self.twriter_dir().join("sources.json")
     }
 
+    /// The Memorandum — one capped plain-markdown note of the writer's standing
+    /// intent. COMMITTED (unlike `draft.md`): git is its history and its undo.
+    pub fn memorandum_md(&self) -> PathBuf {
+        self.twriter_dir().join("memorandum.md")
+    }
+
     pub fn hidden_json(&self) -> PathBuf {
         self.twriter_dir().join("hidden.json")
     }

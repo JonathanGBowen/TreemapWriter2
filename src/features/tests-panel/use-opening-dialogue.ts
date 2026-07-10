@@ -23,6 +23,8 @@ export function useOpeningDialogue() {
   const setTestsPanelTab = useStore((s) => s.setTestsPanelTab);
   const setSessionPrefill = useStore((s) => s.setSessionPrefill);
   const setShowSessionModal = useStore((s) => s.setShowSessionModal);
+  const setMemorandum = useStore((s) => s.setMemorandum);
+  const saveCurrentState = useStore((s) => s.saveCurrentState);
   const { streaming: liveTurn, runTurn } = useDialogueStream();
 
   const isStreaming = liveTurn?.key === OPENING_KEY;
@@ -89,13 +91,22 @@ export function useOpeningDialogue() {
     [setSessionPrefill, endDialogueOpening, setShowSessionModal],
   );
 
+  /** Accept a proposed Memorandum revision (default-skip; the cap is enforced in the setter). */
+  const acceptMemorandum = useCallback(
+    (text: string) => {
+      setMemorandum(text);
+      void saveCurrentState().catch(() => {});
+    },
+    [setMemorandum, saveCurrentState],
+  );
+
   const dismiss = useCallback(() => {
     if (dialogueInFlight(OPENING_KEY)) return;
     endDialogueOpening();
     setTestsPanelTab('spec');
   }, [endDialogueOpening, setTestsPanelTab]);
 
-  return { send, applyDeposit, toSession, dismiss, isStreaming, streamedText };
+  return { send, applyDeposit, toSession, acceptMemorandum, dismiss, isStreaming, streamedText };
 }
 
 /** The deposit carried by the last model turn, or null. */

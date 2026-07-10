@@ -154,7 +154,10 @@ function buildCoachPrompt(input: CoachAdviceInput): string {
   const activityBlock = input.activityBrief
     ? `\n\nRECENT ACTIVITY (the canonical session/git record — trust it; do not re-derive):\n${input.activityBrief}\n`
     : '';
-  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}${activityBlock}`;
+  const memoBlock = input.memorandum?.trim()
+    ? `\n\nMEMORANDUM (the writer's standing intent — honor it; do not reopen a settled decision):\n${input.memorandum.trim()}\n`
+    : '';
+  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}${activityBlock}${memoBlock}`;
 }
 
 export interface ProviderClients {

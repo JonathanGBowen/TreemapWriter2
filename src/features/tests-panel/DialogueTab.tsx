@@ -5,6 +5,7 @@ import { useStore } from "../../state";
 import { buildGapFocus } from "../../lib/gap-focus";
 import { Composer, Transcript } from "../shared/dialogue";
 import { DisabledHint } from "../shared/DisabledHint";
+import { MemorandumDisclosure } from "../coach/MemorandumDisclosure";
 import { useCurrentSection } from "./use-current-section";
 import { useAnalysisActions } from "./use-analysis-actions";
 import { OpeningDialogue } from "./OpeningDialogue";
@@ -13,10 +14,10 @@ const DialogueEmptyState: React.FC<{ onOpenAnalysis: () => void; onGaps?: () => 
   onOpenAnalysis,
   onGaps,
 }) => (
-  <div className="flex-1 overflow-y-auto p-4 bg-hld-surface-3 flex flex-col items-center justify-center text-center text-hld-muted-text-2">
-    <MessagesSquare size={32} className="mb-2 opacity-50" />
-    <p className="font-mono uppercase tracking-[0.12em] text-[9px] mb-1">No dialogue</p>
-    <p className="text-[12px] font-sans text-hld-muted-text-2 mb-3">
+  <div className="flex-1 overflow-y-auto p-4 bg-hld-surface-3 flex flex-col items-center justify-center text-center text-hld-muted-text-2 gap-3">
+    <MessagesSquare size={32} className="opacity-50" />
+    <p className="font-mono uppercase tracking-[0.12em] text-[9px] -mb-1">No dialogue</p>
+    <p className="text-[12px] font-sans text-hld-muted-text-2">
       Interrogate part of an analysis to begin{onGaps ? ' — or take the structure’s open gaps to dialogue' : ''}.
     </p>
     <div className="flex gap-[8px]">
@@ -36,6 +37,7 @@ const DialogueEmptyState: React.FC<{ onOpenAnalysis: () => void; onGaps?: () => 
         </button>
       )}
     </div>
+    <MemorandumDisclosure />
   </div>
 );
 
