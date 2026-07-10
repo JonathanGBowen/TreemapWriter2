@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { useStore } from '../../state';
 import { Spinner } from '../shared/Spinner';
-import { doctorScopeFromState } from './use-doctor-scope';
+import { segmentParagraphs } from '../../lib/paragraph-helpers';
+import { findById } from './use-doctor-scope';
 import { useDoctorActions } from './use-doctor-actions';
 
 /** First line of a block, trimmed for the picker list. */
@@ -16,7 +18,19 @@ const excerpt = (text: string, len = 110): string => {
  * of a paste box.
  */
 export function ParagraphDiagnostic() {
-  const blocks = useStore((s) => doctorScopeFromState(s)?.blocks ?? []);
+  // Select primitives and memoize the segmentation — a selector must never
+  // return a fresh object per snapshot (that is a render loop).
+  const localContent = useStore((s) => s.localContent);
+  const markdown = useStore((s) => s.markdown);
+  const targetId = useStore((s) => s.doctorTargetId);
+  const sections = useStore((s) => s.sections);
+  const blocks = useMemo(() => {
+    if (targetId) {
+      const section = findById(sections, targetId);
+      return section ? segmentParagraphs(section.fullContent) : [];
+    }
+    return segmentParagraphs(localContent || markdown);
+  }, [localContent, markdown, targetId, sections]);
   const pickedIndex = useStore((s) => s.doctorParagraphIndex);
   const diag = useStore((s) => s.doctorParagraphDiag);
   const status = useStore((s) => s.doctorStatus);

@@ -18,7 +18,7 @@ export interface DoctorScope {
 }
 
 /** Depth-first lookup of a section by id (the tree is small; no memo needed). */
-const findById = (nodes: Section[], id: string): Section | null => {
+export const findById = (nodes: Section[], id: string): Section | null => {
   for (const n of nodes) {
     if (n.id === id) return n;
     const found = findById(n.children, id);

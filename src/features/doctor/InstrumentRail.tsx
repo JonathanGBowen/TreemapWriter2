@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import { useStore } from '../../state';
 import type { DoctorInstrument } from '../../state/doctor-state';
 import { useDoctorActions } from './use-doctor-actions';
 import { sourceHashOf } from '../../lib/parallel-helpers';
-import { doctorScopeFromState } from './use-doctor-scope';
+import { findById } from './use-doctor-scope';
 
 /** The seven instruments, grouped as the ported app grouped them. */
 const GROUPS: { title: string; items: { id: DoctorInstrument; glyph: string; label: string; fine: string }[] }[] = [
@@ -40,16 +41,23 @@ export function InstrumentRail() {
   const targetId = useStore((s) => s.doctorTargetId);
   const { runRows, runReport } = useDoctorActions();
 
+  const localContent = useStore((s) => s.localContent);
+  const markdown = useStore((s) => s.markdown);
+  const sections = useStore((s) => s.sections);
+
   const busy = status === 'running' || status === 'streaming';
 
   // A quiet cross-link, not a data merge: the Parallel editor's persisted
   // outline is an editing substrate; the Doctor never writes it.
-  const parallelScopeKey = targetId ?? 'root';
-  const hasParallelOutline = reverseOutlines.some((d) => {
-    if (d.scopeKey !== parallelScopeKey) return false;
-    const s = useStore.getState();
-    return d.sourceHash === sourceHashOf(doctorScopeFromState(s)?.text ?? '');
-  });
+  const hasParallelOutline = useMemo(() => {
+    const parallelScopeKey = targetId ?? 'root';
+    const doc = reverseOutlines.find((d) => d.scopeKey === parallelScopeKey);
+    if (!doc) return false;
+    const text = targetId
+      ? findById(sections, targetId)?.fullContent ?? ''
+      : localContent || markdown;
+    return doc.sourceHash === sourceHashOf(text);
+  }, [reverseOutlines, targetId, sections, localContent, markdown]);
 
   const run = () => {
     if (isRow(instrument)) void runRows(instrument);
