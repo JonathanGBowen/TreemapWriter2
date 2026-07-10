@@ -43,10 +43,15 @@ export async function proposeRoadmaps(
     // fail-loud single-pass substitution (all occurrences, throws on a missing value).
     interpolate(input.config.doctorRoadmapsPrompt, { CRITICAL_ISSUE: input.criticalIssue }),
     '',
+    // Also frame the issue as its own block: a user override of the editable prompt
+    // that drops the {{CRITICAL_ISSUE}} token would otherwise sever it from the step.
+    '### CRITICAL ISSUE ###',
+    input.criticalIssue,
+    '',
     '### ORIGINAL OUTLINE ###',
     input.outlineData,
     '',
-    'Return ONLY the JSON object defined by the schema (a "roadmaps" array of exactly three, each with title, summary, and outline lines).',
+    'Return ONLY a JSON object with a "roadmaps" array of exactly three, each with title, summary, and outline lines. Example: {"roadmaps":[{"title":"…","summary":"…","outline":["…"]}]}',
   ].join('\n');
   const text = await client.generateText({
     model,
@@ -100,7 +105,7 @@ export async function generateDoctorChecklist(
     '### ORIGINAL OUTLINE ###',
     input.outlineData,
     '',
-    'Return ONLY the JSON object defined by the schema (a "tasks" array; each task has its text and the 1-based paragraph numbers it touches, [] when none).',
+    'Return ONLY a JSON object with a "tasks" array; each task has its "text" and "paragraphNumbers" (the 1-based paragraph numbers it touches, [] when none). Example: {"tasks":[{"text":"…","paragraphNumbers":[6,9]}]}',
   ].join('\n');
   const text = await client.generateText({
     model,
