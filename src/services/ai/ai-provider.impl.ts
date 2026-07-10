@@ -901,6 +901,9 @@ export class MultiProviderAIProvider implements AIProvider {
       input.config.dialoguePrompt,
       `CONTEXT:\n${input.context}`,
       analysisJson ? `CURRENT ANALYSIS (JSON):\n${analysisJson}` : '',
+      input.sectionText
+        ? `SECTION${input.sectionTitle ? ` "${input.sectionTitle}"` : ''} (FULL TEXT):\n---\n${input.sectionText}\n---`
+        : '',
     ]
       .filter(Boolean)
       .join('\n\n');

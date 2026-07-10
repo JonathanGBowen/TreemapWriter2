@@ -5799,3 +5799,57 @@ project delete confirms), and `theme.3c.tailwind.css` was applied for its
 *colour intent* rather than verbatim — this repo's already-declined `muted-text`
 inversion and custom `--spacing-*` scale (2026-06-26 remediation) were not
 revisited.
+
+---
+
+## 2026-07-10 — Dialogue expansion I: the shared dialogue kit + dead seams lit
+
+First increment of the dialogue-expansion wave (design record:
+[`dialogue-design.md`](dialogue-design.md) — the anchored-corridor law). No new
+AI method, no new persisted data; consolidation + ignition of machinery that
+already existed.
+
+**What changed.**
+
+- **Shared dialogue kit** at `src/features/shared/dialogue/` — the one home for
+  the transcript/bubble/streaming idiom that five surfaces had hand-copied:
+  `Bubble`/`TypingPulse`/`Transcript` (the DialogueTab framing, now canonical),
+  the single-line `Composer` (Enter-to-send, IME-guarded, `trailing` slot — the
+  no-lobby rule lives here: there is no unseeded variant), and
+  `useDialogueStream` / `consumeDialogueStream` (module-level per-key in-flight
+  mutex + accumulate → commit-full / commit-partial-on-error semantics, extracted
+  from `use-analysis-actions` and unit-tested in
+  `__tests__/stream.test.ts`). `DialogueTab` and the Glass-Box
+  `DirectiveDialogue` now render through it (the directive dialogue keeps its
+  fenced-block stripping and inline-error behavior via `commitPartial: false` +
+  `onError`); the sprint `CoachChat` / `SpecChat` migrate opportunistically.
+- **The four dormant interrogation foci wired.** `interrogateContextFor` defined
+  six focus builders but only `objections` had a button. The Analysis tab now
+  carries the quiet `⊕ ask` affordance on Thesis, Argument, Key concepts, and
+  Support, plus `⊕ interrogate this reading` (the `entire` focus) at the foot of
+  the reading — all through the existing `interrogate()` path; `interrogate`
+  gained an optional `targetSectionId` for callers that just re-selected a
+  section.
+- **A deterministic `gaps` focus** — `src/lib/gap-focus.ts` (pure, tested):
+  composes the strain register's signals, the last diagnostic's
+  missing/partial/unclear moves, and its gap→vector `nextAction` into a
+  dialogue seed; null when the structure reports nothing absent. Surfaced as
+  `⊕ Gaps` in the Dialogue tab's empty state and as a per-row `⊕` on the
+  Structural-Tension Register (select + seed in one tap).
+- **`ContinueDialogueInput` extended additively** with optional
+  `sectionTitle`/`sectionText`: a dialogue *about the text* (gaps-seeded, or on
+  a section with no analysis yet) now carries the section prose whole — the
+  classic analysis dialogue keeps its reading-only context. The send path keys
+  on `isGapFocus` and pre-flights the enlarged budget through the existing
+  `guardContextFit`.
+
+**Verify.** `npm test` (775 passing, incl. the new `stream.test.ts` +
+`gap-focus.test.ts`), `npm run typecheck`, `npm run build` all green. Manual:
+the Analysis tab shows `⊕ ask` under Thesis/Argument/Concepts/Support and the
+reading-level ⊕ at the foot; a section with mesh breaks or missing moves shows
+`⊕ Gaps` in the empty Dialogue tab and `⊕` on its strain row; the directive
+dialogue looks and behaves as before (shared bubbles).
+
+**Rollback.** One commit; `git revert`. No persisted-data or schema changes —
+the `ContinueDialogueInput` fields are optional and the dialogue transcript
+shape is untouched.

@@ -690,6 +690,14 @@ export interface ContinueDialogueInput {
   analysis: SectionAnalysis | null;
   /** Full history; the last message is the new user turn. */
   messages: DialogueMessage[];
+  /**
+   * The section's prose, sent whole when the dialogue is about the text rather
+   * than a reading of it — a gaps-seeded dialogue, or one on a section with no
+   * analysis yet. Omitted for the classic analysis dialogue (the reading is the
+   * subject there, and the analysis JSON already carries it).
+   */
+  sectionTitle?: string;
+  sectionText?: string;
   config: PromptsConfig;
   modelId?: string;
   thinkingBudget?: number;

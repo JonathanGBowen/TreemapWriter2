@@ -3,6 +3,8 @@ import { X } from "lucide-react";
 import { useStore } from "../../state";
 import { computeAllStrain } from "../../lib/strain-metrics";
 import type { SectionStrain, StrainSignal, StrainSignalKind } from "../../lib/strain-metrics";
+import { buildGapFocus } from "../../lib/gap-focus";
+import { useAnalysisActions } from "../tests-panel/use-analysis-actions";
 
 const KIND_LABEL: Record<StrainSignalKind, string> = {
   'unmet-incoming': 'unmet incoming',
@@ -39,10 +41,11 @@ function BandMark({ band }: { band: 'medium' | 'high' }) {
   );
 }
 
-function StrainRow({ s, selected, onSelect, onDismiss }: {
+function StrainRow({ s, selected, onSelect, onAsk, onDismiss }: {
   s: SectionStrain;
   selected: boolean;
   onSelect: (id: string) => void;
+  onAsk?: () => void;
   onDismiss: (id: string) => void;
 }) {
   return (
@@ -70,6 +73,17 @@ function StrainRow({ s, selected, onSelect, onDismiss }: {
             ))}
           </ul>
         </button>
+        {onAsk && (
+          <button
+            type="button"
+            onClick={onAsk}
+            aria-label={`Take the structural tension for ${s.title} to dialogue`}
+            title="Take this tension to dialogue"
+            className="font-mono text-[11px] leading-none text-hld-muted hover:text-hld-cyan shrink-0 mt-[2px] transition-colors"
+          >
+            ⊕
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onDismiss(s.sectionId)}
@@ -96,7 +110,16 @@ export function StrainRegister({ onSelect }: { onSelect: (id: string) => void })
   const selectedId = useStore((s) => s.selectedId);
   const dismissedStrainIds = useStore((s) => s.dismissedStrainIds);
   const dismissStrain = useStore((s) => s.dismissStrain);
+  const { interrogate } = useAnalysisActions();
   const [open, setOpen] = useState(false);
+
+  /** ⊕: land in the section AND seed the Dialogue tab with its gaps focus. */
+  const takeToDialogue = (s: SectionStrain) => {
+    const focus = buildGapFocus(s.sectionId, sections, testSuite);
+    if (!focus) return;
+    onSelect(s.sectionId);
+    interrogate(focus, s.sectionId);
+  };
 
   const strained = useMemo(() => {
     const { strained } = computeAllStrain(sections, testSuite);
@@ -129,6 +152,7 @@ export function StrainRegister({ onSelect }: { onSelect: (id: string) => void })
               s={s}
               selected={s.sectionId === selectedId}
               onSelect={onSelect}
+              onAsk={() => takeToDialogue(s)}
               onDismiss={dismissStrain}
             />
           ))}

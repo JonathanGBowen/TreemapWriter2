@@ -409,6 +409,20 @@ spec exists" case and peers). Deliberate follow-ons: the throttle is best-effort
 the latest op only (a `+N` count when several run); and conversational dialogue/coach
 streams keep their own inline indicators rather than the pill.
 
+**Dialogue expansion — Increment 1 shipped 2026-07-10** (design record:
+[`docs/dialogue-design.md`](docs/dialogue-design.md) — the anchored-corridor law;
+see [`docs/migration-log.md`](docs/migration-log.md)). The shared dialogue kit
+(`features/shared/dialogue/` — transcript/composer/streaming mutex, extracted from
+the five hand-copied surfaces; `DialogueTab` + `DirectiveDialogue` migrated), the
+four dormant interrogation foci wired in the Analysis tab (`thesis`/`concepts`/
+`argument`/`support` + the `entire` reading), and a deterministic **gaps** focus
+(`lib/gap-focus.ts`: strain signals + missing/partial/unclear moves + the
+gap→vector next action) seedable from the Dialogue tab's empty state and a per-row
+`⊕` on the Structural-Tension Register — gap-seeded dialogues carry the section
+prose (additive `ContinueDialogueInput.sectionText`). Increments 2–4 (activity
+brief + re-entry opening; coach/gap/unstick openings; the Memorandum) follow on
+this branch.
+
 ## Next (felt priorities)
 
 - **Agentic-AI integration roadmap — WS1–WS4a shipped 2026-06-29.** A 2026-06-29 audit
