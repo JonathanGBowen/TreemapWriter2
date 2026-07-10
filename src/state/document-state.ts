@@ -3,6 +3,7 @@ import type {
   AnalysisVersion,
   Dependency,
   DialogueMessage,
+  DoctorChecklist,
   ProvenanceMark,
   Recenterings,
   ReverseOutlineDoc,
@@ -77,6 +78,14 @@ export interface DocumentStateSlice {
    */
   reverseOutlines: ReverseOutlineDoc[];
   /**
+   * The Reverse Outline Doctor's persisted revision checklist (one per project —
+   * a whole-argument operation; a wizard re-run replaces it, git history keeps
+   * the old one). Domain data: a work ledger the writer executes over days, so it
+   * lives here beside testSuite, not in the ephemeral doctor slice. Null until
+   * the writer first completes the wizard.
+   */
+  doctorChecklist: DoctorChecklist | null;
+  /**
    * The Gist Editor's persisted scale model (one per document). Domain data — it
    * must survive closing the workspace and restarts — so it lives here, not in the
    * ephemeral gist slice. Null until the writer first generates a gist.
@@ -115,6 +124,17 @@ export interface DocumentStateSlice {
   setReverseOutlines: (docs: ReverseOutlineDoc[]) => void;
   /** Insert or replace (by scopeKey) one persisted reverse outline. */
   upsertReverseOutline: (doc: ReverseOutlineDoc) => void;
+  /** Replace the Doctor's persisted revision checklist (null clears it). */
+  setDoctorChecklist: (checklist: DoctorChecklist | null) => void;
+  /** Flip one checklist task's done flag (undoable by re-flipping — no confirm). */
+  toggleDoctorTask: (taskId: string) => void;
+  /**
+   * Adopt a distilled thesis as the DOCUMENT's claim: writes the root entry's
+   * `mainClaim` (and the root spec's `mainClaim` when a spec exists). This is the
+   * one deliberate crossing from the Doctor's gloss layer into the exegetical
+   * layer — explicit, user-initiated, never automatic.
+   */
+  adoptDocumentClaim: (text: string) => void;
   /** Replace the document's persisted gist (null clears it). */
   setGist: (gist: StoredGist | null) => void;
   /** Replace all provenance marks (the load path). */
@@ -210,6 +230,7 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
   hiddenSectionIds: [],
   revisions: [],
   reverseOutlines: [],
+  doctorChecklist: null,
   gist: null,
   provenanceMarks: [],
   structuralParts: [],
@@ -238,6 +259,33 @@ export const createDocumentStateSlice: StateCreator<AppState, [], [], DocumentSt
         doc,
       ],
     })),
+  setDoctorChecklist: (checklist) => set({ doctorChecklist: checklist }),
+  toggleDoctorTask: (taskId) =>
+    set((state) => {
+      if (!state.doctorChecklist) return {};
+      return {
+        doctorChecklist: {
+          ...state.doctorChecklist,
+          tasks: state.doctorChecklist.tasks.map((t) =>
+            t.id === taskId ? { ...t, done: !t.done } : t,
+          ),
+        },
+      };
+    }),
+  adoptDocumentClaim: (text) =>
+    set((state) => {
+      const entry = state.testSuite['root'] ?? blankEntry();
+      return {
+        testSuite: {
+          ...state.testSuite,
+          root: {
+            ...entry,
+            mainClaim: text,
+            ...(entry.spec ? { spec: { ...entry.spec, mainClaim: text } } : {}),
+          },
+        },
+      };
+    }),
   setGist: (gist) => set({ gist }),
   setProvenanceMarks: (marks) => set({ provenanceMarks: marks }),
   addProvenanceMark: (mark) =>

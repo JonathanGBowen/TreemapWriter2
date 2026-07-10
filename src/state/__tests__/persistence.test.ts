@@ -107,4 +107,28 @@ describe('desktop draft persistence (regression: autosave must persist the live 
     // No write happened — the empty buffer did not overwrite the saved doc.
     expect(h.lastSaved).toBe(sentinel);
   });
+
+  it('round-trips the Doctor checklist (save payload → load path)', async () => {
+    const checklist = {
+      scopeKey: 'root',
+      thesis: 'T',
+      criticalIssue: 'The most critical issue is X.',
+      roadmapTitle: 'Front-load',
+      roadmapOutline: ['step'],
+      tasks: [{ id: 'task-0', text: 'Do A', done: true, paragraphNumbers: [2], anchors: ['a'] }],
+      createdAt: 1,
+      sourceHash: 'h',
+    };
+    store.setState(seed({ markdown: OLD, localContent: OLD, doctorChecklist: checklist }));
+
+    await store.getState().saveCurrentState();
+    expect(h.lastSaved?.doctorChecklist).toEqual(checklist);
+
+    // Blank it in memory, reload — the persisted copy (done flag included) returns.
+    store.setState({ doctorChecklist: null } as unknown as Partial<ProjectStateSlice>);
+    await store.getState().loadProject('p1');
+    expect(
+      (store.getState() as unknown as { doctorChecklist: typeof checklist }).doctorChecklist,
+    ).toEqual(checklist);
+  });
 });

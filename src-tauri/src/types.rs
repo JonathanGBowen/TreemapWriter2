@@ -264,6 +264,12 @@ pub struct StoredProjectData {
     /// `{ scopeKey, bullets, sourceHash, generatedAt }`). Committed, like specs.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reverse_outlines: Option<serde_json::Value>,
+    /// Reverse Outline Doctor revision checklist (`.twriter/outline-doctor.json`).
+    /// Schema-agnostic on the Rust side — the TS layer owns the shape (a
+    /// `DoctorChecklist`: thesis, criticalIssue, roadmap, tasks). One per project;
+    /// committed, like specs.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub doctor_checklist: Option<serde_json::Value>,
     /// Gist Editor scale model (`.twriter/gist.json`). Schema-agnostic on the Rust
     /// side — the TS layer owns the shape (`StoredGist`: segmentation, analysis,
     /// budgets, the three grains, stale/orphan ids). One per document; committed.

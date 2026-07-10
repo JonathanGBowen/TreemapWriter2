@@ -72,6 +72,21 @@ import compareModeDraft from './compare-mode-draft.md?raw';
 import specTestModeDraft from './spec-test-mode-draft.md?raw';
 import analysisModeDraft from './analysis-mode-draft.md?raw';
 import diagnosticModeDraft from './diagnostic-mode-draft.md?raw';
+// Reverse Outline Doctor — the ported Prosthetic Logician prompt library. All
+// editable: the port's point is that these clinical reading instruments are the
+// writer's own tunable prompts, not engine internals.
+import doctorSystemPrompt from './doctor-system.md?raw';
+import doctorOutlinePrompt from './doctor-outline.md?raw';
+import doctorOutlineTablePrompt from './doctor-outline-table.md?raw';
+import doctorThesisCheckPrompt from './doctor-thesis-check.md?raw';
+import doctorParagraphPrompt from './doctor-paragraph.md?raw';
+import doctorDistillThesisPrompt from './doctor-distill-thesis.md?raw';
+import doctorDiagnosePrompt from './doctor-diagnose.md?raw';
+import doctorRoadmapsPrompt from './doctor-roadmaps.md?raw';
+import doctorChecklistPrompt from './doctor-checklist.md?raw';
+import doctorFlowPrompt from './doctor-flow.md?raw';
+import doctorRedundancyPrompt from './doctor-redundancy.md?raw';
+import doctorGapsPrompt from './doctor-gaps.md?raw';
 
 const strip = (s: string) => s.replace(/\n+$/, '');
 
@@ -84,7 +99,8 @@ export type PromptCategory =
   | 'revision-engine'
   | 'sprints'
   | 'comparison'
-  | 'climate';
+  | 'climate'
+  | 'doctor';
 
 /**
  * `editable` prompts are user-tunable, land in `PromptsConfig`, and are
@@ -725,6 +741,144 @@ export const PROMPT_REGISTRY = [
     category: 'revision-engine',
     flow: 'exegeteSource',
     editability: 'locked',
+    variables: [],
+  },
+  {
+    key: 'doctorSystemPrompt',
+    defaultText: strip(doctorSystemPrompt),
+    label: 'Logician Persona',
+    description:
+      'The Prosthetic Logician system instruction shared by every Doctor call: external executive-function support — clinical, structural, never judging idea quality. Ported verbatim.',
+    category: 'doctor',
+    flow: 'runDoctorOutline',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorOutlinePrompt',
+    defaultText: strip(doctorOutlinePrompt),
+    label: 'Reverse Outline (Claims)',
+    description:
+      'One maximally concise (≤70-char) claim per paragraph, assembled under the thesis — the classic reverse outline. Ported from MASTER_OUTLINE.',
+    category: 'doctor',
+    flow: 'runDoctorOutline',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorOutlineTablePrompt',
+    defaultText: strip(doctorOutlineTablePrompt),
+    label: 'Functional Reverse Outline',
+    description:
+      'The Says/Does dual-axis outline: per paragraph, content summary (<50 chars) and rhetorical function (<40 chars), one line per row. Ported from MASTER_OUTLINE_TABLE.',
+    category: 'doctor',
+    flow: 'runDoctorOutline',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorThesisCheckPrompt',
+    defaultText: strip(doctorThesisCheckPrompt),
+    label: 'Thesis Coherence Check',
+    description:
+      'Per-paragraph audit of thesis support: claim, verdict (Yes / No / Weakly), justification. Also the wizard’s calibration step. Ported from THESIS_CHECK.',
+    category: 'doctor',
+    flow: 'runDoctorOutline',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorParagraphPrompt',
+    defaultText: strip(doctorParagraphPrompt),
+    label: 'Saying vs. Doing (¶)',
+    description:
+      'Single-paragraph diagnostic: what it SAYS (content) vs what it DOES (function), plus a one-sentence coherence check. Ported from PARAGRAPH_DIAGNOSTIC.',
+    category: 'doctor',
+    flow: 'runDoctorParagraph',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorDistillThesisPrompt',
+    defaultText: strip(doctorDistillThesisPrompt),
+    label: 'Thesis Distiller',
+    description:
+      'For a discovery draft with no settled thesis: three candidate theses — the Mirror (most frequent claim), the Pivot (unifies the tension), the Risk (the bolder implied claim). Ported from THESIS_DISTILLER.',
+    category: 'doctor',
+    flow: 'distillThesis',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorDiagnosePrompt',
+    defaultText: strip(doctorDiagnosePrompt),
+    label: 'Critical Diagnosis',
+    description:
+      'Wizard step 3: Senior-Editor chain-of-thought over the coherence table, concluding "The most critical issue is…". Streamed. Ported from BREAKTHROUGH_STEP_2.',
+    category: 'doctor',
+    flow: 'diagnoseStructure',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorRoadmapsPrompt',
+    defaultText: strip(doctorRoadmapsPrompt),
+    label: 'Rescue Roadmaps',
+    description:
+      'Wizard step 4: three distinct restructuring roadmaps for the critical issue, each a different strategic reorganization of the existing claims. Ported from BREAKTHROUGH_STEP_3 (its {{criticalIssue}} slot renamed to house-style {{CRITICAL_ISSUE}}).',
+    category: 'doctor',
+    flow: 'proposeRoadmaps',
+    editability: 'editable',
+    variables: [
+      {
+        token: 'CRITICAL_ISSUE',
+        description: 'The diagnosed most-critical structural issue (wizard step 3 output).',
+        required: true,
+      },
+    ],
+  },
+  {
+    key: 'doctorChecklistPrompt',
+    defaultText: strip(doctorChecklistPrompt),
+    label: 'Revision Checklist',
+    description:
+      'Wizard step 5: the chosen roadmap becomes a concrete, numbered to-do list of small, specific revision tasks, each citing the paragraph numbers it touches. Ported from BREAKTHROUGH_STEP_4.',
+    category: 'doctor',
+    flow: 'generateDoctorChecklist',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorFlowPrompt',
+    defaultText: strip(doctorFlowPrompt),
+    label: 'Logical Flow',
+    description:
+      'Transition analysis over the reverse outline: weak, abrupt, or missing logical connections, closing with a "Summary of Flow Issues". Ported from the founding report (§3.2.3) — never shipped in the original app.',
+    category: 'doctor',
+    flow: 'runDoctorReport',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorRedundancyPrompt',
+    defaultText: strip(doctorRedundancyPrompt),
+    label: 'Redundancy & Monsters',
+    description:
+      'Over the reverse outline: repeated claims, and "monster" paragraphs trying to carry more than one main idea, citing paragraph numbers. Ported from the founding report (§3.3.1) — never shipped in the original app.',
+    category: 'doctor',
+    flow: 'runDoctorReport',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'doctorGapsPrompt',
+    defaultText: strip(doctorGapsPrompt),
+    label: 'Gap Finder',
+    description:
+      'Self-Ask stress test over the reverse outline: skeptical-reader questions answered from the outline alone, closing with a "Summary of Key Gaps". Ported from the founding report (§3.3.2) — never shipped in the original app.',
+    category: 'doctor',
+    flow: 'runDoctorReport',
+    editability: 'editable',
     variables: [],
   },
 ] as const satisfies readonly PromptEntry[];

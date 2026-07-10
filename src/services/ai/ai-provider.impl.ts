@@ -80,6 +80,14 @@ import type {
   ReconstructWholeInput,
   RecenterInput,
   RunAgentInput,
+  DoctorOutlineInput,
+  DoctorOutlineResult,
+  DoctorParagraphInput,
+  DistillThesisInput,
+  DoctorReportInput,
+  DiagnoseStructureInput,
+  ProposeRoadmapsInput,
+  GenerateDoctorChecklistInput,
 } from '../ai-provider';
 import type { AICallKind, ModelChoice, ProviderId } from './model-types';
 import { AI_CALL_KIND_LABELS } from './model-types';
@@ -119,6 +127,13 @@ import { generateSprintPlan, decomposeSprintStep } from './ai-provider.sprint';
 import { compareVersions } from './ai-provider.compare';
 import { runSpecTestSection, runSpecTestWhole } from './ai-provider.spec-test';
 import { analyzeAtmosphere } from './ai-provider.atmosphere';
+import {
+  distillThesis,
+  runDoctorOutline,
+  runDoctorParagraph,
+  runDoctorReport,
+} from './ai-provider.doctor';
+import { generateDoctorChecklist, proposeRoadmaps } from './ai-provider.doctor-wizard';
 import { runAgentLoop } from './agent';
 
 const MAX_OUTPUT_TOKENS = 16000;
@@ -885,6 +900,80 @@ export class MultiProviderAIProvider implements AIProvider {
     const choice = this.choose('analyzeAtmosphere', input);
     return analyzeAtmosphere(
       this.dispatch(choice, 'analyzeAtmosphere'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async runDoctorOutline(input: DoctorOutlineInput): Promise<DoctorOutlineResult> {
+    const choice = this.choose('runDoctorOutline', input);
+    return runDoctorOutline(
+      this.dispatch(choice, 'runDoctorOutline'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async runDoctorParagraph(input: DoctorParagraphInput) {
+    const choice = this.choose('runDoctorParagraph', input);
+    return runDoctorParagraph(
+      this.dispatch(choice, 'runDoctorParagraph'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  async distillThesis(input: DistillThesisInput) {
+    const choice = this.choose('distillThesis', input);
+    return distillThesis(this.dispatch(choice, 'distillThesis'), choice.model, choice.thinkingBudget, input);
+  }
+
+  async runDoctorReport(input: DoctorReportInput): Promise<string> {
+    const choice = this.choose('runDoctorReport', input);
+    return runDoctorReport(
+      this.dispatch(choice, 'runDoctorReport'),
+      choice.model,
+      choice.thinkingBudget,
+      input,
+    );
+  }
+
+  /**
+   * Doctor wizard step 3 — the Senior-Editor CoT diagnosis over the coherence
+   * table, streamed token-by-token (the streamCoachAdvice idiom). The persona
+   * rides as the system instruction; the coherence table is the whole context.
+   */
+  async *diagnoseStructure(input: DiagnoseStructureInput): AsyncIterable<string> {
+    const choice = this.choose('diagnoseStructure', input);
+    const stream = this.dispatch(choice, 'diagnoseStructure').streamText({
+      model: choice.model,
+      systemInstruction: input.config.doctorSystemPrompt,
+      prompt: [
+        input.config.doctorDiagnosePrompt,
+        '',
+        '### THESIS COHERENCE CHECK ###',
+        input.outlineData,
+      ].join('\n'),
+      thinkingBudget: choice.thinkingBudget,
+      maxTokens: MAX_OUTPUT_TOKENS,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  async proposeRoadmaps(input: ProposeRoadmapsInput) {
+    const choice = this.choose('proposeRoadmaps', input);
+    return proposeRoadmaps(this.dispatch(choice, 'proposeRoadmaps'), choice.model, choice.thinkingBudget, input);
+  }
+
+  async generateDoctorChecklist(input: GenerateDoctorChecklistInput) {
+    const choice = this.choose('generateDoctorChecklist', input);
+    return generateDoctorChecklist(
+      this.dispatch(choice, 'generateDoctorChecklist'),
       choice.model,
       choice.thinkingBudget,
       input,

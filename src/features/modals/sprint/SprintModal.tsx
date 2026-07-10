@@ -103,10 +103,20 @@ export function SprintModal({
 
   useEffect(() => {
     if (isOpen) {
-      setPhase('setup');
       setPlan(null);
-      setGoalCtx(null);
       setOwnsSession(false);
+      // A pre-framed hand-off (the Outline Doctor's checklist) skips straight to
+      // the plan phase: the framing is the goal, the transcript grounds the
+      // generated plan via generateSprintPlan's extraContext. Consumed once.
+      const seed = useStore.getState().sprintSeed;
+      if (seed) {
+        useStore.getState().setSprintSeed(null);
+        setGoalCtx({ framing: seed.framing, transcript: seed.transcript });
+        setPhase('plan');
+        return;
+      }
+      setPhase('setup');
+      setGoalCtx(null);
     }
   }, [isOpen]);
 

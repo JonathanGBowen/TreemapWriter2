@@ -62,6 +62,19 @@ const HISTORICAL_KEYS = [
   'radarScanPrompt',
   'stormSpotterPrompt',
   'forecastPrompt',
+  // Reverse Outline Doctor (2026-07-09) — the ported Prosthetic Logician library.
+  'doctorSystemPrompt',
+  'doctorOutlinePrompt',
+  'doctorOutlineTablePrompt',
+  'doctorThesisCheckPrompt',
+  'doctorParagraphPrompt',
+  'doctorDistillThesisPrompt',
+  'doctorDiagnosePrompt',
+  'doctorRoadmapsPrompt',
+  'doctorChecklistPrompt',
+  'doctorFlowPrompt',
+  'doctorRedundancyPrompt',
+  'doctorGapsPrompt',
 ].sort();
 
 // Locked engine internals — catalogued but never persisted / user-editable.
