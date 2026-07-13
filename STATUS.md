@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-07-09.** Update this file whenever a feature ships or is
+> **Current as of 2026-07-13.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -30,6 +30,29 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, yellow on error — palette 3C, below) surfaces status without
 distraction.
+
+**GitHub-sync repair wave shipped 2026-07-13** (four commits; see
+[`docs/migration-log.md`](docs/migration-log.md)). Fixed the one real sync
+lifecycle bug — the policy went **dormant when a remote was attached
+mid-session** (Sync modal or create-with-remote): `attachRemote` in
+`sync-policy.ts` is now the sanctioned attach orchestration and rebinds the
+policy even when the validating push fails, and `createProjectWithRemote`
+treats publish failure as honest partial success (project survives, recovery
+routes through the Sync modal). Remote failures are now **classified in Rust**
+(`PullOutcome`/`PushOutcome::Failed { code: network | auth | noPat | other }`)
+instead of English-substring-matched in TS — network settles silently,
+auth/noPat latch with a `syncErrorCode` that routes the sidebar pip straight to
+sync setup. The five sync/project modals were unified on `ModalShell` (one
+frame, ESC/ENTER grammar, shared `RemoteAuthFields`); **SyncConfigModal is now
+the sync home** (live status pip, remote URL, branch, ahead/behind, Sync now /
+Change remote…); ⌘K gained `Sync` + `New from remote`; the sidebar pip is
+clickable in every state. Deleted as defunct (owner-approved): the legacy
+Raw-data JSON editor (`ProjectFileModal` — partial-save foot-gun, last pre-HLD
+surface) and the pre-IndexedDB `migrateVeryOldLegacy` importer. *Manual QA
+residue (needs a real desktop + GitHub remote):* the attach-then-autopush
+acceptance flow (configure sync from ◇, snapshot, push lands in ~5s without a
+relaunch), create-with-remote against a non-empty repo, real 401-vs-offline
+classification, keyring PAT round-trip, and the first-publish toast count.
 
 **Reverse Outline Doctor shipped 2026-07-09** (four commits; see
 [`docs/migration-log.md`](docs/migration-log.md)): the legacy "Prosthetic
@@ -777,8 +800,10 @@ Unless requirements genuinely change:
 - **Multi-branch git.** Single branch (whatever HEAD points to; typically `main`).
 - **SSH key authentication.** HTTPS + PAT only, for now. May revisit only if PAT
   becomes annoying.
-- **In-app clone-from-remote UX.** Second-machine setup is `git clone` from the
-  CLI, then the standard project-open flow.
+- ~~**In-app clone-from-remote UX.**~~ **Shipped** (RemoteProjectModal — "New
+  from remote…" clones an existing project or creates + publishes a new one;
+  this non-goal was stale). What remains out of scope: anything beyond the
+  single Clone/Create flow (repo browsing, GitHub account integration).
 - **Y.js / Automerge real-time collaboration.** Only if a co-author is ever
   invited. Otherwise out of scope.
 - **Zotero beyond the local API.** The live **local-API picker shipped 2026-07-07**
