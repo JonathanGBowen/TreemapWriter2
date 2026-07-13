@@ -23,7 +23,7 @@ import { repository } from './repository-registry';
 import { setSecret } from './credentials';
 import { isTauri } from './tauri-environment';
 import { toast } from 'sonner';
-import type { DiskSignature, PushOutcome } from '../types';
+import type { DiskSignature, PushOutcome, SyncFailure } from '../types';
 
 const PUSH_DEBOUNCE_MS = 5_000;
 const PULL_THROTTLE_MS = 60_000;
@@ -293,6 +293,9 @@ async function runPull() {
       case 'noRemote':
         ui.setSyncStatus('no-remote');
         break;
+      case 'failed':
+        handleFailure('pull', result.failure);
+        break;
       default:
         succeed();
     }
@@ -375,6 +378,9 @@ async function runPush() {
       case 'noRemote':
         ui.setSyncStatus('no-remote');
         break;
+      case 'failed':
+        handleFailure('push', result.failure);
+        break;
       default:
         succeed();
     }
@@ -408,6 +414,35 @@ function settle() {
   ui.setSyncStatus(ui.syncError ? 'error' : 'idle');
 }
 
+/**
+ * A classified `failed` outcome from the Rust side (the authoritative
+ * transient-vs-persistent signal — classified once against libgit2's own
+ * untranslated errors, not message prose).
+ */
+function handleFailure(op: 'pull' | 'push', failure: SyncFailure) {
+  switch (failure.code) {
+    case 'network':
+      // Offline / flaky network: not worth latching. The ahead/behind counts
+      // already show unpushed work; we flush again on reconnect or launch.
+      settle();
+      return;
+    case 'noPat':
+      flagError(failure.message, failure.code);
+      return;
+    case 'auth':
+      flagError(`GitHub rejected the token: ${failure.message}`, failure.code);
+      return;
+    default:
+      flagError(`${op} failed: ${failure.message}`, failure.code);
+  }
+}
+
+/**
+ * Fallback for THROWN (unclassified) errors only — IPC failures, browser
+ * stubs, or an out-of-date desktop binary whose wire format predates the
+ * `failed` outcome. Classified remote failures arrive via handleFailure;
+ * this English substring matching is best-effort for what's left.
+ */
 function handleErr(op: 'pull' | 'push', e: unknown) {
   const msg = String((e as { message?: string })?.message ?? e ?? 'unknown');
   const lower = msg.toLowerCase();
@@ -425,8 +460,6 @@ function handleErr(op: 'pull' | 'push', e: unknown) {
     lower.includes('no such host') ||
     lower.includes('offline');
   if (transient) {
-    // Offline / flaky network: not worth latching. The ahead/behind counts
-    // already show unpushed work; we flush again on reconnect or launch.
     settle();
     return;
   }
@@ -438,8 +471,8 @@ function handleErr(op: 'pull' | 'push', e: unknown) {
  * does NOT auto-clear on a timer — divergence and auth failures do not fix
  * themselves. The latch lifts when a later pull/push succeeds (see succeed()).
  */
-function flagError(message: string) {
+function flagError(message: string, code: string = 'other') {
   const ui = useStore.getState();
   ui.setSyncStatus('error');
-  ui.setSyncError(message);
+  ui.setSyncError(message, code);
 }

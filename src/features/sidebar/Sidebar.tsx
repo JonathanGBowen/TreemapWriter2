@@ -154,6 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const setShowSyncConfigModal = useStore((s) => s.setShowSyncConfigModal);
   const syncStatus = useStore((s) => s.syncStatus);
   const syncError = useStore((s) => s.syncError);
+  const syncErrorCode = useStore((s) => s.syncErrorCode);
   const sync = summarizeSync(
     syncStatus,
     syncError,
@@ -162,9 +163,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
   const isConflict = syncStatus === 'conflict';
   const isError = syncStatus === 'error';
-  // The "no PAT configured" failure is the one error a retry can't fix — it
-  // needs the user to (re)enter a token, so route that click into setup instead.
-  const needsPat = isError && /\bpat\b/i.test(sync.text);
+  // Missing/rejected token is the one error class a retry can't fix — it
+  // needs the user to (re)enter a token, so route that click into setup.
+  // The classified code comes from the Rust SyncFailure, not message prose.
+  const needsPat = isError && (syncErrorCode === 'noPat' || syncErrorCode === 'auth');
 
   const [caption, setCaption] = useState<string | null>(null);
 

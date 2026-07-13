@@ -22,7 +22,10 @@ const h = vi.hoisted(() => {
     ui.markdown = '';
     ui.loadProject = vi.fn(() => Promise.resolve());
     ui.setSyncStatus = vi.fn((v: unknown) => { ui.syncStatus = v; });
-    ui.setSyncError = vi.fn((v: unknown) => { ui.syncError = v; });
+    ui.setSyncError = vi.fn((v: unknown, code?: unknown) => {
+      ui.syncError = v;
+      ui.syncErrorCode = v === null ? null : (code ?? null);
+    });
     ui.setSyncCounts = vi.fn((a: number, b: number) => { ui.syncAhead = a; ui.syncBehind = b; });
     ui.setPendingMerge = vi.fn((v: unknown) => { ui.pendingMerge = v; });
     ui.setShowConflictModal = vi.fn((v: unknown) => { ui.showConflictModal = v; });
@@ -198,6 +201,50 @@ describe('sync-policy', () => {
     (h.ui.setSyncCounts as ReturnType<typeof vi.fn>).mockClear();
     teardownSyncPolicy();
     expect(h.ui.setSyncCounts).toHaveBeenCalledWith(0, 0);
+  });
+
+  // Classified `failed` outcomes from the Rust side: the code — not English
+  // message matching — decides latch-vs-settle.
+  it('failed/network settles silently, exactly like a transient throw', async () => {
+    h.repo.syncPull.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'network', message: 'failed to connect to github.com' },
+    });
+    h.repo.syncPush.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'network', message: 'failed to connect to github.com' },
+    });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('idle');
+    expect(h.ui.syncError).toBeNull();
+  });
+
+  it('failed/auth latches with its code so the pip routes to sync config', async () => {
+    h.repo.syncPull.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'auth', message: 'unexpected http status code: 401' },
+    });
+    h.repo.syncPush.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'auth', message: 'unexpected http status code: 401' },
+    });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('error');
+    expect(String(h.ui.syncError)).toMatch(/401/);
+    expect(h.ui.syncErrorCode).toBe('auth');
+  });
+
+  it('failed/noPat latches the verbatim guidance with its code', async () => {
+    const failure = { code: 'noPat', message: 'No GitHub PAT configured.' };
+    h.repo.syncPull.mockResolvedValue({ kind: 'failed', failure });
+    h.repo.syncPush.mockResolvedValue({ kind: 'failed', failure });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('error');
+    expect(h.ui.syncError).toBe('No GitHub PAT configured.');
+    expect(h.ui.syncErrorCode).toBe('noPat');
   });
 
   // Regression: attaching a remote mid-session must wake the policy. Before
