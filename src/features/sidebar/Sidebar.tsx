@@ -174,15 +174,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const pipCaption = isError
     ? `Sync · ${sync.text} · ${needsPat ? 'click to configure' : 'click to retry'}`
-    : `Sync · ${sync.text}`;
+    : isConflict
+      ? `Sync · ${sync.text} · click to resolve`
+      : `Sync · ${sync.text} · click for sync`;
 
-  const handleErrorPipClick = () => {
-    if (needsPat) {
-      setShowSyncConfigModal(true);
+  // The pip is clickable in EVERY state: conflict → resolution modal,
+  // token error → sync setup, other error → retry, otherwise → the sync
+  // status/config modal (the discoverable door to sync).
+  const handlePipClick = () => {
+    if (isConflict) {
+      setShowConflictModal(true);
       return;
     }
-    toast('Retrying sync…');
-    void retrySync();
+    if (isError && !needsPat) {
+      toast('Retrying sync…');
+      void retrySync();
+      return;
+    }
+    setShowSyncConfigModal(true);
   };
 
   return (
@@ -214,21 +223,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title="Click to rename"
           aria-label="Project name (click to rename)"
         />
-        {isConflict ? (
-          <button type="button" onClick={() => setShowConflictModal(true)} title={sync.text} aria-label={`Sync: ${sync.text}`}
-            onMouseEnter={() => setCaption(pipCaption)} onMouseLeave={() => setCaption(null)}>
-            <Pip status={sync.pip} pulse={sync.pulse} />
-          </button>
-        ) : isError ? (
-          <button type="button" onClick={handleErrorPipClick} title={pipCaption} aria-label={`Sync error: ${sync.text}`}
-            onMouseEnter={() => setCaption(pipCaption)} onMouseLeave={() => setCaption(null)}>
-            <Pip status={sync.pip} pulse={sync.pulse} />
-          </button>
-        ) : (
-          <span onMouseEnter={() => setCaption(pipCaption)} onMouseLeave={() => setCaption(null)}>
-            <Pip status={sync.pip} pulse={sync.pulse} title={sync.text} />
-          </span>
-        )}
+        <button type="button" onClick={handlePipClick} title={pipCaption}
+          aria-label={isError ? `Sync error: ${sync.text}` : `Sync: ${sync.text}`}
+          onMouseEnter={() => setCaption(pipCaption)} onMouseLeave={() => setCaption(null)}>
+          <Pip status={sync.pip} pulse={sync.pulse} />
+        </button>
       </div>
 
       <MapZone onSelect={onSelect} />

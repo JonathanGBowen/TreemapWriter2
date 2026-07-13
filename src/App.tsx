@@ -692,6 +692,10 @@ export const App = () => {
     { id: 'snapshot', label: 'Snapshot now', hint: 'Commit a labeled version', glyph: '◆', shortcut: '⌘S', run: handleManualSave },
     { id: 'new-project', label: 'New project', glyph: '＋', run: () => createNewProject() },
     { id: 'open-projects', label: 'Open projects', glyph: '◇', run: () => useStore.getState().setShowProjectModal(true) },
+    { id: 'sync', label: 'Sync', hint: 'GitHub remote · status & setup', glyph: '⇅', run: () => useStore.getState().setShowSyncConfigModal(true) },
+    ...(isTauri()
+      ? [{ id: 'new-from-remote', label: 'New from remote', hint: 'Clone, or create & publish', glyph: '↓', run: () => useStore.getState().setShowRemoteProjectModal(true) }]
+      : []),
     { id: 'export-markdown', label: 'Export markdown', glyph: '↧', run: handleExportMarkdown },
     { id: 'export-project', label: 'Export project', hint: '.socratic', glyph: '↧', run: handleExportProject },
     { id: 'export-specs', label: 'Export specs', hint: '.json', glyph: '↧', run: handleExportSpecs },
