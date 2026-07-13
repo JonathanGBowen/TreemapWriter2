@@ -683,7 +683,6 @@ export const App = () => {
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
     { id: 'prompts', label: 'Prompts', hint: 'AI routing', glyph: '❝', run: () => useStore.getState().setShowPromptsGraphModal(true) },
-    { id: 'raw-data', label: 'Raw data', hint: 'JSON editor', glyph: '{}', run: () => useStore.getState().setShowProjectFileModal(true) },
     { id: 'compare', label: 'Compare versions', hint: 'A/B evaluation', glyph: '≈', run: () => useStore.getState().openCompare() },
     { id: 'spec-test', label: 'Spec test', hint: 'A/B against the rubric · whole + parts', glyph: '▣', run: () => useStore.getState().openSpecTest() },
     { id: 'climate', label: 'Climate', hint: 'Atmospheric report', glyph: '≋', run: () => useStore.getState().openClimate() },

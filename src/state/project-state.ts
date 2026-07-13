@@ -278,14 +278,6 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       meta = [];
     }
 
-    if (meta.length === 0) {
-      const migrated = await repo.migrateVeryOldLegacy();
-      if (migrated) {
-        meta.push(migrated.meta);
-        await repo.setMeta(meta);
-      }
-    }
-
     set({ projectList: meta });
 
     if (meta.length > 0) {

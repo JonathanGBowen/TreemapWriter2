@@ -224,13 +224,6 @@ export const tauriRepository: Repository = {
     }
   },
 
-  async migrateVeryOldLegacy(): Promise<null> {
-    // The old `socratic_project_v1` key only ever existed in browser
-    // localStorage. Tauri runs in a fresh webview with no shared storage
-    // origin. Nothing to migrate from here.
-    return null;
-  },
-
   // --- Phase 4: sync ---
 
   async syncState(): Promise<SyncState> {

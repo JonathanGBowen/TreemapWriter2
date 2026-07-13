@@ -18,7 +18,6 @@ import type { Repository, StoredProjectData } from './repository';
 const STORAGE_PREFIX = 'socratic_p_';
 const SESSIONS_PREFIX = 'socratic_sessions_';
 const META_KEY = 'socratic_meta_v1';
-const VERY_OLD_LEGACY_KEY = 'socratic_project_v1';
 
 /**
  * The last project handed to `getProject`. The browser has no "open project"
@@ -178,27 +177,6 @@ export const browserRepository: Repository = {
     const next = list.filter((r) => r.id !== record.id);
     next.push(record);
     await idbSet(key, next);
-  },
-
-  async migrateVeryOldLegacy() {
-    const raw = localStorage.getItem(VERY_OLD_LEGACY_KEY);
-    if (!raw) return null;
-
-    try {
-      const data = JSON.parse(raw) as StoredProjectData;
-      const newId = `proj_${Date.now()}`;
-      const meta: ProjectMeta = {
-        id: newId,
-        name: data.projectName || 'Migrated Project',
-        lastModified: data.lastModified || Date.now(),
-        wordCount: wordCountOf(data.localDraft || ''),
-      };
-      await idbSet(STORAGE_PREFIX + newId, data);
-      return { meta, data };
-    } catch (e) {
-      console.error('Very-old legacy migration failed', e);
-      return null;
-    }
   },
 
   async readMarkdownIfChanged(_known: DiskSignature | null): Promise<MarkdownDelta> {

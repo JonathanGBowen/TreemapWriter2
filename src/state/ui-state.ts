@@ -147,7 +147,6 @@ export interface UIStateSlice {
   showSpecModal: boolean;
   showPromptsGraphModal: boolean;
   showSectionMapModal: boolean;
-  showProjectFileModal: boolean;
   /** One sprint surface; `sprintMode` selects goal-framing vs drafting. */
   showSprintModal: boolean;
   sprintMode: 'goal' | 'content';
@@ -235,7 +234,6 @@ export interface UIStateSlice {
   setShowSpecModal: (show: boolean) => void;
   setShowPromptsGraphModal: (show: boolean) => void;
   setShowSectionMapModal: (show: boolean) => void;
-  setShowProjectFileModal: (show: boolean) => void;
   setShowSprintModal: (show: boolean) => void;
   setSprintMode: (mode: 'goal' | 'content') => void;
   setSprintSeed: (seed: { framing: SprintGoalFraming; transcript?: string } | null) => void;
@@ -296,7 +294,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showSpecModal: false,
   showPromptsGraphModal: false,
   showSectionMapModal: false,
-  showProjectFileModal: false,
   showSprintModal: false,
   sprintMode: 'content',
   sprintSeed: null,
@@ -398,7 +395,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowSpecModal: (show) => set({ showSpecModal: show }),
   setShowPromptsGraphModal: (show) => set({ showPromptsGraphModal: show }),
   setShowSectionMapModal: (show) => set({ showSectionMapModal: show }),
-  setShowProjectFileModal: (show) => set({ showProjectFileModal: show }),
   setShowSprintModal: (show) => set({ showSprintModal: show }),
   setSprintMode: (mode) => set({ sprintMode: mode }),
   setSprintSeed: (sprintSeed) => set({ sprintSeed }),

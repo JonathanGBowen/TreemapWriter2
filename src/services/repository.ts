@@ -149,16 +149,6 @@ export interface Repository {
   cloneProject(url: string, path: string): Promise<ProjectMeta>;
 
   /**
-   * One-time migration of the very old `socratic_project_v1` localStorage
-   * key. Returns the imported meta + data, or null if nothing to migrate.
-   * The caller is responsible for adding the meta to the active list.
-   */
-  migrateVeryOldLegacy(): Promise<{
-    meta: ProjectMeta;
-    data: StoredProjectData;
-  } | null>;
-
-  /**
    * Mark a meaningful version. Under Tauri, this becomes a git commit;
    * under the browser, it's a no-op (snapshots live as plain entries on
    * the in-memory `revisions` array, persisted by `setProject`). Returns
