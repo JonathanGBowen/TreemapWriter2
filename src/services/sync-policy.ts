@@ -20,9 +20,10 @@
 
 import { useStore } from '../store';
 import { repository } from './repository-registry';
+import { setSecret } from './credentials';
 import { isTauri } from './tauri-environment';
 import { toast } from 'sonner';
-import type { DiskSignature } from '../types';
+import type { DiskSignature, PushOutcome } from '../types';
 
 const PUSH_DEBOUNCE_MS = 5_000;
 const PULL_THROTTLE_MS = 60_000;
@@ -87,6 +88,37 @@ export async function initSyncPolicy(): Promise<void> {
   // Flush on network reconnect. (Pull-on-focus is wired above via the
   // visibilitychange listener, which is registered for every project.)
   window.addEventListener('online', handleOnline);
+}
+
+/**
+ * Rebind the policy to the repository's current remote state. Needed because
+ * init gates its commit-watcher and reconnect listeners on hasRemote, so a
+ * remote attached mid-session would otherwise never sync until relaunch.
+ */
+export async function restartSyncPolicy(): Promise<void> {
+  teardownSyncPolicy();
+  await initSyncPolicy();
+}
+
+/**
+ * The one sanctioned way to attach (or re-attach) a remote to the open
+ * project: store the PAT, point origin at the URL, validate with one push,
+ * and rebind the policy. Callers: SyncConfigModal and createProjectWithRemote.
+ *
+ * The restart runs in `finally` — even when the validating push fails, the
+ * remote is configured, so the policy must be live for the error to latch
+ * honestly and for a later retry/pull to work without a relaunch. A diverged
+ * remote (nonFastForward) flows into the normal pull path, which offers
+ * in-app conflict resolution.
+ */
+export async function attachRemote(url: string, token: string): Promise<PushOutcome> {
+  await setSecret('git', token.trim());
+  await repository.configureRemote(url.trim());
+  try {
+    return await repository.syncPush();
+  } finally {
+    await restartSyncPolicy();
+  }
 }
 
 /** Tear down event subscriptions. Called when the project closes. */

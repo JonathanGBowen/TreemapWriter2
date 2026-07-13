@@ -11,8 +11,7 @@ import React, { useState } from 'react';
 import { X, GitBranch, Loader2, AlertCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '../../store';
-import { repository as repo } from '../../services/repository-registry';
-import { setSecret } from '../../services/credentials';
+import { attachRemote } from '../../services/sync-policy';
 import { isTauri } from '../../services/tauri-environment';
 
 export const SyncConfigModal: React.FC = () => {
@@ -37,9 +36,7 @@ export const SyncConfigModal: React.FC = () => {
     setBusy(true);
     setError(null);
     try {
-      await setSecret('git', token.trim());
-      await repo.configureRemote(url.trim());
-      const result = await repo.syncPush();
+      const result = await attachRemote(url, token);
       if (result.kind === 'pushed' || result.kind === 'upToDate') {
         toast.success('Sync configured. Future commits push automatically.');
         setShow(false);
@@ -47,7 +44,7 @@ export const SyncConfigModal: React.FC = () => {
         setError('Internal: remote was set but the next push reports no remote. Try again.');
       } else if (result.kind === 'nonFastForward') {
         setError(
-          'The remote already has commits this project does not. Either start with an empty GitHub repo, or pull first via a git client.',
+          'The remote already has commits this project does not. Sync will pull next and offer in-app conflict resolution — or use Clone for existing remotes.',
         );
       }
     } catch (e: any) {
