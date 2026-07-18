@@ -3,7 +3,7 @@ import { Clock, History } from "lucide-react";
 import { Section } from "../../types";
 import { useStore } from "../../store";
 import { isTauri } from "../../services/tauri-environment";
-import { useCurrentSection } from "../tests-panel/use-current-section";
+import { useCurrentSection } from "../shared/use-current-section";
 import { Pip } from "../shared/Pip";
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';

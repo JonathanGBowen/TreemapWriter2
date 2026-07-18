@@ -3,7 +3,7 @@ import { computeHash } from "../../lib/utils";
 import { Pip } from "../shared/Pip";
 import type { PipStatus } from "../shared/Pip";
 import type { WholeFromPart, Recenterings } from "../../types";
-import { useCurrentSection } from "./use-current-section";
+import { useCurrentSection } from '../shared/use-current-section';
 import { useGestaltActions } from "./use-gestalt-actions";
 
 const ALIGNMENT: Record<WholeFromPart['alignment'], { pip: PipStatus; label: string }> = {

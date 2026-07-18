@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../../store';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 import { buildReinstatement } from '../../lib/reinstate';
 
 /** Idle span before a mid-section stall surfaces the next-priority nudge. */

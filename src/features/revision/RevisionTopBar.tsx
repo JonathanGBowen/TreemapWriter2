@@ -1,6 +1,6 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useStore } from '../../state';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 
 /** Workspace header: Done · ⟐ §title · Preview-all toggle · in-use source glyphs · settings. */
 export function RevisionTopBar() {

@@ -10,7 +10,7 @@ import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
-import { useCurrentSection } from './use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 
 /**
  * Sections with a dialogue turn currently streaming. Module-level (not hook

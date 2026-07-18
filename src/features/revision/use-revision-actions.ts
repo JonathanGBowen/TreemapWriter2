@@ -10,7 +10,7 @@ import { revisionBudgetText } from './revision-budget';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 import { repository } from '../../services/repository-registry';
 import { isTauri } from '../../services/tauri-environment';
 import { selectSpecMap } from '../../lib/spec-map';

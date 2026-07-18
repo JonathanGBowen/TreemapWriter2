@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { FlaskConical, MessagesSquare, Send } from "lucide-react";
 import type { DialogueMessage } from "../../types";
 import { useStore } from "../../state";
-import { useCurrentSection } from "./use-current-section";
+import { useCurrentSection } from '../shared/use-current-section';
 import { useAnalysisActions } from "./use-analysis-actions";
 import { DisabledHint } from "../shared/DisabledHint";
 

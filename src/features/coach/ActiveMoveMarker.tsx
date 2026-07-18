@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../state';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 import { Pip, type PipStatus } from '../shared/Pip';
 import { selectActiveMove } from './active-move';
 import type { MoveStatus } from '../../types';

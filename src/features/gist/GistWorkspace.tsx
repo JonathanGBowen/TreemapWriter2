@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { useStore } from '../../state';
-import { findSectionById } from '../tests-panel/use-current-section';
+import { findSectionById } from '../shared/use-current-section';
 import { GistTopBar } from './GistTopBar';
 import { GistPanel } from './GistPanel';
 import { GistEditorSurface } from './GistEditorSurface';
