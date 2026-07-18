@@ -1,0 +1,1178 @@
+<title>TreemapWriter2 — Architectural Reconstruction</title>
+<style>
+  /* === TOKENS === */
+  :root {
+    --bg: #0b1121;
+    --bg-deep: #070d18;
+    --surface: #111d30;
+    --surface-raised: #162540;
+    --text: #ddd8cc;
+    --text-bright: #f0ede6;
+    --text-muted: #7a8699;
+    --text-faint: #4d5a6e;
+    --accent: #d4a060;
+    --accent-dim: #b8883e;
+    --teal: #3d9b9b;
+    --teal-dim: #2a6e6e;
+    --rose: #c45c5c;
+    --rose-dim: #9e4040;
+    --green: #3daa6f;
+    --border: #1a2a42;
+    --border-strong: #243654;
+    --diagram-bg: #0e1829;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f1ec;
+      --bg-deep: #ece8e0;
+      --surface: #ffffff;
+      --surface-raised: #faf8f5;
+      --text: #2c2a26;
+      --text-bright: #1a1816;
+      --text-muted: #6b6560;
+      --text-faint: #9e9890;
+      --accent: #b07830;
+      --accent-dim: #8a5e22;
+      --teal: #1a7a7a;
+      --teal-dim: #0e5c5c;
+      --rose: #a84040;
+      --rose-dim: #883030;
+      --green: #2a8a55;
+      --border: #d8d2c8;
+      --border-strong: #c0b8aa;
+      --diagram-bg: #f0ede6;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --bg: #f4f1ec;
+    --bg-deep: #ece8e0;
+    --surface: #ffffff;
+    --surface-raised: #faf8f5;
+    --text: #2c2a26;
+    --text-bright: #1a1816;
+    --text-muted: #6b6560;
+    --text-faint: #9e9890;
+    --accent: #b07830;
+    --accent-dim: #8a5e22;
+    --teal: #1a7a7a;
+    --teal-dim: #0e5c5c;
+    --rose: #a84040;
+    --rose-dim: #883030;
+    --green: #2a8a55;
+    --border: #d8d2c8;
+    --border-strong: #c0b8aa;
+    --diagram-bg: #f0ede6;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0b1121;
+    --bg-deep: #070d18;
+    --surface: #111d30;
+    --surface-raised: #162540;
+    --text: #ddd8cc;
+    --text-bright: #f0ede6;
+    --text-muted: #7a8699;
+    --text-faint: #4d5a6e;
+    --accent: #d4a060;
+    --accent-dim: #b8883e;
+    --teal: #3d9b9b;
+    --teal-dim: #2a6e6e;
+    --rose: #c45c5c;
+    --rose-dim: #9e4040;
+    --green: #3daa6f;
+    --border: #1a2a42;
+    --border-strong: #243654;
+    --diagram-bg: #0e1829;
+  }
+
+  /* === RESET & BASE === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === LAYOUT === */
+  .page {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  @media (max-width: 900px) {
+    .page { grid-template-columns: 1fr; }
+    .toc-rail { display: none; }
+  }
+
+  .toc-rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 48px 20px 48px 28px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-deep);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  .toc-rail h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 20px;
+  }
+
+  .toc-rail a {
+    display: block;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 5px 0;
+    transition: color 0.15s;
+  }
+
+  .toc-rail a:hover, .toc-rail a:focus { color: var(--accent); outline: none; }
+  .toc-rail a.toc-sub { padding-left: 14px; font-size: 11.5px; color: var(--text-faint); }
+
+  .main {
+    max-width: 780px;
+    padding: 60px 48px 120px;
+  }
+
+  @media (max-width: 900px) {
+    .main { padding: 32px 20px 80px; }
+  }
+
+  /* === TYPOGRAPHY === */
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 48px;
+    font-style: italic;
+  }
+
+  h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text-bright);
+    margin-top: 64px;
+    margin-bottom: 8px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-wrap: balance;
+  }
+
+  h2:first-of-type { margin-top: 0; border-top: none; padding-top: 0; }
+
+  h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 40px;
+    margin-bottom: 6px;
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 28px;
+    margin-bottom: 6px;
+  }
+
+  p { margin-bottom: 16px; max-width: 65ch; }
+
+  blockquote {
+    border-left: 3px solid var(--accent-dim);
+    padding: 12px 20px;
+    margin: 20px 0;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  blockquote strong { color: var(--accent); font-style: normal; }
+
+  code {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 12.5px;
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: var(--teal);
+  }
+
+  .filepath { color: var(--teal-dim); font-size: 12px; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text-muted); }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* === DIAGRAM PANELS === */
+  .diagram-panel {
+    background: var(--diagram-bg);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin: 24px 0 32px;
+    overflow-x: auto;
+  }
+
+  .diagram-panel .diagram-caption {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 16px;
+  }
+
+  pre.mermaid {
+    background: transparent;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* === METRIC CARDS === */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 24px 0 32px;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+    text-align: center;
+  }
+
+  .metric .value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric .label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* === TABLES === */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0 28px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border-strong);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  /* === VOCAB CARDS === */
+  .vocab {
+    background: var(--surface);
+    border-left: 3px solid var(--teal);
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+
+  .vocab .term {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+
+  .vocab p { font-size: 13.5px; margin-bottom: 0; color: var(--text-muted); }
+
+  /* === FINDING CARDS === */
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+
+  .finding.virtue { border-left: 3px solid var(--green); }
+  .finding.concern { border-left: 3px solid var(--rose); }
+  .finding.win { border-left: 3px solid var(--accent); }
+
+  .finding .tag {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .finding.virtue .tag { color: var(--green); }
+  .finding.concern .tag { color: var(--rose); }
+  .finding.win .tag { color: var(--accent); }
+
+  .finding h4 {
+    margin-top: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 15px;
+    color: var(--text-bright);
+  }
+
+  .finding p { font-size: 13.5px; margin-bottom: 0; }
+
+  /* === LISTS === */
+  ul, ol { padding-left: 24px; margin-bottom: 16px; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--text-faint); }
+
+  /* === EPIGRAPH === */
+  .epigraph {
+    text-align: center;
+    padding: 40px 0 48px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .epigraph p {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 16px;
+    font-style: italic;
+    color: var(--text-muted);
+    max-width: 50ch;
+    margin: 0 auto 8px;
+  }
+
+  .epigraph .attr {
+    font-family: "Inter", sans-serif;
+    font-size: 11px;
+    font-style: normal;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* === SECTION NUMBERING === */
+  .section-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-right: 8px;
+  }
+
+  /* === HR === */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 48px 0;
+  }
+
+  /* === PRINT === */
+  @media print {
+    .toc-rail { display: none; }
+    .page { grid-template-columns: 1fr; }
+    body { background: white; color: #111; }
+    .diagram-panel, .finding, .vocab, .metric { border-color: #ccc; }
+  }
+</style>
+
+<div class="page">
+  <!-- TABLE OF CONTENTS -->
+  <nav class="toc-rail" aria-label="Table of contents">
+    <h2>Contents</h2>
+    <a href="#prologue">Prologue</a>
+    <a href="#census">I. The Census</a>
+    <a href="#strata">II. The Geological Strata</a>
+    <a class="toc-sub" href="#layer-infra">Infrastructure</a>
+    <a class="toc-sub" href="#layer-repo">Repository</a>
+    <a class="toc-sub" href="#layer-service">Service</a>
+    <a class="toc-sub" href="#layer-state">State</a>
+    <a class="toc-sub" href="#layer-present">Presentation</a>
+    <a href="#types">III. The Domain Types</a>
+    <a href="#data-flow">IV. The Data Flow</a>
+    <a href="#feature-tax">V. The Feature Tax</a>
+    <a href="#assessment">VI. The Assessment</a>
+    <a class="toc-sub" href="#virtues">Virtues</a>
+    <a class="toc-sub" href="#tensions">Tensions</a>
+    <a href="#wins">VII. The Clear Wins</a>
+    <a href="#vocabulary">VIII. The Vocabulary</a>
+    <a href="#coda">Coda</a>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    <h1>TreemapWriter2</h1>
+    <div class="subtitle">An Architectural Reconstruction &amp; Developer's Field Guide</div>
+
+    <div class="epigraph">
+      <p>"The whole is not merely the sum of the parts. Rather, it is a structure whose properties emerge from the functional relationships among its parts."</p>
+      <span class="attr">Max Wertheimer, Productive Thinking (1945)</span>
+    </div>
+
+    <!-- ============================================ -->
+    <h2 id="prologue"><span class="section-num">0</span>Prologue: What This Document Is</h2>
+
+    <p>This is a <strong>functional reconstruction</strong> of TreemapWriter2 &mdash; a reverse-engineering of its architecture intended to make explicit what has, through many sessions of AI-assisted development, become implicit. It separates the <strong>core infrastructure</strong> (the load-bearing walls and foundation) from the <strong>accreted feature surface</strong> (the rooms, furnishings, and additions built atop that foundation over time).</p>
+
+    <p>The purpose is threefold. First, to give both human and AI developers a <em>map</em> of the system that reveals which structures are foundational and which are derivative. Second, to assess how easy it is, today, to develop a new feature that integrates well into the overall design. Third, to identify <strong>clear wins</strong> &mdash; concrete, bounded improvements that would make the architecture more legible and the development process more tractable.</p>
+
+    <p>This document borrows its sensibility from two disciplines. From the <strong>philosophy of science</strong>, it takes the idea that a system's health is best understood not by cataloguing its parts but by understanding its <em>theoretical commitments</em> &mdash; the core principles that constrain what can be built and how. From <strong>historiography</strong>, it takes the principle that the present state of a system is always the residue of a sequence of decisions, each locally rational, whose cumulative effect may not have been planned.</p>
+
+    <blockquote>
+      <strong>A note on vocabulary.</strong> Throughout this document, key architectural concepts are introduced with definitions drawn from software engineering, labeled and set apart. These are not ornamental &mdash; they are the working language that lets you describe what you see, ask for what you want, and communicate with other developers (human or AI) about the structure of your system.
+    </blockquote>
+
+    <!-- ============================================ -->
+    <h2 id="census"><span class="section-num">I</span>The Census: TreemapWriter2 by the Numbers</h2>
+
+    <p>Before we interpret the structure, we must know its scale. A census reveals not just size but <em>where mass has accumulated</em> &mdash; and accumulation is a signal.</p>
+
+    <div class="metrics">
+      <div class="metric"><div class="value">444</div><div class="label">TypeScript Files</div></div>
+      <div class="metric"><div class="value">~65K</div><div class="label">Lines of Code</div></div>
+      <div class="metric"><div class="value">16</div><div class="label">State Slices</div></div>
+      <div class="metric"><div class="value">11</div><div class="label">Workspaces</div></div>
+      <div class="metric"><div class="value">~36</div><div class="label">Modals</div></div>
+      <div class="metric"><div class="value">~35</div><div class="label">AI Methods</div></div>
+      <div class="metric"><div class="value">68</div><div class="label">Prompt Files</div></div>
+      <div class="metric"><div class="value">47</div><div class="label">Utility Modules</div></div>
+    </div>
+
+    <p>These numbers tell a story. This is not a small application. It is a <strong>medium-scale system</strong> with the feature surface of a much larger one. The 11 workspaces alone &mdash; each a full-screen interactive environment with its own state, AI integration, and UI &mdash; represent the kind of feature density you might expect from a team of five, not a single developer with an AI assistant.</p>
+
+    <h3>Where Mass Accumulates</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>File</th><th>Lines</th><th>Concern</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>types/index.ts</code></td><td>1,458</td><td>Every domain type in one barrel</td></tr>
+          <tr><td><code>ai-provider.impl.ts</code></td><td>1,143</td><td>All AI orchestration in one file</td></tr>
+          <tr><td><code>ai-provider.ts</code></td><td>937</td><td>The AI interface &mdash; ~35 methods</td></tr>
+          <tr><td><code>prompts/registry.ts</code></td><td>905</td><td>Prompt metadata catalog</td></tr>
+          <tr><td><code>App.tsx</code></td><td>771</td><td>Layout shell + residual handlers</td></tr>
+          <tr><td><code>project-state.ts</code></td><td>689</td><td>Persistence orchestration</td></tr>
+          <tr><td><code>DependencyGraphModal.tsx</code></td><td>676</td><td>The argument graph</td></tr>
+          <tr><td><code>EditorPanel.tsx</code></td><td>628</td><td>The CodeMirror surface</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Every file over 300 lines is a cognitive bottleneck. The app's own documentation sets a ~300-line target (VISION.md, principle 6: <em>"A 1,000-line App.tsx is a ravine you fall into"</em>). Eight files exceed double that target. Each is a place where a developer &mdash; human or AI &mdash; must hold too much in working memory at once.</p>
+
+    <!-- ============================================ -->
+    <h2 id="strata"><span class="section-num">II</span>The Geological Strata</h2>
+
+    <p>The most important thing to understand about TreemapWriter2 is its <strong>layered architecture</strong>. Like geological strata, each layer was deposited with a specific purpose, and the layers bear a strict dependency relationship: upper layers depend on lower ones, but never the reverse.</p>
+
+    <div class="vocab">
+      <div class="term">Layered Architecture</div>
+      <p>A design in which the system is organized into horizontal layers, each providing services to the layer above and consuming services from the layer below. The crucial discipline: <strong>dependencies point downward only</strong>. A presentation component may call a service, but a service must never import a React component.</p>
+    </div>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 1 &mdash; The Five Strata</div>
+      <pre class="mermaid">
+graph TB
+    subgraph PRESENTATION["PRESENTATION — React Components"]
+        direction LR
+        P1["Sidebar\n(Treemap)"]
+        P2["Editor\n(CodeMirror)"]
+        P3["Tests Panel\n(Spec/Analysis)"]
+        P4["Workspaces\n(11 full-screen)"]
+        P5["Modals\n(~36 overlays)"]
+    end
+
+    subgraph STATE["APPLICATION STATE — Zustand"]
+        direction LR
+        S1["ui-state\n(ephemeral)"]
+        S2["editor-state\n(ephemeral)"]
+        S3["document-state\n(domain)"]
+        S4["project-state\n(lifecycle)"]
+        S5["ai-state\n(config)"]
+        S6["+ 11 workspace\nslices"]
+    end
+
+    subgraph SERVICE["SERVICE LAYER"]
+        direction LR
+        SV1["AIProvider\nInterface"]
+        SV2["Repository\nInterface"]
+        SV3["Prompts\nRegistry"]
+        SV4["Sync Policy"]
+        SV5["Credentials"]
+    end
+
+    subgraph IMPL["IMPLEMENTATIONS (behind the seams)"]
+        direction LR
+        I1["Gemini\nClient"]
+        I2["Anthropic\nClient"]
+        I3["Ollama\nClient"]
+        I4["Browser\nRepo (IDB)"]
+        I5["Tauri\nRepo (SQLite)"]
+    end
+
+    subgraph INFRA["INFRASTRUCTURE — Rust / Tauri"]
+        direction LR
+        N1["project.md\n(source of truth)"]
+        N2["SQLite\n(cache)"]
+        N3[".git/\n(history)"]
+        N4["OS Keyring\n(secrets)"]
+        N5[".twriter/\n(sidecars)"]
+    end
+
+    PRESENTATION --> STATE
+    STATE --> SERVICE
+    SERVICE -.->|"dependency\ninversion"| IMPL
+    IMPL --> INFRA
+
+    style PRESENTATION fill:#162540,stroke:#3d9b9b,color:#ddd8cc
+    style STATE fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style SERVICE fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style IMPL fill:#162540,stroke:#7a8699,color:#ddd8cc
+    style INFRA fill:#111d30,stroke:#4d5a6e,color:#ddd8cc
+      </pre>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Dependency Inversion</div>
+      <p>The principle that high-level modules should not depend on low-level modules; both should depend on abstractions. In TreemapWriter2, this is realized by two <strong>seams</strong>: the <code>Repository</code> interface (persistence) and the <code>AIProvider</code> interface (AI). Components never call IndexedDB, SQLite, or a vendor AI SDK directly &mdash; they call the interface, and the implementation is injected at module load.</p>
+    </div>
+
+    <p>These two seams are the most architecturally significant feature of the codebase. They are what allowed the app to migrate from IndexedDB to SQLite without touching a single component. They are what allows three AI providers (Gemini, Anthropic, Ollama) to coexist behind one interface. <strong>Protect these seams.</strong> Any change that bypasses them &mdash; a component calling <code>invoke()</code> directly, or importing <code>@google/genai</code> &mdash; is an architectural violation.</p>
+
+    <h3 id="layer-infra">The Infrastructure Layer</h3>
+    <p>The Rust backend (<code>src-tauri/</code>) owns everything that touches the filesystem, the database, git, and the OS keyring. It exposes a clean IPC surface of ~34 commands organized by concern: <code>project_*</code>, <code>snapshot_*</code>, <code>sync_*</code>, <code>credentials_*</code>, <code>agent_*</code>. The React side never touches disk directly.</p>
+
+    <h3 id="layer-repo">The Repository Layer</h3>
+    <p>The <code>Repository</code> interface (<code>src/services/repository.ts</code>, 336 lines) defines ~36 methods covering CRUD, snapshots, git sync, search, and sessions. Two implementations exist: <code>browser-repository.ts</code> (IndexedDB via <code>idb-keyval</code>) and <code>tauri-repository.ts</code> (wraps Tauri <code>invoke()</code> calls). The registry picks one at module load.</p>
+
+    <h3 id="layer-service">The Service Layer</h3>
+    <p>The <code>AIProvider</code> interface (<code>src/services/ai-provider.ts</code>, 937 lines) defines ~35 methods spanning diagnostics, specs, analysis, revision, gist, sprints, comparison, doctor, atmosphere, and agent operations. Each method is implemented in a dedicated <code>ai-provider.*.ts</code> file under <code>src/services/ai/</code> (20 files). The prompts registry (<code>src/services/prompts/registry.ts</code>) catalogs all 68 prompt templates.</p>
+
+    <h3 id="layer-state">The State Layer</h3>
+    <p>Zustand manages all application state through 16 slices, combined in <code>src/state/index.ts</code>. The slices are partitioned by <strong>lifecycle</strong>, not by feature &mdash; a principled choice documented in AGENTS.md.</p>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 2 &mdash; The State Topology</div>
+      <pre class="mermaid">
+graph LR
+    subgraph DOMAIN["DOMAIN (persisted)"]
+        DS["document-state\nmarkdown · sections\ntestSuite · sources\nprovenance · gist\nstructuralParts"]
+        PS["project-state\nproject list · active project\npersistence thunks\n(the orchestrator)"]
+    end
+
+    subgraph EPHEMERAL["EPHEMERAL (lost on reload)"]
+        US["ui-state\nmodal flags · widths\nfocus mode · search"]
+        ES["editor-state\nlocalContent\ncursor · selection"]
+    end
+
+    subgraph CONFIG["CONFIG (semi-persisted)"]
+        AS["ai-state\npersonas · prompts config\nmodel config · fallback"]
+    end
+
+    subgraph WORKSPACE["WORKSPACE SLICES (ephemeral)"]
+        direction TB
+        WS1["revision-state"]
+        WS2["comparison-state"]
+        WS3["spec-test-state"]
+        WS4["climate-state"]
+        WS5["doctor-state"]
+        WS6["interpolation-state"]
+        WS7["segment-state"]
+        WS8["parallel-state"]
+        WS9["gist-state"]
+        WS10["session-state"]
+        WS11["trace-state"]
+    end
+
+    PS -->|"reads/writes via\nget().otherSlice()"| DS
+    PS -->|"resets on\nproject switch"| US
+    PS -->|"resets on\nproject switch"| ES
+
+    style DOMAIN fill:#162540,stroke:#3daa6f,color:#ddd8cc
+    style EPHEMERAL fill:#162540,stroke:#3d9b9b,color:#ddd8cc
+    style CONFIG fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style WORKSPACE fill:#111d30,stroke:#4d5a6e,color:#ddd8cc
+      </pre>
+    </div>
+
+    <p>The key insight: <code>project-state</code> is the <strong>orchestrator</strong>. It is the only slice that reaches across slice boundaries (via <code>get().otherSliceAction()</code>), and it owns the save/load lifecycle. This is principled &mdash; cross-slice mutations are centralized rather than scattered &mdash; but it also makes <code>project-state.ts</code> the second-most-coupled file in the codebase (689 lines).</p>
+
+    <h3 id="layer-present">The Presentation Layer</h3>
+    <p>React components live under <code>src/features/</code>, organized by UI region. The three-column layout (Sidebar | Editor | TestsPanel) is the default view; workspaces and modals overlay it as full-screen or dialog surfaces. Components subscribe to the Zustand store directly via <code>useStore()</code> selectors &mdash; no React Context, no props-drilling intermediary.</p>
+
+    <!-- ============================================ -->
+    <h2 id="types"><span class="section-num">III</span>The Domain Types: A Philosophical Theory Encoded in TypeScript</h2>
+
+    <p>The domain types in <code>src/types/index.ts</code> are, as VISION.md states, <em>"the most carefully considered part of the codebase."</em> They are not a CRUD schema. They encode a <strong>genuine theory of academic prose structure</strong> &mdash; what a section does in an argument, what moves it must make, how well it realizes its specification, and how the parts relate to the whole.</p>
+
+    <div class="vocab">
+      <div class="term">Hard Core (Lakatos)</div>
+      <p>In Imre Lakatos's philosophy of science, the <strong>hard core</strong> of a research programme is the set of theoretical commitments that practitioners treat as non-negotiable. Anomalies are deflected by modifying the <em>protective belt</em> of auxiliary hypotheses, never the core. In TreemapWriter2, the domain types are the hard core. The features built atop them are the protective belt.</p>
+    </div>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 3 &mdash; The Domain Type Phylogeny</div>
+      <pre class="mermaid">
+graph TB
+    subgraph L1["LAYER 1 — The Exegesis Core"]
+        Section["Section\nid · title · level\ncontent · children"]
+        SectionSpec["SectionSpec\nfunction · mainClaim\nrequiredMoves\nincomingContext\noutgoingCommitments"]
+        RequiredMove["RequiredMove\nid · description · after"]
+        DiagnosticResult["DiagnosticResult\nmoveResults · coherenceNotes\ncommitmentFindings\noverallReadiness · nextAction"]
+        MoveResult["MoveResult\nstatus · advance\nlocation · diagnosis"]
+        TestSuiteEntry["TestSuiteEntry\ngoals · spec · lastDiagnostic\nhistory · dependencies · analysis"]
+    end
+
+    subgraph L2["LAYER 2 — Analysis / Grimoire"]
+        SectionAnalysis["SectionAnalysis\ncentralThesis · keyConcepts\nargument · objections"]
+        AnalysisVersion["AnalysisVersion\nresult · inputHash · spellName"]
+        AnalysisSpell["AnalysisSpell\npersona · lens"]
+        DialogueMessage["DialogueMessage\nrole · text"]
+    end
+
+    subgraph L3["LAYER 3 — Glass-Box Revision"]
+        RevisionProposal["RevisionProposal\noriginal_text · proposed_text\nrationale · source_id\nverbatim_source_quote"]
+        SourceDocument["SourceDocument\nrole · content · label"]
+        SourceRole["SourceRole\nreference | bibliographic\nguidance | voice"]
+    end
+
+    subgraph L4["LAYER 4 — Living Sprints"]
+        SprintPlan["SprintPlan\nmoves · totalMinutes"]
+        SprintMove["SprintMove\ndescription · minutes\nrole · status"]
+    end
+
+    subgraph L5["LAYER 5 — Structural Parts"]
+        StructuralPart["StructuralPart\nclaim · kind · anchor\nsectionIds (many-to-many)"]
+    end
+
+    Section --> SectionSpec
+    SectionSpec --> RequiredMove
+    SectionSpec --> DiagnosticResult
+    DiagnosticResult --> MoveResult
+    Section --> TestSuiteEntry
+    TestSuiteEntry --> SectionSpec
+    TestSuiteEntry --> DiagnosticResult
+    TestSuiteEntry --> SectionAnalysis
+    SectionAnalysis --> AnalysisVersion
+    AnalysisVersion --> DialogueMessage
+    RevisionProposal --> SourceDocument
+    SourceDocument --> SourceRole
+    SprintPlan --> SprintMove
+    StructuralPart -.->|"many-to-many\nmapping"| Section
+
+    style L1 fill:#1a2535,stroke:#d4a060,color:#ddd8cc
+    style L2 fill:#1a2535,stroke:#3d9b9b,color:#ddd8cc
+    style L3 fill:#1a2535,stroke:#c45c5c,color:#ddd8cc
+    style L4 fill:#1a2535,stroke:#3daa6f,color:#ddd8cc
+    style L5 fill:#1a2535,stroke:#7a8699,color:#ddd8cc
+      </pre>
+    </div>
+
+    <p>These five layers grew in chronological order as features shipped, but they <strong>coexist by design</strong>. Each models a different aspect of the writing process:</p>
+
+    <ul>
+      <li><strong>Layer 1</strong> answers: <em>"What must this section do, and how well does it do it?"</em></li>
+      <li><strong>Layer 2</strong> answers: <em>"What does this section actually argue?"</em></li>
+      <li><strong>Layer 3</strong> answers: <em>"How should the prose change, and what is the evidence?"</em></li>
+      <li><strong>Layer 4</strong> answers: <em>"What should I write in the next 25 minutes?"</em></li>
+      <li><strong>Layer 5</strong> answers: <em>"What are the functional parts of this argument, independent of the heading structure?"</em></li>
+    </ul>
+
+    <p>The relationship between these layers is <strong>accretive, not replacive</strong>. Layer 2 does not supersede Layer 1; it adds a different analytical instrument. This is a philosophical commitment: the argument has multiple dimensions that no single analysis can exhaust.</p>
+
+    <!-- ============================================ -->
+    <h2 id="data-flow"><span class="section-num">IV</span>The Data Flow: From Keystroke to Disk to Treemap</h2>
+
+    <p>Understanding how data moves through the system is the key to understanding where integrations must connect.</p>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 4 &mdash; The Write Path</div>
+      <pre class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant CM as CodeMirror
+    participant ES as editor-state
+    participant DS as document-state
+    participant PS as project-state
+    participant R as Repository
+    participant Disk as project.md
+    participant Git as .git/
+    participant SQL as SQLite
+
+    U->>CM: Types prose
+    CM->>ES: localContent = new text
+    Note over ES: Ephemeral draft buffer
+    ES->>DS: parseMarkdown(localContent)
+    Note over DS: sections[], testSuite updated
+    DS-->>CM: Treemap re-renders
+
+    rect rgba(212, 160, 96, 0.08)
+    Note over PS: Every 60 seconds (autosave)
+    PS->>PS: saveCurrentState()
+    PS->>R: setProject(StoredProjectData)
+    R->>Disk: Write project.md
+    R->>SQL: Update cache
+    R->>Disk: Write .twriter/ sidecars
+    Note over Disk: specs, sources, provenance,<br/>gist, structural-parts, etc.
+    end
+
+    rect rgba(61, 155, 155, 0.08)
+    Note over PS: On explicit snapshot
+    PS->>R: commitSnapshot(message)
+    R->>Git: git add + git commit
+    Note over Git: Content-addressable history
+    end
+      </pre>
+    </div>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 5 &mdash; The AI Call Path</div>
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Component
+    participant AI as AIProvider Interface
+    participant Impl as ai-provider.impl
+    participant MR as Model Resolver
+    participant T as Throttle
+    participant Client as LLMClient
+    participant API as Vendor API
+
+    C->>AI: runDiagnostic(input)
+    AI->>Impl: Delegates to flow file
+    Impl->>MR: resolveModelChoice('runDiagnostic')
+    Note over MR: project config > global default ><br/>call-kind default > fallback ladder
+    MR-->>Impl: { provider, model }
+    Impl->>T: Acquire rate-limit slot
+    T-->>Impl: Slot granted
+    Impl->>Client: generateText(prompt, schema)
+    Client->>API: Vendor-specific SDK call
+    API-->>Client: JSON response
+    Client-->>Impl: Parsed result
+    Impl-->>AI: DiagnosticResult
+    AI-->>C: Typed domain object
+
+    Note over C: Component updates store via<br/>slice action, NEVER directly
+      </pre>
+    </div>
+
+    <h3>The Source-of-Truth Hierarchy</h3>
+
+    <p>The most important architectural decision in the entire system: <strong>every datum has exactly one canonical home</strong>. Everything else is a cache or projection.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Data</th><th>Source of Truth</th><th>Cache / Projection</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Dissertation prose</td><td><code>project.md</code> on disk</td><td>SQLite <code>sections</code>; Zustand <code>document-state</code></td></tr>
+          <tr><td>Section specs</td><td><code>.twriter/specs/*.spec.yaml</code></td><td>SQLite <code>specs</code></td></tr>
+          <tr><td>Sources</td><td><code>.twriter/sources.json</code></td><td>Zustand <code>document-state</code></td></tr>
+          <tr><td>Provenance marks</td><td><code>.twriter/provenance.json</code></td><td>Zustand <code>document-state</code></td></tr>
+          <tr><td>History</td><td><code>.git/</code></td><td>Snapshot list in UI</td></tr>
+          <tr><td>UI state</td><td>Zustand (in memory)</td><td><code>uistate.json</code> (per-project)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Single Source of Truth (SSOT)</div>
+      <p>The principle that every piece of data in a system has exactly one authoritative location. All other representations are derived and may be stale. When they conflict, the authoritative location wins. In TreemapWriter2, the prose on disk is canonical; the in-memory state is a projection that can always be rebuilt.</p>
+    </div>
+
+    <!-- ============================================ -->
+    <h2 id="feature-tax"><span class="section-num">V</span>The Feature Tax: What a New Feature Costs</h2>
+
+    <p>This is the section that answers the user's central question: <em>how easy is it to develop a new feature that integrates well?</em></p>
+
+    <p>The answer is: <strong>the architecture makes it possible, but the surface area makes it expensive.</strong> The "where to put X" guide in AGENTS.md is one of the best developer-scaffolding documents in any codebase I have examined &mdash; it tells you exactly where every kind of addition goes. But the <em>number of places</em> you must touch for a single feature is high.</p>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 6 &mdash; The Feature Multiplication Pattern</div>
+      <pre class="mermaid">
+flowchart LR
+    NEW["New Feature\n(e.g. 'Outline Doctor')"]
+
+    T["1. Types\nsrc/types/index.ts\n+ new domain types"]
+    ST["2. State Slice\nsrc/state/doctor-state.ts\n+ ui-state modal flag"]
+    AI_IF["3. AI Interface\nsrc/services/ai-provider.ts\n+ new methods"]
+    AI_IM["4. AI Implementation\nsrc/services/ai/\nai-provider.doctor.ts"]
+    PR["5. Prompts\nsrc/services/prompts/\n+ .md files\n+ registry entries"]
+    WS["6. Workspace\nsrc/features/doctor/\nDoctorWorkspace.tsx\nDoctorTopBar.tsx\nuse-doctor-actions.ts"]
+    LIB["7. Utilities\nsrc/lib/\ndoctor-helpers.ts"]
+    APP["8. Wiring\nApp.tsx (ModalLayer)\ncommand palette"]
+
+    NEW --> T
+    NEW --> ST
+    NEW --> AI_IF
+    NEW --> AI_IM
+    NEW --> PR
+    NEW --> WS
+    NEW --> LIB
+    NEW --> APP
+
+    style NEW fill:#c45c5c,stroke:#9e4040,color:#f0ede6
+    style T fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style ST fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style AI_IF fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style AI_IM fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style PR fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style WS fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style LIB fill:#162540,stroke:#d4a060,color:#ddd8cc
+    style APP fill:#162540,stroke:#d4a060,color:#ddd8cc
+      </pre>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Surface Area</div>
+      <p>The total number of distinct locations in a codebase that must be modified to implement a single change. High surface area means more opportunities for error, more files to understand, and more merge conflicts. It is the <em>transactional cost</em> of a feature.</p>
+    </div>
+
+    <p>For a feature like the Outline Doctor (shipped 2026-07-09), this pattern required:</p>
+    <ul>
+      <li>New types in <code>types/index.ts</code> (DoctorTask, DoctorChecklist, etc.)</li>
+      <li>A new state slice (<code>state/doctor-state.ts</code>, 12 files in the workspace)</li>
+      <li>A new modal flag in <code>ui-state.ts</code></li>
+      <li>New methods on the AIProvider interface</li>
+      <li>Two new implementation files (<code>ai-provider.doctor.ts</code>, <code>ai-provider.doctor-wizard.ts</code>)</li>
+      <li>New prompt .md files + registry entries</li>
+      <li>A new workspace directory (<code>features/doctor/</code> with 13 files)</li>
+      <li>New utility helpers (<code>lib/doctor-helpers.ts</code>)</li>
+      <li>Wiring in ModalLayer</li>
+    </ul>
+
+    <p>This is approximately <strong>8 integration points</strong> across 5 layers. The architecture <em>directs</em> you to the right places (the "where to put X" guide is excellent), but the sheer count is what makes each feature expensive. This is not a design flaw &mdash; it is a consequence of taking separation of concerns seriously in a feature-rich application. But it does mean that <strong>the architecture has a higher floor for new features</strong> than a simpler system would.</p>
+
+    <div class="diagram-panel">
+      <div class="diagram-caption">Diagram 7 &mdash; The Workspace Constellation: What Shares What</div>
+      <pre class="mermaid">
+graph TB
+    subgraph SHARED["Shared Infrastructure"]
+        Accept["applyProposal\n(accept pipeline)"]
+        Extensions["editor/extensions.ts\n(CodeMirror factory)"]
+        ColumnResize["useColumnResize\n+ ResizeHandle"]
+        ContextGuard["guardContextFit\n(token budget)"]
+        ModelResolve["resolveModelChoice\n+ ModelPicker"]
+        SharedUI["Pip · Spinner · Zone\nDisabledHint · CopyButton"]
+    end
+
+    Rev["Revision\n(Glass Box)"]
+    Par["Parallel\nEditor"]
+    Gist["Gist\nEditor"]
+    Comp["Version\nCompare"]
+    ST["Spec\nTest"]
+    Doc["Outline\nDoctor"]
+    Seg["Articulation"]
+    Interp["Generate\nSpecs"]
+    Sprint["Living\nSprints"]
+    Clim["Climate\nArtist"]
+    Dash["Progress\nDashboard"]
+
+    Rev --> Accept
+    Par --> Accept
+    Rev --> ColumnResize
+    Par --> ColumnResize
+    Gist --> ColumnResize
+    Rev --> Extensions
+    Par --> Extensions
+    Gist --> Extensions
+    Rev --> ContextGuard
+    Par --> ContextGuard
+    Comp --> ContextGuard
+    ST --> ContextGuard
+    Interp --> ContextGuard
+    Comp --> ModelResolve
+    ST --> ModelResolve
+    Doc --> ModelResolve
+    Seg --> ModelResolve
+    Clim --> ModelResolve
+    Par -.->|"imports RevisionRail"| Rev
+    ST -.->|"shares comparison-state"| Comp
+
+    style SHARED fill:#162540,stroke:#3daa6f,color:#ddd8cc
+    style Rev fill:#1a2535,stroke:#c45c5c,color:#ddd8cc
+    style Par fill:#1a2535,stroke:#3d9b9b,color:#ddd8cc
+    style Gist fill:#1a2535,stroke:#3d9b9b,color:#ddd8cc
+    style Comp fill:#1a2535,stroke:#d4a060,color:#ddd8cc
+    style ST fill:#1a2535,stroke:#d4a060,color:#ddd8cc
+    style Doc fill:#1a2535,stroke:#d4a060,color:#ddd8cc
+    style Seg fill:#1a2535,stroke:#7a8699,color:#ddd8cc
+    style Interp fill:#1a2535,stroke:#7a8699,color:#ddd8cc
+    style Sprint fill:#1a2535,stroke:#7a8699,color:#ddd8cc
+    style Clim fill:#1a2535,stroke:#7a8699,color:#ddd8cc
+    style Dash fill:#1a2535,stroke:#7a8699,color:#ddd8cc
+      </pre>
+    </div>
+
+    <p>The constellation reveals a structural truth: <strong>the workspaces form clusters</strong>. Revision, Parallel, and Gist share the most infrastructure (the accept pipeline, editor extensions, column resize). Compare and Spec Test share state. The remaining workspaces (Climate, Dashboard, Sprints) are relatively isolated &mdash; they integrate primarily through the model resolver and shared UI primitives.</p>
+
+    <!-- ============================================ -->
+    <h2 id="assessment"><span class="section-num">VI</span>The Assessment: Virtues and Tensions</h2>
+
+    <p>A mature assessment distinguishes between what works and what creates friction. TreemapWriter2 has <em>genuine architectural virtues</em> &mdash; decisions that would survive a clean-room reimplementation because they solve real problems well. It also has <em>tensions</em> &mdash; not failures, but places where the current structure resists the work being asked of it.</p>
+
+    <div class="vocab">
+      <div class="term">Essential vs. Accidental Complexity (Brooks)</div>
+      <p>Fred Brooks's famous distinction: <strong>essential complexity</strong> is inherent in the problem (a dissertation-analysis tool that handles specs, diagnostics, revision, sprints, and structural parts <em>is</em> complex). <strong>Accidental complexity</strong> is complexity introduced by the solution's implementation (a 937-line god-interface, 26 modal booleans, a 771-line App.tsx). The goal is never to eliminate all complexity, but to ensure that the complexity you carry is essential, not accidental.</p>
+    </div>
+
+    <h3 id="virtues">The Virtues (what to protect)</h3>
+
+    <div class="finding virtue">
+      <div class="tag">Architectural Virtue</div>
+      <h4>The domain types encode a genuine theory</h4>
+      <p>The types in <code>src/types/index.ts</code> are not a CRUD schema with accidental structure. They model <code>SectionFunction</code> (what a section <em>does</em> in an argument), <code>RequiredMove</code> (what it must accomplish), <code>DiagnosticResult</code> (how well it succeeds), and <code>StructuralPart</code> (the argument's functional parts independent of headings). This is a philosophical commitment that shapes every feature. Protect it: never collapse these types into something "simpler."</p>
+    </div>
+
+    <div class="finding virtue">
+      <div class="tag">Architectural Virtue</div>
+      <h4>The two dependency-inversion seams are clean and load-bearing</h4>
+      <p>The <code>Repository</code> and <code>AIProvider</code> interfaces are genuine abstractions, not leaky wrappers. The app migrated from IndexedDB to SQLite without touching components. Three AI providers coexist behind one interface. This is textbook dependency inversion, and it works.</p>
+    </div>
+
+    <div class="finding virtue">
+      <div class="tag">Architectural Virtue</div>
+      <h4>The documentation is exceptional</h4>
+      <p>VISION.md (why), AGENTS.md (how), STATUS.md (now), migration-log.md (history) form a four-document system that is among the best-maintained developer documentation in any codebase of this size. The "where to put X" table alone saves hours per session. This is <em>agent-legibility</em> treated as a first-class product requirement.</p>
+    </div>
+
+    <div class="finding virtue">
+      <div class="tag">Architectural Virtue</div>
+      <h4>State partitioned by lifecycle, not by feature</h4>
+      <p>UI ephemera (modal flags, panel widths) never shares a slice with domain data (markdown, testSuite). This is a principled design that prevents the "god store" anti-pattern. Cross-slice mutations are centralized in <code>project-state</code>, making the coupling explicit and auditable.</p>
+    </div>
+
+    <div class="finding virtue">
+      <div class="tag">Architectural Virtue</div>
+      <h4>Prompts are content, not code</h4>
+      <p>68 prompt <code>.md</code> files, each imported as raw strings, cataloged in a single registry with three-tier resolution (built-in &lt; global user overrides &lt; per-project overrides). The prompts are editable by the user. This is a well-designed content management system for AI instructions.</p>
+    </div>
+
+    <div class="finding virtue">
+      <div class="tag">Architectural Virtue</div>
+      <h4>The workspace pattern is consistent and well-factored</h4>
+      <p>All 11 workspaces follow the same skeleton: a state slice, a <code>*Workspace.tsx</code>, a <code>*TopBar.tsx</code>, a <code>use-*-actions.ts</code> hook, and a mounting point in <code>ModalLayer</code>. This consistency means that once you understand one workspace, you can navigate any of them.</p>
+    </div>
+
+    <h3 id="tensions">The Tensions (where friction accumulates)</h3>
+
+    <div class="finding concern">
+      <div class="tag">Structural Tension</div>
+      <h4>The AIProvider interface is becoming a god object</h4>
+      <p>At 937 lines and ~35 methods, the <code>AIProvider</code> interface knows about diagnostics, specs, analysis, revision, gist, sprints, comparison, doctor, atmosphere, segmentation, structural parts, and agent operations. Every new AI-backed feature adds another method to this single interface. This is the <strong>Interface Segregation Principle</strong> violation: consumers are forced to depend on methods they don't use.</p>
+    </div>
+
+    <div class="finding concern">
+      <div class="tag">Structural Tension</div>
+      <h4>App.tsx retains residual business logic</h4>
+      <p>At 771 lines, App.tsx still contains: 5 export handler functions (nearly identical blob-download patterns), the diagnostic runner (<code>handleRunTests</code>, ~120 lines), the command palette definition (27 entries), and import handling. These are feature-level concerns living in what should be a thin layout shell. The "audit 4.2" extraction of <code>ModalLayer</code> was a good step; the remaining handlers are the next seam.</p>
+    </div>
+
+    <div class="finding concern">
+      <div class="tag">Structural Tension</div>
+      <h4>57 modal files in a flat directory</h4>
+      <p>The <code>features/modals/</code> directory contains 57 files. Only <code>sprint/</code> (13 files) and <code>topo/</code> (11 files) have their own subdirectories. The Sprint system is a full workspace-class feature buried inside "modals"; the Topo visualization is a ~3,000-line standalone system with its own force simulation. Finding a specific modal requires knowing its name. This is a <strong>discoverability</strong> problem.</p>
+    </div>
+
+    <div class="finding concern">
+      <div class="tag">Structural Tension</div>
+      <h4>No shared button or input component</h4>
+      <p>The pattern <code>font-mono text-[9px] uppercase tracking-[0.12em]</code> appears hundreds of times across 103 files. Despite having CSS component classes (<code>hld-btn</code>, <code>hld-lit</code>), most buttons are styled inline in Tailwind. There is no shared <code>Button</code>, <code>Input</code>, or <code>Select</code> component. Any visual consistency change requires touching dozens of files.</p>
+    </div>
+
+    <div class="finding concern">
+      <div class="tag">Structural Tension</div>
+      <h4>Two modal framing systems coexist</h4>
+      <p><code>ModalShell</code> (the canonical system: square corners, cyan/magenta accent line, monospace titles) is used by 17 modals. But <code>ConfirmModal</code>, <code>GrimoireModal</code>, and several others use bespoke layouts with <code>rounded-lg</code>, <code>backdrop-blur-sm</code>, and different visual treatments. This creates visual inconsistency that the user can feel even if they can't name it.</p>
+    </div>
+
+    <div class="finding concern">
+      <div class="tag">Structural Tension</div>
+      <h4>The store import path migration stalled</h4>
+      <p>31 files still import from the deprecated <code>src/store</code> re-export barrel while 77 use the current <code>src/state</code> path. This is a minor inconsistency but it signals: <strong>mechanical cleanup does not get prioritized</strong>, which is a symptom of the AI-assisted development pattern (each session adds features; none cleans up the last session's debris).</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Technical Debt</div>
+      <p>The accumulated cost of past decisions that were locally rational but create ongoing friction. Like financial debt, it is not inherently bad &mdash; taking on debt to ship a feature can be the right call. The danger is <strong>untracked debt</strong>: decisions whose costs are invisible because no one recorded them. TreemapWriter2's STATUS.md "Lingering" section is a debt register &mdash; an unusually honest one.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">God Object / God Interface</div>
+      <p>A type that knows too much &mdash; it has too many responsibilities, too many methods, or too many reasons to change. The AIProvider interface at 35 methods is approaching this threshold. The cure is not to split the <em>implementation</em> (which is already well-factored into 20 files) but to split the <em>interface</em> into smaller capability contracts that consumers can depend on selectively.</p>
+    </div>
+
+    <!-- ============================================ -->
+    <h2 id="wins"><span class="section-num">VII</span>The Clear Wins</h2>
+
+    <p>These are concrete, bounded improvements ordered by their ratio of <strong>impact to effort</strong>. Each addresses a specific tension identified above. None requires rethinking the architecture &mdash; they work <em>with</em> the existing structure, not against it.</p>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #1 &mdash; High Impact, Low Effort</div>
+      <h4>Complete the <code>src/store</code> &rarr; <code>src/state</code> import migration</h4>
+      <p>31 files still import from the deprecated barrel. This is a mechanical find-and-replace that removes one source of confusion. An AI agent can do it in one pass. <strong>Time:</strong> ~15 minutes. <strong>Payoff:</strong> one canonical import path, no more "which do I use?" question.</p>
+    </div>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #2 &mdash; High Impact, Medium Effort</div>
+      <h4>Extract App.tsx handlers into feature hooks</h4>
+      <p>Move the 5 export handlers into a <code>useExportActions</code> hook in <code>features/shared/</code>. Move <code>handleRunTests</code> into a <code>useDiagnosticActions</code> hook in <code>features/tests-panel/</code>. Move the command palette definition into <code>features/modals/CommandPaletteModal.tsx</code> or a companion file. Target: App.tsx under 300 lines, a pure layout shell. <strong>Time:</strong> ~1 hour. <strong>Payoff:</strong> the layout shell stops being a cognitive ravine.</p>
+    </div>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #3 &mdash; High Impact, Medium Effort</div>
+      <h4>Sub-organize the modals directory by feature domain</h4>
+      <p>Group the 57 modal files into subdirectories: <code>modals/ai-settings/</code>, <code>modals/project/</code>, <code>modals/revision/</code>, <code>modals/sync/</code>, etc. The <code>sprint/</code> and <code>topo/</code> subdirectories already demonstrate the pattern. This is purely organizational (no code changes beyond import paths). <strong>Time:</strong> ~30 minutes. <strong>Payoff:</strong> discoverability; you can find a modal by browsing its category.</p>
+    </div>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #4 &mdash; Medium Impact, Medium Effort</div>
+      <h4>Create shared Button and Input components</h4>
+      <p>A <code>Button</code> component with variants (<code>primary</code>, <code>ghost</code>, <code>destructive</code>) and an <code>Input</code> component wrapping the repeated Tailwind micro-patterns. This consolidates the hundreds of inline button styles into one definition. <strong>Time:</strong> ~2 hours (define + migrate the most common patterns). <strong>Payoff:</strong> any future visual change (e.g., the Palette 3C migration) touches one file, not a hundred.</p>
+    </div>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #5 &mdash; High Impact, High Effort</div>
+      <h4>Split the AIProvider interface into capability traits</h4>
+      <p>Define focused interfaces: <code>DiagnosticProvider</code> (2 methods), <code>RevisionProvider</code> (3 methods), <code>GistProvider</code> (4 methods), etc. The implementation class can still implement all of them. But each workspace imports only the capability it needs, reducing its coupling surface. The <code>AIProvider</code> type becomes a union of all capabilities. <strong>Time:</strong> ~3-4 hours. <strong>Payoff:</strong> new features no longer need to modify a 937-line interface file; they define their own capability.</p>
+    </div>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #6 &mdash; Medium Impact, Low Effort</div>
+      <h4>Migrate legacy modals to ModalShell</h4>
+      <p>Replace the bespoke framing in <code>ConfirmModal</code>, <code>GrimoireModal</code>, <code>SpecGeneratorModal</code>, <code>SectionMapModal</code>, and <code>VersionHistoryModal</code> with the canonical <code>ModalShell</code> wrapper. Remove <code>rounded-lg</code>, <code>backdrop-blur-sm</code>, and the divergent visual treatments. <strong>Time:</strong> ~1 hour. <strong>Payoff:</strong> visual consistency across all modal surfaces.</p>
+    </div>
+
+    <div class="finding win">
+      <div class="tag">Clear Win #7 &mdash; Low-Medium Impact, Low Effort</div>
+      <h4>Relocate <code>useCurrentSection</code> to <code>features/shared/</code></h4>
+      <p>This hook in <code>tests-panel/</code> is imported by 8 other features. It is a mislocated shared utility. Moving it costs one import-path change per consumer. <strong>Time:</strong> ~10 minutes. <strong>Payoff:</strong> removes a cross-feature coupling that violates the feature-boundary principle.</p>
+    </div>
+
+    <!-- ============================================ -->
+    <h2 id="vocabulary"><span class="section-num">VIII</span>The Vocabulary: A Glossary of Architectural Concepts</h2>
+
+    <p>This section collects the vocabulary introduced throughout the document, supplemented with additional terms that are useful for reasoning about this system's evolution.</p>
+
+    <div class="vocab">
+      <div class="term">Separation of Concerns</div>
+      <p>The principle that a module should have <strong>one reason to change</strong>. The original App.tsx had at least seven (layout, persistence, AI orchestration, export, import, command palette, autosave). Each extraction reduced its reasons to change by one.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Coupling (Tight / Loose)</div>
+      <p>How much one module needs to know about another's internals. <strong>Tight coupling</strong>: a component calls <code>invoke('project_write', ...)</code> directly (needs to know Tauri's IPC contract). <strong>Loose coupling</strong>: a component calls <code>repository.setProject(data)</code> (needs to know only the Repository interface). TreemapWriter2's dependency-inversion seams create loose coupling at the two most critical boundaries.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Cohesion (High / Low)</div>
+      <p>How related the responsibilities within a single module are. <strong>High cohesion</strong>: <code>ai-provider.doctor.ts</code> contains only Doctor-related AI logic. <strong>Low cohesion</strong>: App.tsx contains layout, export, diagnostic orchestration, and command palette definition &mdash; four unrelated concerns in one file.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Interface Segregation Principle (ISP)</div>
+      <p>No client should be forced to depend on methods it does not use. When the Gist workspace imports <code>AIProvider</code>, it depends on all 35 methods, including <code>auditSourceUsage</code> and <code>generateSprintPlan</code> which it will never call. Splitting the interface into focused capabilities would satisfy ISP.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Accidental Complexity (Brooks)</div>
+      <p>Complexity that arises from the solution's implementation rather than the problem itself. The problem of analyzing academic prose is <em>essentially</em> complex. The problem of 26 boolean modal flags is <em>accidentally</em> complex &mdash; it could be modeled differently. Not all accidental complexity is worth removing (the booleans work), but knowing which kind you're looking at changes your response to it.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Sedimentary Development</div>
+      <p>A pattern characteristic of AI-assisted development: each session deposits a new layer of features atop the existing structure, preserving the shape of what came before. Like geological sediment, each layer is internally consistent, but the aggregate reveals strata of different eras &mdash; modal framing from an earlier aesthetic, import paths from a deprecated structure, utility functions that predate the shared library. This is not a defect; it is the natural residue of rapid iteration. But periodic consolidation (the architectural equivalent of metamorphism) keeps it from becoming brittle.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Protective Belt (Lakatos)</div>
+      <p>The set of auxiliary hypotheses that surround and protect the hard core of a research programme. In TreemapWriter2, the features (workspaces, modals, AI flows) are the protective belt: they can be added, modified, or removed without threatening the domain types and architectural seams that form the core. When a new feature proposal would require <em>collapsing</em> a domain type (e.g., merging SectionSpec with SectionAnalysis), that is a signal that the proposal is fighting the core &mdash; and the core should win.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Agent-Legibility</div>
+      <p>A first-class quality attribute of this codebase: the property that an AI agent (or a returning human) can understand how to extend the system correctly <em>without re-deriving design intent</em>. The documentation set (VISION/AGENTS/STATUS/migration-log) is the primary agent-legibility mechanism. Every session that pays the "re-derivation tax" &mdash; an agent spending tokens to figure out what another agent already figured out &mdash; is a session the user paid for twice.</p>
+    </div>
+
+    <div class="vocab">
+      <div class="term">Feature Envy</div>
+      <p>When code in module A keeps reaching into module B's data. In TreemapWriter2, the <code>project-state</code> slice reaches into nearly every other slice via <code>get().otherSliceAction()</code>. This is a <em>controlled</em> feature envy &mdash; centralized in one orchestrator rather than scattered &mdash; but it is still the reason <code>project-state.ts</code> is 689 lines.</p>
+    </div>
+
+    <!-- ============================================ -->
+    <h2 id="coda"><span class="section-num">&sect;</span>Coda: The Historiographer's Verdict</h2>
+
+    <p>TreemapWriter2 is a system in the condition that Thomas Kuhn would call <strong>mature normal science</strong>. The paradigm &mdash; the domain types, the layered architecture, the source-of-truth hierarchy, the dependency-inversion seams &mdash; is settled and productive. The work being done within that paradigm (shipping workspaces, adding AI flows, refining the writing experience) is puzzle-solving of a high order. The anomalies that have accumulated (the growing god-interface, the flat modals directory, the residual App.tsx handlers) are not symptoms of a paradigm in crisis; they are the natural friction of a productive paradigm that has not yet been subjected to a round of consolidation.</p>
+
+    <p>The historiography of this codebase is unusually legible. The migration-log is an honest, dated record of every major change. The FOUNDING.md preserves the original mandate. VISION.md preserves the principles. AGENTS.md operationalizes them. This is a system that <em>knows its own history</em>, which is rare. The challenge is not that the history is lost, but that <strong>the cumulative weight of the history has made the present harder to navigate</strong>.</p>
+
+    <p>The clear wins identified in Section VII are not a paradigm shift. They are the consolidation that a productive paradigm periodically needs: tightening the interfaces, organizing the file system, extracting the shared primitives, completing the interrupted migrations. The domain types should not be touched. The dependency-inversion seams should not be touched. The source-of-truth hierarchy should not be touched. These are the hard core. Everything else &mdash; the protective belt &mdash; can be reorganized, consolidated, and clarified without threatening the theoretical commitments that make this system distinctive.</p>
+
+    <blockquote>
+      <strong>The deepest architectural truth about TreemapWriter2</strong> is that its domain types already encode a serious theory of academic prose, and for too long they were jostling for room inside a JSON blob, next to <code>sidebarWidth</code> and <code>showProjectModal</code>. The refactor that produced today's architecture existed to give that philosophical model the architectural seat it had earned. The consolidation work ahead exists to keep that seat clear.
+    </blockquote>
+
+    <hr>
+    <p style="font-size: 12px; color: var(--text-faint); margin-top: 32px;">
+      Generated July 2026 from a live analysis of the TreemapWriter2 codebase (commit HEAD).
+      All file paths, line counts, and structural claims are grounded in the code as read.
+    </p>
+  </main>
+</div>
