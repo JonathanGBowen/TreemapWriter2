@@ -12,7 +12,7 @@ import { Disclosure } from "../shared/Disclosure";
 import { PanelHeader } from "./PanelHeader";
 import { useCurrentSection } from '../shared/use-current-section';
 import { useAnalysisActions } from "./use-analysis-actions";
-import { SegControl } from "../modals/SegControl";
+import { SegControl } from "../modals/shared/SegControl";
 
 const versionDate = (ts: number) => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric' });
 

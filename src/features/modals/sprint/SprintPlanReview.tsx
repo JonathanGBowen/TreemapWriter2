@@ -7,10 +7,10 @@
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, Plus, Sparkles } from 'lucide-react';
-import { ModalShell } from '../ModalShell';
-import { ModelPicker } from '../ModelPicker';
-import { SegControl } from '../SegControl';
-import { useModelChoice } from '../use-model-choice';
+import { ModalShell } from '../shared/ModalShell';
+import { ModelPicker } from '../settings/ModelPicker';
+import { SegControl } from '../shared/SegControl';
+import { useModelChoice } from '../settings/use-model-choice';
 import { Pip } from '../../shared/Pip';
 import { SprintStepRow } from './SprintStepRow';
 import { AgentTraceTicker } from '../../shared/AgentTraceTicker';

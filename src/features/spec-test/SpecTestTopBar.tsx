@@ -5,7 +5,7 @@ import type { SnapshotMeta } from '../../types';
 import { groupSnapshotsByDay, resolveOperand, type DayGroup } from '../../lib/compareHelpers';
 import { buildSpecByTitle, planSpecTestRun, isDeepRead } from '../../lib/specTestHelpers';
 import { useSpecTestActions } from './use-spec-test-actions';
-import { SegControl } from '../modals/SegControl';
+import { SegControl } from '../modals/shared/SegControl';
 
 /** A styled <select> over { Current Draft, session boundaries, …days → snapshots }. */
 function VersionSelect({

@@ -1,7 +1,7 @@
 import { useStore } from '../../state';
 import type { ModelTier } from '../../services/ai/model-catalog';
-import { SegControl, type SegOption } from '../modals/SegControl';
-import { resolveDepthChoice, tierOf, depthModelLabel } from '../modals/depth-choice';
+import { SegControl, type SegOption } from '../modals/shared/SegControl';
+import { resolveDepthChoice, tierOf, depthModelLabel } from '../modals/analysis/depth-choice';
 import { useInterpolateActions } from './use-interpolate-actions';
 
 const DEPTH_TIERS: ModelTier[] = ['fast', 'balanced', 'deep'];

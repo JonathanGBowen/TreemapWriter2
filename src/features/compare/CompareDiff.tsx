@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { diffLines, diffWords, type Change } from 'diff';
 import { useStore } from '../../state';
-import { SegControl } from '../modals/SegControl';
+import { SegControl } from '../modals/shared/SegControl';
 import { resolveOperand } from '../../lib/compareHelpers';
 import { ParallelDiff } from './ParallelDiff';
 

@@ -5,10 +5,10 @@
 // SprintGoalFraming (+ optional transcript) and hands it to the plan phase.
 
 import { useEffect, useState } from 'react';
-import { ModalShell } from '../ModalShell';
-import { ModelPicker } from '../ModelPicker';
-import { SegControl } from '../SegControl';
-import { useModelChoice } from '../use-model-choice';
+import { ModalShell } from '../shared/ModalShell';
+import { ModelPicker } from '../settings/ModelPicker';
+import { SegControl } from '../shared/SegControl';
+import { useModelChoice } from '../settings/use-model-choice';
 import { useCoachPrefs } from './use-coach-prefs';
 import { CoachGuided } from './CoachGuided';
 import { CoachChat } from './CoachChat';

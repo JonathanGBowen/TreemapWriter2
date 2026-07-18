@@ -6,7 +6,7 @@ import { DEFAULT_COMPARE_LENSES } from '../../lib/defaultCompareLenses';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { groupSnapshotsByDay, type DayGroup } from '../../lib/compareHelpers';
 import { useComparisonActions } from './use-comparison-actions';
-import { SegControl } from '../modals/SegControl';
+import { SegControl } from '../modals/shared/SegControl';
 
 /** A styled <select> over { Current Draft, …days → snapshots }. */
 function VersionSelect({
