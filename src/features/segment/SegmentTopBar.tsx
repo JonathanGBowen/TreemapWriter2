@@ -1,8 +1,8 @@
 import { useStore } from '../../state';
 import type { SegmentGenre, SegmentGranularity, SegmentMode } from '../../types';
 import type { ModelTier } from '../../services/ai/model-catalog';
-import { SegControl, type SegOption } from '../modals/SegControl';
-import { resolveDepthChoice, tierOf, depthModelLabel } from '../modals/depth-choice';
+import { SegControl, type SegOption } from '../modals/shared/SegControl';
+import { resolveDepthChoice, tierOf, depthModelLabel } from '../modals/analysis/depth-choice';
 import { useSegmentActions } from './use-segment-actions';
 
 const MODES: SegmentMode[] = ['conservative', 'exploratory', 'summaries'];

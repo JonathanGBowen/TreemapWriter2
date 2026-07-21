@@ -10,9 +10,9 @@ import { Zone } from "../shared/Zone";
 import { Pip } from "../shared/Pip";
 import { Disclosure } from "../shared/Disclosure";
 import { PanelHeader } from "./PanelHeader";
-import { useCurrentSection } from "./use-current-section";
+import { useCurrentSection } from '../shared/use-current-section';
 import { useAnalysisActions } from "./use-analysis-actions";
-import { SegControl } from "../modals/SegControl";
+import { SegControl } from "../modals/shared/SegControl";
 
 const versionDate = (ts: number) => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric' });
 

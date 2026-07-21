@@ -9,8 +9,8 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { repository as repo } from '../../services/repository-registry';
 import { buildActivityBrief } from '../../lib/activity-brief';
 import { guardContextFit } from '../shared/context-guard';
-import { ModelPicker } from '../modals/ModelPicker';
-import { useModelChoice } from '../modals/use-model-choice';
+import { ModelPicker } from '../modals/settings/ModelPicker';
+import { useModelChoice } from '../modals/settings/use-model-choice';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
 import { useCoachPlanOpening } from './use-open-dialogue';
 

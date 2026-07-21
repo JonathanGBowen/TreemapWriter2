@@ -12,7 +12,7 @@ import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
 import { useDialogueStream, dialogueInFlight, dialogueErrMessage as errMessage } from '../shared/dialogue';
-import { useCurrentSection } from './use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 
 const activeVersionOf = (state: SectionAnalysisState | undefined) =>
   state?.versions.find((v) => v.id === state.activeVersionId) ?? state?.versions[0];

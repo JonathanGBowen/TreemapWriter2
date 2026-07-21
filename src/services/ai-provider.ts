@@ -53,6 +53,94 @@ import type { SpecStage } from './ai/ai-provider.specs';
 import type { SegmentSpanResult } from './ai/ai-provider.segment';
 import type { AgentTool } from './ai/agent/agent-types';
 
+// ── Capability sub-interfaces ──────────────────────────────────────────
+// Each groups the methods one feature workspace consumes. Import the
+// narrow type when only a subset is needed; AIProvider is their union.
+
+export interface SpecCapability {
+  generateSpecLevel(input: GenerateSpecLevelInput): Promise<Record<string, SectionSpec>>;
+  developSpecLevel(input: DevelopSpecLevelInput): AsyncIterable<string>;
+}
+
+export interface DiagnosticCapability {
+  runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult>;
+  estimateDependencies(input: EstimateDependenciesInput): Promise<Record<string, Dependency[]>>;
+}
+
+export interface AnalysisCapability {
+  analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis>;
+  refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis>;
+  continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
+}
+
+export interface ComparisonCapability {
+  compareVersions(input: CompareVersionsInput): Promise<VersionComparison>;
+  runSpecTestSection(input: SpecTestSectionInput): Promise<SectionSpecTest | null>;
+  runSpecTestWhole(input: SpecTestWholeInput): Promise<Omit<WholeVerdict, 'meshDelta'> | null>;
+}
+
+export interface CoachCapability {
+  streamCoachAdvice(input: CoachAdviceInput): AsyncIterable<string>;
+  generateSprintPlan(input: GenerateSprintPlanInput): Promise<SprintPlan>;
+  coachSprintTurn(input: CoachSprintTurnInput): AsyncIterable<string>;
+  decomposeSprintStep(input: DecomposeSprintStepInput): Promise<SprintMove[]>;
+}
+
+export interface RevisionCapability {
+  generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
+  auditSourceUsage(input: AuditSourceUsageInput): Promise<RevisionProposal[]>;
+  suggestDirectives(input: SuggestDirectivesInput): Promise<DirectiveSuggestion[]>;
+  directiveDialogueTurn(input: DirectiveDialogueTurnInput): AsyncIterable<string>;
+  exegeteSource(input: ExegeteSourceInput): AsyncIterable<string>;
+}
+
+export interface ParallelCapability {
+  generateReverseOutline(input: GenerateReverseOutlineInput): Promise<ReverseOutlineBullet[]>;
+  regenerateParagraph(input: RegenerateParagraphInput): Promise<ParagraphRewrite | null>;
+}
+
+export interface GistCapability {
+  analyzeGist(input: AnalyzeGistInput): Promise<GistAnalysis>;
+  composeGist(input: ComposeGistInput): Promise<GistComposition>;
+  refreshGistSpan(input: RefreshGistSpanInput): Promise<GistSpan | null>;
+  refitGist(input: RefitGistInput): Promise<GistSpan[] | null>;
+}
+
+export interface DiscoveryCapability {
+  segmentSpan(input: SegmentSpanInput): Promise<SegmentSpanResult>;
+  discoverStructuralParts(input: DiscoverStructuralPartsInput): Promise<StructuralPart[]>;
+  analyzeAtmosphere(input: AnalyzeAtmosphereInput): Promise<string>;
+}
+
+export interface GestaltCapability {
+  reconstructWhole(input: ReconstructWholeInput): Promise<WholeFromPartResult | null>;
+  proposeRecenterings(input: RecenterInput): Promise<RecenteringsResult | null>;
+}
+
+export interface DoctorCapability {
+  runDoctorOutline(input: DoctorOutlineInput): Promise<DoctorOutlineResult>;
+  runDoctorParagraph(input: DoctorParagraphInput): Promise<ParagraphDiagnosis | null>;
+  distillThesis(input: DistillThesisInput): Promise<ThesisOption[]>;
+  runDoctorReport(input: DoctorReportInput): Promise<string>;
+  diagnoseStructure(input: DiagnoseStructureInput): AsyncIterable<string>;
+  proposeRoadmaps(input: ProposeRoadmapsInput): Promise<RoadmapOption[]>;
+  generateDoctorChecklist(input: GenerateDoctorChecklistInput): Promise<DoctorTask[]>;
+}
+
+export interface AgentCapability {
+  runAgent(input: RunAgentInput): AsyncIterable<string>;
+}
+
+export interface ContentCapability {
+  getContentSuggestions(input: ContentSuggestionsInput): Promise<string>;
+  generatePersonas(input: GeneratePersonasInput): Promise<PersonaSuggestion[]>;
+  refineSpec(input: RefineSpecInput): Promise<string>;
+}
+
+// ── Full provider interface ────────────────────────────────────────────
+// The intersection of all capabilities. Existing code that imports
+// AIProvider sees every method; new code can import just the trait it needs.
+
 /**
  * AI provider boundary. Components and slices call this interface; only the
  * provider implementation imports `@google/genai`.
@@ -63,18 +151,27 @@ import type { AgentTool } from './ai/agent/agent-types';
  * pattern. Don't preclude that — keep returns typed and don't smuggle SDK
  * objects across the boundary.
  */
-export interface AIProvider {
-  generateSpecs(input: GenerateSpecsInput): Promise<void>;
+export interface AIProvider extends
+  SpecCapability,
+  DiagnosticCapability,
+  AnalysisCapability,
+  ComparisonCapability,
+  CoachCapability,
+  RevisionCapability,
+  ParallelCapability,
+  GistCapability,
+  DiscoveryCapability,
+  GestaltCapability,
+  DoctorCapability,
+  AgentCapability,
+  ContentCapability {
   runDiagnostic(input: RunDiagnosticInput): Promise<DiagnosticResult>;
   estimateDependencies(
     input: EstimateDependenciesInput,
   ): Promise<Record<string, Dependency[]>>;
-  getCoachAdvice(input: CoachAdviceInput): Promise<string>;
   /**
-   * Streaming sibling of `getCoachAdvice` — the same triage/action-plan, but
-   * yielded token-by-token so the writer sees the system thinking (the app's
-   * preferred accessibility idiom; kills the "is it working?" moment). The
-   * non-streaming form is kept for the cache path.
+   * Streaming coach advice — triage/action-plan, yielded token-by-token so
+   * the writer sees the system thinking (kills the "is it working?" moment).
    */
   streamCoachAdvice(input: CoachAdviceInput): AsyncIterable<string>;
   getContentSuggestions(input: ContentSuggestionsInput): Promise<string>;

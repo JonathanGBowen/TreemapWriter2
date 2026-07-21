@@ -6,7 +6,7 @@ import { buildGapFocus } from "../../lib/gap-focus";
 import { Composer, Transcript } from "../shared/dialogue";
 import { DisabledHint } from "../shared/DisabledHint";
 import { MemorandumDisclosure } from "../coach/MemorandumDisclosure";
-import { useCurrentSection } from "./use-current-section";
+import { useCurrentSection } from '../shared/use-current-section';
 import { useAnalysisActions } from "./use-analysis-actions";
 import { OpeningDialogue } from "./OpeningDialogue";
 

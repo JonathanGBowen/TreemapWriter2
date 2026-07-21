@@ -11,7 +11,7 @@ import { Bubble, Composer, TypingPulse, useDialogueStream } from '../shared/dial
 import { aiProvider } from '../../services/ai-provider-registry';
 import { extractDirectiveFromTurn } from '../../lib/revision-helpers';
 import { useStore } from '../../state';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 import type { DialogueMessage } from '../../types';
 
 const OPENING = 'What is pulling you to revise this — what feels wrong, or unfinished?';

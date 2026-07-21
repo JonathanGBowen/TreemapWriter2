@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../../state';
 import type { AppState } from '../../state';
-import { findSectionById } from '../tests-panel/use-current-section';
+import { findSectionById } from '../shared/use-current-section';
 
 /** The prose the Parallel Editor currently operates on. */
 export interface ParallelScope {

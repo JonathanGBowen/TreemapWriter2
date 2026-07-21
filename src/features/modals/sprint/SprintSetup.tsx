@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { ModalShell } from '../ModalShell';
+import { ModalShell } from '../shared/ModalShell';
 import { ShapeCard } from './ShapeCard';
 import { DEFAULT_ARGUMENT_SHAPES } from '../../../lib/argumentShapes';
 import type { ArgumentShape } from '../../../types';

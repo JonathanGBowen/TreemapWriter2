@@ -3,7 +3,7 @@ import { useAmbientCue } from './use-ambient-cue';
 import { useReentryOpening } from './use-reentry-opening';
 import { useUnstickOpening } from './use-open-dialogue';
 import { useStore } from '../../state';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 
 /**
  * The Quiet-target re-entry marker. Replaces the floating "You were here" nudge

@@ -5,7 +5,7 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { DEFAULT_PERSONAS } from '../../lib/defaultPersonas';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 import type { DirectiveSuggestion, Persona } from '../../types';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');

@@ -8,7 +8,7 @@ import { computeCentering, formatStructuralEvidence } from '../modals/topo/topo-
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
-import { useCurrentSection } from './use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 
 /**
  * Sections with a gestalt op (whole-from-part or recenter) in flight. Module-level

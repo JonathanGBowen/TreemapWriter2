@@ -1,5 +1,5 @@
 import { useStore } from '../../state';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from './use-current-section';
 import { checkContextFit } from '../../services/ai/context-budget';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { resolveActiveInstruction } from '../../lib/defaultInstructions';

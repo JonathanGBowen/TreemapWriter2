@@ -4,7 +4,7 @@ import { useStore } from "../../state";
 import { Pip } from "../shared/Pip";
 import { useColumnResize } from "../shared/useColumnResize";
 import { ResizeHandle } from "../shared/ResizeHandle";
-import { useCurrentSection } from "./use-current-section";
+import { useCurrentSection } from '../shared/use-current-section';
 import { SpecTab } from "./SpecTab";
 import { AnalysisTab } from "./AnalysisTab";
 import { DialogueTab } from "./DialogueTab";

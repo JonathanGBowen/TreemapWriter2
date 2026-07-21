@@ -4,7 +4,7 @@ import { SECTION_FUNCTIONS } from "../../lib/constants";
 import { buildStructuralSurround } from "../../lib/diagnostic-helpers";
 import { selectSpecMap } from "../../lib/spec-map";
 import { useStore } from "../../state";
-import { useCurrentSection } from "./use-current-section";
+import { useCurrentSection } from '../shared/use-current-section';
 import { Pip } from "../shared/Pip";
 import { Disclosure } from "../shared/Disclosure";
 import { PanelHeader } from "./PanelHeader";

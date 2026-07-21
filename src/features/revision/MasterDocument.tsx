@@ -4,7 +4,7 @@ import { EditorView } from '@codemirror/view';
 import { baseMarkdownExtensions } from '../editor/extensions';
 import { findProposalOffset } from '../../lib/revision-helpers';
 import { useStore } from '../../state';
-import { useCurrentSection } from '../tests-panel/use-current-section';
+import { useCurrentSection } from '../shared/use-current-section';
 import {
   revisionPreviewExtensions,
   setPreviewEffect,
