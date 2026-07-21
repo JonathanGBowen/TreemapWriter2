@@ -683,7 +683,6 @@ export const App = () => {
     { id: 'goal-map', label: 'Goal map', hint: 'Section goal editor', glyph: '▦', run: () => useStore.getState().setShowSectionMapModal(true) },
     { id: 'dependencies', label: 'Dependencies', hint: 'Section graph', glyph: '◈', run: () => useStore.getState().setShowGraphModal(true) },
     { id: 'prompts', label: 'Prompts', hint: 'AI routing', glyph: '❝', run: () => useStore.getState().setShowPromptsGraphModal(true) },
-    { id: 'raw-data', label: 'Raw data', hint: 'JSON editor', glyph: '{}', run: () => useStore.getState().setShowProjectFileModal(true) },
     { id: 'compare', label: 'Compare versions', hint: 'A/B evaluation', glyph: '≈', run: () => useStore.getState().openCompare() },
     { id: 'spec-test', label: 'Spec test', hint: 'A/B against the rubric · whole + parts', glyph: '▣', run: () => useStore.getState().openSpecTest() },
     { id: 'climate', label: 'Climate', hint: 'Atmospheric report', glyph: '≋', run: () => useStore.getState().openClimate() },
@@ -692,6 +691,10 @@ export const App = () => {
     { id: 'snapshot', label: 'Snapshot now', hint: 'Commit a labeled version', glyph: '◆', shortcut: '⌘S', run: handleManualSave },
     { id: 'new-project', label: 'New project', glyph: '＋', run: () => createNewProject() },
     { id: 'open-projects', label: 'Open projects', glyph: '◇', run: () => useStore.getState().setShowProjectModal(true) },
+    { id: 'sync', label: 'Sync', hint: 'GitHub remote · status & setup', glyph: '⇅', run: () => useStore.getState().setShowSyncConfigModal(true) },
+    ...(isTauri()
+      ? [{ id: 'new-from-remote', label: 'New from remote', hint: 'Clone, or create & publish', glyph: '↓', run: () => useStore.getState().setShowRemoteProjectModal(true) }]
+      : []),
     { id: 'export-markdown', label: 'Export markdown', glyph: '↧', run: handleExportMarkdown },
     { id: 'export-project', label: 'Export project', hint: '.socratic', glyph: '↧', run: handleExportProject },
     { id: 'export-specs', label: 'Export specs', hint: '.json', glyph: '↧', run: handleExportSpecs },

@@ -278,14 +278,6 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
       meta = [];
     }
 
-    if (meta.length === 0) {
-      const migrated = await repo.migrateVeryOldLegacy();
-      if (migrated) {
-        meta.push(migrated.meta);
-        await repo.setMeta(meta);
-      }
-    }
-
     set({ projectList: meta });
 
     if (meta.length > 0) {
@@ -449,14 +441,30 @@ export const createProjectStateSlice: StateCreator<AppState, [], [], ProjectStat
     set({ projectList: await repo.getMeta() });
     const ok = await get().loadProject(meta.id);
     if (!ok) throw new Error('Project created, but its data could not be loaded.');
-    // Attach + publish. The remote is expected to be empty.
-    await setSecret('git', token.trim());
-    await repo.configureRemote(url.trim());
-    const result = await repo.syncPush();
-    if (result.kind === 'nonFastForward') {
-      throw new Error('Remote already has commits — use Clone to load it instead.');
+    // Attach + publish through the sync policy so its watchers rebind to the
+    // new remote. Failures past this point are partial success, not errors:
+    // the project exists and is open, so rolling back would delete user data,
+    // and re-submitting this modal would fail on the now non-empty folder.
+    // Recovery routes through the Sync modal instead. (Dynamic import: state
+    // slices can't statically import sync-policy — it imports the store.)
+    const { attachRemote } = await import('../services/sync-policy');
+    try {
+      const result = await attachRemote(url, token);
+      if (result.kind === 'nonFastForward') {
+        toast.error(
+          `Created "${meta.name}" locally — the remote already has commits. ` +
+            'Resolve from the sync indicator, or use Clone for existing remotes.',
+        );
+        return true;
+      }
+      toast.success(`Created "${meta.name}" and published to the remote.`);
+    } catch (e) {
+      const msg = String((e as { message?: string })?.message ?? e);
+      toast.error(
+        `Created "${meta.name}" locally; publishing failed: ${msg}. ` +
+          'Open Sync (◇ menu) to fix the URL or token.',
+      );
     }
-    toast.success(`Created "${meta.name}" and published to the remote.`);
     return true;
   },
 

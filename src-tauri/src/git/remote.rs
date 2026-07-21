@@ -18,13 +18,40 @@
 // 3. Branch is whatever HEAD points to (commonly "main"); not hardcoded.
 
 use crate::error::AppResult;
-use crate::types::{PullOutcome, PushOutcome, SyncState};
+use crate::types::{PullOutcome, PushOutcome, SyncFailure, SyncState};
 use git2::{
     Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository, StatusOptions,
 };
 use std::path::Path;
 
 const REMOTE_NAME: &str = "origin";
+
+/// Classify a libgit2 remote-op error into a `SyncFailure` the TS sync policy
+/// can act on without parsing prose. This is the ONE place error text is
+/// inspected, and only against libgit2's own untranslated strings — the
+/// locale-fragile English matching that used to live in sync-policy.ts is
+/// demoted to a fallback for unclassified throws.
+pub(crate) fn classify_git_error(e: &git2::Error) -> SyncFailure {
+    use git2::{ErrorClass, ErrorCode};
+    let msg = e.message();
+    let lower = msg.to_lowercase();
+    let code = if e.class() == ErrorClass::Net || e.code() == ErrorCode::Timeout {
+        "network"
+    } else if e.class() == ErrorClass::Callback
+        || (e.class() == ErrorClass::Http
+            && (lower.contains("401")
+                || lower.contains("403")
+                || lower.contains("authentication")
+                || lower.contains("authorization")))
+    {
+        // Callback = our credential callback was exhausted (bad/expired PAT);
+        // Http 401/403 = the server rejected the token outright.
+        "auth"
+    } else {
+        "other"
+    };
+    SyncFailure::new(code, msg)
+}
 
 /// Create or update the `origin` remote URL.
 pub fn configure_remote(repo: &Repository, url: &str) -> AppResult<()> {
@@ -102,7 +129,12 @@ pub fn pull(repo: &Repository, token: &str) -> AppResult<PullOutcome> {
     });
     let mut fetch_opts = FetchOptions::new();
     fetch_opts.remote_callbacks(callbacks);
-    remote.fetch(&[&branch], Some(&mut fetch_opts), None)?;
+    // The fetch is the network step — classify its failures for the sync
+    // policy instead of erroring. Everything after it is local git work,
+    // where a failure is a genuine internal error and stays Err.
+    if let Err(e) = remote.fetch(&[&branch], Some(&mut fetch_opts), None) {
+        return Ok(PullOutcome::Failed { failure: classify_git_error(&e) });
+    }
 
     // Analyze: up-to-date, fast-forward, or would require merge.
     let fetch_head = repo.find_reference("FETCH_HEAD")?;
@@ -189,21 +221,38 @@ pub fn push(repo: &Repository, token: &str) -> AppResult<PushOutcome> {
                 let tracking = format!("refs/remotes/{}/{}", REMOTE_NAME, branch);
                 let _ = repo.reference(&tracking, local_oid, true, "sync push: advance tracking ref");
             }
-            let commits = ahead_known.map(|(a, _)| a).unwrap_or(0);
+            // On a first push there is no upstream ref, so ahead_known is
+            // None — but everything reachable from HEAD is exactly what was
+            // pushed, so count that instead of under-reporting 0.
+            let commits = match ahead_known.map(|(a, _)| a) {
+                Some(a) => a,
+                None => count_commits_from_head(repo).unwrap_or(0),
+            };
             Ok(PushOutcome::Pushed { commits })
         }
         Err(e) => {
-            // git2 surfaces non-fast-forward as a specific class+code.
-            if e.class() == git2::ErrorClass::Reference
+            // git2 surfaces non-fast-forward as a specific code; check it
+            // first, keeping the class/string fallbacks for server-side
+            // rejections that arrive without the code.
+            if e.code() == git2::ErrorCode::NotFastForward
+                || e.class() == git2::ErrorClass::Reference
                 || e.message().to_lowercase().contains("non-fast-forward")
                 || e.message().to_lowercase().contains("rejected")
             {
                 Ok(PushOutcome::NonFastForward)
             } else {
-                Err(e.into())
+                Ok(PushOutcome::Failed { failure: classify_git_error(&e) })
             }
         }
     }
+}
+
+/// Number of commits reachable from HEAD. Used to report an accurate count
+/// for the very first push, when no upstream tracking ref exists yet.
+fn count_commits_from_head(repo: &Repository) -> AppResult<u32> {
+    let mut walk = repo.revwalk()?;
+    walk.push_head()?;
+    Ok(walk.count() as u32)
 }
 
 /// Purely-local snapshot of the project's git state. No network. Used by
@@ -346,9 +395,12 @@ mod tests {
         assert_eq!(remote_url(&a).unwrap().as_deref(), Some(url.as_str()));
 
         // First push to a brand-new remote (no upstream tracking ref yet).
+        // The count must come from the HEAD revwalk fallback — there is no
+        // upstream ref to diff against, and reporting 0 undercounted the
+        // very first publish in the UI toast.
         commit(&a, "line one\n");
         match push(&a, "tok").unwrap() {
-            PushOutcome::Pushed { .. } => {}
+            PushOutcome::Pushed { commits } => assert_eq!(commits, 1),
             other => panic!("expected Pushed, got {other:?}"),
         }
         // Re-pushing with no new commits → UpToDate (the tracking ref that
@@ -422,6 +474,51 @@ mod tests {
             std::fs::read_to_string(dest.join("project.md")).unwrap(),
             "seeded prose\n"
         );
+    }
+
+    #[test]
+    fn classify_git_error_buckets() {
+        use git2::{Error, ErrorClass, ErrorCode};
+        // Network-class errors (offline, DNS, refused) → "network": the sync
+        // policy settles silently instead of latching a scary error.
+        let net = Error::new(ErrorCode::GenericError, ErrorClass::Net, "failed to connect");
+        assert_eq!(classify_git_error(&net).code, "network");
+        let timeout = Error::new(ErrorCode::Timeout, ErrorClass::Os, "timed out");
+        assert_eq!(classify_git_error(&timeout).code, "network");
+
+        // Credential-callback exhaustion and HTTP 401/403 → "auth": latch and
+        // route the user to the sync config modal.
+        let cb = Error::new(ErrorCode::Auth, ErrorClass::Callback, "callback returned error");
+        assert_eq!(classify_git_error(&cb).code, "auth");
+        let http401 = Error::new(
+            ErrorCode::GenericError,
+            ErrorClass::Http,
+            "unexpected http status code: 401",
+        );
+        assert_eq!(classify_git_error(&http401).code, "auth");
+
+        // Everything else → "other", message carried verbatim.
+        let other = Error::new(ErrorCode::GenericError, ErrorClass::Repository, "boom");
+        let f = classify_git_error(&other);
+        assert_eq!(f.code, "other");
+        assert_eq!(f.message, "boom");
+    }
+
+    #[test]
+    fn push_to_unreachable_https_remote_reports_classified_failure() {
+        // End-to-end through push(): an https remote on an unresolvable
+        // `.invalid` host (RFC 6761 — no packet leaves the machine) must come
+        // back as a classified Failed outcome, not an Err. DNS failure
+        // surfaces as ErrorClass::Net → "network" (some libgit2 builds report
+        // it via Os/Http; accept any classification, the point is Failed).
+        let tmp = tempfile::tempdir().unwrap();
+        let a = init_work_repo(&tmp.path().join("a"));
+        commit(&a, "x\n");
+        configure_remote(&a, "https://treemapwriter.invalid/x.git").unwrap();
+        match push(&a, "tok").unwrap() {
+            PushOutcome::Failed { failure } => assert!(!failure.message.is_empty()),
+            other => panic!("expected Failed, got {other:?}"),
+        }
     }
 
     #[test]

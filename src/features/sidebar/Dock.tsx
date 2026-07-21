@@ -35,7 +35,6 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
   const setShowSectionMapModal = useStore((s) => s.setShowSectionMapModal);
   const setShowGraphModal = useStore((s) => s.setShowGraphModal);
   const setShowPromptsGraphModal = useStore((s) => s.setShowPromptsGraphModal);
-  const setShowProjectFileModal = useStore((s) => s.setShowProjectFileModal);
   const openCompare = useStore((s) => s.openCompare);
   const openSpecTest = useStore((s) => s.openSpecTest);
   const openClimate = useStore((s) => s.openClimate);
@@ -99,7 +98,6 @@ export function Dock({ onContinue, caption, setCaption }: DockProps) {
     { g: '≣', name: 'Outline Doctor — reverse-outline diagnosis, revision checklist', aria: 'Outline Doctor', onClick: () => openDoctor() },
     { g: '▤', name: 'Progress — accumulated evidence', aria: 'Progress', onClick: () => openDashboard() },
     { g: '❝', name: 'Prompts — AI routing', aria: 'Prompts', onClick: () => setShowPromptsGraphModal(true) },
-    { g: '{}', name: 'Raw data — JSON editor', aria: 'Raw data', onClick: () => setShowProjectFileModal(true) },
   ];
 
   return (

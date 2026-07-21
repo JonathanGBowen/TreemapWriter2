@@ -34,6 +34,19 @@ describe('ui-state slice', () => {
     expect(store.getState().syncError).toBe('remote diverged');
   });
 
+  it('syncError and syncErrorCode latch and clear as a pair', () => {
+    store.getState().setSyncError('token rejected', 'auth');
+    expect(store.getState().syncErrorCode).toBe('auth');
+    // Message without a code defaults the code to null…
+    store.getState().setSyncError('something else');
+    expect(store.getState().syncErrorCode).toBeNull();
+    // …and clearing the message always clears any code with it.
+    store.getState().setSyncError('token rejected', 'auth');
+    store.getState().setSyncError(null, 'auth');
+    expect(store.getState().syncError).toBeNull();
+    expect(store.getState().syncErrorCode).toBeNull();
+  });
+
   it('panel-width setters persist their value', () => {
     store.getState().setSidebarWidth(400);
     store.getState().setTestsPanelWidth(300);

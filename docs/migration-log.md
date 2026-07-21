@@ -5884,3 +5884,71 @@ moves. Desktop: `.twriter/outline-doctor.json` appears and round-trips.
 **How to roll back.** Revert the four `doctor:` commits. Additive throughout —
 no existing schema changed; a project that has written `outline-doctor.json`
 simply carries an unread sidecar after a rollback.
+
+## 2026-07-13 — GitHub-sync repair wave: lifecycle fix, classified errors, one modal grammar, legacy pruning
+
+**What changed.** A four-commit repair of the project-management / remote-sync
+stack, fixing its one real functional bug, hardening error handling, unifying
+the sync UI on `ModalShell`, and deleting two defunct surfaces.
+
+- **Lifecycle** (`sync: fix dormant policy after mid-session remote attach`).
+  `initSyncPolicy` gates its commit watcher and `online` listener on
+  `hasRemote`, so a remote configured *after* the project opened (Sync modal,
+  or create-with-remote) never auto-pushed or pulled until relaunch — the App
+  init effect keys on `[activeProjectId, hasOpenProject]`, neither of which
+  changes when a remote is attached. New `attachRemote(url, token)` in
+  `sync-policy.ts` is the one sanctioned attach orchestration (keyring →
+  `configureRemote` → one validating push) and rebinds the policy in a
+  `finally`, so even a failed validation leaves sync live and latching
+  honestly. `createProjectWithRemote` now treats publish failure as honest
+  partial success (project survives, toast routes recovery through the Sync
+  modal) instead of throwing with a configured-but-dormant origin.
+- **Classified errors** (`sync: classify remote failures on the Rust side…`).
+  Transient-vs-persistent was decided by matching English substrings of git
+  error prose in TS — locale-fragile, so an offline blip could latch a scary
+  error. `PullOutcome`/`PushOutcome` gain a `Failed { failure: { code,
+  message } }` variant, classified once in Rust against libgit2's error
+  class/code (`network` | `auth` | `noPat` | `other`); a missing PAT is an
+  expected state (`noPat`), not a thrown string. The TS policy switches on the
+  code (network settles silently; auth/noPat latch with `syncErrorCode` so the
+  sidebar pip routes to sync setup, replacing the `/pat/i` prose sniff); the
+  old substring list survives only as a fallback for unclassified throws.
+  Also: push detects non-fast-forward by `ErrorCode` first, and a first
+  publish reports its real commit count via a HEAD revwalk instead of 0.
+  Serde-contract tests pin the `failed` wire shape on both enums.
+- **One modal grammar** (`sync UI: unify the five sync/project modals…`).
+  SyncConfig, RemoteProject, ConflictResolution, ExternalChange, and Confirm
+  had drifted into three visual dialects; all now share `ModalShell`'s frame,
+  ESC/ENTER grammar, and footer idiom (ConfirmModal keeps its prop-driven API
+  and z-110 stacking). **SyncConfigModal is now the sync home**: with a remote
+  it shows the live status pip (`summarizeSync`), remote URL, branch,
+  ahead/behind, and any latched error, with `Sync now` / `Change remote…`;
+  without one, the setup form. The duplicated URL+PAT fields moved to a shared
+  `RemoteAuthFields`. Discoverability: ⌘K gains `Sync` and (desktop) `New from
+  remote`; the sidebar pip is clickable in every state — conflict resolves,
+  token errors configure, other errors retry, idle opens the status view.
+- **Pruning** (`remove the legacy Raw-data JSON editor and the pre-IndexedDB
+  migration`). `ProjectFileModal` + `StructuredJsonEditor` (the last pre-HLD
+  surface; its "Save Globally" silently persisted only a subset of
+  `StoredProjectData`) are deleted along with the Dock `{}` row, palette
+  `raw-data` entry, and store flag — every field it edited has a first-class
+  surface, and the on-disk files stay hand-editable. `migrateVeryOldLegacy`
+  (the pre-IndexedDB `socratic_project_v1` importer; a hard no-op on desktop)
+  is removed from the `Repository` interface, both impls, and
+  `loadInitialState`. Both deletions owner-approved.
+
+**How to verify.** `npm test` (819), `npm run typecheck`, `npm run lint`
+(hex guardrail still 0), `npm run build`, `cargo test` in `src-tauri/` (61,
+needs the GTK dev libs). The bug-1 regression test is
+`sync-policy.test.ts` → "attachRemote after a no-remote init". Manual desktop
+QA that can't run headless: open a local-only project → ◇ menu → Sync →
+configure → edit + snapshot → an automatic push lands within ~5s *without a
+relaunch*; create-with-remote against a non-empty repo (project survives with
+guidance); a real 401 vs offline blip latching vs settling; first-publish
+toast count.
+
+**How to roll back.** Revert the four commits (they are independent except
+that the TS `failed` handling and the Rust `Failed` variant must revert
+together). The wire change is additive — an older front-end reading a newer
+binary's `failed` outcome would fall into the switch default (reads as
+success), which is why the pair ships in one commit.
