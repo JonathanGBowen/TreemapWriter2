@@ -20,6 +20,7 @@ const config: PromptsConfig = {
   refactorAnalysisPrompt: '',
   dialoguePrompt: '',
   directiveDialoguePrompt: '',
+  interlocutorPrompt: '',
   generateRevisionsPrompt: '',
   generateReverseOutlinePrompt: '',
   regenerateParagraphPrompt: '',

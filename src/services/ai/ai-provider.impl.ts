@@ -55,6 +55,7 @@ import type {
   AnalyzeSectionInput,
   RefactorAnalysisInput,
   ContinueDialogueInput,
+  InterlocutorTurnInput,
   GenerateRevisionsInput,
   AuditSourceUsageInput,
   GenerateReverseOutlineInput,
@@ -165,7 +166,13 @@ function buildCoachPrompt(input: CoachAdviceInput): string {
   const partsBlock = partsSummary
     ? `\n\nSTRUCTURAL PARTS (the argument's discovered configuration — cross-section couplings the per-section table above cannot express):\n${partsSummary}\n`
     : '';
-  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}`;
+  const activityBlock = input.activityBrief
+    ? `\n\nRECENT ACTIVITY (the canonical session/git record — trust it; do not re-derive):\n${input.activityBrief}\n`
+    : '';
+  const memoBlock = input.memorandum?.trim()
+    ? `\n\nMEMORANDUM (the writer's standing intent — honor it; do not reopen a settled decision):\n${input.memorandum.trim()}\n`
+    : '';
+  return `\n${input.config.coachPrompt}\n\nDocument Size: ${input.markdown.length} characters\nTotal Sections: ${input.sections.length}\n\nCURRENT STRUCTURE OVERVIEW (Focus on where things are 'stale', 'fail', or 'draft', and where moves are missing):\n${JSON.stringify(structureData, null, 2)}\n${partsBlock}${activityBlock}${memoBlock}`;
 }
 
 export interface ProviderClients {
@@ -990,6 +997,9 @@ export class MultiProviderAIProvider implements AIProvider {
       input.config.dialoguePrompt,
       `CONTEXT:\n${input.context}`,
       analysisJson ? `CURRENT ANALYSIS (JSON):\n${analysisJson}` : '',
+      input.sectionText
+        ? `SECTION${input.sectionTitle ? ` "${input.sectionTitle}"` : ''} (FULL TEXT):\n---\n${input.sectionText}\n---`
+        : '',
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -1000,6 +1010,37 @@ export class MultiProviderAIProvider implements AIProvider {
 
     const choice = this.choose('continueDialogue', input);
     const stream = this.dispatch(choice, 'continueDialogue').streamText({
+      model: choice.model,
+      messages,
+      systemInstruction,
+      thinkingBudget: choice.thinkingBudget,
+    });
+    for await (const chunk of stream) {
+      yield chunk;
+    }
+  }
+
+  /**
+   * One streamed anchored-opening turn (re-entry / coach-plan / unstick).
+   * Stateless like continueDialogue; the system instruction is the LOCKED house
+   * voice + the editable interlocutor base + the opening's label and its
+   * deterministic context record (assembled by the caller, verbatim what the
+   * writer can see). The deposit contract travels inside the opening context.
+   */
+  async *interlocutorTurn(input: InterlocutorTurnInput): AsyncIterable<string> {
+    const systemInstruction = [
+      getPromptText('interlocutorVoice'),
+      input.config.interlocutorPrompt,
+      `OPENING: ${input.opening.label}`,
+      `CONTEXT:\n${input.opening.context}`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const messages: LLMMessage[] = input.messages.map((m) => ({ role: m.role, text: m.text }));
+
+    const choice = this.choose('interlocutorTurn', input);
+    const stream = this.dispatch(choice, 'interlocutorTurn').streamText({
       model: choice.model,
       messages,
       systemInstruction,

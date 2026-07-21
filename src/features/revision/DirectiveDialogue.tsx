@@ -1,12 +1,13 @@
 // Socratic directive extraction — a short, streaming inquiry-rule dialogue that
 // converges on the pass's primary intent and hands one engine-ready directive to
 // the directive box. Ephemeral by design (the transcript dies with the panel);
-// mirrors the sprint CoachChat idiom, inline in the config column so the master
-// document stays visible.
+// renders through the shared dialogue kit, inline in the config column so the
+// master document stays visible.
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Pip } from '../shared/Pip';
+import { Bubble, Composer, TypingPulse, useDialogueStream } from '../shared/dialogue';
 import { aiProvider } from '../../services/ai-provider-registry';
 import { extractDirectiveFromTurn } from '../../lib/revision-helpers';
 import { useStore } from '../../state';
@@ -14,6 +15,9 @@ import { useCurrentSection } from '../tests-panel/use-current-section';
 import type { DialogueMessage } from '../../types';
 
 const OPENING = 'What is pulling you to revise this — what feels wrong, or unfinished?';
+
+/** Mutex/live-bubble key: one directive dialogue exists at a time, by design. */
+const STREAM_KEY = 'directive-dialogue';
 
 /** A model turn with its fenced directive block removed (shown in the confirm box instead). */
 const bubbleText = (text: string): string =>
@@ -27,14 +31,15 @@ interface DirectiveDialogueProps {
 export function DirectiveDialogue({ onConfirm, onClose }: DirectiveDialogueProps) {
   const currentSection = useCurrentSection();
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [streaming, setStreaming] = useState(false);
-  const [streamedText, setStreamedText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saveToLibrary, setSaveToLibrary] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { streaming: liveTurn, runTurn } = useDialogueStream();
+  const streaming = liveTurn?.key === STREAM_KEY;
+  const streamedText = streaming ? liveTurn.text : '';
 
   const hasUserTurn = messages.some((m) => m.role === 'user');
 
@@ -42,22 +47,19 @@ export function DirectiveDialogue({ onConfirm, onClose }: DirectiveDialogueProps
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages.length, streaming, streamedText.length, finalizing]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (raw: string) => {
+    const text = raw.trim();
     if (!text || streaming || !currentSection) return;
     const next = [...messages, { role: 'user' as const, text }];
     setMessages(next);
-    setInput('');
-    setStreaming(true);
-    setStreamedText('');
     setError(null);
     const st = useStore.getState();
     const sourceSummaries = st.sources
       .filter((s) => st.selectedSourceIds.includes(s.id))
       .map((s) => ({ label: s.label, role: s.role }));
-    try {
-      let acc = '';
-      for await (const chunk of aiProvider.directiveDialogueTurn({
+    await runTurn({
+      key: STREAM_KEY,
+      stream: aiProvider.directiveDialogueTurn({
         sectionTitle: currentSection.title,
         sectionText: currentSection.fullContent,
         mode: st.revisionMode,
@@ -65,25 +67,24 @@ export function DirectiveDialogue({ onConfirm, onClose }: DirectiveDialogueProps
         currentDirective: st.directive,
         messages: next,
         config: st.promptsConfig,
-      })) {
-        acc += chunk;
-        setStreamedText(acc);
-      }
-      setMessages((m) => [...m, { role: 'model', text: acc }]);
-      // The partner signals convergence with a fenced {directive} block — when it
-      // lands, move straight to the confirm box (prefilled, still editable).
-      const extracted = extractDirectiveFromTurn(acc);
-      if (extracted) {
-        setDraft(extracted);
-        setFinalizing(true);
-      }
-    } catch (e) {
-      console.error('[DirectiveDialogue] turn failed', e);
-      setError('Partner unavailable — type the directive directly in the box above.');
-    } finally {
-      setStreaming(false);
-      setStreamedText('');
-    }
+      }),
+      // The transcript is ephemeral; a half-streamed reply is noise, not data.
+      commitPartial: false,
+      onCommit: (acc) => {
+        setMessages((m) => [...m, { role: 'model', text: acc }]);
+        // The partner signals convergence with a fenced {directive} block — when it
+        // lands, move straight to the confirm box (prefilled, still editable).
+        const extracted = extractDirectiveFromTurn(acc);
+        if (extracted) {
+          setDraft(extracted);
+          setFinalizing(true);
+        }
+      },
+      onError: (e) => {
+        console.error('[DirectiveDialogue] turn failed', e);
+        setError('Partner unavailable — type the directive directly in the box above.');
+      },
+    });
   };
 
   const beginFinalize = () => {
@@ -126,15 +127,11 @@ export function DirectiveDialogue({ onConfirm, onClose }: DirectiveDialogueProps
       </div>
 
       <div ref={scrollRef} className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
-        <PartnerBubble text={OPENING} />
-        {messages.map((m, idx) =>
-          m.role === 'user' ? (
-            <UserBubble key={idx} text={m.text} />
-          ) : (
-            <PartnerBubble key={idx} text={bubbleText(m.text)} />
-          ),
-        )}
-        {streaming && (streamedText ? <PartnerBubble text={bubbleText(streamedText)} /> : <TypingPulse />)}
+        <Bubble message={{ role: 'model', text: OPENING }} />
+        {messages.map((m, idx) => (
+          <Bubble key={idx} message={m.role === 'model' ? { ...m, text: bubbleText(m.text) } : m} />
+        ))}
+        {streaming && (streamedText ? <Bubble message={{ role: 'model', text: bubbleText(streamedText) }} /> : <TypingPulse />)}
       </div>
 
       {error && (
@@ -184,70 +181,23 @@ export function DirectiveDialogue({ onConfirm, onClose }: DirectiveDialogueProps
           </div>
         </div>
       ) : (
-        <div className="flex gap-1.5">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void send();
-            }}
-            placeholder="Answer the partner…"
-            className="flex-1 min-w-0 bg-hld-bg border border-hld-border focus:border-hld-cyan outline-none text-hld-text font-mono text-[11.5px] px-2.5 py-2"
-          />
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={!input.trim() || streaming}
-            className="w-[34px] flex items-center justify-center border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan transition-all disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
-            title="Send"
-          >
-            <Send size={12} />
-          </button>
-          <button
-            type="button"
-            onClick={beginFinalize}
-            disabled={!hasUserTurn || streaming}
-            title="Distill the conversation into the directive now"
-            className="px-2.5 border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
-          >
-            Use this →
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PartnerBubble({ text }: { text: string }) {
-  return (
-    <div className="mr-auto max-w-[92%] text-[11.5px] leading-relaxed bg-hld-surface-2 border border-hld-border text-hld-text px-2.5 py-2 whitespace-pre-wrap">
-      <div className="flex items-center gap-1.5 font-mono text-[8px] tracking-[0.16em] uppercase text-hld-cyan mb-1">
-        <Pip status="cyan" size="sm" /> Partner
-      </div>
-      {text}
-    </div>
-  );
-}
-
-function UserBubble({ text }: { text: string }) {
-  return (
-    <div className="ml-auto max-w-[92%] text-[11.5px] leading-relaxed border-l-2 border-hld-cyan/40 bg-hld-cyan/5 text-hld-text px-2.5 py-2 whitespace-pre-wrap">
-      <div className="font-mono text-[8px] tracking-[0.16em] uppercase text-hld-muted-text mb-1">You</div>
-      {text}
-    </div>
-  );
-}
-
-function TypingPulse() {
-  return (
-    <div className="mr-auto flex gap-[5px] p-2 w-fit border border-hld-border bg-hld-surface-2">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="w-[4px] h-[4px] rotate-45 bg-hld-cyan animate-pulse"
-          style={{ animationDelay: `${i * 150}ms` }}
+        <Composer
+          canSend={!streaming && !!currentSection}
+          onSend={(text) => void send(text)}
+          placeholder="Answer the partner…"
+          trailing={
+            <button
+              type="button"
+              onClick={beginFinalize}
+              disabled={!hasUserTurn || streaming}
+              title="Distill the conversation into the directive now"
+              className="px-2.5 border border-hld-border text-hld-muted-text hover:text-hld-cyan hover:border-hld-cyan/40 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
+            >
+              Use this →
+            </button>
+          }
         />
-      ))}
+      )}
     </div>
   );
 }

@@ -94,6 +94,14 @@ export interface StoredProjectData {
    * writer adds a source.
    */
   sources?: SourceDocument[];
+  /**
+   * The Memorandum — one capped, plain-markdown note of the writer's standing
+   * intent about the work (`.twriter/memorandum.md` on desktop, **committed**).
+   * Unlike the other sidecars this is a bare string, not JSON, and rides an
+   * `Option<String>` Rust mirror (like `localDraft`, but committed). Absent/empty
+   * until first use. See docs/dialogue-design.md §IV.
+   */
+  memorandum?: string;
   cachedCoachAdvice?: { inputHash: string; advice: string } | null;
   revisions?: Snapshot[];
   lastModified?: number;

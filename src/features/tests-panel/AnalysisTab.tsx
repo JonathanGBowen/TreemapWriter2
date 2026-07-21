@@ -166,8 +166,8 @@ function AnalysisEmpty({ busy, onRun, lensName, onOpenGrimoire }: { busy: boolea
   );
 }
 
-/** Concepts · Support · Objections · Source — opened one at a time. Interrogation
- *  lives only here (the Objections "take to dialogue" affordance). */
+/** Concepts · Support · Objections · Source — opened one at a time. Every card of
+ *  the reading carries its ⊕ take-to-dialogue affordance (recognition over recall). */
 function ReadingIndex({ r, sourceDialogue, ask }: { r: SectionAnalysis; sourceDialogue?: DialogueMessage[]; ask: (ctx: string) => void }) {
   return (
     <div className="mt-[2px]">
@@ -178,11 +178,17 @@ function ReadingIndex({ r, sourceDialogue, ask }: { r: SectionAnalysis; sourceDi
               <div key={i} className="text-[13px] leading-relaxed font-sans"><span className="font-semibold text-hld-text">{c.term}</span><span className="text-hld-muted-text-2"> — {c.definition}</span></div>
             ))}
           </div>
+          <div className="mt-[10px] flex justify-end">
+            <Ask onAsk={() => ask(interrogateContextFor.concepts(r))} />
+          </div>
         </Disclosure>
       )}
       {r.supportingArguments.length > 0 && (
         <Disclosure label="Support" count={r.supportingArguments.length}>
           <BulletList items={r.supportingArguments} status="green" />
+          <div className="mt-[10px] flex justify-end">
+            <Ask onAsk={() => ask(interrogateContextFor.support(r))} />
+          </div>
         </Disclosure>
       )}
       {r.potentialObjections.length > 0 && (
@@ -245,14 +251,24 @@ export function AnalysisTab() {
             <div>
               <Zone label="Thesis" />
               <div className="mt-[8px] px-[13px] py-[12px] bg-hld-surface-2/50 border-l-2 border-hld-border text-[13px] leading-relaxed font-sans text-hld-text">{active.result.centralThesis}</div>
+              <div className="mt-[6px] flex justify-end">
+                <Ask onAsk={() => interrogate(interrogateContextFor.thesis(active.result))} />
+              </div>
             </div>
 
             <div>
               <Zone label="Argument" meta={`${active.result.argument.premises.length} premises · ${active.result.argument.implicitPremises.length} implicit`} />
               <ArgumentLadder argument={active.result.argument} />
+              <div className="mt-[10px] flex justify-end">
+                <Ask onAsk={() => interrogate(interrogateContextFor.argument(active.result))} />
+              </div>
             </div>
 
             <ReadingIndex r={active.result} sourceDialogue={active.sourceDialogue} ask={(ctx) => interrogate(ctx)} />
+
+            <div className="flex justify-end pt-[2px]">
+              <Ask onAsk={() => interrogate(interrogateContextFor.entire(active.result))} label="⊕ interrogate this reading" />
+            </div>
           </div>
 
           <ReanalyzeFooter busy={isProcessing} onRun={runAnalysis} />
