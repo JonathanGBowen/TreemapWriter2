@@ -22,7 +22,10 @@ const h = vi.hoisted(() => {
     ui.markdown = '';
     ui.loadProject = vi.fn(() => Promise.resolve());
     ui.setSyncStatus = vi.fn((v: unknown) => { ui.syncStatus = v; });
-    ui.setSyncError = vi.fn((v: unknown) => { ui.syncError = v; });
+    ui.setSyncError = vi.fn((v: unknown, code?: unknown) => {
+      ui.syncError = v;
+      ui.syncErrorCode = v === null ? null : (code ?? null);
+    });
     ui.setSyncCounts = vi.fn((a: number, b: number) => { ui.syncAhead = a; ui.syncBehind = b; });
     ui.setPendingMerge = vi.fn((v: unknown) => { ui.pendingMerge = v; });
     ui.setShowConflictModal = vi.fn((v: unknown) => { ui.showConflictModal = v; });
@@ -34,9 +37,11 @@ const h = vi.hoisted(() => {
     syncPull: vi.fn(),
     syncPush: vi.fn(),
     readMarkdownIfChanged: vi.fn(),
+    configureRemote: vi.fn(),
   };
   const toast = Object.assign(vi.fn(), { error: vi.fn() });
-  return { ui, reset, listeners, repo, toast };
+  const setSecret = vi.fn();
+  return { ui, reset, listeners, repo, toast, setSecret };
 });
 
 vi.mock('../../store', () => ({
@@ -50,9 +55,11 @@ vi.mock('../../store', () => ({
 }));
 vi.mock('../repository-registry', () => ({ repository: h.repo }));
 vi.mock('../tauri-environment', () => ({ isTauri: () => false }));
+vi.mock('../credentials', () => ({ setSecret: h.setSecret }));
 vi.mock('sonner', () => ({ toast: h.toast }));
 
 import {
+  attachRemote,
   initSyncPolicy,
   teardownSyncPolicy,
 } from '../sync-policy';
@@ -194,5 +201,94 @@ describe('sync-policy', () => {
     (h.ui.setSyncCounts as ReturnType<typeof vi.fn>).mockClear();
     teardownSyncPolicy();
     expect(h.ui.setSyncCounts).toHaveBeenCalledWith(0, 0);
+  });
+
+  // Classified `failed` outcomes from the Rust side: the code — not English
+  // message matching — decides latch-vs-settle.
+  it('failed/network settles silently, exactly like a transient throw', async () => {
+    h.repo.syncPull.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'network', message: 'failed to connect to github.com' },
+    });
+    h.repo.syncPush.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'network', message: 'failed to connect to github.com' },
+    });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('idle');
+    expect(h.ui.syncError).toBeNull();
+  });
+
+  it('failed/auth latches with its code so the pip routes to sync config', async () => {
+    h.repo.syncPull.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'auth', message: 'unexpected http status code: 401' },
+    });
+    h.repo.syncPush.mockResolvedValue({
+      kind: 'failed',
+      failure: { code: 'auth', message: 'unexpected http status code: 401' },
+    });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('error');
+    expect(String(h.ui.syncError)).toMatch(/401/);
+    expect(h.ui.syncErrorCode).toBe('auth');
+  });
+
+  it('failed/noPat latches the verbatim guidance with its code', async () => {
+    const failure = { code: 'noPat', message: 'No GitHub PAT configured.' };
+    h.repo.syncPull.mockResolvedValue({ kind: 'failed', failure });
+    h.repo.syncPush.mockResolvedValue({ kind: 'failed', failure });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('error');
+    expect(h.ui.syncError).toBe('No GitHub PAT configured.');
+    expect(h.ui.syncErrorCode).toBe('noPat');
+  });
+
+  // Regression: attaching a remote mid-session must wake the policy. Before
+  // attachRemote existed, init's no-remote early-return skipped the commit
+  // watcher, so a remote configured after open never auto-pushed until relaunch.
+  it('attachRemote after a no-remote init: commits auto-push without a relaunch', async () => {
+    h.repo.syncState.mockResolvedValue({ hasRemote: false, ahead: 0, behind: 0 });
+    await initSyncPolicy();
+    await settle();
+    expect(h.ui.syncStatus).toBe('no-remote');
+
+    // Configuring the remote flips what syncState reports.
+    h.repo.syncState.mockResolvedValue({ hasRemote: true, ahead: 0, behind: 0 });
+    await attachRemote('https://github.com/u/r.git', 'tok ');
+    await settle();
+    expect(h.setSecret).toHaveBeenCalledWith('git', 'tok');
+    expect(h.repo.configureRemote).toHaveBeenCalledWith('https://github.com/u/r.git');
+
+    h.repo.syncPush.mockClear();
+    commit();
+    expect(h.repo.syncPush).not.toHaveBeenCalled(); // still inside the debounce
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(h.repo.syncPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('attachRemote rebinds the policy even when the validating push rejects', async () => {
+    h.repo.syncState.mockResolvedValue({ hasRemote: false, ahead: 0, behind: 0 });
+    await initSyncPolicy();
+    await settle();
+
+    h.repo.syncState.mockResolvedValue({ hasRemote: true, ahead: 1, behind: 0 });
+    h.repo.syncPush.mockRejectedValue(new Error('authentication required'));
+    await expect(attachRemote('https://github.com/u/r.git', 'bad')).rejects.toThrow(
+      /authentication/,
+    );
+    await settle();
+    // The re-init flush ran against the now-remote repo and latched the auth error.
+    expect(h.ui.syncStatus).toBe('error');
+
+    // The commit watcher is live: a later commit schedules a push attempt.
+    h.repo.syncPush.mockClear();
+    h.repo.syncPush.mockResolvedValue({ kind: 'pushed', commits: 1 });
+    commit();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(h.repo.syncPush).toHaveBeenCalled();
   });
 });

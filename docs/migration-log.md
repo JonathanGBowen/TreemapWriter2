@@ -5800,6 +5800,260 @@ project delete confirms), and `theme.3c.tailwind.css` was applied for its
 inversion and custom `--spacing-*` scale (2026-06-26 remediation) were not
 revisited.
 
+---
+
+## 2026-07-10 — Dialogue expansion I: the shared dialogue kit + dead seams lit
+
+First increment of the dialogue-expansion wave (design record:
+[`dialogue-design.md`](dialogue-design.md) — the anchored-corridor law). No new
+AI method, no new persisted data; consolidation + ignition of machinery that
+already existed.
+
+**What changed.**
+
+- **Shared dialogue kit** at `src/features/shared/dialogue/` — the one home for
+  the transcript/bubble/streaming idiom that five surfaces had hand-copied:
+  `Bubble`/`TypingPulse`/`Transcript` (the DialogueTab framing, now canonical),
+  the single-line `Composer` (Enter-to-send, IME-guarded, `trailing` slot — the
+  no-lobby rule lives here: there is no unseeded variant), and
+  `useDialogueStream` / `consumeDialogueStream` (module-level per-key in-flight
+  mutex + accumulate → commit-full / commit-partial-on-error semantics, extracted
+  from `use-analysis-actions` and unit-tested in
+  `__tests__/stream.test.ts`). `DialogueTab` and the Glass-Box
+  `DirectiveDialogue` now render through it (the directive dialogue keeps its
+  fenced-block stripping and inline-error behavior via `commitPartial: false` +
+  `onError`); the sprint `CoachChat` / `SpecChat` migrate opportunistically.
+- **The four dormant interrogation foci wired.** `interrogateContextFor` defined
+  six focus builders but only `objections` had a button. The Analysis tab now
+  carries the quiet `⊕ ask` affordance on Thesis, Argument, Key concepts, and
+  Support, plus `⊕ interrogate this reading` (the `entire` focus) at the foot of
+  the reading — all through the existing `interrogate()` path; `interrogate`
+  gained an optional `targetSectionId` for callers that just re-selected a
+  section.
+- **A deterministic `gaps` focus** — `src/lib/gap-focus.ts` (pure, tested):
+  composes the strain register's signals, the last diagnostic's
+  missing/partial/unclear moves, and its gap→vector `nextAction` into a
+  dialogue seed; null when the structure reports nothing absent. Surfaced as
+  `⊕ Gaps` in the Dialogue tab's empty state and as a per-row `⊕` on the
+  Structural-Tension Register (select + seed in one tap).
+- **`ContinueDialogueInput` extended additively** with optional
+  `sectionTitle`/`sectionText`: a dialogue *about the text* (gaps-seeded, or on
+  a section with no analysis yet) now carries the section prose whole — the
+  classic analysis dialogue keeps its reading-only context. The send path keys
+  on `isGapFocus` and pre-flights the enlarged budget through the existing
+  `guardContextFit`.
+
+**Verify.** `npm test` (775 passing, incl. the new `stream.test.ts` +
+`gap-focus.test.ts`), `npm run typecheck`, `npm run build` all green. Manual:
+the Analysis tab shows `⊕ ask` under Thesis/Argument/Concepts/Support and the
+reading-level ⊕ at the foot; a section with mesh breaks or missing moves shows
+`⊕ Gaps` in the empty Dialogue tab and `⊕` on its strain row; the directive
+dialogue looks and behaves as before (shared bubbles).
+
+**Rollback.** One commit; `git revert`. No persisted-data or schema changes —
+the `ContinueDialogueInput` fields are optional and the dialogue transcript
+shape is untouched.
+
+---
+
+## 2026-07-10 — Dialogue expansion II: the activity spine + the re-entry opening
+
+Second increment (design record: [`dialogue-design.md`](dialogue-design.md)).
+The headline capability: dialogue that reads the recent git/session history and
+converges on where to resume — and the substrate all future openings plug into.
+
+**What changed.**
+
+- **`src/lib/activity-brief.ts`** (pure, tested): a bounded (~1,200-char)
+  RECENT ACTIVITY record composed from `repository.listSessions()` +
+  `listSnapshotMeta()` — last sittings (wish, obstacle, steps, carry-forward),
+  word deltas as **approximate magnitude** (`lib/magnitude.ts`), days-since,
+  and unsessioned snapshots since the last check-out. No AI, no new Rust (the
+  session YAML already carries what the git trailers do). Ships
+  `latestCarryForward` / `carryForwardFragments` — the app's own gap-capture,
+  finally re-surfaced.
+- **`src/lib/dialogue-openings.ts`** (pure, tested): the typed `DialogueOpening`
+  (kind · label · deterministic context · turn budget), the fenced-`{deposit}`
+  contract + `extractOpeningDeposit` / `stripDepositBlock`, and
+  `buildReentryOpening` (activity brief + top strain + current section's
+  gap→vector + a capped section index → a converge-on-`{wish,firstStep,sectionId}`
+  record). An opening with no deposit is definitionally cut.
+- **The interlocutor flow** — the one new streaming method
+  `AIProvider.interlocutorTurn` (impl in `ai-provider.impl.ts`; `AICallKind
+  'interlocutorTurn'` → interactive tier + `AGENT_DEFAULT_KINDS`). Two prompts:
+  **`interlocutor-voice.md`** (LOCKED house voice: ≤3 sentences, one question,
+  point at a location, converge by the 4th exchange) prepended to the editable
+  **`interlocutor.md`** base.
+- **Ephemeral `src/state/dialogue-state.ts`** — one active opening at a time
+  (opening a new one ends the old); `DialogueTab` renders the opening when
+  present, else the persisted analysis dialogue (whose `.spec.yaml` home is
+  untouched). `OpeningDialogue.tsx` + `use-opening-dialogue.ts` drive it with
+  **turn pips** (depleting diamonds) and a **soft yield** at budget (composer
+  dims, exit lights — never a lockout). The exit chip is the only lit action:
+  **→ back to the text** sets `selectedId` (the editor restores the caret +
+  scrolls on section change), **→ session** hands the wish to the check-in via a
+  one-shot `sessionPrefill`.
+- **Entry points (no new chrome):** the `ResumeMarker`'s revealed panel gains
+  **⊕ Where was I?**; the Session check-in surfaces the last check-out's
+  **carry-forward as tappable chips** (tap → wish, no AI) plus the same ⊕, and
+  consumes `sessionPrefill`.
+
+**Verify.** `npm test` (792 passing, incl. `activity-brief.test.ts` +
+`dialogue-openings.test.ts`), `npm run typecheck`, `npm run build` green.
+Manual (no AI key needed): the check-in shows carry-forward chips after a
+checked-out session; ⊕ Where was I? opens the Dialogue tab with a Focus banner,
+turn pips, and a composer; the composer never appears without an opening. **Manual
+AI-path check still pending** (needs an `ANTHROPIC_API_KEY`/`GEMINI_API_KEY`): drive
+a re-entry turn, exhaust the pips, confirm the `{deposit}` chip lands the caret in
+the named section. The coach/`buildReinstatement.extraFragments` history feeds land
+in Increment 3 (the coach is reworked there).
+
+**Rollback.** One commit; `git revert`. New slice + lib + prompts + one optional
+`AICallKind`; no persisted-data or schema changes (the opening transcript is
+ephemeral; `sessionPrefill` is ephemeral UI state).
+
+---
+
+## 2026-07-10 — Dialogue expansion III: coach, and the repointed unstick stall
+
+Third increment (design record: [`dialogue-design.md`](dialogue-design.md)). Two
+more openings on the Increment-2 substrate, and the coach finally reads history.
+
+**What changed.**
+
+- **The coach is history-aware.** `buildCoachPrompt` gains an optional
+  `activityBrief` block (`CoachAdviceInput.activityBrief`); `CoachModal` fetches
+  the record once per open (`repository.listSessions()` + `listSnapshotMeta()` →
+  `buildActivityBrief`) and passes it to `streamCoachAdvice`. The triage now
+  knows what happened last sitting — closing the exploration's headline gap. No
+  extra AI call; omitted → the prior structure-only prompt exactly.
+- **The coach-plan opening — "contest this plan."** After the plan streams, a
+  quiet **⊕ Contest this plan** in the CoachModal footer opens a `coach-plan`
+  opening (`buildCoachPlanOpening`: the plan verbatim + a structure summary +
+  the activity brief) and closes the modal. The writer can push back before
+  committing; it converges on a `{wish,firstStep,sectionId}` deposit — the exit
+  chip lands the caret, or **→ session** hands the wish to the check-in.
+- **The unstick opening — the repointed 90 s stall** (owner-confirmed). The
+  `ResumeMarker`'s stalled ("Still here?") escalation now shows **⊕ Unstick**
+  instead of "Go deeper": a section-grained, three-exchange `unstick` opening
+  (`buildUnstickOpening`: section text + structural surround + held claim + last
+  demand + active sprint step) with exactly three permitted, all-located
+  outcomes — a next action HERE, a recentering, or **permission to stop**
+  ("good enough — move on", jumping to the next section). This is the **first
+  home of the F3 "Good-Enough" gate** (STATUS's highest-leverage open clinical
+  item): permission to stop is a valid, prompt-sanctioned deposit, never
+  model-self-judged perfection. The dock ◍ / non-stalled "Go deeper" keep the
+  whole-document CoachModal; `use-ambient-cue.ts` stays AI-free (AI joins only
+  on the writer's tap). `OpeningDialogue`'s exit chip adapts its label for the
+  good-enough deposit.
+- New hooks `features/coach/use-open-dialogue.ts` (`useCoachPlanOpening` /
+  `useUnstickOpening`) assemble each opening from canonical in-memory state +
+  (coach) the async activity record.
+
+**Verify.** `npm test` (795 passing, incl. the coach-plan/unstick builder
+tests), `npm run typecheck`, `npm run build` green. Manual (no AI key): the
+CoachModal shows ⊕ Contest this plan after a plan lands; a mid-section stall
+turns the resume marker's escalation into ⊕ Unstick. **Manual AI-path check still
+pending** (needs an API key): contest a plan and run an unstick to convergence;
+confirm the good-enough deposit renders "→ good enough · move on" and jumps to the
+next section.
+
+**Deferred by design (named):** the richer *gap* opening — an FTS-snippet-backed
+interlocutor turn on a strain signal with a gated `specEdit` diff proposal — is
+not built; the deterministic gap dialogue (Inc 1: the StrainRegister `⊕` + the
+Dialogue-tab gaps focus, through the persisted analysis channel) already serves
+"help identify gaps." The Sprint / `proposeRecenterings` structured hand-offs
+from a deposit are likewise deferred (each touches another subsystem); the
+coach-plan/unstick deposits currently slingshot via caret-jump + session prefill,
+which is coherent and self-contained.
+
+**Rollback.** One commit; `git revert`. Two pure builders + two hooks + the
+optional `activityBrief` prompt field + UI wiring; no persisted-data or schema
+changes.
+
+---
+
+## 2026-07-10 — Dialogue expansion IV: the Memorandum
+
+Final increment (design record: [`dialogue-design.md`](dialogue-design.md) §IV) —
+the one Rust-touching one. A single, capped, committed note of the writer's
+STANDING INTENT, held honest by a fence.
+
+**What changed.**
+
+- **The persisted-field chain** (`memorandum`, the "new persisted field" recipe,
+  TS + Rust landed together): `StoredProjectData.memorandum?: string`
+  (`repository.ts`) → a `memorandum: string` field + capped `setMemorandum`
+  (`state/document-state.ts`, cap `MEMORANDUM_CAP = 1200` enforced in the one
+  write path) → `performSave` + all three load/reset paths (`project-state.ts`)
+  → **Rust:** `layout.memorandum_md()` = `.twriter/memorandum.md`, an
+  `Option<String>` mirror on the `StoredProjectData` struct (`types.rs`), and
+  read/write in `document.rs` (`read_to_string_optional` / `atomic_write_str`).
+  Unlike the JSON sidecars it is a **bare markdown string** (like `local_draft`)
+  but **committed, not gitignored** — git is its history and its undo. A serde
+  round-trip test (`memorandum_round_trips_through_write_then_read_and_is_optional`)
+  pins it (the 2026-06-24 strict-mirror lesson); both repository impls pass the
+  field through their existing blob path, so no impl-specific change was needed.
+- **The UI** — a collapsed `MemorandumDisclosure` atop the Dialogue tab's empty
+  state, edited in place with a live remaining-char count; **empty ⇒ zero
+  footprint** (no toggle, no flag). Whatever is shown there is verbatim what any
+  prompt receives (the symmetry rule).
+- **Injection** — the Memorandum is prepended verbatim to every anchored opening
+  (re-entry / coach-plan / unstick, via `memorandumBlock` in
+  `dialogue-openings.ts`) and to `buildCoachPrompt`.
+- **Gated self-maintenance** — no new AI call: the interlocutor's terminal
+  `{deposit}` may carry an optional `memorandum` revision; `OpeningDialogue`
+  renders it as a **default-skip diff chip** ("✎ note it") that calls
+  `setMemorandum` on accept. The **no-inference contract** (document-facts and
+  stated commitments only — never a trait claim, never anything derivable from
+  the repo) lives in the **locked** `interlocutor-voice.md`, so it cannot drift.
+
+**Verify.** `npm test` (799 passing, incl. `memorandum.test.ts` cap +
+`dialogue-openings` deposit-memorandum), `npm run typecheck`, `npm run build`
+green; **`cargo test` green (58 passing, incl. the memorandum round-trip)** —
+the GTK/WebKit dev libs were installed in this session, so the desktop chain was
+actually compiled and exercised here (not inspection-only). Manual: the Dialogue
+tab's empty state shows the Memorandum disclosure; typing then reload preserves
+it; empty renders nothing anywhere.
+
+**Rollback.** One commit; `git revert`. Adds a persisted field, so a project
+saved with a memorandum keeps a `.twriter/memorandum.md` a revert would ignore
+(harmless — an unread committed file). No schema migration needed (the field is
+optional everywhere; serde tolerates its absence).
+
+---
+
+**Dialogue expansion — program complete (four increments + the design essay).**
+The right column's dialogue is no longer analysis-tethered: it hosts typed,
+document-anchored **openings** (re-entry, coach-plan, unstick) on one shared kit
+and one `interlocutorTurn` method, each converging on a located deposit that
+slingshots the caret back into the prose; the dormant interrogation foci + a
+deterministic gaps focus are lit; the coach reads recent git/session history; and
+a fenced, capped, committed **Memorandum** carries standing intent. The
+anchored-corridor law ([`docs/dialogue-design.md`](dialogue-design.md)) held
+throughout: no lobby, a terminal artifact per opening, the exit outshining the
+conversation, ephemeral transcripts, and an AI that never initiates. *Deferred by
+design (named in Inc 3):* the FTS/`specEdit` gap opening and the
+Sprint/`proposeRecenterings` deposit hand-offs. *Pending across Inc 2–3:* one
+manual AI-path drive of the live openings (needs an API key).
+
+**Adversarial-review fixes (same day, 2026-07-10).** A four-dimension diff review
+(each finding independently verified) confirmed three defects across the wave;
+all fixed: (1) **opening swapped mid-stream corrupted its successor** — a second
+opening started while a turn streamed could deadlock the new composer and clobber
+its transcript when the stale turn resolved; fixed with a per-open `id`
+(`dialogue-state.ts`), a per-opening stream key + an identity guard on the commit
+(`use-opening-dialogue.ts`), and keying `OpeningDialogue` by that id so a swap
+remounts fresh; (2) **the Memorandum accept chip never re-armed** — a second,
+different proposed revision within one opening stayed unacceptable; fixed by
+resetting on `deposit.memorandum` change; (3) **the activity brief used the
+session START as the check-out boundary**, mislabeling in-session snapshots as
+later unsessioned work; fixed to start + `durationMinutes` (regression test
+added). Also: the empty Memorandum footprint was reduced to a single ghost line
+(the design-doc §IV wording tightened to match — manual first-authorship is
+kept), and a dead `useState` import was removed. The principles and consistency
+dimensions came back clean. `npm test` (800), `typecheck`, `build`, and
+`cargo test` (58) all green.
 ## 2026-07-09 — Reverse Outline Doctor: the Prosthetic Logician ported as a workspace
 
 **What changed.** The legacy "Prosthetic Logician" app (a standalone
@@ -5884,3 +6138,71 @@ moves. Desktop: `.twriter/outline-doctor.json` appears and round-trips.
 **How to roll back.** Revert the four `doctor:` commits. Additive throughout —
 no existing schema changed; a project that has written `outline-doctor.json`
 simply carries an unread sidecar after a rollback.
+
+## 2026-07-13 — GitHub-sync repair wave: lifecycle fix, classified errors, one modal grammar, legacy pruning
+
+**What changed.** A four-commit repair of the project-management / remote-sync
+stack, fixing its one real functional bug, hardening error handling, unifying
+the sync UI on `ModalShell`, and deleting two defunct surfaces.
+
+- **Lifecycle** (`sync: fix dormant policy after mid-session remote attach`).
+  `initSyncPolicy` gates its commit watcher and `online` listener on
+  `hasRemote`, so a remote configured *after* the project opened (Sync modal,
+  or create-with-remote) never auto-pushed or pulled until relaunch — the App
+  init effect keys on `[activeProjectId, hasOpenProject]`, neither of which
+  changes when a remote is attached. New `attachRemote(url, token)` in
+  `sync-policy.ts` is the one sanctioned attach orchestration (keyring →
+  `configureRemote` → one validating push) and rebinds the policy in a
+  `finally`, so even a failed validation leaves sync live and latching
+  honestly. `createProjectWithRemote` now treats publish failure as honest
+  partial success (project survives, toast routes recovery through the Sync
+  modal) instead of throwing with a configured-but-dormant origin.
+- **Classified errors** (`sync: classify remote failures on the Rust side…`).
+  Transient-vs-persistent was decided by matching English substrings of git
+  error prose in TS — locale-fragile, so an offline blip could latch a scary
+  error. `PullOutcome`/`PushOutcome` gain a `Failed { failure: { code,
+  message } }` variant, classified once in Rust against libgit2's error
+  class/code (`network` | `auth` | `noPat` | `other`); a missing PAT is an
+  expected state (`noPat`), not a thrown string. The TS policy switches on the
+  code (network settles silently; auth/noPat latch with `syncErrorCode` so the
+  sidebar pip routes to sync setup, replacing the `/pat/i` prose sniff); the
+  old substring list survives only as a fallback for unclassified throws.
+  Also: push detects non-fast-forward by `ErrorCode` first, and a first
+  publish reports its real commit count via a HEAD revwalk instead of 0.
+  Serde-contract tests pin the `failed` wire shape on both enums.
+- **One modal grammar** (`sync UI: unify the five sync/project modals…`).
+  SyncConfig, RemoteProject, ConflictResolution, ExternalChange, and Confirm
+  had drifted into three visual dialects; all now share `ModalShell`'s frame,
+  ESC/ENTER grammar, and footer idiom (ConfirmModal keeps its prop-driven API
+  and z-110 stacking). **SyncConfigModal is now the sync home**: with a remote
+  it shows the live status pip (`summarizeSync`), remote URL, branch,
+  ahead/behind, and any latched error, with `Sync now` / `Change remote…`;
+  without one, the setup form. The duplicated URL+PAT fields moved to a shared
+  `RemoteAuthFields`. Discoverability: ⌘K gains `Sync` and (desktop) `New from
+  remote`; the sidebar pip is clickable in every state — conflict resolves,
+  token errors configure, other errors retry, idle opens the status view.
+- **Pruning** (`remove the legacy Raw-data JSON editor and the pre-IndexedDB
+  migration`). `ProjectFileModal` + `StructuredJsonEditor` (the last pre-HLD
+  surface; its "Save Globally" silently persisted only a subset of
+  `StoredProjectData`) are deleted along with the Dock `{}` row, palette
+  `raw-data` entry, and store flag — every field it edited has a first-class
+  surface, and the on-disk files stay hand-editable. `migrateVeryOldLegacy`
+  (the pre-IndexedDB `socratic_project_v1` importer; a hard no-op on desktop)
+  is removed from the `Repository` interface, both impls, and
+  `loadInitialState`. Both deletions owner-approved.
+
+**How to verify.** `npm test` (819), `npm run typecheck`, `npm run lint`
+(hex guardrail still 0), `npm run build`, `cargo test` in `src-tauri/` (61,
+needs the GTK dev libs). The bug-1 regression test is
+`sync-policy.test.ts` → "attachRemote after a no-remote init". Manual desktop
+QA that can't run headless: open a local-only project → ◇ menu → Sync →
+configure → edit + snapshot → an automatic push lands within ~5s *without a
+relaunch*; create-with-remote against a non-empty repo (project survives with
+guidance); a real 401 vs offline blip latching vs settling; first-publish
+toast count.
+
+**How to roll back.** Revert the four commits (they are independent except
+that the TS `failed` handling and the Rust `Failed` variant must revert
+together). The wire change is additive — an older front-end reading a newer
+binary's `failed` outcome would fall into the switch default (reads as
+success), which is why the pair ships in one commit.

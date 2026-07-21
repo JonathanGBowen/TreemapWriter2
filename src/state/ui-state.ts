@@ -122,6 +122,13 @@ export interface UIStateSlice {
   // 'conflict' (Phase 5) latches when a merge needs in-app resolution.
   syncStatus: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict';
   syncError: string | null;
+  /**
+   * Classified code for a latched syncError ("network" | "auth" | "noPat" |
+   * "other"), from the Rust SyncFailure wire type. Drives routing (auth/noPat
+   * click-through to the sync config modal) without matching message prose.
+   * Null whenever syncError is null.
+   */
+  syncErrorCode: string | null;
   // Commits the local branch is ahead/behind its upstream. ahead > 0 means
   // unpushed work exists — the indicator must read as such, never "synced".
   syncAhead: number;
@@ -140,7 +147,6 @@ export interface UIStateSlice {
   showSpecModal: boolean;
   showPromptsGraphModal: boolean;
   showSectionMapModal: boolean;
-  showProjectFileModal: boolean;
   /** One sprint surface; `sprintMode` selects goal-framing vs drafting. */
   showSprintModal: boolean;
   sprintMode: 'goal' | 'content';
@@ -177,6 +183,11 @@ export interface UIStateSlice {
   showExternalChangeModal: boolean;
   /** Session ceremony check-in / check-out (the standalone Start/End boundary). */
   showSessionModal: boolean;
+  /**
+   * One-shot check-in prefill handed off from a dialogue deposit (the re-entry
+   * opening's "→ session" chip). Consumed and cleared by the check-in on mount.
+   */
+  sessionPrefill: { wish: string; firstStep?: string } | null;
 
   // Setters
   setSidebarWidth: (w: number) => void;
@@ -217,7 +228,7 @@ export interface UIStateSlice {
   focusWorkspace: (workspace: OpWorkspace) => void;
   setSaveError: (err: string | null) => void;
   setSyncStatus: (status: 'no-remote' | 'idle' | 'pulling' | 'pushing' | 'error' | 'conflict') => void;
-  setSyncError: (err: string | null) => void;
+  setSyncError: (err: string | null, code?: string | null) => void;
   setSyncCounts: (ahead: number, behind: number) => void;
   setPendingMerge: (merge: PendingMerge | null) => void;
   setShowProjectModal: (show: boolean) => void;
@@ -228,7 +239,6 @@ export interface UIStateSlice {
   setShowSpecModal: (show: boolean) => void;
   setShowPromptsGraphModal: (show: boolean) => void;
   setShowSectionMapModal: (show: boolean) => void;
-  setShowProjectFileModal: (show: boolean) => void;
   setShowSprintModal: (show: boolean) => void;
   setSprintMode: (mode: 'goal' | 'content') => void;
   setSprintSeed: (seed: { framing: SprintGoalFraming; transcript?: string } | null) => void;
@@ -249,6 +259,7 @@ export interface UIStateSlice {
   setShowAgentTraceModal: (show: boolean) => void;
   setShowExternalChangeModal: (show: boolean) => void;
   setShowSessionModal: (show: boolean) => void;
+  setSessionPrefill: (prefill: { wish: string; firstStep?: string } | null) => void;
 }
 
 export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = (set, get) => ({
@@ -276,6 +287,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
 
   syncStatus: 'no-remote',
   syncError: null,
+  syncErrorCode: null,
   syncAhead: 0,
   syncBehind: 0,
   pendingMerge: null,
@@ -288,7 +300,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showSpecModal: false,
   showPromptsGraphModal: false,
   showSectionMapModal: false,
-  showProjectFileModal: false,
   showSprintModal: false,
   sprintMode: 'content',
   sprintSeed: null,
@@ -308,6 +319,7 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   showAgentTraceModal: false,
   showExternalChangeModal: false,
   showSessionModal: false,
+  sessionPrefill: null,
 
   setSidebarWidth: (w) => set({ sidebarWidth: w }),
   setTestsPanelWidth: (w) => set({ testsPanelWidth: w }),
@@ -377,7 +389,9 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
     set({ [WORKSPACE_OPEN_FLAG[workspace]]: true } as unknown as Partial<AppState>),
   setSaveError: (err) => set({ saveError: err }),
   setSyncStatus: (status) => set({ syncStatus: status }),
-  setSyncError: (err) => set({ syncError: err }),
+  // Clearing the message always clears the code too — they latch as a pair.
+  setSyncError: (err, code = null) =>
+    set({ syncError: err, syncErrorCode: err === null ? null : code }),
   setSyncCounts: (ahead, behind) => set({ syncAhead: ahead, syncBehind: behind }),
   setPendingMerge: (merge) => set({ pendingMerge: merge }),
   setShowProjectModal: (show) => set({ showProjectModal: show }),
@@ -388,7 +402,6 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowSpecModal: (show) => set({ showSpecModal: show }),
   setShowPromptsGraphModal: (show) => set({ showPromptsGraphModal: show }),
   setShowSectionMapModal: (show) => set({ showSectionMapModal: show }),
-  setShowProjectFileModal: (show) => set({ showProjectFileModal: show }),
   setShowSprintModal: (show) => set({ showSprintModal: show }),
   setSprintMode: (mode) => set({ sprintMode: mode }),
   setSprintSeed: (sprintSeed) => set({ sprintSeed }),
@@ -408,4 +421,5 @@ export const createUIStateSlice: StateCreator<AppState, [], [], UIStateSlice> = 
   setShowAgentTraceModal: (show) => set({ showAgentTraceModal: show }),
   setShowExternalChangeModal: (show) => set({ showExternalChangeModal: show }),
   setShowSessionModal: (show) => set({ showSessionModal: show }),
+  setSessionPrefill: (prefill) => set({ sessionPrefill: prefill }),
 });

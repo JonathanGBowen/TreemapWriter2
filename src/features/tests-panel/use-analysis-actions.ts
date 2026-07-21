@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
 import type { DialogueMessage, SectionAnalysisState } from '../../types';
 import { useStore } from '../../state';
@@ -6,60 +6,16 @@ import { aiProvider } from '../../services/ai-provider-registry';
 import { computeHash } from '../../lib/utils';
 import { makeAnalysisVersion } from '../../lib/analysis-helpers';
 import { buildStructuralSurround, formatStructuralSurround } from '../../lib/diagnostic-helpers';
+import { isGapFocus } from '../../lib/gap-focus';
 import { DEFAULT_SPELLS } from '../../lib/defaultSpells';
 import { resolveModelChoice } from '../../services/ai/resolve-model-choice';
 import { guardContextFit } from '../shared/context-guard';
 import { notifyAiError } from '../shared/ai-error';
+import { useDialogueStream, dialogueInFlight, dialogueErrMessage as errMessage } from '../shared/dialogue';
 import { useCurrentSection } from '../shared/use-current-section';
-
-/**
- * Sections with a dialogue turn currently streaming. Module-level (not hook
- * state) so the guard survives tab switches/remounts: a stream started
- * before a remount must still block a second concurrent send.
- */
-const inFlight = new Set<string>();
-
-const errMessage = (e: unknown) => (e instanceof Error ? e.message : 'Check API key or try again');
 
 const activeVersionOf = (state: SectionAnalysisState | undefined) =>
   state?.versions.find((v) => v.id === state.activeVersionId) ?? state?.versions[0];
-
-const consumeStream = async (
-  stream: AsyncIterable<string>,
-  onProgress: (text: string) => void,
-): Promise<string> => {
-  let acc = '';
-  for await (const chunk of stream) {
-    acc += chunk;
-    onProgress(acc);
-  }
-  return acc;
-};
-
-/**
- * One streamed model turn. `messages` already ends with the (persisted)
- * user message; `onCommit` lands the model reply in the store, `onProgress`
- * feeds the live bubble. On failure any partial text is committed and the
- * error toasted — error text never enters the transcript.
- */
-const runDialogueTurn = async (args: {
-  input: Parameters<typeof aiProvider.continueDialogue>[0];
-  onProgress: (text: string) => void;
-  onCommit: (text: string) => void;
-}): Promise<void> => {
-  let partial = '';
-  try {
-    const full = await consumeStream(aiProvider.continueDialogue(args.input), (text) => {
-      partial = text;
-      args.onProgress(text);
-    });
-    if (full) args.onCommit(full);
-    else toast.error('Dialogue returned no text.');
-  } catch (e) {
-    if (partial) args.onCommit(partial);
-    notifyAiError(e, `Dialogue failed: ${errMessage(e)}`);
-  }
-};
 
 /**
  * Orchestration for the Analysis + Dialogue tabs: analyze, interrogate,
@@ -89,7 +45,8 @@ export const useAnalysisActions = () => {
 
   const currentSection = useCurrentSection();
   /** In-flight model turn for the live bubble; null when nothing streams. */
-  const [streaming, setStreaming] = useState<{ sectionId: string; text: string } | null>(null);
+  const { streaming: liveTurn, runTurn } = useDialogueStream();
+  const streaming = liveTurn ? { sectionId: liveTurn.key, text: liveTurn.text } : null;
 
   const runAnalysis = useCallback(async () => {
     if (!currentSection) return;
@@ -110,7 +67,7 @@ export const useAnalysisActions = () => {
     } = useStore.getState();
     // Mutually exclusive with a streaming dialogue turn for this section:
     // both would write the same sidecar and could otherwise race two saves.
-    if (isProcessing || inFlight.has(sectionId)) return;
+    if (isProcessing || dialogueInFlight(sectionId)) return;
 
     // The active lens, if any. Built-ins + the global custom library; null id
     // means a plain exegetical reconstruction with no persona/lens overlay.
@@ -186,14 +143,17 @@ export const useAnalysisActions = () => {
   }, [currentSection, setIsProcessing, addAnalysisVersion, saveCurrentState]);
 
   const interrogate = useCallback(
-    (context: string) => {
-      if (!currentSection) return;
-      const sectionId = currentSection.id;
+    (context: string, targetSectionId?: string) => {
+      // A caller that just re-selected a section (e.g. the strain register)
+      // passes the target explicitly — the hook's subscribed section is still
+      // the pre-click one in that same handler tick.
+      const sectionId = targetSectionId ?? currentSection?.id;
+      if (!sectionId) return;
       // A turn is mid-stream for this section: don't disturb it. Clearing now
       // would be undone by the stream's onCommit (which rebuilds from the
       // captured nextMessages), resurrecting the transcript under a new focus.
       // Just surface the live dialogue instead.
-      if (inFlight.has(sectionId)) {
+      if (dialogueInFlight(sectionId)) {
         setTestsPanelTab('dialogue');
         return;
       }
@@ -223,8 +183,8 @@ export const useAnalysisActions = () => {
       const { testSuite, promptsConfig, isProcessing, modelConfig, globalModelDefault, modelCatalog } =
         useStore.getState();
       // Mutually exclusive with analyze/refactor (isProcessing) and with a
-      // second concurrent send (inFlight) on this section.
-      if (inFlight.has(sectionId) || isProcessing) return;
+      // second concurrent send (the in-flight mutex) on this section.
+      if (dialogueInFlight(sectionId) || isProcessing) return;
 
       const state = testSuite[sectionId]?.analysis;
       const nextMessages: DialogueMessage[] = [
@@ -232,13 +192,20 @@ export const useAnalysisActions = () => {
         { role: 'user', text: trimmed },
       ];
 
+      // A dialogue about the text itself (gaps-seeded, or no reading exists yet)
+      // carries the section prose whole; the classic analysis dialogue keeps its
+      // reading-only context (the analysis JSON already encodes the section).
+      const analysisResult = activeVersionOf(state)?.result ?? null;
+      const aboutTheText = !analysisResult || isGapFocus(state?.dialogueContext);
+      const sectionText = aboutTheText ? currentSection.fullContent : undefined;
+
       // The whole conversation travels each turn (no history window); pre-flight
       // the assembled context + transcript and abort on overflow rather than
       // dropping older turns.
-      const analysisResult = activeVersionOf(state)?.result;
       const budgetText = [
         state?.dialogueContext ?? '',
         analysisResult ? JSON.stringify(analysisResult) : '',
+        sectionText ?? '',
         ...nextMessages.map((m) => m.text),
       ].join('\n\n');
       const choice = resolveModelChoice('continueDialogue', modelConfig, globalModelDefault);
@@ -250,35 +217,30 @@ export const useAnalysisActions = () => {
       // mid-stream loses only the regenerable model reply.
       setDialogue(sectionId, nextMessages);
 
-      inFlight.add(sectionId);
-      setStreaming({ sectionId, text: '' });
-      try {
-        await runDialogueTurn({
-          input: {
-            context: state?.dialogueContext ?? '',
-            analysis: activeVersionOf(state)?.result ?? null,
-            messages: nextMessages,
-            config: promptsConfig,
-          },
-          onProgress: (t) => setStreaming({ sectionId, text: t }),
-          onCommit: (t) => {
-            setDialogue(sectionId, [...nextMessages, { role: 'model', text: t }]);
-            void saveCurrentState().catch(() => {});
-          },
-        });
-      } finally {
-        inFlight.delete(sectionId);
-        setStreaming((prev) => (prev?.sectionId === sectionId ? null : prev));
-      }
+      await runTurn({
+        key: sectionId,
+        stream: aiProvider.continueDialogue({
+          context: state?.dialogueContext ?? '',
+          analysis: analysisResult,
+          messages: nextMessages,
+          sectionTitle: sectionText ? currentSection.title : undefined,
+          sectionText,
+          config: promptsConfig,
+        }),
+        onCommit: (t) => {
+          setDialogue(sectionId, [...nextMessages, { role: 'model', text: t }]);
+          void saveCurrentState().catch(() => {});
+        },
+      });
     },
-    [currentSection, setDialogue, saveCurrentState],
+    [currentSection, setDialogue, saveCurrentState, runTurn],
   );
 
   const concludeAndRefactor = useCallback(async () => {
     if (!currentSection) return;
     const { id: sectionId, title: sectionTitle, fullContent: sectionText } = currentSection;
     const { testSuite, promptsConfig, isProcessing, analysisMode } = useStore.getState();
-    if (isProcessing || inFlight.has(sectionId)) return;
+    if (isProcessing || dialogueInFlight(sectionId)) return;
 
     const state = testSuite[sectionId]?.analysis;
     const active = activeVersionOf(state);
@@ -330,7 +292,7 @@ export const useAnalysisActions = () => {
   }, [currentSection, setIsProcessing, addAnalysisVersion, clearDialogue, setTestsPanelTab, saveCurrentState]);
 
   const discardDialogue = useCallback(() => {
-    if (!currentSection || inFlight.has(currentSection.id)) return;
+    if (!currentSection || dialogueInFlight(currentSection.id)) return;
     // No confirm: a cleared transcript is recoverable — dialogues ride the
     // per-section YAML sidecar into git history (Version History restores).
     clearDialogue(currentSection.id);

@@ -66,6 +66,8 @@ import revisionAgentPreamble from './revision-agent.md?raw';
 import sourceExegesisPrompt from './source-exegesis.md?raw';
 import citationsAuditTask from './citations-audit-task.md?raw';
 import directiveDialoguePrompt from './directive-dialogue.md?raw';
+import interlocutorPrompt from './interlocutor.md?raw';
+import interlocutorVoice from './interlocutor-voice.md?raw';
 // Draft-in-process reading overlays (locked): prepended to the evaluative tools'
 // base prompts when their mode is 'draft' (the default).
 import compareModeDraft from './compare-mode-draft.md?raw';
@@ -730,6 +732,28 @@ export const PROMPT_REGISTRY = [
     category: 'revision-engine',
     flow: 'directiveDialogueTurn',
     editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'interlocutorPrompt',
+    defaultText: strip(interlocutorPrompt),
+    label: 'Interlocutor',
+    description:
+      'The anchored-dialogue partner behind the typed openings (re-entry, coach-plan, unstick): inquiry over a deterministic activity/structure record, converging on a located deposit.',
+    category: 'diagnostics-coaching',
+    flow: 'interlocutorTurn',
+    editability: 'editable',
+    variables: [],
+  },
+  {
+    key: 'interlocutorVoice',
+    defaultText: strip(interlocutorVoice),
+    label: 'Interlocutor Voice',
+    description:
+      'The house voice contract prepended to every anchored dialogue: ≤3 sentences, one question, point at a location, demand rhetoric, converge by the fourth exchange. Engine internal — not user-editable.',
+    category: 'diagnostics-coaching',
+    flow: 'interlocutorTurn',
+    editability: 'locked',
     variables: [],
   },
   {

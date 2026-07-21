@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useStore } from '../../../state';
 import { countWords } from '../../../lib/utils';
+import { latestCarryForward } from '../../../lib/activity-brief';
+import { useReentryOpening } from '../../coach/use-reentry-opening';
 import type { CarryForward, SessionGoal, SessionStep } from '../../../types';
 import { ModalShell } from '../shared/ModalShell';
 
@@ -21,12 +23,32 @@ const newStepId = () => `step_${Date.now()}_${stepSeq++}`;
 
 function CheckIn({ onClose }: { onClose: () => void }) {
   const startSession = useStore((s) => s.startSession);
-  const [wish, setWish] = useState('');
+  const sessionLog = useStore((s) => s.sessionLog);
+  const loadSessions = useStore((s) => s.loadSessions);
+  const prefill = useStore((s) => s.sessionPrefill);
+  const setSessionPrefill = useStore((s) => s.setSessionPrefill);
+  const openReentry = useReentryOpening();
+  const [wish, setWish] = useState(prefill?.wish ?? '');
   const [outcome, setOutcome] = useState('');
   const [obstacle, setObstacle] = useState('');
   const [plan, setPlan] = useState('');
-  const [stepsText, setStepsText] = useState('');
+  const [stepsText, setStepsText] = useState(prefill?.firstStep ?? '');
   const [committing, setCommitting] = useState(false);
+
+  // Consume a one-shot prefill handed off from a re-entry dialogue deposit.
+  useEffect(() => {
+    if (prefill) setSessionPrefill(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The last checked-out session's carry-forward — the app's own gap-capture,
+  // re-surfaced here so returning writers meet where they left off (deterministic,
+  // no AI). Ensure the records are loaded.
+  useEffect(() => {
+    if (sessionLog.length === 0) void loadSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const carry = useMemo(() => latestCarryForward(sessionLog), [sessionLog]);
 
   const begin = async () => {
     if (!wish.trim() || committing) return;
@@ -63,6 +85,37 @@ function CheckIn({ onClose }: { onClose: () => void }) {
       primaryDisabled={!wish.trim() || committing}
     >
       <div className="flex flex-col gap-4 font-mono text-[11px] text-hld-text">
+        {/* Where you left off — carry-forward captured at the last check-out.
+            Tap to make it the wish; the ⊕ takes it to a re-entry dialogue. */}
+        {carry && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[9px] tracking-[0.1em] uppercase text-hld-muted-text">Where you left off</div>
+              <button
+                type="button"
+                onClick={() => { onClose(); void openReentry(); }}
+                title="Where was I? — a short dialogue over your recent activity"
+                className="font-mono text-[9px] tracking-[0.1em] uppercase text-hld-muted-text hover:text-hld-cyan transition-colors"
+              >
+                ⊕ where was I?
+              </button>
+            </div>
+            <div className="flex flex-col gap-1">
+              {carry.items.map((c, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setWish(c.nextAction)}
+                  title="Make this the wish for this sitting"
+                  className="text-left px-2 py-1.5 border border-hld-border hover:border-hld-cyan/50 text-hld-text hover:text-hld-cyan transition-colors"
+                >
+                  {c.nextAction}
+                  {c.stepDescription && <span className="text-hld-muted-text"> · {c.stepDescription}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <Field label="Wish — what do you want to accomplish?">
           <textarea
             autoFocus

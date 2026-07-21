@@ -15,7 +15,6 @@ import { SpecGeneratorModal } from "./analysis/SpecGeneratorModal";
 import { SprintModal } from "./sprint/SprintModal";
 import { ProjectManagerModal } from "./project/ProjectManagerModal";
 import { DependencyGraphModal } from "./analysis/DependencyGraphModal";
-import { ProjectFileModal } from "./project/ProjectFileModal";
 import { CoachModal } from "../coach/CoachModal";
 import { PromptsGraphModal } from "./analysis/PromptsGraphModal";
 import { SectionMapModal } from "./analysis/SectionMapModal";
@@ -90,11 +89,11 @@ export const ModalLayer = ({
   paletteCommands,
 }: ModalLayerProps) => {
   const {
-    markdown, sections, testSuite, revisions, localContent, projectName,
-    customPersonas, promptsConfig, cachedCoachAdvice, projectList,
+    markdown, sections, testSuite, revisions, localContent,
+    promptsConfig, cachedCoachAdvice, projectList,
     activeProjectId,
-    setLocalContent, setMarkdown, setTestSuite, setProjectName, setPromptsConfig,
-    setCustomPersonas, setShowSpecModal, setCachedCoachAdvice,
+    setLocalContent, setMarkdown, setTestSuite, setPromptsConfig,
+    setShowSpecModal, setCachedCoachAdvice,
     updateSectionGoals, saveCurrentState,
     switchProject, createNewProject, createDemoProject, openExistingProject, deleteProject,
   } = useStore(useShallow((state) => ({
@@ -103,8 +102,6 @@ export const ModalLayer = ({
     testSuite: state.testSuite,
     revisions: state.revisions,
     localContent: state.localContent,
-    projectName: state.projectName,
-    customPersonas: state.customPersonas,
     promptsConfig: state.promptsConfig,
     cachedCoachAdvice: state.cachedCoachAdvice,
     projectList: state.projectList,
@@ -112,9 +109,7 @@ export const ModalLayer = ({
     setLocalContent: state.setLocalContent,
     setMarkdown: state.setMarkdown,
     setTestSuite: state.setTestSuite,
-    setProjectName: state.setProjectName,
     setPromptsConfig: state.setPromptsConfig,
-    setCustomPersonas: state.setCustomPersonas,
     setShowSpecModal: state.setShowSpecModal,
     setCachedCoachAdvice: state.setCachedCoachAdvice,
     updateSectionGoals: state.updateSectionGoals,
@@ -212,24 +207,6 @@ export const ModalLayer = ({
         testSuite={testSuite}
         updateDependencies={updateDependencies}
         onEstimateDependencies={handleEstimateDependencies}
-      />
-
-      <ProjectFileModal
-        sections={sections}
-        testSuite={testSuite}
-        projectName={projectName}
-        markdown={markdown}
-        promptsConfig={promptsConfig}
-        customPersonas={customPersonas}
-        onSaveData={({ testSuite: newTestSuite, projectName: newProjectName, promptsConfig: newPrompts, customPersonas: newPersonas }) => {
-          if (newTestSuite) setTestSuite(newTestSuite);
-          if (newProjectName) setProjectName(newProjectName);
-          // Raw-JSON prompt edits land as a per-project override (same path as
-          // the Prompts map's project scope).
-          if (newPrompts) setPromptsConfig(newPrompts);
-          if (newPersonas) setCustomPersonas(newPersonas);
-          void saveCurrentState();
-        }}
       />
 
       <CoachModal

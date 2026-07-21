@@ -182,6 +182,14 @@ export interface AIProvider extends
   analyzeSection(input: AnalyzeSectionInput): Promise<SectionAnalysis>;
   refactorAnalysis(input: RefactorAnalysisInput): Promise<SectionAnalysis>;
   continueDialogue(input: ContinueDialogueInput): AsyncIterable<string>;
+  /**
+   * One streamed turn of an anchored-opening dialogue (re-entry / coach-plan /
+   * unstick). The opening carries a deterministic context record assembled by
+   * the caller (`lib/dialogue-openings.ts` + `lib/activity-brief.ts`) and a
+   * declared deposit contract; the locked house voice enforces convergence.
+   * Stateless like continueDialogue: the full history travels each turn.
+   */
+  interlocutorTurn(input: InterlocutorTurnInput): AsyncIterable<string>;
   generateRevisions(input: GenerateRevisionsInput): Promise<RevisionProposal[]>;
   /**
    * Per-source citation audit — the batch audit's unit call. Reads ONE source
@@ -541,6 +549,14 @@ export interface CoachAdviceInput {
   testSuite: TestSuite;
   /** Optional discovered parts — a compact configuration summary augments the prompt. Omitted → today's behavior. */
   structuralParts?: StructuralPart[];
+  /**
+   * Optional recent-activity record (`lib/activity-brief.ts` over sessions +
+   * snapshots) so the triage knows what happened last sitting. Omitted → the
+   * structure-only prompt, exactly as before.
+   */
+  activityBrief?: string;
+  /** The writer's standing-intent Memorandum, injected verbatim (§IV). Omitted → absent. */
+  memorandum?: string;
   config: PromptsConfig;
   modelId?: string;
   modelChoice?: ModelChoice;
@@ -824,6 +840,30 @@ export interface ContinueDialogueInput {
   context: string;
   /** Active analysis version, injected into the system instruction. */
   analysis: SectionAnalysis | null;
+  /** Full history; the last message is the new user turn. */
+  messages: DialogueMessage[];
+  /**
+   * The section's prose, sent whole when the dialogue is about the text rather
+   * than a reading of it — a gaps-seeded dialogue, or one on a section with no
+   * analysis yet. Omitted for the classic analysis dialogue (the reading is the
+   * subject there, and the analysis JSON already carries it).
+   */
+  sectionTitle?: string;
+  sectionText?: string;
+  config: PromptsConfig;
+  modelId?: string;
+  thinkingBudget?: number;
+  modelChoice?: ModelChoice;
+}
+
+export interface InterlocutorTurnInput {
+  /** The typed occasion: kind + short label + the composed context record. */
+  opening: {
+    kind: string;
+    label: string;
+    /** Deterministic context block(s) — verbatim what the writer can disclose. */
+    context: string;
+  };
   /** Full history; the last message is the new user turn. */
   messages: DialogueMessage[];
   config: PromptsConfig;

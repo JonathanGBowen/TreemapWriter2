@@ -294,6 +294,11 @@ pub struct StoredProjectData {
     /// sparse/evolving shape can never reject the whole save.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sources: Option<serde_json::Value>,
+    /// The Memorandum (`.twriter/memorandum.md`): one capped plain-markdown note of
+    /// the writer's standing intent. A bare `Option<String>` (like `local_draft`),
+    /// NOT JSON — but COMMITTED, not gitignored, so git is its history and undo.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub memorandum: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub revisions: Option<Vec<Snapshot>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -393,6 +398,29 @@ fn default_session_source() -> String {
 // with "missing required key theirCommit". Keep `rename_all_fields` on every tagged
 // sync enum so a future multi-word variant field can't regress the same way (it is a
 // no-op for the single-word fields the siblings carry today).
+
+/// A classified remote-sync failure, carried inside `PullOutcome::Failed` /
+/// `PushOutcome::Failed`. Failures ride the outcome enums rather than
+/// `AppError` because AppError serializes to a bare string for every command
+/// — the TS sync policy needs the code to decide latch-vs-settle without
+/// locale-fragile message matching.
+///
+/// `code` is a closed set today — "network" | "auth" | "noPat" | "other" —
+/// but typed as String so a future code can't make serde reject the payload
+/// on an older front-end.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncFailure {
+    pub code: String,
+    /// Verbatim underlying error, for display.
+    pub message: String,
+}
+
+impl SyncFailure {
+    pub fn new(code: &str, message: impl Into<String>) -> Self {
+        Self { code: code.to_string(), message: message.into() }
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum PullOutcome {
@@ -416,6 +444,9 @@ pub enum PullOutcome {
     UnrelatedHistories,
     WorkingTreeDirty,
     NoRemote,
+    /// The remote operation failed in a classified way (network, auth, no
+    /// PAT). Local state is untouched.
+    Failed { failure: SyncFailure },
 }
 
 /// One conflicted path in a `MergeRequired` outcome. Text content is only
@@ -478,6 +509,9 @@ pub enum PushOutcome {
     Pushed { commits: u32 },
     NonFastForward,
     NoRemote,
+    /// The remote operation failed in a classified way (network, auth, no
+    /// PAT). Local commits are untouched.
+    Failed { failure: SyncFailure },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -680,6 +714,35 @@ mod tests {
                 assert_eq!(conflicts.len(), 1);
             }
             _ => panic!("expected MergeRequired"),
+        }
+    }
+
+    #[test]
+    fn sync_failed_outcomes_pin_exact_wire_keys() {
+        // The TS sync policy switches on `kind === 'failed'` and then on
+        // `failure.code` to decide latch-vs-settle. Pin the exact wire shape
+        // on BOTH enums so a serde attribute regression can't silently turn a
+        // classified failure into an unknown kind (which TS reads as success).
+        let pull = PullOutcome::Failed {
+            failure: SyncFailure::new("auth", "authentication required"),
+        };
+        let v = serde_json::to_value(&pull).unwrap();
+        assert_eq!(v["kind"], "failed");
+        assert_eq!(v["failure"]["code"], "auth");
+        assert_eq!(v["failure"]["message"], "authentication required");
+
+        let push = PushOutcome::Failed {
+            failure: SyncFailure::new("noPat", "no PAT configured"),
+        };
+        let v = serde_json::to_value(&push).unwrap();
+        assert_eq!(v["kind"], "failed");
+        assert_eq!(v["failure"]["code"], "noPat");
+
+        // Round-trips back for completeness.
+        let back: PushOutcome = serde_json::from_value(v).unwrap();
+        match back {
+            PushOutcome::Failed { failure } => assert_eq!(failure.code, "noPat"),
+            _ => panic!("expected Failed"),
         }
     }
 }

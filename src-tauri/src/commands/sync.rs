@@ -6,10 +6,11 @@
 
 use crate::error::{err, AppResult};
 use crate::project::AppState;
-use crate::types::{PullOutcome, PushOutcome, Resolution, ResolveOutcome, SyncState};
+use crate::types::{PullOutcome, PushOutcome, Resolution, ResolveOutcome, SyncFailure, SyncState};
 use tauri::State;
 
 const GIT_TOKEN_SERVICE: &str = "git";
+const NO_PAT_MESSAGE: &str = "No GitHub PAT configured. Open the sync settings to set one.";
 
 #[tauri::command]
 pub async fn sync_state(state: State<'_, AppState>) -> AppResult<SyncState> {
@@ -18,13 +19,30 @@ pub async fn sync_state(state: State<'_, AppState>) -> AppResult<SyncState> {
 
 #[tauri::command]
 pub async fn sync_pull(state: State<'_, AppState>) -> AppResult<PullOutcome> {
-    let token = read_git_token()?;
+    // A missing PAT is an expected user state (remote configured on another
+    // machine, keyring cleared), not an internal error — report it as a
+    // classified outcome so the TS policy routes to the sync config modal.
+    let token = match read_git_token_opt()? {
+        Some(t) => t,
+        None => {
+            return Ok(PullOutcome::Failed {
+                failure: SyncFailure::new("noPat", NO_PAT_MESSAGE),
+            })
+        }
+    };
     state.with_current(|h| crate::git::remote::pull(&h.git, &token))
 }
 
 #[tauri::command]
 pub async fn sync_push(state: State<'_, AppState>) -> AppResult<PushOutcome> {
-    let token = read_git_token()?;
+    let token = match read_git_token_opt()? {
+        Some(t) => t,
+        None => {
+            return Ok(PushOutcome::Failed {
+                failure: SyncFailure::new("noPat", NO_PAT_MESSAGE),
+            })
+        }
+    };
     state.with_current(|h| crate::git::remote::push(&h.git, &token))
 }
 
@@ -70,13 +88,22 @@ pub async fn sync_configure_remote(
     })
 }
 
-pub(crate) fn read_git_token() -> AppResult<String> {
+/// Keyring lookup that distinguishes "no PAT stored" (None — an expected
+/// state the sync commands classify) from a real keyring failure (Err).
+fn read_git_token_opt() -> AppResult<Option<String>> {
     let entry = keyring::Entry::new("treemap-writer", GIT_TOKEN_SERVICE)?;
     match entry.get_password() {
-        Ok(token) => Ok(token),
-        Err(keyring::Error::NoEntry) => {
-            err("No GitHub PAT configured. Open the Configure Sync modal to set one.")
-        }
+        Ok(token) => Ok(Some(token)),
+        Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(e.into()),
+    }
+}
+
+/// Strict variant for flows where a missing PAT is a hard error surfaced
+/// inline (e.g. clone, where the user just typed the token).
+pub(crate) fn read_git_token() -> AppResult<String> {
+    match read_git_token_opt()? {
+        Some(token) => Ok(token),
+        None => err(NO_PAT_MESSAGE),
     }
 }

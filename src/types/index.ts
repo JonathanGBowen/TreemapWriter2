@@ -1280,7 +1280,21 @@ export type PullOutcome =
   /** Local and remote share no common ancestor; refused. */
   | { kind: 'unrelatedHistories' }
   | { kind: 'workingTreeDirty' }
-  | { kind: 'noRemote' };
+  | { kind: 'noRemote' }
+  /** Remote op failed in a classified way (network/auth/noPat); local state untouched. */
+  | { kind: 'failed'; failure: SyncFailure };
+
+/**
+ * A classified remote-sync failure. `code` drives the sync policy's
+ * latch-vs-settle decision without locale-fragile message matching; the
+ * closed set today is "network" | "auth" | "noPat" | "other", typed loose so
+ * a future Rust code can't break an older front-end.
+ */
+export interface SyncFailure {
+  code: string;
+  /** Verbatim underlying error, for display. */
+  message: string;
+}
 
 /** One conflicted path. Text fields are absent for binary/non-UTF-8 sides. */
 export interface ConflictFile {
@@ -1322,7 +1336,9 @@ export type PushOutcome =
   | { kind: 'upToDate' }
   | { kind: 'pushed'; commits: number }
   | { kind: 'nonFastForward' }
-  | { kind: 'noRemote' };
+  | { kind: 'noRemote' }
+  /** Remote op failed in a classified way (network/auth/noPat); commits untouched. */
+  | { kind: 'failed'; failure: SyncFailure };
 
 export interface SyncState {
   hasRemote: boolean;

@@ -6,10 +6,13 @@ import { computeHash } from '../../lib/utils';
 import { DEFAULT_PROMPTS_CONFIG } from '../../lib/constants';
 import { useStore } from '../../store';
 import { aiProvider } from '../../services/ai-provider-registry';
+import { repository as repo } from '../../services/repository-registry';
+import { buildActivityBrief } from '../../lib/activity-brief';
 import { guardContextFit } from '../shared/context-guard';
 import { ModelPicker } from '../modals/settings/ModelPicker';
 import { useModelChoice } from '../modals/settings/use-model-choice';
 import { AgentTraceTicker } from '../shared/AgentTraceTicker';
+import { useCoachPlanOpening } from './use-open-dialogue';
 
 interface CoachModalProps {
   markdown: string;
@@ -32,12 +35,30 @@ export const CoachModal: React.FC<CoachModalProps> = ({
   const setShow = useStore(s => s.setShowCoachModal);
   const modelCatalog = useStore(s => s.modelCatalog);
   const structuralParts = useStore(s => s.structuralParts);
+  const memorandum = useStore(s => s.memorandum);
   const onClose = () => setShow(false);
   const [choice, setChoice] = useModelChoice('streamCoachAdvice', isOpen);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionPlan, setActionPlan] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
+  const [activityBrief, setActivityBrief] = useState<string | null>(null);
+  const openCoachPlan = useCoachPlanOpening();
+
+  // History-aware coach: pull the recent activity record once per open so the
+  // triage knows what happened last sitting (deterministic; no extra AI call).
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void Promise.all([repo.listSessions().catch(() => []), repo.listSnapshotMeta(30).catch(() => [])]).then(
+      ([sessions, snapshots]) => {
+        if (!cancelled) setActivityBrief(buildActivityBrief({ sessions, snapshots, now: Date.now() }));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   const structureData = sections.map(sec => {
     const tests = testSuite[sec.id];
@@ -95,6 +116,8 @@ export const CoachModal: React.FC<CoachModalProps> = ({
         sections,
         testSuite,
         structuralParts,
+        activityBrief: activityBrief ?? undefined,
+        memorandum: memorandum || undefined,
         config: promptsConfig,
         modelChoice: choice,
       })) {
@@ -212,6 +235,15 @@ export const CoachModal: React.FC<CoachModalProps> = ({
                className="px-4 py-2 bg-hld-yellow text-black hover:bg-amber-400 text-[11px] font-mono uppercase tracking-[0.1em] transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(255,190,0,0.2)]"
             >
               <Sparkles size={14} /> Get Action Plan
+            </button>
+          )}
+          {actionPlan && !isProcessing && (
+            <button
+               onClick={() => void openCoachPlan(actionPlan)}
+               title="Contest this plan — take it to a short dialogue before committing"
+               className="px-4 py-2 mr-auto bg-transparent border border-hld-cyan/40 text-hld-cyan text-[11px] font-mono uppercase tracking-[0.1em] hover:bg-hld-cyan/10 transition-colors"
+            >
+              ⊕ Contest this plan
             </button>
           )}
           {actionPlan && (

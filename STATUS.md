@@ -9,7 +9,7 @@
 > [`docs/phase-5.md`](docs/phase-5.md), and
 > [`docs/living-sprints-plan.md`](docs/living-sprints-plan.md).
 >
-> **Current as of 2026-07-09.** Update this file whenever a feature ships or is
+> **Current as of 2026-07-13.** Update this file whenever a feature ships or is
 > planned (see the definition-of-done ritual in [`AGENTS.md`](AGENTS.md)). A
 > point-in-time audit of the desktop user flow (with a flow diagram and the
 > issues it fixed) lives in [`docs/ux-audit.md`](docs/ux-audit.md) — now with a
@@ -30,6 +30,29 @@ drift, gains, losses — over the git-snapshot history). In-app
 3-way merge conflict resolution is done. A subtle sidebar sync indicator (cyan
 when synced, yellow on error — palette 3C, below) surfaces status without
 distraction.
+
+**GitHub-sync repair wave shipped 2026-07-13** (four commits; see
+[`docs/migration-log.md`](docs/migration-log.md)). Fixed the one real sync
+lifecycle bug — the policy went **dormant when a remote was attached
+mid-session** (Sync modal or create-with-remote): `attachRemote` in
+`sync-policy.ts` is now the sanctioned attach orchestration and rebinds the
+policy even when the validating push fails, and `createProjectWithRemote`
+treats publish failure as honest partial success (project survives, recovery
+routes through the Sync modal). Remote failures are now **classified in Rust**
+(`PullOutcome`/`PushOutcome::Failed { code: network | auth | noPat | other }`)
+instead of English-substring-matched in TS — network settles silently,
+auth/noPat latch with a `syncErrorCode` that routes the sidebar pip straight to
+sync setup. The five sync/project modals were unified on `ModalShell` (one
+frame, ESC/ENTER grammar, shared `RemoteAuthFields`); **SyncConfigModal is now
+the sync home** (live status pip, remote URL, branch, ahead/behind, Sync now /
+Change remote…); ⌘K gained `Sync` + `New from remote`; the sidebar pip is
+clickable in every state. Deleted as defunct (owner-approved): the legacy
+Raw-data JSON editor (`ProjectFileModal` — partial-save foot-gun, last pre-HLD
+surface) and the pre-IndexedDB `migrateVeryOldLegacy` importer. *Manual QA
+residue (needs a real desktop + GitHub remote):* the attach-then-autopush
+acceptance flow (configure sync from ◇, snapshot, push lands in ~5s without a
+relaunch), create-with-remote against a non-empty repo, real 401-vs-offline
+classification, keyring PAT round-trip, and the first-publish toast count.
 
 **Reverse Outline Doctor shipped 2026-07-09** (four commits; see
 [`docs/migration-log.md`](docs/migration-log.md)): the legacy "Prosthetic
@@ -435,6 +458,39 @@ spec exists" case and peers). Deliberate follow-ons: the throttle is best-effort
 the latest op only (a `+N` count when several run); and conversational dialogue/coach
 streams keep their own inline indicators rather than the pill.
 
+**Dialogue expansion — Increments 1–2 shipped 2026-07-10** (design record:
+[`docs/dialogue-design.md`](docs/dialogue-design.md) — the anchored-corridor law;
+see [`docs/migration-log.md`](docs/migration-log.md)). **Inc 1:** the shared
+dialogue kit (`features/shared/dialogue/` — transcript/composer/streaming mutex,
+extracted from the five hand-copied surfaces; `DialogueTab` + `DirectiveDialogue`
+migrated), the four dormant interrogation foci wired in the Analysis tab
+(`thesis`/`concepts`/`argument`/`support` + the `entire` reading), and a
+deterministic **gaps** focus (`lib/gap-focus.ts`) seedable from the Dialogue tab
+and a per-row `⊕` on the Structural-Tension Register (gap-seeded dialogues carry
+the section prose — additive `ContinueDialogueInput.sectionText`). **Inc 2:** the
+**activity spine** (`lib/activity-brief.ts` over sessions + snapshots, approximate
+magnitude) + the **re-entry opening** (`lib/dialogue-openings.ts` +
+`state/dialogue-state.ts` + `OpeningDialogue`): a deterministic RECENT-ACTIVITY
+record taken to dialogue via the new `interlocutorTurn` flow
+(`interlocutor-voice.md` locked + `interlocutor.md`), converging on a
+`{wish,firstStep,sectionId}` deposit whose exit chip slingshots the caret back
+into the prose. **Last session's carry-forward is now re-surfaced** as tappable
+chips at check-in (discharges the felt-priority note below). Entry via `⊕ Where
+was I?` on the resume marker + at check-in. Turn pips + soft-yield enforce
+convergence. **Inc 3:** the coach becomes **history-aware** (`buildCoachPrompt` gains the
+activity brief), a **coach-plan opening** (⊕ Contest this plan in the CoachModal),
+and the **repointed 90 s stall** → a section-grained **unstick opening** whose
+*permission-to-stop* deposit is the first home of the F3 Good-Enough gate.
+**Inc 4:** the **Memorandum** — one capped (1200-char), committed plain-markdown
+note of standing intent (`.twriter/memorandum.md`; the full TS + Rust chain,
+`cargo test` green), edited in the Dialogue-tab empty state, injected verbatim
+into every opening + the coach, and revisable only via a default-skip diff chip
+from a dialogue deposit (no-inference contract locked in `interlocutor-voice.md`).
+**Program complete** (design essay + four increments). *Deferred by design
+(named):* the FTS/`specEdit` gap opening and the Sprint/`proposeRecenterings`
+deposit hand-offs. *Pending:* one manual AI-path drive of the live openings
+(needs an API key).
+
 ## Next (felt priorities)
 
 - **Agentic-AI integration roadmap — WS1–WS4a shipped 2026-06-29.** A 2026-06-29 audit
@@ -510,9 +566,11 @@ streams keep their own inline indicators rather than the pill.
   commitment-branch ("if commitment < 7, simplify"), and the idle-timeout-driven
   check-out. The data model (`SessionRecord` / `SessionGoal` / `SessionStep` /
   `CarryForward`) and lifecycle thunks already exist, so this is UI on top of a
-  settled spine. Two smaller follow-ons flagged by the brief: surfacing *last
-  session's carry-forward* at the next check-in (the records already store it),
-  and a **spec-evaluation delta** between the session start/end snapshots. The
+  settled spine. One smaller follow-on flagged by the brief remains: a **spec-evaluation delta**
+  between the session start/end snapshots. (Surfacing *last session's
+  carry-forward* at the next check-in — the other flagged follow-on — **shipped
+  2026-07-10** with dialogue-expansion Inc 2: tappable chips at check-in +
+  re-surfaced in the re-entry opening's activity brief.) The
   evaluation *engine* now exists (the spec-anchored A/B whole-test,
   `runSpecTestForOperands`, shipped 2026-06-26, store/UI-free); what remains is the
   automatic trigger that calls it on check-out with the start tag as the baseline
@@ -533,8 +591,12 @@ streams keep their own inline indicators rather than the pill.
   the bounded move-completion agent loop (rubric-declared Good-Enough, never
   model-self-judged); ~~**(F5) point-of-action move instructions**~~ — **shipped** as
   the margin `ActiveMoveMarker` (WS3), which surfaces the active move's vector *when the
-  move becomes active*, not as a skippable pre-gate. F3 is now the highest-leverage
-  remaining item.
+  move becomes active*, not as a skippable pre-gate. **F3 got its first home
+  2026-07-10** (dialogue-expansion Inc 3): the repointed 90 s stall's **unstick
+  opening** offers *permission to stop* ("good enough — move on") as one of three
+  prompt-sanctioned deposits — an explicit stop authority, never model-self-judged.
+  The rubric-declared move-completion *agent loop* (tied to the readiness ladder)
+  remains the fuller F3 build.
 
 - **Gestalt roadmap — substantially shipped 2026-06-26 (second reading + Phases 1–3).**
   Tier 1 shipped 2026-06-17 (part-not-piece context: prefix-truncation killed in spec
@@ -777,8 +839,10 @@ Unless requirements genuinely change:
 - **Multi-branch git.** Single branch (whatever HEAD points to; typically `main`).
 - **SSH key authentication.** HTTPS + PAT only, for now. May revisit only if PAT
   becomes annoying.
-- **In-app clone-from-remote UX.** Second-machine setup is `git clone` from the
-  CLI, then the standard project-open flow.
+- ~~**In-app clone-from-remote UX.**~~ **Shipped** (RemoteProjectModal — "New
+  from remote…" clones an existing project or creates + publishes a new one;
+  this non-goal was stale). What remains out of scope: anything beyond the
+  single Clone/Create flow (repo browsing, GitHub account integration).
 - **Y.js / Automerge real-time collaboration.** Only if a co-author is ever
   invited. Otherwise out of scope.
 - **Zotero beyond the local API.** The live **local-API picker shipped 2026-07-07**

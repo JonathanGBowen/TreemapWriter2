@@ -27,6 +27,7 @@ import { DEFAULT_MODEL_CONFIG } from './model-config';
  */
 export const AGENT_DEFAULT_KINDS: ReadonlySet<AICallKind> = new Set<AICallKind>([
   'continueDialogue',
+  'interlocutorTurn',
   'streamCoachAdvice',
   'getCoachAdvice',
   'coachSprintTurn',

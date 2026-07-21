@@ -112,6 +112,9 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
     let structural_parts: Option<serde_json::Value> =
         crate::fs_io::read_json(&layout.structural_parts_json())?;
     let sources: Option<serde_json::Value> = crate::fs_io::read_json(&layout.sources_json())?;
+    // The Memorandum — a committed plain-markdown note; read plainly (unlike the
+    // gitignored draft, it is authoritative, so no staleness gate).
+    let memorandum = crate::fs_io::read_to_string_optional(&layout.memorandum_md())?;
     let hidden_section_ids: Option<Vec<String>> =
         crate::fs_io::read_json(&layout.hidden_json())?;
     let ui_state: Option<UiState> = crate::fs_io::read_json(&layout.uistate_json())?;
@@ -139,6 +142,7 @@ fn read_from(layout: &Layout) -> AppResult<StoredProjectData> {
         provenance,
         structural_parts,
         sources,
+        memorandum,
         cached_coach_advice: None,  // ephemeral
         revisions: None,            // populated by snapshot_list in Phase 3d
         last_modified: Some(epoch_ms_now()),
@@ -194,6 +198,11 @@ fn write_to(layout: &Layout, data: &StoredProjectData) -> AppResult<()> {
     }
     if let Some(src) = &data.sources {
         crate::fs_io::write_json(&layout.sources_json(), src)?;
+    }
+    // Memorandum — plain markdown, committed. An empty string clears it to a
+    // (still-committed) empty file, which reads back as Some("") — harmless.
+    if let Some(memo) = &data.memorandum {
+        crate::fs_io::atomic_write_str(&layout.memorandum_md(), memo)?;
     }
     if let Some(ids) = &data.hidden_section_ids {
         crate::fs_io::write_json(&layout.hidden_json(), ids)?;
@@ -463,6 +472,45 @@ mod tests {
         let back = read_from(&layout).unwrap();
         assert_eq!(back.markdown.as_deref(), Some("# Intro\n\nmerged from remote."));
         assert_eq!(back.local_draft, None);
+    }
+
+    #[test]
+    fn memorandum_round_trips_through_write_then_read_and_is_optional() {
+        // The Memorandum (docs/dialogue-design.md §IV): a committed plain-markdown
+        // sidecar. Absent file → None; supplied → lands at .twriter/memorandum.md
+        // and reads back verbatim. Unlike the draft it is authoritative (no
+        // staleness gate) and committed (not gitignored).
+        let dir = tempdir().unwrap();
+        let layout = Layout::new(dir.path());
+        std::fs::create_dir_all(layout.twriter_dir()).unwrap();
+
+        // Absent → None (older projects, and the empty/zero-footprint case).
+        write_to(
+            &layout,
+            &StoredProjectData {
+                markdown: Some("# Intro".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(!layout.memorandum_md().exists());
+        assert_eq!(read_from(&layout).unwrap().memorandum, None);
+
+        // Supplied → committed markdown file, read back verbatim.
+        write_to(
+            &layout,
+            &StoredProjectData {
+                markdown: Some("# Intro".to_string()),
+                memorandum: Some("ch. 2 framing is settled — do not reopen.".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(layout.memorandum_md().is_file());
+        assert_eq!(
+            read_from(&layout).unwrap().memorandum.as_deref(),
+            Some("ch. 2 framing is settled — do not reopen.")
+        );
     }
 
     #[test]
